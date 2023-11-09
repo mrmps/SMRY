@@ -16,6 +16,19 @@ const UnknownErrorSchema = z.object({
   error: z.string().optional()
 });
 
+const dummy = {
+  "title": "Sample Page",
+  "byline": null,
+  "dir": "ltr",
+  "lang": "en",
+  "content": "<p>This is some sample content.</p>",
+  "textContent": "This is some sample content.",
+  "length": 1200,
+  "excerpt": "Sample excerpt from the page content.",
+  "siteName": "Example Site"
+}
+
+
 // The helper function that validates and formats the error response
 function safeError(error: unknown) {
   // Check if it is a known error
@@ -61,7 +74,11 @@ export async function GET(request: Request) {
     const response = await fetch(googleCacheUrl);
 
     if (!response.ok) {
-      throw { message: `Failed to fetch content from Google Cache. Status: ${response.status}`, status: response.status };
+      return new Response(JSON.stringify(dummy), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
+      // throw { message: `Failed to fetch content from Google Cache. Status: ${response.status}`, status: response.status };
     }
 
     const html = await response.text();
