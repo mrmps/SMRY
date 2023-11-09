@@ -89,7 +89,7 @@ export default function Home() {
             </button>
           </div>
         </form>
-        <h2 className="w-full text-center text-stone-800 mt-2">
+        <h2 className="w-full text-center text-stone-700 mt-2">
           Read any online article and instantly get the summary.
         </h2>
         {urlError && (
@@ -107,32 +107,32 @@ export default function Home() {
         <CardSpotlight
           heading="Quick Summaries"
           body="Get concise summaries of long articles in seconds."
-          icon={<DocumentTextIcon className="h-8 w-8 text-neutral-600" />}
+          icon={<DocumentTextIcon className="h-4 w-4 text-neutral-600" />}
         />
         <CardSpotlight
           heading="Paywall Bypass"
           body="Access content behind paywalls without hassle."
-          icon={<Unlock className="h-8 w-8 text-neutral-600" />}
+          icon={<Unlock className="h-4 w-4 text-neutral-600" />}
         />
         <CardSpotlight
           heading="AI Powered"
           body="Leverage advanced AI to understand content contextually."
-          icon={<LightBulbIcon className="h-8 w-8 text-neutral-600" />}
+          icon={<LightBulbIcon className="h-4 w-4 text-neutral-600" />}
         />
         <CardSpotlight
           heading="Browser Friendly"
           body="Easily use our tool with your favorite web browser."
-          icon={<Globe className="h-8 w-8 text-neutral-600" />}
+          icon={<Globe className="h-4 w-4 text-neutral-600" />}
         />
         <CardSpotlight
           heading="Save Time"
           body="Read less, learn more. Save time on extensive articles."
-          icon={<ClockIcon className="h-8 w-8 text-neutral-600" />}
+          icon={<ClockIcon className="h-4 w-4 text-neutral-600" />}
         />
         <CardSpotlight
           heading="User-Friendly Interface"
           body="Enjoy a seamless, intuitive interface for easy navigation."
-          icon={<UserCircleIcon className="h-8 w-8 text-neutral-600" />}
+          icon={<UserCircleIcon className="h-4 w-4 text-neutral-600" />}
         />
       </div>
     </main>
