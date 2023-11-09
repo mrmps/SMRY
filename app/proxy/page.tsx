@@ -155,7 +155,9 @@ async function Wrapper({ siteText }: { siteText: string }) {
   const cached = (await kv.get(prompt)) as string | undefined;
 
   if (cached) {
+    console.log("cached")
     return cached;
+
   }
 
   const response = await openai.createChatCompletion({
@@ -173,7 +175,7 @@ async function Wrapper({ siteText }: { siteText: string }) {
   const stream = OpenAIStream(response, {
     async onCompletion(completion) {
       await kv.set(prompt, completion);
-      await kv.expire(prompt, 60 * 10);
+      // await kv.expire(prompt, 60 * 10);
     },
   });
 
