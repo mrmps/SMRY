@@ -6,11 +6,17 @@ import {
 import Link from "next/link";
 import { Configuration, OpenAIApi } from "openai-edge";
 import { OpenAIStream, StreamingTextResponse } from "ai";
-import kv from "@vercel/kv";
+import {kv} from "@vercel/kv";
 import { Tokens } from "ai/react";
 import { Suspense } from "react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link1Icon } from "@radix-ui/react-icons";
+import {
+  encode,
+  decode,
+} from 'gpt-tokenizer'
+
 
 export const runtime = "edge";
 
@@ -30,7 +36,11 @@ type PageData = {
   length: number;
   excerpt: string;
   siteName: null | string; // Assuming 'siteName' can be a string as well
+  source: string;
+  sourceURL: string; // the url to the cache/wayback machine
 };
+
+
 
 async function getData(url: string) {
   const res = await fetch(
@@ -88,6 +98,21 @@ export default async function Page({
                 <EyeIcon className="w-4 h-4 text-gray-600" />
                 <div>2</div>
               </div> */}
+
+              <div className="flex items-center mt-4 ml-4 space-x-1.5">
+                <Link1Icon className="w-4 h-4 text-gray-600" />
+                <Link
+                  href={content.sourceURL ?? ""}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-600 hover:text-gray-400 transition"
+                >
+                  {content.source}
+                </Link>
+              </div>
+              <div>
+                {JSON.stringify(content)}
+              </div>
             </div>
             <div
               className="tokens my-10 shadow-sm border-zinc-100 border flex border-collapse text-[#111111] text-base font-normal list-none text-left visible overflow-auto rounded-lg bg-[#f9f9fb]"
@@ -140,10 +165,15 @@ async function Wrapper({ siteText }: { siteText: string }) {
   const cached = (await kv.get(prompt)) as string | undefined;
 
   if (cached) {
-    console.log("cached")
+    console.log("cached");
     return cached;
-
   }
+
+  const tokenLimit = 4000
+  const tokens = encode(prompt).splice(0, tokenLimit)
+  const decodedText = decode(tokens)
+
+
 
   const response = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
@@ -151,7 +181,7 @@ async function Wrapper({ siteText }: { siteText: string }) {
     messages: [
       {
         role: "user",
-        content: prompt,
+        content: decodedText,
       },
     ],
   });
