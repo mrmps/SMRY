@@ -12,18 +12,20 @@ const TopBar = () => {
 
   const onScroll = () => {
     const scrollTop = document.documentElement.scrollTop;
-    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrollHeight =
+      document.documentElement.scrollHeight -
+      document.documentElement.clientHeight;
     const scrollProgress = (scrollTop / scrollHeight) * 100;
     setProgress(scrollProgress);
   };
 
   useEffect(() => {
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <>
+    <div>
       <div
         style={{ top: isVisible ? "0" : "-100px", transition: "top 0.3s" }}
         className="fixed top-0 z-10 w-full transition-transform bg-opacity-50 border-b border-gray-300 bg-white backdrop-filter backdrop-blur-md border-opacity-10"
@@ -31,13 +33,13 @@ const TopBar = () => {
         <div className="flex items-center py-5 mx-auto max-w-prose">
           <h2 className="text-xl font-bold text-gray-800">
             <Link href="/">
-                <Image
-                  src="/logo.svg"
-                  width={150}
-                  height={150}
-                  alt="smry logo"
-                  className="-ml-4"
-                />
+              <Image
+                src="/logo.svg"
+                width={150}
+                height={150}
+                alt="smry logo"
+                className="-ml-4"
+              />
             </Link>
           </h2>
         </div>
@@ -48,10 +50,12 @@ const TopBar = () => {
         {/* Render the Scroll Progress component */}
         <ScrollProgress progress={progress} />
       </div>
-      <div className={`fixed top-[1px] z-10 w-full ${isVisible ? 'hidden' : ''}`}>
-        <ScrollProgress progress={progress}/>
+      <div
+        className={`fixed top-[1px] z-10 w-full ${isVisible ? "hidden" : ""}`}
+      >
+        <ScrollProgress progress={progress} />
       </div>
-    </>
+    </div>
   );
 };
 

@@ -136,20 +136,15 @@ export default async function Page({
                   {content.source}
                 </Link>
               </div>
-              {/* <div>
-                {JSON.stringify(content)}
-              </div> */}
             </div>
             <div
               className="tokens my-10 shadow-sm border-zinc-100 border flex border-collapse text-[#111111] text-base font-normal list-none text-left visible overflow-auto rounded-lg bg-[#f9f9fb]"
               style={{
                 animationDuration: "0.333s",
                 animationFillMode: "forwards",
-                animationName: "yourAnimationName", // Replace with your actual animation name
                 animationTimingFunction: "cubic-bezier(0, 0, 0, 1)",
                 fontFamily:
                   '-apple-system, Roboto, SegoeUI, "Segoe UI", "Helvetica Neue", Helvetica, "Microsoft YaHei", "Meiryo UI", Meiryo, "Arial Unicode MS", sans-serif',
-                // Include other custom properties as needed
               }}
             >
               <div className="p-6 w-full grid">
