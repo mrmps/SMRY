@@ -15,6 +15,7 @@ import Image from "next/image";
 import { CardSpotlight } from "@/components/card-spotlight";
 import { Unlock, Globe } from "lucide-react";
 import { z } from "zod";
+import Github from "@/components/github";
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
@@ -45,7 +46,17 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 bg-white text-black mt-36 sm:mt-0">
       <div className="absolute inset-0 bg-[url(https://play.tailwindcss.com/img/grid.svg)] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] z-0"></div>
 
+
       <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
+      <a
+          className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 shadow-md transition-colors hover:bg-gray-100 mb-10 mr-4"
+          href="https://github.com/Nutlope/twitterbio"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Github />
+          <p>Star on GitHub</p>
+        </a>
         <h1 className="text-4xl font-semibold text-center text-black md:text-5xl">
           <Image
             src="/logo.svg"
@@ -55,6 +66,7 @@ export default function Home() {
             className="-ml-4"
           />
         </h1>
+
         <form onSubmit={handleSubmit} className="mt-6 w-full">
           <div
             className={`${
