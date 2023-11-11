@@ -38,7 +38,7 @@ type PageData = {
 
 async function getData(url: string) {
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/getCache?url=${encodeURIComponent(url)}`
+    `${process.env.NEXT_PUBLIC_URL}/api/getCache?url=${encodeURIComponent(url)}`
   );
   // The return value is *not* serialized
   // You can return Date, Map, Set, etc.
@@ -50,6 +50,32 @@ async function getData(url: string) {
 
   return res.json();
 }
+
+// async function getData(url: string) {
+//   try {
+//     const res = await fetch(
+//       `${process.env.NEXT_PUBLIC_URL}/getCache?url=${encodeURIComponent(url)}`
+//     );
+
+//         // Read the raw text response
+//         const rawText = (await res.text()).substring(0, 1000);
+
+//         // Log the raw text for debugging
+//         console.log("Raw response text:", rawText);
+
+//     // Check if the response is JSON
+//     const contentType = res.headers.get("content-type");
+//     if (!contentType || !contentType.includes("application/json")) {
+//       throw new TypeError("Oops, we haven't got JSON!");
+//     }
+
+//     const data = await res.json();
+//     return data;
+//   } catch (error) {
+//     console.error("Error fetching data: ", error);
+//     throw error; // Re-throw the error for further handling
+//   }
+// }
 
 // Replace the respective SVGs with these components
 export default async function Page({
@@ -151,7 +177,7 @@ export default async function Page({
                 />
               }
             >
-              <div dangerouslySetInnerHTML={{ __html: content.content }} />\
+              <div dangerouslySetInnerHTML={{ __html: content.content }} />
             </Suspense>
           </article>
         </main>

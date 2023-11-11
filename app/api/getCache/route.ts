@@ -92,8 +92,6 @@ export async function GET(request: Request) {
       try {
         const response = await fetchWithTimeout(sourceUrl);
         let { url, html } = response;
-  
-        let sourceURL = url;
         let source = determineSource(url);
   
         if (isWaybackMachineResponse(url)) {
@@ -101,7 +99,6 @@ export async function GET(request: Request) {
           if (archiveUrl) {
             const archiveResponse = await fetchWithTimeout(archiveUrl);
             html = archiveResponse.html;
-            sourceURL = archiveUrl;
             source = "Wayback Machine";
           } else {
             continue;
@@ -237,7 +234,7 @@ async function fetchWithTimeout(url:string) {
     root.querySelectorAll('a').forEach(a => {
       const href = a.getAttribute('href');
       if (href) {
-        a.setAttribute('href', `${process.env.NEXT_PUBLIC_API_URL}/proxy?url=${new URL(href, url).toString()}`);
+        a.setAttribute('href', `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(href, url).toString()}`);
       }
     });
 
