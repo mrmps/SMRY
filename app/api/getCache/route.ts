@@ -1,6 +1,7 @@
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
+// import logger from "@/lib/logger";
 
 // Define a schema for known errors
 const KnownErrorSchema = z.object({
@@ -78,7 +79,7 @@ export async function GET(request: Request) {
   const waybackUrl = `http://archive.org/wayback/available?url=${encodeURIComponent(
     url
   )}`;
-  const archiveIsUrl = `https://archive.is/${encodeURIComponent(url)}`;
+  const archiveIsUrl = `https://archive.is/latest/${encodeURIComponent(url)}`;
 
   try {
     const responses = await Promise.allSettled([
@@ -90,9 +91,15 @@ export async function GET(request: Request) {
     for (const response of responses) {
       if (response.status === "fulfilled") {
         let { url, html } = response.value;
+        // logger.info({ url, html }, `url + html`);
+        console.log({url, html},`url + html`)
+        
+
 
         let sourceURL = url;
         let source = determineSource(url);
+        // logger.info({ source }, `source`);
+         console.log({ source }, `source`);
 
         if (isWaybackMachineResponse(url)) {
           const archiveUrl = getArchiveUrl(html);
@@ -106,18 +113,18 @@ export async function GET(request: Request) {
           }
         }
 
-        if (isArchiveIsResponse(response.value.url)) {
-          const snapshots = parseArchiveIsResponse(html);
-          const latestSnapshotHtml = await fetchLatestSnapshotHtml(snapshots);
+        // if (isArchiveIsResponse(response.value.url)) {
+        //   const snapshots = parseArchiveIsResponse(html);
+        //   const latestSnapshotHtml = await fetchLatestSnapshotHtml(snapshots);
 
-          if (latestSnapshotHtml === null) {
-            continue; // Skip if no latest snapshot is found
-          }
+        //   if (latestSnapshotHtml === null) {
+        //     continue; // Skip if no latest snapshot is found
+        //   }
 
-          if (!html) continue; // Skip if no latest snapshot is found
-          source = "archive.is";
-          sourceURL = response.value.url;
-        }
+        //   if (!html) continue; // Skip if no latest snapshot is found
+        //   source = "archive.is";
+        //   sourceURL = response.value.url;
+        // }
 
         const doc = new JSDOM(html);
         const reader = new Readability(doc.window.document);
@@ -142,7 +149,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const err = safeError(error);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ ...dummy }), {
       headers: { "Content-Type": "application/json" },
       status: err.status,
     });
