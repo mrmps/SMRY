@@ -213,7 +213,7 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
 
     const ratelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(50, "1 d"),
+      limiter: Ratelimit.slidingWindow(5, "1 d"),
     });
 
     const { success, limit, reset, remaining } = await ratelimit.limit(
