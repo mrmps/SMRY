@@ -13,6 +13,8 @@ import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link1Icon } from "@radix-ui/react-icons";
 import { encode, decode } from "gpt-tokenizer";
+import { Ratelimit } from "@upstash/ratelimit";
+import { headers } from "next/headers";
 
 export const runtime = "edge";
 
@@ -85,6 +87,10 @@ export default async function Page({
   params: { slug: string };
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
+
+  const headersList = headers();
+  const ip = headersList.get("x-real-ip") || "default_ip";
+
   const url =
     typeof searchParams["url"] === "string" ? searchParams["url"] : null;
 
@@ -163,11 +169,12 @@ export default async function Page({
                       />
                     }
                   >
-                    <Wrapper siteText={content.textContent} url={url} />
+                    <Wrapper ip={ip} siteText={content.textContent} url={url} />
                   </Suspense>
                 </div>
               </div>
             </div>
+            <div>{ip}</div>
 
             <Suspense
               fallback={
@@ -187,7 +194,7 @@ export default async function Page({
 }
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
-async function Wrapper({ siteText, url }: { siteText: string; url: string }) {
+async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, ip: string }) {
   const prompt = "Summarize the following in under 200 words: " + siteText;
 
   // See https://sdk.vercel.ai/docs/concepts/caching
@@ -196,6 +203,26 @@ async function Wrapper({ siteText, url }: { siteText: string; url: string }) {
   if (cached) {
     console.log("cached");
     return cached;
+  }
+
+  if (
+    process.env.NODE_ENV != "development" &&
+    process.env.KV_REST_API_URL &&
+    process.env.KV_REST_API_TOKEN
+  ) {
+
+    const ratelimit = new Ratelimit({
+      redis: kv,
+      limiter: Ratelimit.slidingWindow(50, "1 d"),
+    });
+
+    const { success, limit, reset, remaining } = await ratelimit.limit(
+      `13ft_ratelimit_${ip}`,
+    );
+
+    if (!success) {
+      return "you are out of requests";
+    }
   }
 
   const tokenLimit = 4000;
