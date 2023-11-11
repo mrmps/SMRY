@@ -88,6 +88,7 @@ export default function Error({
                   Submit
                 </Button>
               </form>
+              <Button className="mt-10" onClick={() => reset()}>Try again</Button>
             </div>
           </div>
         </div>
