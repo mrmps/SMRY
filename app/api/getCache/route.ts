@@ -3,7 +3,7 @@ import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { parse} from "node-html-parser";
 
-// export const runtime = "edge";
+// export const runtime = "edge"; doesn't work for some reason
 
 
 
@@ -131,52 +131,6 @@ export async function GET(request: Request) {
       }
     );
   
-  
-
-    // for (const response of responses) {
-    //   if (response.status === "fulfilled") {
-    //     let { url, html } = response.value;
-    //     console.log({ url, html }, "url + html");
-    //     let sourceURL = url;
-
-    //     let source = determineSource(url);
-    //     console.log({ source }, "source");
-
-    //     if (isWaybackMachineResponse(url)) {
-    //       const archiveUrl = getArchiveUrl(html);
-    //       if (archiveUrl) {
-    //         const archiveResponse = await fetchWithTimeout(archiveUrl);
-    //         html = archiveResponse.html;
-    //         sourceURL = archiveUrl; // Update source URL to the actual archive URL
-    //         source = "Wayback Machine"; // Explicitly set the source to Wayback Machine
-    //       } else {
-    //         continue; // Skip if no valid archive
-    //       }
-    //     }
-
-    //     const doc = new JSDOM(html);
-    //     const reader = new Readability(doc.window.document);
-    //     const article = reader.parse();
-
-    //     if (article) {
-    //       return new Response(
-    //         JSON.stringify({ ...article, source, sourceURL: url }),
-    //         {
-    //           headers: { "Content-Type": "application/json" },
-    //           status: 200,
-    //         }
-    //       );
-    //     }
-    //   }
-    // }
-
-    // return new Response(
-    //   JSON.stringify({ message: "Unable to retrieve content." }),
-    //   {
-    //     headers: { "Content-Type": "application/json" },
-    //     status: 500,
-    //   }
-    // );
   } catch (error) {
     const err = safeError(error);
     return new Response(JSON.stringify(err), {
@@ -244,37 +198,6 @@ async function fetchWithTimeout(url:string) {
     throw error;
   }
 }
-
-
-
-// async function fetchWithTimeout(url: string) {
-//   const timeout = 5000; // Timeout in milliseconds
-//   const controller = new AbortController();
-//   const id = setTimeout(() => controller.abort(), timeout);
-
-//   try {
-//     const response = await fetch(url, {
-//       signal: controller.signal,
-//       headers: {
-//         "User-Agent":
-//           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
-//       },
-//     });
-//     clearTimeout(id);
-
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-
-//     const buffer = await response.arrayBuffer();
-//     const decoder = new TextDecoder("utf-8");
-//     const html = decoder.decode(buffer);
-//     return { url, html };
-//   } catch (error) {
-//     clearTimeout(id);
-//     throw error;
-//   }
-// }
 
 interface WaybackResponse {
   archived_snapshots?: {
