@@ -174,7 +174,6 @@ export default async function Page({
                 </div>
               </div>
             </div>
-            <div>{ip}</div>
 
             <Suspense
               fallback={
@@ -213,7 +212,7 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
 
     const ratelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(5, "1 d"),
+      limiter: Ratelimit.slidingWindow(10, "1 d"),
     });
 
     const { success, limit, reset, remaining } = await ratelimit.limit(
@@ -221,7 +220,7 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
     );
 
     if (!success) {
-      return "you are out of requests";
+      return "Your daily limit of 10 summaries has been reached. Although you can continue using smry.ai for reading, additional summaries are not available today. Please return tomorrow for more summaries. If this limit is inconvenient for you, your feedback is welcome at contact@smry.ai.";
     }
   }
 
