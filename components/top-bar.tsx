@@ -38,7 +38,7 @@ const TopBar = () => {
                 width={150}
                 height={150}
                 alt="smry logo"
-                className="-ml-4"
+                className="sm:-ml-4"
               />
             </Link>
           </h2>
