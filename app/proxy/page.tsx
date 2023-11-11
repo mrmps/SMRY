@@ -6,17 +6,13 @@ import {
 import Link from "next/link";
 import { Configuration, OpenAIApi } from "openai-edge";
 import { OpenAIStream, StreamingTextResponse } from "ai";
-import {kv} from "@vercel/kv";
+import { kv } from "@vercel/kv";
 import { Tokens } from "ai/react";
 import { Suspense } from "react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link1Icon } from "@radix-ui/react-icons";
-import {
-  encode,
-  decode,
-} from 'gpt-tokenizer'
-
+import { encode, decode } from "gpt-tokenizer";
 
 export const runtime = "edge";
 
@@ -40,8 +36,6 @@ type PageData = {
   sourceURL: string; // the url to the cache/wayback machine
 };
 
-
-
 async function getData(url: string) {
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/getCache?url=${encodeURIComponent(url)}`
@@ -51,7 +45,7 @@ async function getData(url: string) {
 
   if (!res.ok) {
     // This will activate the closest `error.js` Error Boundary
-    throw new Error("Failed to fetch data");
+    throw new Error("Failed to fetch data" + JSON.stringify(res.json()));
   }
 
   return res.json();
@@ -110,9 +104,9 @@ export default async function Page({
                   {content.source}
                 </Link>
               </div>
-              <div>
+              {/* <div>
                 {JSON.stringify(content)}
-              </div>
+              </div> */}
             </div>
             <div
               className="tokens my-10 shadow-sm border-zinc-100 border flex border-collapse text-[#111111] text-base font-normal list-none text-left visible overflow-auto rounded-lg bg-[#f9f9fb]"
@@ -143,13 +137,22 @@ export default async function Page({
                       />
                     }
                   >
-                    <Wrapper siteText={content.textContent} />
+                    <Wrapper siteText={content.textContent} url={url} />
                   </Suspense>
                 </div>
               </div>
             </div>
 
-            <div dangerouslySetInnerHTML={{ __html: content.content }} />
+            <Suspense
+              fallback={
+                <Skeleton
+                  className="h-32 rounded-lg animate-pulse bg-zinc-200"
+                  style={{ width: "100%" }}
+                />
+              }
+            >
+              <div dangerouslySetInnerHTML={{ __html: content.content }} />\
+            </Suspense>
           </article>
         </main>
       </div>
@@ -158,22 +161,20 @@ export default async function Page({
 }
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
-async function Wrapper({ siteText }: { siteText: string }) {
+async function Wrapper({ siteText, url }: { siteText: string; url: string }) {
   const prompt = "Summarize the following in under 200 words: " + siteText;
 
   // See https://sdk.vercel.ai/docs/concepts/caching
-  const cached = (await kv.get(prompt)) as string | undefined;
+  const cached = (await kv.get(url)) as string | undefined;
 
   if (cached) {
     console.log("cached");
     return cached;
   }
 
-  const tokenLimit = 4000
-  const tokens = encode(prompt).splice(0, tokenLimit)
-  const decodedText = decode(tokens)
-
-
+  const tokenLimit = 4000;
+  const tokens = encode(prompt).splice(0, tokenLimit);
+  const decodedText = decode(tokens);
 
   const response = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
@@ -189,7 +190,7 @@ async function Wrapper({ siteText }: { siteText: string }) {
   // Convert the response into a friendly text-stream
   const stream = OpenAIStream(response, {
     async onCompletion(completion) {
-      await kv.set(prompt, completion);
+      await kv.set(url, completion);
       // await kv.expire(prompt, 60 * 10);
     },
   });
