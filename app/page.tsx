@@ -50,7 +50,7 @@ export default function Home() {
       <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
       <a
           className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 shadow-md transition-colors hover:bg-gray-100 mb-10 mr-4"
-          href="https://github.com/Nutlope/twitterbio"
+          href="https://https://github.com/mrmps/SMRY"
           target="_blank"
           rel="noopener noreferrer"
         >
