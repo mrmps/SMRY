@@ -3,7 +3,7 @@
 import { Resend } from "resend";
 
 // Initialize Resend with your API Key
-const resend = new Resend("re_3ojgKHd6_yVA9Hc5cFzgjggkEHeRgFzvB");
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendEmail(formData: {
   from: string;
