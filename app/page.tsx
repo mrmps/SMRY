@@ -52,7 +52,7 @@ export default function Home() {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-36 sm:mt-0 bg-gradient-to-b from-white via-gray-100 to-white">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-36 sm:mt-0 bg-gradient-to-b from-white via-[#F7F7F7] to-white">
       <div className="absolute inset-0 bg-[url(https://play.tailwindcss.com/img/grid.svg)] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] z-0"></div>
 
       <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
