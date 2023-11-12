@@ -110,7 +110,7 @@ export default function Home() {
         <h2 className="w-full text-center text-stone-700 mt-2">
           Read any online article and instantly get the summary.
         </h2>
-        <h3 className="mt-3 text-center text-lg font-semibold text-gray-800">
+        <h3 className="mt-24 text-center text-lg font-semibold text-gray-800">
           OR
           <span className="ml-2 text-gray-700 hover:text-gray-900 inline-block">
             <span
@@ -145,7 +145,7 @@ export default function Home() {
         )}
       </div>
 
-      <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <CardSpotlight
           heading="Quick Summaries"
           body="Get concise summaries of long articles in seconds."
