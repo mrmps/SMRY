@@ -52,7 +52,7 @@ export default function Home() {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 bg-white text-black mt-36 sm:mt-0">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-36 sm:mt-0 bg-gradient-to-b from-white via-gray-100 to-white">
       <div className="absolute inset-0 bg-[url(https://play.tailwindcss.com/img/grid.svg)] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] z-0"></div>
 
       <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
@@ -78,12 +78,12 @@ export default function Home() {
         <form onSubmit={handleSubmit} className="mt-6 w-full">
           <div
             className={`${
-              urlError ? "border-red-500" : "border-[#b6c8d4]"
-            } flex rounded-lg overflow-hidden bg-gradient-to-r from-zinc-100 to-[#e0f2fe66] backdrop-blur-lg shadow-md border`}
+              urlError ? "border-red-500" : "border-zinc-300"
+            } flex rounded-lg overflow-hidden bg-white backdrop-blur-lg`}
+            style={{border: "1px solid rgba(0,0,0,0.15)", boxShadow: "rgba(0, 0, 0, 0.1) 0px 2px 6px 0px, rgba(0, 0, 0, 0.08) 0px 8px 16px 0px"}}
           >
             <input
-              className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none shadow-sm backdrop-blur-lg  hover:backdrop-blur-xl"
-              style={{ backdropFilter: "saturate(150%) blur(15px)" }}
+              className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none"
               autoComplete="off"
               placeholder="Enter article URL"
               name="url"
@@ -110,9 +110,9 @@ export default function Home() {
           </div>
         </form>
         <h2 className="w-full text-center text-stone-700 mt-2">
-          Read any online article and instantly get the summary.{" "}
+          Read any online article and instantly get the {" "}
           <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
-            <Button className="px-1 underline" variant="ghost">Example.</Button>
+            <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">summary.</span>
           </Link>
         </h2>
 
