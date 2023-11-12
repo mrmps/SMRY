@@ -182,15 +182,42 @@ async function fetchWithTimeout(url:string) {
       if (src && src.startsWith('/')) {
         img.setAttribute('src', new URL(src, url).toString());
       }
+      if (src && src.includes('web.archive.org/web/')) {
+        // Extract the original image URL
+        const originalUrl = src.split('im_/')[1];
+        if (originalUrl) {
+          // Update the src attribute with the original URL
+          img.setAttribute('src', originalUrl);
+        }
+      }
     });
     
     // Update links
     root.querySelectorAll('a').forEach(a => {
       const href = a.getAttribute('href');
-      if (href) {
+      if (href && href.includes('web.archive.org/web/')) {
+        // Log found Wayback Machine link
+    
+        // Determine if the original URL starts with http:// or https://
+        let originalUrl;
+        if (href.includes('/http://')) {
+          originalUrl = href.split('/http://')[1];
+          originalUrl = "http://" + originalUrl;
+        } else if (href.includes('/https://')) {
+          originalUrl = href.split('/https://')[1];
+          originalUrl = "https://" + originalUrl;
+        }
+    
+        if (originalUrl) {
+          // Update the href attribute with the original URL
+          a.setAttribute('href', `${process.env.NEXT_PUBLIC_URL}/${new URL(originalUrl, url).toString()}`);
+        }
+      } else if (href) {
+        // Update the href attribute for other links
         a.setAttribute('href', `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(href, url).toString()}`);
       }
     });
+    
 
     return { url, html: root.toString() };
   } catch (error) {
