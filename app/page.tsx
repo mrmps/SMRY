@@ -112,21 +112,20 @@ export default function Home() {
         </h2>
         <h3 className="mt-3 text-center text-lg font-semibold text-gray-800">
           OR
-          <span className="ml-2 text-gray-700 hover:text-gray-900 hover:underline inline-block">
+          <span className="ml-2 text-gray-700 hover:text-gray-900 inline-block">
             <span
               className={cn(
                 "bg-gray-200 text-gray-800 font-mono py-2 px-4 rounded-lg shadow-md",
                 fira.className
             )}
               style={{
-                // fontFamily: "'Fira Code', monospace",
                 lineHeight: "1.4",
                 fontSize: "0.875rem",
               }}
             >
               https://smry.ai/
               <span
-                className="bg-yellow-300 text-gray-700 px-2 py-1 rounded"
+                className="bg-[#FFD54F] text-gray-700 px-2 py-1 rounded"
                 style={{ fontWeight: "500" }}
               >
                 &lt;URL&gt;
