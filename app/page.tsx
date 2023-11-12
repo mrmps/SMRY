@@ -112,7 +112,7 @@ export default function Home() {
         <h2 className="w-full text-center text-stone-700 mt-2">
           Read any online article and instantly get the summary.{" "}
           <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
-            <Button className="px-1" variant="ghost">Example.</Button>
+            <Button className="px-1 underline" variant="ghost">Example.</Button>
           </Link>
         </h2>
 
