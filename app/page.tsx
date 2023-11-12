@@ -18,11 +18,12 @@ import { z } from "zod";
 import Github from "@/components/github";
 import { Fira_Code } from "next/font/google";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const fira = Fira_Code({
   subsets: ["latin"],
-})
-
+});
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
@@ -108,8 +109,12 @@ export default function Home() {
           </div>
         </form>
         <h2 className="w-full text-center text-stone-700 mt-2">
-          Read any online article and instantly get the summary.
+          Read any online article and instantly get the summary.{" "}
+          <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
+            <Button className="px-1" variant="ghost">Example.</Button>
+          </Link>
         </h2>
+
         <h3 className="mt-24 text-center text-lg font-semibold text-gray-800">
           OR
           <span className="ml-2 text-gray-700 hover:text-gray-900 inline-block">
@@ -117,7 +122,7 @@ export default function Home() {
               className={cn(
                 "bg-gray-200 text-gray-800 font-mono py-2 px-4 rounded-lg shadow-md",
                 fira.className
-            )}
+              )}
               style={{
                 lineHeight: "1.4",
                 fontSize: "0.875rem",
