@@ -20,6 +20,7 @@ import { Fira_Code } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/banner";
 
 const fira = Fira_Code({
   subsets: ["latin"],
@@ -150,7 +151,9 @@ export default function Home() {
         )}
       </div>
 
-      <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
+     <Banner />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <CardSpotlight
           heading="Quick Summaries"
           body="Get concise summaries of long articles in seconds."
