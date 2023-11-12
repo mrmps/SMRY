@@ -16,6 +16,13 @@ import { CardSpotlight } from "@/components/card-spotlight";
 import { Unlock, Globe } from "lucide-react";
 import { z } from "zod";
 import Github from "@/components/github";
+import { Fira_Code } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const fira = Fira_Code({
+  subsets: ["latin"],
+})
+
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
@@ -46,9 +53,8 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 bg-white text-black mt-36 sm:mt-0">
       <div className="absolute inset-0 bg-[url(https://play.tailwindcss.com/img/grid.svg)] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] z-0"></div>
 
-
       <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
-      <a
+        <a
           className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 shadow-md transition-colors hover:bg-gray-100 mb-10 mr-4"
           href="https://github.com/mrmps/SMRY"
           target="_blank"
@@ -104,6 +110,31 @@ export default function Home() {
         <h2 className="w-full text-center text-stone-700 mt-2">
           Read any online article and instantly get the summary.
         </h2>
+        <h3 className="mt-3 text-center text-lg font-semibold text-gray-800">
+          OR
+          <span className="ml-2 text-gray-700 hover:text-gray-900 hover:underline inline-block">
+            <span
+              className={cn(
+                "bg-gray-200 text-gray-800 font-mono py-2 px-4 rounded-lg shadow-md",
+                fira.className
+            )}
+              style={{
+                // fontFamily: "'Fira Code', monospace",
+                lineHeight: "1.4",
+                fontSize: "0.875rem",
+              }}
+            >
+              https://smry.ai/
+              <span
+                className="bg-yellow-300 text-gray-700 px-2 py-1 rounded"
+                style={{ fontWeight: "500" }}
+              >
+                &lt;URL&gt;
+              </span>
+            </span>
+          </span>
+        </h3>
+
         {urlError && (
           <p
             className="text-red-500 mt-2 flex items-center animate-fade-in"
