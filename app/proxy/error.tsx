@@ -12,7 +12,6 @@ import { Link } from "lucide-react";
 import UnderlineLink from "@/components/underline-link";
 import { track } from '@vercel/analytics';
 import { usePathname } from "next/navigation";
-import path from "path";
 
 export default function Error({
   error,
