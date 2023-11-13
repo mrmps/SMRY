@@ -1,14 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Resend } from "resend";
-import { sendEmail } from "../actions";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { useEffect} from "react";
 import TopBar from "@/components/top-bar";
-import { Link } from "lucide-react";
 import UnderlineLink from "@/components/underline-link";
 import { track } from '@vercel/analytics';
 import { usePathname } from "next/navigation";

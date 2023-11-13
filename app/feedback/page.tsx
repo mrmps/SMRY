@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Resend } from "resend";
 import { sendEmail } from "../actions";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
