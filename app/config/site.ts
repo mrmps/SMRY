@@ -16,7 +16,7 @@ export const siteConfig: SiteConfig = {
   url: "https://smry.ai",
   ogImage: "https://tx.shadcn.com/og.jpg",
   links: {
-    twitter: "https://twitter.com/mrmps",
+    twitter: "https://twitter.com/michael_chomsky",
     github: "https://github.com/mrmps/SMRY",
   },
 };
