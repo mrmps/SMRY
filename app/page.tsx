@@ -53,7 +53,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-36 sm:mt-0 bg-gradient-to-b from-white via-[#F7F7F7] to-white">
-      <div className="absolute inset-0 bg-[url(https://play.tailwindcss.com/img/grid.svg)] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] z-0"></div>
+      <div className="absolute inset-0 h-full w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_60%,transparent_100%)]"></div>
 
       <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
         <a
@@ -80,7 +80,11 @@ export default function Home() {
             className={`${
               urlError ? "border-red-500" : "border-zinc-300"
             } flex rounded-lg overflow-hidden bg-white backdrop-blur-lg`}
-            style={{border: "1px solid rgba(0,0,0,0.15)", boxShadow: "rgba(0, 0, 0, 0.1) 0px 2px 6px 0px, rgba(0, 0, 0, 0.08) 0px 8px 16px 0px"}}
+            style={{
+              border: "1px solid rgba(0,0,0,0.15)",
+              boxShadow:
+                "rgba(0, 0, 0, 0.1) 0px 2px 6px 0px, rgba(0, 0, 0, 0.08) 0px 8px 16px 0px",
+            }}
           >
             <input
               className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none"
@@ -110,9 +114,11 @@ export default function Home() {
           </div>
         </form>
         <h2 className="w-full text-center text-stone-700 mt-2">
-          Read any online article and instantly get the {" "}
+          Read any online article and instantly get the{" "}
           <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
-            <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">summary.</span>
+            <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">
+              summary.
+            </span>
           </Link>
         </h2>
 
@@ -151,8 +157,7 @@ export default function Home() {
         )}
       </div>
 
-
-     <Banner />
+      <Banner />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <CardSpotlight
           heading="Quick Summaries"
