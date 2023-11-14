@@ -179,7 +179,7 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
     return cached;
   }
 
-  if (prompt.length < 1000) {
+  if (prompt.length < 2000) {
     return "Content too short to summarize."
   }
 
