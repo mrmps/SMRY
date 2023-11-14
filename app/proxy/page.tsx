@@ -169,7 +169,7 @@ export default async function Page({
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
 async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, ip: string }) {
-  const prompt = "Summarize the following in under 200 words: " + siteText;
+  const prompt = "Summarize the following in under 200 words: " + siteText + "Summary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
   const cached = (await kv.get(url)) as string | undefined;
@@ -204,18 +204,53 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
     const tokens = encode(prompt).splice(0, tokenLimit);
     const decodedText = decode(tokens);
 
-    const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      stream: true,
-      messages: [
-        {
-          role: "user",
-          content: decodedText,
-        },
-      ],
-    });
+    // const response = await openai.createChatCompletion({
+    //   model: "gpt-3.5-turbo",
+    //   stream: true,
+    //   messages: [
+    //     {
+    //       role: "user",
+    //       content: decodedText,
+    //     },
+    //   ],
+    // });
 
-    // Convert the response into a friendly text-stream
+    // // Convert the response into a friendly text-stream
+    // const stream = OpenAIStream(response, {
+    //   async onCompletion(completion) {
+    //     await kv.set(url, completion);
+    //     // await kv.expire(prompt, 60 * 10);
+    //   },
+    // });
+
+    const options = {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'togethercomputer/llama-2-7b-chat',
+        prompt: decodedText,
+        max_tokens: 600,
+        stop: '.',
+        temperature: 0.7,
+        top_p: 0.7,
+        top_k: 50,
+        repetition_penalty: 1,
+        stream_tokens: true
+      })
+    };
+    
+    // fetch('https://api.together.xyz/inference', options)
+    //   .then(response => response.json())
+    //   .then(response => console.log(response))
+    //   .catch(err => console.error(err));
+
+    const response = await fetch('https://api.together.xyz/inference', options)
+
+        // Convert the response into a friendly text-stream
     const stream = OpenAIStream(response, {
       async onCompletion(completion) {
         await kv.set(url, completion);
