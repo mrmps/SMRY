@@ -15,6 +15,7 @@ import { Link1Icon } from "@radix-ui/react-icons";
 import { encode, decode } from "gpt-tokenizer";
 import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
+import parse from "html-react-parser";
 
 export const runtime = "edge";
 
@@ -36,6 +37,7 @@ type PageData = {
   siteName: null | string; // Assuming 'siteName' can be a string as well
   source: string;
   sourceURL: string; // the url to the cache/wayback machine
+  flattenedHTML: string;
 };
 
 async function getData(url: string) {
@@ -151,7 +153,12 @@ export default async function Page({
                 />
               }
             >
+              {/* <div dangerouslySetInnerHTML={{ __html: content.flattenedHTML }} /> */}
               <div dangerouslySetInnerHTML={{ __html: content.content }} />
+              {/* {parse(content.content)} */}
+              <div>
+                {content.textContent}
+              </div>
             </Suspense>
           </article>
         </main>
@@ -192,28 +199,36 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
     }
   }
 
-  const tokenLimit = 4000;
-  const tokens = encode(prompt).splice(0, tokenLimit);
-  const decodedText = decode(tokens);
+  try {
+    const tokenLimit = 4000;
+    const tokens = encode(prompt).splice(0, tokenLimit);
+    const decodedText = decode(tokens);
 
-  const response = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
-    stream: true,
-    messages: [
-      {
-        role: "user",
-        content: decodedText,
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      stream: true,
+      messages: [
+        {
+          role: "user",
+          content: decodedText,
+        },
+      ],
+    });
+
+    // Convert the response into a friendly text-stream
+    const stream = OpenAIStream(response, {
+      async onCompletion(completion) {
+        await kv.set(url, completion);
+        // await kv.expire(prompt, 60 * 10);
       },
-    ],
-  });
+    });
 
-  // Convert the response into a friendly text-stream
-  const stream = OpenAIStream(response, {
-    async onCompletion(completion) {
-      await kv.set(url, completion);
-      // await kv.expire(prompt, 60 * 10);
-    },
-  });
+    if (!response.ok) {
+      return "Well this sucks. Looks like I ran out of money to pay OpenAI for summaries. Please be patient until a benevolent sponsor gives me either cash or sweet sweet openAI credits. If you would like to be that sponsor, feel free to reach out to vercelsucks@gmail.com (this project is hosted on vercel I just couldn't think of another email.)"
+    }
 
-  return <Tokens stream={stream} />;
+    return <Tokens stream={stream} />;
+  } catch (error) {
+    return "Well this sucks. Looks like I ran out of money to pay OpenAI for summaries. Please be patient until a benevolent sponsor gives me either cash or sweet sweet openAI credits. If you would like to be that sponsor, feel free to reach out to vercelsucks@gmail.com (this project is hosted on vercel I just couldn't think of another email.)"
+  }
 }

@@ -2,11 +2,198 @@ import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { parse} from "node-html-parser";
+import { NodeHtmlMarkdown } from 'node-html-markdown';
+import showdown from 'showdown';
+import Showdown from "showdown";
+import nlp from "compromise";
 
 // export const runtime = "edge"; doesn't work for some reason
 
 
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   const paragraphs = document.querySelectorAll('p');
+//   let spanCount = 0;
 
+//   paragraphs.forEach(p => {
+//       const newContent = Array.from(p.childNodes).map(node => {
+//           if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//               // Use compromise for sentence splitting
+//               const sentences = nlp(node.textContent || '').sentences().out('array');
+//               return sentences.map((sentence: any) => {
+//                   const className = `sentence-${spanCount++}`;
+//                   return `<span class="${className}">${sentence}</span>`;
+//               }).join('');
+//           } else if (node instanceof dom.window.Element) {
+//               // Now safely access outerHTML
+//               return node.outerHTML;
+//           }
+//           return '';
+//       }).join('');
+
+//       p.innerHTML = newContent;
+//   });
+
+//   return dom.serialize();
+// }
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   let spanCount = 0;
+
+//   function processNode(node: Node) {
+//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//           // Use compromise for sentence splitting on text nodes
+//           const sentences = nlp(node.textContent || '').sentences().out('array');
+//           return sentences.map((sentence: string) => {
+//               const className = `sentence-${spanCount++}`;
+//               return `<span class="${className}">${sentence}</span>`;
+//           }).join(' '); // Add a space between spans to maintain spacing
+//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+//           // Recursively process child nodes for element nodes
+//           Array.from(node.childNodes).forEach(child => {
+//               const processedContent = processNode(child);
+//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
+//                   const spanWrapper = document.createElement('span');
+//                   spanWrapper.innerHTML = processedContent;
+//                   child.replaceWith(spanWrapper);
+//               }
+//           });
+//       }
+//   }
+
+//   processNode(document.body);
+
+//   return dom.serialize();
+// }
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   let spanCount = 0;
+
+//   function processNode(node: Node) {
+//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//           const textContent = node.textContent || '';
+//           const sentences = nlp(textContent).sentences().out('array');
+//           let currentIndex = 0;
+//           let newContent = '';
+
+//           sentences.forEach((sentence: string) => {
+//               const index = textContent.indexOf(sentence, currentIndex);
+//               const preText = textContent.substring(currentIndex, index);
+//               currentIndex = index + sentence.length;
+
+//               const className = `sentence-${spanCount++}`;
+//               newContent += `${preText}<span class="${className}">${sentence}</span>`;
+//           });
+
+//           newContent += textContent.substring(currentIndex); // Append any remaining text after the last sentence
+//           return newContent;
+//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+//           // Recursively process child nodes for element nodes
+//           Array.from(node.childNodes).forEach(child => {
+//               const processedContent = processNode(child);
+//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
+//                   const spanWrapper = document.createElement('span');
+//                   spanWrapper.innerHTML = processedContent ?? ""
+//                   child.replaceWith(spanWrapper);
+//               }
+//           });
+//       }
+//   }
+
+//   processNode(document.body);
+
+//   return dom.serialize();
+// }
+
+function wrapSentencesWithSpan(html: string): { html: string, spans: { text: string, className: string }[] } {
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+  let spanCount = 0;
+  const spanArray: { text: string, className: string }[] = [];
+
+  function processNode(node: Node) {
+      if (node.nodeType === dom.window.Node.TEXT_NODE) {
+          const textContent = node.textContent || '';
+          const sentences = nlp(textContent).sentences().out('array');
+          let currentIndex = 0;
+          let newContent = '';
+
+          sentences.forEach((sentence: string) => {
+              const index = textContent.indexOf(sentence, currentIndex);
+              const preText = textContent.substring(currentIndex, index);
+              currentIndex = index + sentence.length;
+
+              const className = `sentence-${spanCount++}`;
+              newContent += `${preText}<span class="${className}">${sentence}</span>`;
+              spanArray.push({ text: sentence, className });
+          });
+
+          newContent += textContent.substring(currentIndex); // Append any remaining text after the last sentence
+          return newContent;
+      } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+          // Recursively process child nodes for element nodes
+          Array.from(node.childNodes).forEach(child => {
+              const processedContent = processNode(child);
+              if (child.nodeType === dom.window.Node.TEXT_NODE) {
+                  const spanWrapper = document.createElement('span');
+                  spanWrapper.innerHTML = processedContent ?? "";
+                  child.replaceWith(spanWrapper);
+              }
+          });
+      }
+  }
+
+  processNode(document.body);
+
+  return { html: dom.serialize(), spans: spanArray };
+}
+
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   let spanCount = 0;
+
+//   function processNode(node: Node) {
+//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//           // Extract sentences along with preceding whitespace
+//           const sentences = [];
+//           const regex = /(\s*)([^.!?]+[.!?]*)/g;
+//           let match;
+//           while ((match = regex.exec(node.textContent || '')) !== null) {
+//               sentences.push({
+//                   whitespace: match[1],
+//                   text: match[2]
+//               });
+//           }
+
+//           // Wrap sentences and preserve whitespace
+//           return sentences.map(({ whitespace, text }) => {
+//               const className = `sentence-${spanCount++}`;
+//               return `${whitespace}<span class="${className}">${text}</span>`;
+//           }).join('');
+//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+//           // Recursively process child nodes for element nodes
+//           Array.from(node.childNodes).forEach(child => {
+//               const processedContent = processNode(child);
+//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
+//                   const spanWrapper = document.createElement('span');
+//                   spanWrapper.innerHTML = processedContent;
+//                   child.replaceWith(spanWrapper);
+//               }
+//           });
+//       }
+//   }
+
+//   processNode(document.body);
+
+//   return dom.serialize();
+// }
 
 const KnownErrorSchema = z.object({
   message: z.string(),
@@ -110,8 +297,13 @@ export async function GET(request: Request) {
         const article = reader.parse();
   
         if (article) {
+          const markdown = NodeHtmlMarkdown.translate(article.content);
+          const converter = new showdown.Converter()
+          const flattenedHTML = converter.makeHtml(markdown);
+          const { html, spans } = wrapSentencesWithSpan(flattenedHTML);
+          
           return new Response(
-            JSON.stringify({ ...article, source, sourceURL: url }),
+            JSON.stringify({ ...article, source, sourceURL: url, flattenedHTML: html, spans: spans }),
             {
               headers: { "Content-Type": "application/json" },
               status: 200,
@@ -218,7 +410,6 @@ async function fetchWithTimeout(url:string) {
       }
     });
     
-
     return { url, html: root.toString() };
   } catch (error) {
     clearTimeout(id);
