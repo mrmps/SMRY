@@ -204,7 +204,7 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
   }
 
   try {
-    const tokenLimit = 4000;
+    const tokenLimit = 3200;
     const tokens = encode(prompt).splice(0, tokenLimit);
     const decodedText = decode(tokens);
 
