@@ -229,6 +229,6 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
 
     return <Tokens stream={stream} />;
   } catch (error) {
-    return "Well this sucks. Looks like I ran out of money to pay OpenAI for summaries. Please be patient until a benevolent sponsor gives me either cash or sweet sweet openAI credits. If you would like to be that sponsor, feel free to reach out to vercelsucks@gmail.com (this project is hosted on vercel I just couldn't think of another email.)"
+    return `Well this sucks. Looks like an unexpected error occured, so no summary for this site :( No I won't tell you the error, that is private. Really, you insist? Fine. The error is ${error} Happy?`
   }
 }
