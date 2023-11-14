@@ -370,19 +370,39 @@ async function fetchWithTimeout(url:string) {
 
     // Update image sources
     root.querySelectorAll('img').forEach(img => {
+      // Fix 'src' attribute
       const src = img.getAttribute('src');
       if (src && src.startsWith('/')) {
         img.setAttribute('src', new URL(src, url).toString());
       }
       if (src && src.includes('web.archive.org/web/')) {
-        // Extract the original image URL
         const originalUrl = src.split('im_/')[1];
         if (originalUrl) {
-          // Update the src attribute with the original URL
           img.setAttribute('src', originalUrl);
         }
       }
+    
+      // Fix 'srcset' attribute
+      const srcset = img.getAttribute('srcset');
+      if (srcset) {
+        const newSrcset = srcset.split(',').map(srcEntry => {
+          let [src, descriptor] = srcEntry.trim().split(' ');
+          if (src && src.startsWith('/')) {
+            src = new URL(src, url).toString();
+          }
+          if (src && src.includes('web.archive.org/web/')) {
+            const originalUrl = src.split('im_/')[1];
+            if (originalUrl) {
+              src = originalUrl;
+            }
+          }
+          return descriptor ? `${src} ${descriptor}` : src;
+        }).join(', ');
+    
+        img.setAttribute('srcset', newSrcset);
+      }
     });
+    
     
     // Update links
     root.querySelectorAll('a').forEach(a => {

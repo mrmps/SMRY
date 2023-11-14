@@ -153,12 +153,12 @@ export default async function Page({
                 />
               }
             >
-              {/* <div dangerouslySetInnerHTML={{ __html: content.flattenedHTML }} /> */}
-              <div dangerouslySetInnerHTML={{ __html: content.content }} />
+              <div dangerouslySetInnerHTML={{ __html: content.flattenedHTML }} />
+              {/* <div dangerouslySetInnerHTML={{ __html: content.content }} /> */}
               {/* {parse(content.content)} */}
-              <div>
+              {/* <div>
                 {content.textContent}
-              </div>
+              </div> */}
             </Suspense>
           </article>
         </main>
@@ -169,7 +169,7 @@ export default async function Page({
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
 async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, ip: string }) {
-  const prompt = "Summarize the following in under 400 words: " + siteText + "Comprehensive summary:";
+  const prompt = "Summarize the following in under 300 words: " + siteText + "Summary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
   const cached = (await kv.get(url)) as string | undefined;
@@ -237,8 +237,7 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
       body: JSON.stringify({
         model: 'togethercomputer/llama-2-7b-chat',
         prompt: decodedText,
-        max_tokens: 600,
-        stop: '.',
+        max_tokens: 700,
         temperature: 0.7,
         top_p: 0.7,
         top_k: 50,
