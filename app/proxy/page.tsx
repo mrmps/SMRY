@@ -169,7 +169,7 @@ export default async function Page({
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
 async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, ip: string }) {
-  const prompt = "Summarize the following in under 200 words: " + siteText + "Summary:";
+  const prompt = "Summarize the following in under 400 words: " + siteText + "Comprehensive summary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
   const cached = (await kv.get(url)) as string | undefined;
@@ -177,6 +177,10 @@ async function Wrapper({ siteText, url, ip }: { siteText: string; url: string, i
   if (cached) {
     console.log("cached");
     return cached;
+  }
+
+  if (prompt.length < 400) {
+    return "Content too short to summarize."
   }
 
   if (
