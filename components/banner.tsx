@@ -45,7 +45,7 @@ const outlets: OutletType[] = [
   { "name": "The Wall Street Journal", "url": "wsj.com", "famousArticle": "https://www.wsj.com/articles/facebook-files-11631713039" },
   { "name": "Bloomberg", "url": "bloomberg.com", "famousArticle": "https://www.bloomberg.com/graphics/2020-venezuela-sanctions/" },
   { "name": "Reuters", "url": "reuters.com", "famousArticle": "https://www.reuters.com/investigates/section/myanmar-rohingya/" },
-  { "name": "Financial Times", "url": "ft.com", "famousArticle": "https://www.ft.com/content/97266b9e-9408-11ea-abcd-371e24b679ed" },
+  // { "name": "Financial Times", "url": "ft.com", "famousArticle": "https://www.ft.com/content/97266b9e-9408-11ea-abcd-371e24b679ed" },
   { "name": "The Washington Post", "url": "washingtonpost.com", "famousArticle": "https://www.washingtonpost.com/graphics/2020/national/police-shootings-2020/" },
   { "name": "CNN", "url": "cnn.com", "famousArticle": "https://www.cnn.com/2020/04/26/health/us-coronavirus-sunday/index.html" },
   { "name": "BBC", "url": "bbc.com", "famousArticle": "https://www.bbc.com/news/world-51235105" },
