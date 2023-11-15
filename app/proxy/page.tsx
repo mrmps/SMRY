@@ -173,7 +173,6 @@ const models = [
   { name: "openhermes-2-mistral-7b", rateLimit: 250 },
   { name: "openhermes-2.5-mistral-7b", rateLimit: 250 },
   { name: "llama-2-13b-chat", rateLimit: 150 },
-  { name: "codellama-34b-instruct", rateLimit: 150 },
   { name: "llama-2-70b-chat", rateLimit: 60 }
 ];
 
