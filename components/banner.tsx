@@ -81,7 +81,7 @@ export function Banner() {
   const repeatedOutlets = Array(5).fill(outlets).flat(); // Adjust the number as needed
 
   return (
-    <section className="py-12 overflow-hidden">
+    <section className="z-20 py-12 overflow-hidden max-w-xs sm:max-w-full">
       <h2 className="text-center text-2xl font-bold text-zinc-600 dark:text-zinc-200 mb-6">
         Hop over these paywalls:
       </h2>
