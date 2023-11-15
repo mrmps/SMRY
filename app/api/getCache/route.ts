@@ -17,10 +17,10 @@ function createErrorResponse(message: string, status: number, details = {}) {
 function formatError(errorObj: any): string {
   // This function takes an error object and returns a string representation
   // You can customize this to extract the most relevant information
-  if (typeof errorObj === 'object' && errorObj !== null) {
+  if (typeof errorObj === "object" && errorObj !== null) {
     return errorObj.message || JSON.stringify(errorObj);
   } else {
-    return 'Unknown error';
+    return "Unknown error";
   }
 }
 
@@ -116,11 +116,13 @@ export async function GET(request: Request) {
   ];
 
   try {
-    const fetchPromises = sources.map(sourceUrl => fetchWithTimeout(sourceUrl));
+    const fetchPromises = sources.map((sourceUrl) =>
+      fetchWithTimeout(sourceUrl)
+    );
     const results = await Promise.allSettled(fetchPromises);
 
     const responses = results.map((result, index) => {
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         const { url: responseUrl, html } = result.value;
         let source = determineSource(responseUrl);
         const doc = new JSDOM(html);
@@ -128,20 +130,20 @@ export async function GET(request: Request) {
         const article = reader.parse();
 
         if (article && article.content) {
-          return { 
+          return {
             source,
             cacheURL: sources[index],
             article,
-            status: 'success',
+            status: "success",
             contentLength: article.content.length,
           };
         } else {
           return {
             source,
             cacheURL: sources[index],
-            error: 'Article not found or processed.',
-            status: 'error',
-            contentLength: 0
+            error: "Article not found or processed.",
+            status: "error",
+            contentLength: 0,
           };
         }
       } else {
@@ -149,27 +151,23 @@ export async function GET(request: Request) {
           source: determineSource(sources[index]),
           cacheURL: sources[index],
           error: formatError(result.reason),
-          status: 'error',
-          contentLength: 0
+          status: "error",
+          contentLength: 0,
         };
       }
     });
 
-    responses.sort((a, b) => b.contentLength - a.contentLength)
+    responses.sort((a, b) => b.contentLength - a.contentLength);
 
-    return new Response(
-      JSON.stringify(responses),
-      {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify(responses), {
+      headers: { "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
     const err = safeError(error);
     return createErrorResponse(err.message, err.status, { sourceUrl: url });
   }
 }
-
 
 // export async function GET(request: Request) {
 //   const { searchParams } = new URL(request.url);
@@ -386,9 +384,17 @@ async function fetchWithTimeout(url: string) {
     });
 
     return { url, html: root.toString() };
-  } catch (error) {
+  } catch (err) {
     clearTimeout(id);
-    throw error;
+
+    // Check for AbortError before transforming the error
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+
+    const error = safeError(err);
+    // Now, 'error' is the transformed error, so use its properties
+    throw new Error(`Error fetching URL: ${error.message}`);
   }
 }
 
