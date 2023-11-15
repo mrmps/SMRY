@@ -43,7 +43,7 @@ Special thanks to any contributors who make the ui nicer or the paywall bypass m
 
 MIT License
 
-Copyright (c) 20XX [Your Name or Organization]
+Copyright (c) 2023 SMRY
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
