@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SMRY AI",
+  title: "smry",
   description:
     "Discover SMRY: an AI tool that not only summarizes long articles for quick comprehension but also skillfully navigates through paywalls, offering rapid access to restricted content.",
 };
