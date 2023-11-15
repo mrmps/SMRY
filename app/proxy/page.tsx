@@ -16,7 +16,7 @@ import { encode, decode } from "gpt-tokenizer";
 import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
 import parse from "html-react-parser";
-
+import ArrowTabs from "@/components/arrow-tabs";
 export const runtime = "edge";
 
 const apiConfig = new Configuration({
@@ -25,20 +25,46 @@ const apiConfig = new Configuration({
 
 const openai = new OpenAIApi(apiConfig);
 
-type PageData = {
+// type PageData = {
+//   title: string;
+//   byline: null | string; // Assuming 'byline' can be a string as well
+//   dir: null | string; // Assuming 'dir' can be a string as well
+//   lang: string;
+//   content: string;
+//   textContent: string;
+//   length: number;
+//   excerpt: string;
+//   siteName: null | string; // Assuming 'siteName' can be a string as well
+//   source: string;
+//   sourceURL: string; // the url to the cache/wayback machine
+//   flattenedHTML: string;
+// };
+
+// type Page = {
+//   source: string;
+//   article: PageData;
+// };
+
+type Article = {
   title: string;
-  byline: null | string; // Assuming 'byline' can be a string as well
-  dir: null | string; // Assuming 'dir' can be a string as well
-  lang: string;
+  byline: null | string;
+  dir: null | string;
+  lang: null | string;
   content: string;
   textContent: string;
   length: number;
-  excerpt: string;
-  siteName: null | string; // Assuming 'siteName' can be a string as well
-  source: string;
-  sourceURL: string; // the url to the cache/wayback machine
-  flattenedHTML: string;
+  siteName: null | string;
 };
+
+type ResponseItem = {
+  source: string;
+  article?: Article;
+  status?: string; // Assuming 'status' is optional and a string
+  error?: string;
+  cacheURL: string;
+};
+
+type ApiResponse = ResponseItem[];
 
 async function getData(url: string) {
   const res = await fetch(
@@ -74,43 +100,15 @@ export default async function Page({
     return;
   }
 
-  const content: PageData = await getData(url);
+  const contents: ApiResponse = await getData(url);
+
+  const sources = contents.map((page) => page.source);
 
   return (
-    <div className="px-4 py-8 md:py-12 mt-20">
-      <div className="mx-auto space-y-10 max-w-prose">
-        <main className="prose">
-          <article>
-            <h1>{content.title}</h1>
-            <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
-              <div className="flex items-center mt-4 ml-4 space-x-1.5">
-                <GlobeAltIcon className="w-4 h-4 text-gray-600" />
-                <Link
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-gray-600 hover:text-gray-400 transition"
-                >
-                  {new URL(url).hostname}
-                </Link>
-              </div>
-              {/* <div className="flex items-center mt-4 ml-4 space-x-1.5">
-                <EyeIcon className="w-4 h-4 text-gray-600" />
-                <div>2</div>
-              </div> */}
-
-              <div className="flex items-center mt-4 ml-4 space-x-1.5">
-                <Link1Icon className="w-4 h-4 text-gray-600" />
-                <Link
-                  href={content.sourceURL ?? ""}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-gray-600 hover:text-gray-400 transition"
-                >
-                  {content.source}
-                </Link>
-              </div>
-            </div>
+    <div className="mt-20">
+      <div className="px-4 py-8 md:py-12 mt-20">
+        <div className="mx-auto space-y-10 max-w-prose">
+          <main className="prose">
             <div
               className="tokens my-10 shadow-sm border-zinc-100 border flex border-collapse text-[#111111] text-base font-normal list-none text-left visible overflow-auto rounded-lg bg-[#f9f9fb]"
               style={{
@@ -138,31 +136,74 @@ export default async function Page({
                       />
                     }
                   >
-                    <Wrapper ip={ip} siteText={content.textContent} url={url} />
+                    <Wrapper
+                      ip={ip}
+                      siteText={contents[0].article?.textContent ?? "N/A"}
+                      url={url}
+                    />
                   </Suspense>
                 </div>
               </div>
             </div>
 
-            <Suspense
-              fallback={
-                <Skeleton
-                  className="h-32 rounded-lg animate-pulse bg-zinc-200"
-                  style={{ width: "100%" }}
-                />
-              }
-            >
-              <div
-                dangerouslySetInnerHTML={{ __html: content.flattenedHTML }}
-              />
-              {/* <div dangerouslySetInnerHTML={{ __html: content.content }} /> */}
-              {/* {parse(content.content)} */}
-              {/* <div>
-                {content.textContent}
-              </div> */}
-            </Suspense>
-          </article>
-        </main>
+            <ArrowTabs
+              sources={sources}
+              innerHTML={contents.map((content) => (
+                <div key={content.source} className="mt-10">
+                  <article>
+                    <h1>{content.article?.title || "Untitled"}</h1>
+                    <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
+                      <div className="flex items-center mt-4 ml-4 space-x-1.5">
+                        <GlobeAltIcon className="w-4 h-4 text-gray-600" />
+                        <Link
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-gray-600 hover:text-gray-400 transition"
+                        >
+                          {new URL(url).hostname}
+                        </Link>
+                      </div>
+                      <div className="flex items-center mt-4 ml-4 space-x-1.5">
+                        <Link1Icon className="w-4 h-4 text-gray-600" />
+                        <Link
+                          href={decodeURIComponent(content.cacheURL) ?? ""}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-gray-600 hover:text-gray-400 transition"
+                        >
+                          {content.source}
+                        </Link>
+                      </div>
+                    </div>
+
+                    <Suspense
+                      fallback={
+                        <Skeleton
+                          className="h-32 rounded-lg animate-pulse bg-zinc-200"
+                          style={{ width: "100%" }}
+                        />
+                      }
+                    >
+                      <div
+                        className="max-w-full overflow-wrap break-words"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            content.article?.content ??
+                            `<div>${content.error}</div>`,
+                        }}
+                      />
+
+                      {/* <div>{JSON.stringify(content)}</div> */}
+                      {/* <div dangerouslySetInnerHTML={{ __html: content.content }} /> */}
+                      {/* {parse(content.content)} */}
+                    </Suspense>
+                  </article>
+                </div>
+              ))}
+            />
+          </main>
+        </div>
       </div>
     </div>
   );
@@ -173,7 +214,7 @@ const models = [
   { name: "openhermes-2-mistral-7b", rateLimit: 250 },
   { name: "openhermes-2.5-mistral-7b", rateLimit: 250 },
   { name: "llama-2-13b-chat", rateLimit: 150 },
-  { name: "llama-2-70b-chat", rateLimit: 60 }
+  { name: "llama-2-70b-chat", rateLimit: 60 },
 ];
 
 // Calculate total rate limits
@@ -219,17 +260,30 @@ async function Wrapper({
     process.env.KV_REST_API_URL &&
     process.env.KV_REST_API_TOKEN
   ) {
-    const ratelimit = new Ratelimit({
+    const dailyRatelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(10, "1 d"),
+      limiter: Ratelimit.slidingWindow(10, "1 d"), // 10 requests per day
     });
+    
+    // New rate limit for 4 requests per minute
+    const minuteRatelimit = new Ratelimit({
+      redis: kv,
+      limiter: Ratelimit.slidingWindow(4, "1 m"), // 4 requests per minute
+    });
+    
+    // Usage for daily rate limit
+    const { success: dailySuccess, limit: dailyLimit, reset: dailyReset, remaining: dailyRemaining } = 
+      await dailyRatelimit.limit(`13ft_ratelimit_daily_${ip}`);
+    
+    // Usage for minute rate limit
+    const { success: minuteSuccess, limit: minuteLimit, reset: minuteReset, remaining: minuteRemaining } = 
+      await minuteRatelimit.limit(`13ft_ratelimit_minute_${ip}`);
 
-    const { success, limit, reset, remaining } = await ratelimit.limit(
-      `13ft_ratelimit_${ip}`
-    );
-
-    if (!success) {
+    if (!dailySuccess) {
       return "Your daily limit of 10 summaries has been reached. Although you can continue using smry.ai for reading, additional summaries are not available today. Please return tomorrow for more summaries. If this limit is inconvenient for you, your feedback is welcome at contact@smry.ai.";
+    }
+    if (!minuteSuccess) {
+      return "Your limit of 4 summaries per minute has been reached. Pretty sure you are a bot. Stop it!";
     }
   }
 
@@ -288,14 +342,14 @@ async function Wrapper({
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.PERPLEXITY_API_KEY}`
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
       },
       body: JSON.stringify({
         model: pickRandomModel(),
         stream: true,
         max_tokens: 700,
         frequency_penalty: 1,
-        temperature: 0.0,
+        temperature: 1,
         messages: [
           {
             role: "system",
@@ -318,7 +372,7 @@ async function Wrapper({
     });
 
     if (!response.ok) {
-      return "Well this sucks. Looks like I ran out of money to pay OpenAI for summaries. Please be patient until a benevolent sponsor gives me either cash or sweet sweet openAI credits. If you would like to be that sponsor, feel free to reach out to vercelsucks@gmail.com (this project is hosted on vercel I just couldn't think of another email.)";
+      return "Well this sucks. Looks like I ran out of money to pay for summaries. Please be patient until a benevolent sponsor gives me either cash or sweet sweet OpenAI credits. If you would like to be that sponsor, feel free to reach out to contact@smry.ai!";
     }
 
     return <Tokens stream={stream} />;

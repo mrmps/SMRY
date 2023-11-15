@@ -1,199 +1,74 @@
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
-import { parse} from "node-html-parser";
-import { NodeHtmlMarkdown } from 'node-html-markdown';
-import showdown from 'showdown';
+import { parse } from "node-html-parser";
+import { NodeHtmlMarkdown } from "node-html-markdown";
+import showdown from "showdown";
 import Showdown from "showdown";
 import nlp from "compromise";
 
-// export const runtime = "edge"; doesn't work for some reason
+function createErrorResponse(message: string, status: number, details = {}) {
+  return new Response(JSON.stringify({ message, details }), {
+    headers: { "Content-Type": "application/json" },
+    status,
+  });
+}
 
+function formatError(errorObj: any): string {
+  // This function takes an error object and returns a string representation
+  // You can customize this to extract the most relevant information
+  if (typeof errorObj === 'object' && errorObj !== null) {
+    return errorObj.message || JSON.stringify(errorObj);
+  } else {
+    return 'Unknown error';
+  }
+}
 
-// function wrapSentencesWithSpan(html: string) {
-//   const dom = new JSDOM(html);
-//   const document = dom.window.document;
-//   const paragraphs = document.querySelectorAll('p');
-//   let spanCount = 0;
-
-//   paragraphs.forEach(p => {
-//       const newContent = Array.from(p.childNodes).map(node => {
-//           if (node.nodeType === dom.window.Node.TEXT_NODE) {
-//               // Use compromise for sentence splitting
-//               const sentences = nlp(node.textContent || '').sentences().out('array');
-//               return sentences.map((sentence: any) => {
-//                   const className = `sentence-${spanCount++}`;
-//                   return `<span class="${className}">${sentence}</span>`;
-//               }).join('');
-//           } else if (node instanceof dom.window.Element) {
-//               // Now safely access outerHTML
-//               return node.outerHTML;
-//           }
-//           return '';
-//       }).join('');
-
-//       p.innerHTML = newContent;
-//   });
-
-//   return dom.serialize();
-// }
-
-// function wrapSentencesWithSpan(html: string) {
-//   const dom = new JSDOM(html);
-//   const document = dom.window.document;
-//   let spanCount = 0;
-
-//   function processNode(node: Node) {
-//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
-//           // Use compromise for sentence splitting on text nodes
-//           const sentences = nlp(node.textContent || '').sentences().out('array');
-//           return sentences.map((sentence: string) => {
-//               const className = `sentence-${spanCount++}`;
-//               return `<span class="${className}">${sentence}</span>`;
-//           }).join(' '); // Add a space between spans to maintain spacing
-//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
-//           // Recursively process child nodes for element nodes
-//           Array.from(node.childNodes).forEach(child => {
-//               const processedContent = processNode(child);
-//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
-//                   const spanWrapper = document.createElement('span');
-//                   spanWrapper.innerHTML = processedContent;
-//                   child.replaceWith(spanWrapper);
-//               }
-//           });
-//       }
-//   }
-
-//   processNode(document.body);
-
-//   return dom.serialize();
-// }
-
-// function wrapSentencesWithSpan(html: string) {
-//   const dom = new JSDOM(html);
-//   const document = dom.window.document;
-//   let spanCount = 0;
-
-//   function processNode(node: Node) {
-//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
-//           const textContent = node.textContent || '';
-//           const sentences = nlp(textContent).sentences().out('array');
-//           let currentIndex = 0;
-//           let newContent = '';
-
-//           sentences.forEach((sentence: string) => {
-//               const index = textContent.indexOf(sentence, currentIndex);
-//               const preText = textContent.substring(currentIndex, index);
-//               currentIndex = index + sentence.length;
-
-//               const className = `sentence-${spanCount++}`;
-//               newContent += `${preText}<span class="${className}">${sentence}</span>`;
-//           });
-
-//           newContent += textContent.substring(currentIndex); // Append any remaining text after the last sentence
-//           return newContent;
-//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
-//           // Recursively process child nodes for element nodes
-//           Array.from(node.childNodes).forEach(child => {
-//               const processedContent = processNode(child);
-//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
-//                   const spanWrapper = document.createElement('span');
-//                   spanWrapper.innerHTML = processedContent ?? ""
-//                   child.replaceWith(spanWrapper);
-//               }
-//           });
-//       }
-//   }
-
-//   processNode(document.body);
-
-//   return dom.serialize();
-// }
-
-function wrapSentencesWithSpan(html: string): { html: string, spans: { text: string, className: string }[] } {
+function wrapSentencesWithSpan(html: string): {
+  html: string;
+  spans: { text: string; className: string }[];
+} {
   const dom = new JSDOM(html);
   const document = dom.window.document;
   let spanCount = 0;
-  const spanArray: { text: string, className: string }[] = [];
+  const spanArray: { text: string; className: string }[] = [];
 
   function processNode(node: Node) {
-      if (node.nodeType === dom.window.Node.TEXT_NODE) {
-          const textContent = node.textContent || '';
-          const sentences = nlp(textContent).sentences().out('array');
-          let currentIndex = 0;
-          let newContent = '';
+    if (node.nodeType === dom.window.Node.TEXT_NODE) {
+      const textContent = node.textContent || "";
+      const sentences = nlp(textContent).sentences().out("array");
+      let currentIndex = 0;
+      let newContent = "";
 
-          sentences.forEach((sentence: string) => {
-              const index = textContent.indexOf(sentence, currentIndex);
-              const preText = textContent.substring(currentIndex, index);
-              currentIndex = index + sentence.length;
+      sentences.forEach((sentence: string) => {
+        const index = textContent.indexOf(sentence, currentIndex);
+        const preText = textContent.substring(currentIndex, index);
+        currentIndex = index + sentence.length;
 
-              const className = `sentence-${spanCount++}`;
-              newContent += `${preText}<span class="${className}">${sentence}</span>`;
-              spanArray.push({ text: sentence, className });
-          });
+        const className = `sentence-${spanCount++}`;
+        newContent += `${preText}<span class="${className}">${sentence}</span>`;
+        spanArray.push({ text: sentence, className });
+      });
 
-          newContent += textContent.substring(currentIndex); // Append any remaining text after the last sentence
-          return newContent;
-      } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
-          // Recursively process child nodes for element nodes
-          Array.from(node.childNodes).forEach(child => {
-              const processedContent = processNode(child);
-              if (child.nodeType === dom.window.Node.TEXT_NODE) {
-                  const spanWrapper = document.createElement('span');
-                  spanWrapper.innerHTML = processedContent ?? "";
-                  child.replaceWith(spanWrapper);
-              }
-          });
-      }
+      newContent += textContent.substring(currentIndex); // Append any remaining text after the last sentence
+      return newContent;
+    } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+      // Recursively process child nodes for element nodes
+      Array.from(node.childNodes).forEach((child) => {
+        const processedContent = processNode(child);
+        if (child.nodeType === dom.window.Node.TEXT_NODE) {
+          const spanWrapper = document.createElement("span");
+          spanWrapper.innerHTML = processedContent ?? "";
+          child.replaceWith(spanWrapper);
+        }
+      });
+    }
   }
 
   processNode(document.body);
 
   return { html: dom.serialize(), spans: spanArray };
 }
-
-
-// function wrapSentencesWithSpan(html: string) {
-//   const dom = new JSDOM(html);
-//   const document = dom.window.document;
-//   let spanCount = 0;
-
-//   function processNode(node: Node) {
-//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
-//           // Extract sentences along with preceding whitespace
-//           const sentences = [];
-//           const regex = /(\s*)([^.!?]+[.!?]*)/g;
-//           let match;
-//           while ((match = regex.exec(node.textContent || '')) !== null) {
-//               sentences.push({
-//                   whitespace: match[1],
-//                   text: match[2]
-//               });
-//           }
-
-//           // Wrap sentences and preserve whitespace
-//           return sentences.map(({ whitespace, text }) => {
-//               const className = `sentence-${spanCount++}`;
-//               return `${whitespace}<span class="${className}">${text}</span>`;
-//           }).join('');
-//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
-//           // Recursively process child nodes for element nodes
-//           Array.from(node.childNodes).forEach(child => {
-//               const processedContent = processNode(child);
-//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
-//                   const spanWrapper = document.createElement('span');
-//                   spanWrapper.innerHTML = processedContent;
-//                   child.replaceWith(spanWrapper);
-//               }
-//           });
-//       }
-//   }
-
-//   processNode(document.body);
-
-//   return dom.serialize();
-// }
 
 const KnownErrorSchema = z.object({
   message: z.string(),
@@ -231,118 +106,184 @@ export async function GET(request: Request) {
   const url = searchParams.get("url");
 
   if (!url) {
-    return new Response(
-      JSON.stringify({ message: "URL parameter is required." }),
-      { headers: { "Content-Type": "application/json" }, status: 400 }
-    );
+    return createErrorResponse("URL parameter is required.", 400);
   }
 
-  //   const googleCacheUrl = `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
-  //     url
-  //   )}`;
-  // const waybackUrl = `http://archive.org/wayback/available?url=${encodeURIComponent(
-  //   url
-  // )}`;
-  //   const archiveIsUrl = `https://archive.is/latest/${encodeURIComponent(url)}`;
   const sources = [
-    `http://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
-    `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
-      url
-    )}`,
+    `https://web.archive.org/web/2/${encodeURIComponent(url)}`,
+    // `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
     url,
-
-    // `https://archive.is/latest/${encodeURIComponent(url)}`,
-    // Other URLs can be added here
   ];
 
-  const dummy = {
-    title: "Sample Page",
-    byline: null,
-    dir: "ltr",
-    lang: "en",
-    content: "<p>This is some sample content.</p>",
-    textContent: "This is some sample content.",
-    length: 1200,
-    excerpt: "Sample excerpt from the page content.",
-    siteName: "Example Site",
-    source: url,
-    sourceURL: "",
-  };
-
   try {
-    const responses = await Promise.allSettled(sources.map(fetchWithTimeout));
-    console.log(sources);
-    console.log("responses", responses);
+    const fetchPromises = sources.map(sourceUrl => fetchWithTimeout(sourceUrl));
+    const results = await Promise.allSettled(fetchPromises);
 
-    for (const sourceUrl of sources) {
-      console.log("trying", sourceUrl)
-      try {
-        const response = await fetchWithTimeout(sourceUrl);
-        let { url, html } = response;
-        let source = determineSource(url);
-  
-        if (isWaybackMachineResponse(url)) {
-          const archiveUrl = getArchiveUrl(html);
-          if (archiveUrl) {
-            const archiveResponse = await fetchWithTimeout(archiveUrl);
-            html = archiveResponse.html;
-            source = "Wayback Machine";
-          } else {
-            continue;
-          }
-        }
-  
+    const responses = results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        const { url: responseUrl, html } = result.value;
+        let source = determineSource(responseUrl);
         const doc = new JSDOM(html);
         const reader = new Readability(doc.window.document);
         const article = reader.parse();
-  
-        if (article) {
-          const markdown = NodeHtmlMarkdown.translate(article.content);
-          const converter = new showdown.Converter()
-          const flattenedHTML = converter.makeHtml(markdown);
-          const { html, spans } = wrapSentencesWithSpan(flattenedHTML);
-          
-          return new Response(
-            JSON.stringify({ ...article, source, sourceURL: url, flattenedHTML: html, spans: spans }),
-            {
-              headers: { "Content-Type": "application/json" },
-              status: 200,
-            }
-          );
+
+        if (article && article.content) {
+          return { 
+            source,
+            cacheURL: sources[index],
+            article,
+            status: 'success',
+            contentLength: article.content.length,
+          };
+        } else {
+          return {
+            source,
+            cacheURL: sources[index],
+            error: 'Article not found or processed.',
+            status: 'error',
+            contentLength: 0
+          };
         }
-      } catch (error) {
-        console.error(`Error fetching from ${sourceUrl}:`, error);
+      } else {
+        return {
+          source: determineSource(sources[index]),
+          cacheURL: sources[index],
+          error: formatError(result.reason),
+          status: 'error',
+          contentLength: 0
+        };
       }
-    }
-  
+    });
+
+    responses.sort((a, b) => b.contentLength - a.contentLength)
+
     return new Response(
-      JSON.stringify({ dummy }),
+      JSON.stringify(responses),
       {
         headers: { "Content-Type": "application/json" },
-        status: 500,
+        status: 200,
       }
     );
-  
   } catch (error) {
     const err = safeError(error);
-    return new Response(JSON.stringify(err), {
-      headers: { "Content-Type": "application/json" },
-      status: err.status,
-    });
+    return createErrorResponse(err.message, err.status, { sourceUrl: url });
   }
 }
+
+
+// export async function GET(request: Request) {
+//   const { searchParams } = new URL(request.url);
+//   const url = searchParams.get("url");
+
+//   if (!url) {
+//     return new Response(
+//       JSON.stringify({ message: "URL parameter is required." }),
+//       { headers: { "Content-Type": "application/json" }, status: 400 }
+//     );
+//   }
+
+//   //   const archiveIsUrl = `https://archive.is/latest/${encodeURIComponent(url)}`;
+//   const sources = [
+//     `http://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
+//     `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
+//       url
+//     )}`,
+//     url,
+//   ];
+
+//   // const dummy = {
+//   //   title: "Not Available",
+//   //   byline: null,
+//   //   dir: "ltr",
+//   //   lang: "en",
+//   //   content: "<p>Sorry, we couldn't fetch this page.</p>",
+//   //   textContent: "Sorry, we couldn't fetch this page.",
+//   //   length: 1200,
+//   //   excerpt: "Sorry, we couldn't fetch this page.",
+//   //   siteName: "No Fetch",
+//   //   source: url,
+//   //   sourceURL: "",
+//   // };
+
+//   try {
+//     const responses = await Promise.allSettled(sources.map(fetchWithTimeout));
+//     console.log(sources);
+//     console.log("responses", responses);
+
+//     for (const sourceUrl of sources) {
+//       console.log("trying", sourceUrl);
+//       try {
+//         const response = await fetchWithTimeout(sourceUrl);
+//         let { url, html } = response;
+//         let source = determineSource(url);
+
+//         if (isWaybackMachineResponse(url)) {
+//           const archiveUrl = getArchiveUrl(html);
+//           if (archiveUrl) {
+//             const archiveResponse = await fetchWithTimeout(archiveUrl);
+//             html = archiveResponse.html;
+//             source = "Wayback Machine";
+//           } else {
+//             continue;
+//           }
+//         }
+
+//         const doc = new JSDOM(html);
+//         const reader = new Readability(doc.window.document);
+//         const article = reader.parse();
+
+//         if (!article) {
+//           return createErrorResponse(
+//             "Article could not be found or processed.",
+//             404
+//           );
+//         }
+
+//         const markdown = NodeHtmlMarkdown.translate(article.content);
+//         const converter = new showdown.Converter();
+//         const flattenedHTML = converter.makeHtml(markdown);
+//         // const { html, spans } = wrapSentencesWithSpan(flattenedHTML);
+
+//         return new Response(
+//           JSON.stringify({
+//             ...article,
+//             source,
+//             // sourceURL: url,
+//             // flattenedHTML: html,
+//             // spans: spans,
+//           }),
+//           {
+//             headers: { "Content-Type": "application/json" },
+//             status: 200,
+//           }
+//         );
+//       } catch (error) {
+//         const err = safeError(error);
+
+//         // Log the detailed error for server-side debugging
+//         console.error(`Error processing request:`, err);
+
+//         // Return a user-friendly error message
+//         return createErrorResponse(err.message, err.status, { sourceUrl: url });
+//       }
+//     }
+//   } catch (error) {
+//     const err = safeError(error);
+//     return createErrorResponse(err.message, err.status, { sourceUrl: url });
+//   }
+// }
 
 function determineSource(url: string) {
   if (url.includes("webcache.googleusercontent.com")) {
     return "Google Cache";
   } else if (url.includes("archive.org")) {
-    return "Wayback Machine Original";
+    return "Wayback Machine";
   } else {
-    return "Direct Fetch";
+    return "Direct";
   }
 }
 
-async function fetchWithTimeout(url:string) {
+async function fetchWithTimeout(url: string) {
   const timeout = 5000; // Timeout in milliseconds
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -364,72 +305,86 @@ async function fetchWithTimeout(url:string) {
     const buffer = await response.arrayBuffer();
     const decoder = new TextDecoder("utf-8");
     const html = decoder.decode(buffer);
-    
+
     // Parse the HTML
     const root = parse(html);
 
     // Update image sources
-    root.querySelectorAll('img').forEach(img => {
+    root.querySelectorAll("img").forEach((img) => {
       // Fix 'src' attribute
-      const src = img.getAttribute('src');
-      if (src && src.startsWith('/')) {
-        img.setAttribute('src', new URL(src, url).toString());
+      const src = img.getAttribute("src");
+      if (src && src.startsWith("/")) {
+        img.setAttribute("src", new URL(src, url).toString());
       }
-      if (src && src.includes('web.archive.org/web/')) {
-        const originalUrl = src.split('im_/')[1];
+      if (src && src.includes("web.archive.org/web/")) {
+        const originalUrl = src.split("im_/")[1];
         if (originalUrl) {
-          img.setAttribute('src', originalUrl);
+          img.setAttribute("src", originalUrl);
         }
       }
-    
+
       // Fix 'srcset' attribute
-      const srcset = img.getAttribute('srcset');
+      const srcset = img.getAttribute("srcset");
       if (srcset) {
-        const newSrcset = srcset.split(',').map(srcEntry => {
-          let [src, descriptor] = srcEntry.trim().split(' ');
-          if (src && src.startsWith('/')) {
-            src = new URL(src, url).toString();
-          }
-          if (src && src.includes('web.archive.org/web/')) {
-            const originalUrl = src.split('im_/')[1];
-            if (originalUrl) {
-              src = originalUrl;
+        const newSrcset = srcset
+          .split(",")
+          .map((srcEntry) => {
+            let [src, descriptor] = srcEntry.trim().split(" ");
+            if (src && src.startsWith("/")) {
+              src = new URL(src, url).toString();
             }
-          }
-          return descriptor ? `${src} ${descriptor}` : src;
-        }).join(', ');
-    
-        img.setAttribute('srcset', newSrcset);
+            if (src && src.includes("web.archive.org/web/")) {
+              const originalUrl = src.split("im_/")[1];
+              if (originalUrl) {
+                src = originalUrl;
+              }
+            }
+            return descriptor ? `${src} ${descriptor}` : src;
+          })
+          .join(", ");
+
+        img.setAttribute("srcset", newSrcset);
       }
     });
-    
-    
+
     // Update links
-    root.querySelectorAll('a').forEach(a => {
-      const href = a.getAttribute('href');
-      if (href && href.includes('web.archive.org/web/')) {
+    root.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href");
+      if (href && href.includes("web.archive.org/web/")) {
         // Log found Wayback Machine link
-    
+
         // Determine if the original URL starts with http:// or https://
         let originalUrl;
-        if (href.includes('/http://')) {
-          originalUrl = href.split('/http://')[1];
+        if (href.includes("/http://")) {
+          originalUrl = href.split("/http://")[1];
           originalUrl = "http://" + originalUrl;
-        } else if (href.includes('/https://')) {
-          originalUrl = href.split('/https://')[1];
+        } else if (href.includes("/https://")) {
+          originalUrl = href.split("/https://")[1];
           originalUrl = "https://" + originalUrl;
         }
-    
+
         if (originalUrl) {
           // Update the href attribute with the original URL
-          a.setAttribute('href', `${process.env.NEXT_PUBLIC_URL}/${new URL(originalUrl, url).toString()}`);
+          a.setAttribute(
+            "href",
+            `${process.env.NEXT_PUBLIC_URL}/${new URL(
+              originalUrl,
+              url
+            ).toString()}`
+          );
         }
       } else if (href) {
         // Update the href attribute for other links
-        a.setAttribute('href', `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(href, url).toString()}`);
+        a.setAttribute(
+          "href",
+          `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(
+            href,
+            url
+          ).toString()}`
+        );
       }
     });
-    
+
     return { url, html: root.toString() };
   } catch (error) {
     clearTimeout(id);
@@ -464,7 +419,6 @@ function isWaybackMachineResponse(url: string) {
   return url.includes("archive.org");
 }
 
-
 // async function fetchPageWithHeadlessBrowser(url:string) {
 //   const browser = await puppeteer.launch();
 //   const page = await browser.newPage();
@@ -474,7 +428,6 @@ function isWaybackMachineResponse(url: string) {
 
 //   return { url, html};
 // }
-
 
 // import { JSDOM } from "jsdom";
 // import { Readability } from "@mozilla/readability";
@@ -622,7 +575,6 @@ function isWaybackMachineResponse(url: string) {
 //   }
 // }
 
-
 // function determineSource(url: string): string {
 //   if (url.includes("webcache.googleusercontent.com")) {
 //     return "Google Cache";
@@ -652,8 +604,6 @@ function isWaybackMachineResponse(url: string) {
 //   const html = decoder.decode(buffer);
 //   return { url, html }; // Return both URL and HTML
 // }
-
-
 
 // function isArchiveIsResponse(url: string) {
 //   return url.includes("archive.is");
@@ -685,4 +635,147 @@ function isWaybackMachineResponse(url: string) {
 //     // Convert Date objects to timestamps (number format) for subtraction
 //     return dateB.getTime() - dateA.getTime();
 //   })[0];
+// }
+
+// export const runtime = "edge"; doesn't work for some reason
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   const paragraphs = document.querySelectorAll('p');
+//   let spanCount = 0;
+
+//   paragraphs.forEach(p => {
+//       const newContent = Array.from(p.childNodes).map(node => {
+//           if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//               // Use compromise for sentence splitting
+//               const sentences = nlp(node.textContent || '').sentences().out('array');
+//               return sentences.map((sentence: any) => {
+//                   const className = `sentence-${spanCount++}`;
+//                   return `<span class="${className}">${sentence}</span>`;
+//               }).join('');
+//           } else if (node instanceof dom.window.Element) {
+//               // Now safely access outerHTML
+//               return node.outerHTML;
+//           }
+//           return '';
+//       }).join('');
+
+//       p.innerHTML = newContent;
+//   });
+
+//   return dom.serialize();
+// }
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   let spanCount = 0;
+
+//   function processNode(node: Node) {
+//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//           // Use compromise for sentence splitting on text nodes
+//           const sentences = nlp(node.textContent || '').sentences().out('array');
+//           return sentences.map((sentence: string) => {
+//               const className = `sentence-${spanCount++}`;
+//               return `<span class="${className}">${sentence}</span>`;
+//           }).join(' '); // Add a space between spans to maintain spacing
+//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+//           // Recursively process child nodes for element nodes
+//           Array.from(node.childNodes).forEach(child => {
+//               const processedContent = processNode(child);
+//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
+//                   const spanWrapper = document.createElement('span');
+//                   spanWrapper.innerHTML = processedContent;
+//                   child.replaceWith(spanWrapper);
+//               }
+//           });
+//       }
+//   }
+
+//   processNode(document.body);
+
+//   return dom.serialize();
+// }
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   let spanCount = 0;
+
+//   function processNode(node: Node) {
+//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//           const textContent = node.textContent || '';
+//           const sentences = nlp(textContent).sentences().out('array');
+//           let currentIndex = 0;
+//           let newContent = '';
+
+//           sentences.forEach((sentence: string) => {
+//               const index = textContent.indexOf(sentence, currentIndex);
+//               const preText = textContent.substring(currentIndex, index);
+//               currentIndex = index + sentence.length;
+
+//               const className = `sentence-${spanCount++}`;
+//               newContent += `${preText}<span class="${className}">${sentence}</span>`;
+//           });
+
+//           newContent += textContent.substring(currentIndex); // Append any remaining text after the last sentence
+//           return newContent;
+//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+//           // Recursively process child nodes for element nodes
+//           Array.from(node.childNodes).forEach(child => {
+//               const processedContent = processNode(child);
+//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
+//                   const spanWrapper = document.createElement('span');
+//                   spanWrapper.innerHTML = processedContent ?? ""
+//                   child.replaceWith(spanWrapper);
+//               }
+//           });
+//       }
+//   }
+
+//   processNode(document.body);
+
+//   return dom.serialize();
+// }
+
+// function wrapSentencesWithSpan(html: string) {
+//   const dom = new JSDOM(html);
+//   const document = dom.window.document;
+//   let spanCount = 0;
+
+//   function processNode(node: Node) {
+//       if (node.nodeType === dom.window.Node.TEXT_NODE) {
+//           // Extract sentences along with preceding whitespace
+//           const sentences = [];
+//           const regex = /(\s*)([^.!?]+[.!?]*)/g;
+//           let match;
+//           while ((match = regex.exec(node.textContent || '')) !== null) {
+//               sentences.push({
+//                   whitespace: match[1],
+//                   text: match[2]
+//               });
+//           }
+
+//           // Wrap sentences and preserve whitespace
+//           return sentences.map(({ whitespace, text }) => {
+//               const className = `sentence-${spanCount++}`;
+//               return `${whitespace}<span class="${className}">${text}</span>`;
+//           }).join('');
+//       } else if (node.nodeType === dom.window.Node.ELEMENT_NODE) {
+//           // Recursively process child nodes for element nodes
+//           Array.from(node.childNodes).forEach(child => {
+//               const processedContent = processNode(child);
+//               if (child.nodeType === dom.window.Node.TEXT_NODE) {
+//                   const spanWrapper = document.createElement('span');
+//                   spanWrapper.innerHTML = processedContent;
+//                   child.replaceWith(spanWrapper);
+//               }
+//           });
+//       }
+//   }
+
+//   processNode(document.body);
+
+//   return dom.serialize();
 // }
