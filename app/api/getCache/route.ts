@@ -121,7 +121,7 @@ export async function GET(request: Request) {
 
   const sources = [
     `https://web.archive.org/web/2/${encodeURIComponent(url)}`,
-    `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
+    `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
     url,
   ];
 
