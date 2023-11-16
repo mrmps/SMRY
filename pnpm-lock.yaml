@@ -56,6 +56,9 @@ dependencies:
   html-react-parser:
     specifier: ^5.0.6
     version: 5.0.6(react@18.2.0)
+  https-proxy-agent:
+    specifier: ^7.0.2
+    version: 7.0.2
   jsdom:
     specifier: ^22.1.0
     version: 22.1.0

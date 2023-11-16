@@ -17,6 +17,8 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
 import parse from "html-react-parser";
 import ArrowTabs from "@/components/arrow-tabs";
+import { track } from '@vercel/analytics/server';
+
 export const runtime = "edge";
 
 const apiConfig = new Configuration({
@@ -67,6 +69,8 @@ type ResponseItem = {
 type ApiResponse = ResponseItem[];
 
 async function getData(url: string) {
+  const urlBase = new URL(url).hostname
+  track('Search', { urlBase: urlBase });
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_URL}/api/getCache?url=${encodeURIComponent(url)}`
   );

@@ -6,6 +6,12 @@ import { NodeHtmlMarkdown } from "node-html-markdown";
 import showdown from "showdown";
 import Showdown from "showdown";
 import nlp from "compromise";
+import { HttpsProxyAgent } from "https-proxy-agent";
+import { Agent } from 'https';
+
+interface CustomFetchOptions extends RequestInit {
+  agent?: Agent;
+}
 
 function createErrorResponse(message: string, status: number, details = {}) {
   return new Response(JSON.stringify({ message, details }), {
@@ -13,6 +19,8 @@ function createErrorResponse(message: string, status: number, details = {}) {
     status,
   });
 }
+
+
 
 function formatError(errorObj: any): string {
   // This function takes an error object and returns a string representation
@@ -169,108 +177,6 @@ export async function GET(request: Request) {
   }
 }
 
-// export async function GET(request: Request) {
-//   const { searchParams } = new URL(request.url);
-//   const url = searchParams.get("url");
-
-//   if (!url) {
-//     return new Response(
-//       JSON.stringify({ message: "URL parameter is required." }),
-//       { headers: { "Content-Type": "application/json" }, status: 400 }
-//     );
-//   }
-
-//   //   const archiveIsUrl = `https://archive.is/latest/${encodeURIComponent(url)}`;
-//   const sources = [
-//     `http://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
-//     `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
-//       url
-//     )}`,
-//     url,
-//   ];
-
-//   // const dummy = {
-//   //   title: "Not Available",
-//   //   byline: null,
-//   //   dir: "ltr",
-//   //   lang: "en",
-//   //   content: "<p>Sorry, we couldn't fetch this page.</p>",
-//   //   textContent: "Sorry, we couldn't fetch this page.",
-//   //   length: 1200,
-//   //   excerpt: "Sorry, we couldn't fetch this page.",
-//   //   siteName: "No Fetch",
-//   //   source: url,
-//   //   sourceURL: "",
-//   // };
-
-//   try {
-//     const responses = await Promise.allSettled(sources.map(fetchWithTimeout));
-//     console.log(sources);
-//     console.log("responses", responses);
-
-//     for (const sourceUrl of sources) {
-//       console.log("trying", sourceUrl);
-//       try {
-//         const response = await fetchWithTimeout(sourceUrl);
-//         let { url, html } = response;
-//         let source = determineSource(url);
-
-//         if (isWaybackMachineResponse(url)) {
-//           const archiveUrl = getArchiveUrl(html);
-//           if (archiveUrl) {
-//             const archiveResponse = await fetchWithTimeout(archiveUrl);
-//             html = archiveResponse.html;
-//             source = "Wayback Machine";
-//           } else {
-//             continue;
-//           }
-//         }
-
-//         const doc = new JSDOM(html);
-//         const reader = new Readability(doc.window.document);
-//         const article = reader.parse();
-
-//         if (!article) {
-//           return createErrorResponse(
-//             "Article could not be found or processed.",
-//             404
-//           );
-//         }
-
-//         const markdown = NodeHtmlMarkdown.translate(article.content);
-//         const converter = new showdown.Converter();
-//         const flattenedHTML = converter.makeHtml(markdown);
-//         // const { html, spans } = wrapSentencesWithSpan(flattenedHTML);
-
-//         return new Response(
-//           JSON.stringify({
-//             ...article,
-//             source,
-//             // sourceURL: url,
-//             // flattenedHTML: html,
-//             // spans: spans,
-//           }),
-//           {
-//             headers: { "Content-Type": "application/json" },
-//             status: 200,
-//           }
-//         );
-//       } catch (error) {
-//         const err = safeError(error);
-
-//         // Log the detailed error for server-side debugging
-//         console.error(`Error processing request:`, err);
-
-//         // Return a user-friendly error message
-//         return createErrorResponse(err.message, err.status, { sourceUrl: url });
-//       }
-//     }
-//   } catch (error) {
-//     const err = safeError(error);
-//     return createErrorResponse(err.message, err.status, { sourceUrl: url });
-//   }
-// }
-
 function determineSource(url: string) {
   if (url.includes("webcache.googleusercontent.com")) {
     return "Google Cache";
@@ -287,13 +193,19 @@ async function fetchWithTimeout(url: string) {
   const id = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
+    // Prepare fetch options
+    const options: CustomFetchOptions = {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
       },
-    });
+    };
+
+    if (url.includes("googlecache")) {
+      options.agent = new HttpsProxyAgent('https://sps1vmxiym:ObpEh411NtmwcHgfg9@gate.smartproxy.com:10000');
+    }
+
+    const response = await fetch(url, options);
+
     clearTimeout(id);
 
     if (!response.ok) {
@@ -784,4 +696,106 @@ function isWaybackMachineResponse(url: string) {
 //   processNode(document.body);
 
 //   return dom.serialize();
+// }
+
+// export async function GET(request: Request) {
+//   const { searchParams } = new URL(request.url);
+//   const url = searchParams.get("url");
+
+//   if (!url) {
+//     return new Response(
+//       JSON.stringify({ message: "URL parameter is required." }),
+//       { headers: { "Content-Type": "application/json" }, status: 400 }
+//     );
+//   }
+
+//   //   const archiveIsUrl = `https://archive.is/latest/${encodeURIComponent(url)}`;
+//   const sources = [
+//     `http://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
+//     `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
+//       url
+//     )}`,
+//     url,
+//   ];
+
+//   // const dummy = {
+//   //   title: "Not Available",
+//   //   byline: null,
+//   //   dir: "ltr",
+//   //   lang: "en",
+//   //   content: "<p>Sorry, we couldn't fetch this page.</p>",
+//   //   textContent: "Sorry, we couldn't fetch this page.",
+//   //   length: 1200,
+//   //   excerpt: "Sorry, we couldn't fetch this page.",
+//   //   siteName: "No Fetch",
+//   //   source: url,
+//   //   sourceURL: "",
+//   // };
+
+//   try {
+//     const responses = await Promise.allSettled(sources.map(fetchWithTimeout));
+//     console.log(sources);
+//     console.log("responses", responses);
+
+//     for (const sourceUrl of sources) {
+//       console.log("trying", sourceUrl);
+//       try {
+//         const response = await fetchWithTimeout(sourceUrl);
+//         let { url, html } = response;
+//         let source = determineSource(url);
+
+//         if (isWaybackMachineResponse(url)) {
+//           const archiveUrl = getArchiveUrl(html);
+//           if (archiveUrl) {
+//             const archiveResponse = await fetchWithTimeout(archiveUrl);
+//             html = archiveResponse.html;
+//             source = "Wayback Machine";
+//           } else {
+//             continue;
+//           }
+//         }
+
+//         const doc = new JSDOM(html);
+//         const reader = new Readability(doc.window.document);
+//         const article = reader.parse();
+
+//         if (!article) {
+//           return createErrorResponse(
+//             "Article could not be found or processed.",
+//             404
+//           );
+//         }
+
+//         const markdown = NodeHtmlMarkdown.translate(article.content);
+//         const converter = new showdown.Converter();
+//         const flattenedHTML = converter.makeHtml(markdown);
+//         // const { html, spans } = wrapSentencesWithSpan(flattenedHTML);
+
+//         return new Response(
+//           JSON.stringify({
+//             ...article,
+//             source,
+//             // sourceURL: url,
+//             // flattenedHTML: html,
+//             // spans: spans,
+//           }),
+//           {
+//             headers: { "Content-Type": "application/json" },
+//             status: 200,
+//           }
+//         );
+//       } catch (error) {
+//         const err = safeError(error);
+
+//         // Log the detailed error for server-side debugging
+//         console.error(`Error processing request:`, err);
+
+//         // Return a user-friendly error message
+//         return createErrorResponse(err.message, err.status, { sourceUrl: url });
+//       }
+//     }
+//   } catch (error) {
+//     const err = safeError(error);
+//     return createErrorResponse(err.message, err.status, { sourceUrl: url });
+//   }
 // }
