@@ -109,6 +109,8 @@ function safeError(error: unknown) {
   };
 }
 
+
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
@@ -119,7 +121,7 @@ export async function GET(request: Request) {
 
   const sources = [
     `https://web.archive.org/web/2/${encodeURIComponent(url)}`,
-    // `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
+    `http://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
     url,
   ];
 
@@ -201,7 +203,16 @@ async function fetchWithTimeout(url: string) {
     };
 
     if (url.includes("googlecache")) {
-      options.agent = new HttpsProxyAgent('https://sps1vmxiym:ObpEh411NtmwcHgfg9@gate.smartproxy.com:10000');
+      const proxyURL = process.env.PROXY_URL;
+
+      if (!proxyURL) {
+        throw new Error("no proxy url")
+      }
+
+      options.agent = new HttpsProxyAgent(proxyURL);
+      options.headers = {
+        "User-Agent": "Mozilla/5.0 (X11; U; Linux i686 (x86_64); en-US; rv:1.8.1.4) Gecko/20070515 Firefox/2.0.0.4",
+      }
     }
 
     const response = await fetch(url, options);
@@ -256,6 +267,12 @@ async function fetchWithTimeout(url: string) {
         img.setAttribute("srcset", newSrcset);
       }
     });
+
+    // remove google cache header
+    const cacheHeader = root.querySelector('#bN015htcoyT__google-cache-hdr');
+    if (cacheHeader) {
+      cacheHeader.remove();
+    }
 
     // Update links
     root.querySelectorAll("a").forEach((a) => {

@@ -194,7 +194,7 @@ export default async function Page({
                         dangerouslySetInnerHTML={{
                           __html:
                             content.article?.content ??
-                            `<div>${content.error}</div>`,
+                            `<div>Could not retrieve content: ${content.error}</div>`,
                         }}
                       />
 
