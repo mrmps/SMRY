@@ -119,9 +119,14 @@ export async function GET(request: Request) {
     return createErrorResponse("URL parameter is required.", 400);
   }
 
+  const cleanUrl = url.replace(/^https?:\/+/, '');
+
+// Add https:// prefix
+  const finalUrl = `https://${cleanUrl}`;
+
   const sources = [
     `https://web.archive.org/web/2/${encodeURIComponent(url)}`,
-    `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`,
+    `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(finalUrl)}`,
     url,
   ];
 
