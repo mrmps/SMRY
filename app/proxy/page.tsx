@@ -248,6 +248,7 @@ async function Wrapper({
     "Summarize the following in under 300 words: " + siteText + "Summary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
+  
   const cached = (await kv.get(url)) as string | undefined;
 
   if (cached) {
