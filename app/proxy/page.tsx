@@ -70,7 +70,7 @@ type ApiResponse = ResponseItem[];
 
 async function getData(url: string) {
   const urlBase = new URL(url).hostname
-  track('Search', { urlBase: urlBase });
+  track('Search', { urlBase: urlBase, fullUrl: url });
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_URL}/api/getCache?url=${encodeURIComponent(url)}`
   );
