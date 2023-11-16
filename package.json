@@ -15,6 +15,7 @@
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.0.4",
+    "@radix-ui/react-tooltip": "^1.0.7",
     "@upstash/ratelimit": "^0.4.4",
     "@vercel/analytics": "^1.1.1",
     "@vercel/kv": "^1.0.0",

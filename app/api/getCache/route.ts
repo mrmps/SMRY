@@ -127,6 +127,7 @@ export async function GET(request: Request) {
   const sources = [
     `https://web.archive.org/web/2/${encodeURIComponent(url)}`,
     `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(finalUrl)}`,
+    // `http://archive.is/latest/${encodeURIComponent(url)}`,
     url,
   ];
 
@@ -189,6 +190,9 @@ function determineSource(url: string) {
     return "Google Cache";
   } else if (url.includes("archive.org")) {
     return "Wayback Machine";
+  }
+    else if (url.includes("archive.is")) {
+    return "Archive.Is";
   } else {
     return "Direct";
   }
@@ -207,7 +211,7 @@ async function fetchWithTimeout(url: string) {
       },
     };
 
-    if (url.includes("googlecache")) {
+    if (url.includes("googlecache") || url.includes("archive.is")) {
       const proxyURL = process.env.PROXY_URL;
 
       if (!proxyURL) {

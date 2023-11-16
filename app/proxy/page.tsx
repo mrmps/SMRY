@@ -3,6 +3,7 @@ import {
   AdjustmentsHorizontalIcon,
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 import { Configuration, OpenAIApi } from "openai-edge";
 import { OpenAIStream, StreamingTextResponse } from "ai";
@@ -17,7 +18,13 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
 import parse from "html-react-parser";
 import ArrowTabs from "@/components/arrow-tabs";
-import { track } from '@vercel/analytics/server';
+import { track } from "@vercel/analytics/server";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const runtime = "edge";
 
@@ -69,8 +76,8 @@ type ResponseItem = {
 type ApiResponse = ResponseItem[];
 
 async function getData(url: string) {
-  const urlBase = new URL(url).hostname
-  track('Search', { urlBase: urlBase, fullUrl: url });
+  const urlBase = new URL(url).hostname;
+  track("Search", { urlBase: urlBase, fullUrl: url });
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_URL}/api/getCache?url=${encodeURIComponent(url)}`
   );
@@ -81,6 +88,14 @@ async function getData(url: string) {
     // This will activate the closest `error.js` Error Boundary
     throw new Error("Failed to fetch data" + JSON.stringify(res.json()));
   }
+
+  // const timeoutPromise = new Promise((_, reject) => {
+  //   setTimeout(() => {
+  //     reject(new Error("Request timed out"));
+  //   }, 100000);
+  // });
+
+  // await timeoutPromise
 
   return res.json();
 }
@@ -155,7 +170,7 @@ export default async function Page({
               innerHTML={contents.map((content) => (
                 <div key={content.source} className="mt-10">
                   <article>
-                    <h1>{content.article?.title || "Untitled"}</h1>
+                    <h1>{content.article?.title || "No Title"}</h1>
                     <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
                       <div className="flex items-center mt-4 ml-4 space-x-1.5">
                         <GlobeAltIcon className="w-4 h-4 text-gray-600" />
@@ -189,18 +204,55 @@ export default async function Page({
                         />
                       }
                     >
-                      <div
-                        className="max-w-full overflow-wrap break-words"
-                        dangerouslySetInnerHTML={{
-                          __html:
-                            content.article?.content ??
-                            `<div>Could not retrieve content: ${content.error}</div>`,
-                        }}
-                      />
+                      {/* {content.article?.content ? (
+                        <div
+                          className="max-w-full overflow-wrap break-words mt-10"
+                          dangerouslySetInnerHTML={{
+                            __html: content.article?.content,
+                          }}
+                        />
+                      ) : (
+                        <div className="mt-10 p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
+                          <h3 className="font-bold">Error</h3>
+                          <p>
+                            Could not retrieve content:{" "}
+                            {content.error || "Unknown error occurred."}
+                          </p>
+                        </div>
+                      )} */}
 
-                      {/* <div>{JSON.stringify(content)}</div> */}
-                      {/* <div dangerouslySetInnerHTML={{ __html: content.content }} /> */}
-                      {/* {parse(content.content)} */}
+                      {content.article?.content ? (
+                        <div
+                          className="max-w-full overflow-wrap break-words mt-10"
+                          dangerouslySetInnerHTML={{
+                            __html: content.article?.content,
+                          }}
+                        />
+                      ) : (
+                        <div className="mt-10 flex items-center space-x-2">
+                          <p className="text-gray-600">
+                            Content not available.
+                          </p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                {/* <span className="inline-block bg-gray-200 rounded-full p-1 cursor-help"> */}
+                                  <QuestionMarkCircleIcon className=" inline-block mb-3 -ml-2 rounded-full cursor-help" height={18} width={18}/>
+                                {/* </span> */}
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  Error:{" "}
+                                  {content.error || "Unknown error occurred."}
+                                </p>
+                                <p>
+                                  There was an issue retrieving the content.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      )}
                     </Suspense>
                   </article>
                 </div>
@@ -248,7 +300,7 @@ async function Wrapper({
     "Summarize the following in under 300 words: " + siteText + "Summary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
-  
+
   const cached = (await kv.get(url)) as string | undefined;
 
   if (cached) {
@@ -269,20 +321,28 @@ async function Wrapper({
       redis: kv,
       limiter: Ratelimit.slidingWindow(10, "1 d"), // 10 requests per day
     });
-    
+
     // New rate limit for 4 requests per minute
     const minuteRatelimit = new Ratelimit({
       redis: kv,
       limiter: Ratelimit.slidingWindow(4, "1 m"), // 4 requests per minute
     });
-    
+
     // Usage for daily rate limit
-    const { success: dailySuccess, limit: dailyLimit, reset: dailyReset, remaining: dailyRemaining } = 
-      await dailyRatelimit.limit(`13ft_ratelimit_daily_${ip}`);
-    
+    const {
+      success: dailySuccess,
+      limit: dailyLimit,
+      reset: dailyReset,
+      remaining: dailyRemaining,
+    } = await dailyRatelimit.limit(`13ft_ratelimit_daily_${ip}`);
+
     // Usage for minute rate limit
-    const { success: minuteSuccess, limit: minuteLimit, reset: minuteReset, remaining: minuteRemaining } = 
-      await minuteRatelimit.limit(`13ft_ratelimit_minute_${ip}`);
+    const {
+      success: minuteSuccess,
+      limit: minuteLimit,
+      reset: minuteReset,
+      remaining: minuteRemaining,
+    } = await minuteRatelimit.limit(`13ft_ratelimit_minute_${ip}`);
 
     if (!dailySuccess) {
       return "Your daily limit of 10 summaries has been reached. Although you can continue using smry.ai for reading, additional summaries are not available today. Please return tomorrow for more summaries. If this limit is inconvenient for you, your feedback is welcome at contact@smry.ai.";
