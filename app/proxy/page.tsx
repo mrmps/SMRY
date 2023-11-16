@@ -159,25 +159,25 @@ export default async function Page({
                     <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
                       <div className="flex items-center mt-4 ml-4 space-x-1.5">
                         <GlobeAltIcon className="w-4 h-4 text-gray-600" />
-                        <Link
+                        <a
                           href={url}
                           target="_blank"
                           rel="noreferrer"
                           className="text-gray-600 hover:text-gray-400 transition"
                         >
                           {new URL(url).hostname}
-                        </Link>
+                        </a>
                       </div>
                       <div className="flex items-center mt-4 ml-4 space-x-1.5">
                         <Link1Icon className="w-4 h-4 text-gray-600" />
-                        <Link
+                        <a
                           href={decodeURIComponent(content.cacheURL) ?? ""}
                           target="_blank"
                           rel="noreferrer"
                           className="text-gray-600 hover:text-gray-400 transition"
                         >
                           {content.source}
-                        </Link>
+                        </a>
                       </div>
                     </div>
 
