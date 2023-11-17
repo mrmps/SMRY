@@ -82,7 +82,7 @@ export function Banner() {
 
   return (
     <section className="z-20 py-12 overflow-hidden max-w-xs sm:max-w-full">
-      <h2 className="text-center text-2xl font-bold text-zinc-600 dark:text-zinc-200 mb-6">
+      <h2 className="text-center text-2xl font-bold text-zinc-700 dark:text-zinc-200 mb-6">
         Hop over these paywalls:
       </h2>
       <div className="mx-auto flex space-x-4" style={{ maxWidth: '1000px', animation: 'scroll 60s linear infinite' }}>
