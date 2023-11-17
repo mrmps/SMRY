@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ExclamationCircleIcon,
   PaperAirplaneIcon as PaperOutline,
@@ -35,6 +35,13 @@ const urlSchema = z.object({
 export default function Home() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   const router = useRouter();
 
@@ -91,6 +98,7 @@ export default function Home() {
             >
               <input
                 className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none"
+                ref={inputRef}
                 autoComplete="off"
                 placeholder="Enter article URL"
                 name="url"
@@ -116,7 +124,7 @@ export default function Home() {
               </button>
             </div>
           </form>
-          <h2 className="w-full text-center text-stone-700 mt-2">
+          <h2 className="w-full text-center text-stone-700 mt-4">
             Read any online article and instantly get the{" "}
             <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
               <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">
@@ -127,10 +135,10 @@ export default function Home() {
 
           <h3 className="mt-24 text-center text-lg font-semibold text-gray-800">
             OR
-            <span className="ml-2 text-gray-700 hover:text-gray-900 inline-block">
+            <span className="ml-3 text-gray-700 hover:text-gray-900 inline-block">
               <span
                 className={cn(
-                  "bg-gray-200 text-gray-800 font-mono py-2 px-4 rounded-lg shadow-md",
+                  "bg-stone-300 text-gray-800 font-mono py-2 px-4 rounded-md shadow-md border border-stone-400",
                   fira.className
                 )}
                 style={{

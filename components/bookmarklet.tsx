@@ -4,7 +4,7 @@ export const BookmarkletComponent = () => {
         event.dataTransfer.setData('text/plain', "javascript:(function(){window.location.href='https://smry.ai/'+window.location.href;})();");
       };
   return (
-    <section className="hidden sm:block relative z-0 mt-16 bg-white rounded-xl border shadow-md border-zinc-200 hover:bg-black transition-all duration-500">
+    <section className="hidden sm:block relative z-0 mt-16 bg-stone-50 rounded-xl border shadow-md border-zinc-200 hover:bg-black transition-all duration-500">
       <div className="w-full max-w-5xl mx-auto px-4 md:px-6 py-4 rounded-xl">
         <div className="text-center">
           <div
