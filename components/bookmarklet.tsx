@@ -4,7 +4,12 @@ export const BookmarkletComponent = () => {
         event.dataTransfer.setData('text/plain', "javascript:(function(){window.location.href='https://smry.ai/'+window.location.href;})();");
       };
   return (
-    <section className="hidden sm:block relative z-0 mt-16 bg-stone-50 rounded-xl border shadow-md border-zinc-200 hover:bg-black transition-all duration-500">
+    <section className="hidden sm:block relative z-0 mt-16 bg-stone-50 rounded-xl border shadow-md border-zinc-200 hover:bg-black transition-all duration-500"
+    aria-hidden="true"
+    onDragStart={handleDragStart}
+    draggable="true"
+    aria-label="Drag this to your bookmarks bar for quick summaries"
+    >
       <div className="w-full max-w-5xl mx-auto px-4 md:px-6 py-4 rounded-xl">
         <div className="text-center">
           <div
@@ -17,10 +22,6 @@ export const BookmarkletComponent = () => {
                 </span>
                 <span
                   className="absolute inset-0 rounded-full bg-gradient-to-r from-slate-900 to-slate-800 z-10 inline-flex items-center whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500 before:bg-clip-text before:text-transparent before:bg-gradient-to-r before:from-indigo-500 before:to-indigo-300 after:bg-clip-text after:text-transparent after:bg-gradient-to-r after:from-indigo-500 after:to-indigo-300 before:content-['Drag_this_bookmark_for_instant_summaries'] after:content-['Drag_this_bookmark_for_instant_summaries'] before:px-2 after:px-2 before:animate-infinite-scroll after:animate-infinite-scroll"
-                  aria-hidden="true"
-                  onDragStart={handleDragStart}
-                  draggable="true"
-                  aria-label="Drag this to your bookmarks bar for quick summaries"
                 ></span>
               </span>
             </span>
