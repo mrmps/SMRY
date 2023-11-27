@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/banner";
 import { SiteFooter } from "@/components/site-footer";
 import { BookmarkletComponent } from "@/components/bookmarklet";
+import clsx from "clsx";
 
 const fira = Fira_Code({
   subsets: ["latin"],
@@ -58,6 +59,11 @@ export default function Home() {
     }
   };
 
+  const isValidUrl = (url: string) => {
+    const { success } = urlSchema.safeParse({ url });
+    return success;
+  };
+
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -67,7 +73,7 @@ export default function Home() {
 
         <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
           <a
-            className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 shadow-md transition-colors hover:bg-gray-100 mb-10 mr-4"
+            className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-100 mb-10 mr-4"
             href="https://github.com/mrmps/SMRY"
             target="_blank"
             rel="noopener noreferrer"
@@ -88,8 +94,8 @@ export default function Home() {
           <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div
               className={`${
-                urlError ? "border-red-500" : "border-zinc-300"
-              } flex rounded-lg overflow-hidden bg-white backdrop-blur-lg`}
+                urlError ? "border-red-500" : ""
+              } flex rounded-lg overflow-hidden bg-[#1C1C1C] backdrop-blur-lg`}
               style={{
                 border: "1px solid rgba(0,0,0,0.15)",
                 boxShadow:
@@ -97,10 +103,10 @@ export default function Home() {
               }}
             >
               <input
-                className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none"
+                className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none text-white shadow-lg"
                 ref={inputRef}
                 autoComplete="off"
-                placeholder="Enter article URL"
+                placeholder="https://example.com/article"
                 name="url"
                 value={url}
                 onChange={(e) => {
@@ -109,18 +115,23 @@ export default function Home() {
                 }}
               />
               <button
-                className="px-4 py-2 font-mono transition-all duration-300 ease-in-out rounded-r-lg cursor-pointer hover:bg-[#dae7f1] bg-[#e0f2fe66] shadow-sm"
+                className="px-4 py-2 font-mono transition-all duration-300 ease-in-out rounded-r-lg cursor-pointer shadow-sm"
                 type="submit"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
               >
                 {/* Icon here */}
 
-                {isHovered ? (
-                  <PaperSolid className="w-5 h-5 text-stone-700 transform transition-transform duration-300 ease-in-out rotate-12 scale-110" />
-                ) : (
-                  <PaperOutline className="w-5 h-5 text-stone-700" />
-                )}
+                <PaperSolid
+                  className={clsx(
+                    "w-5 h-5 transition-transform duration-300 ease-in-out",
+                    {
+                      "text-white transform rotate-6 scale-110": isHovered,
+                      "text-gray-200": isValidUrl(url),
+                      "text-gray-500": !isValidUrl(url),
+                    }
+                  )}
+                />
               </button>
             </div>
           </form>
@@ -138,7 +149,7 @@ export default function Home() {
             <span className="ml-3 text-gray-700 hover:text-gray-900 inline-block">
               <span
                 className={cn(
-                  "bg-stone-300 text-gray-800 font-mono py-2 px-4 rounded-md shadow-md border border-stone-400",
+                  "bg-white text-gray-700 font-mono py-2 px-4 rounded-md border border-zinc-200",
                   fira.className
                 )}
                 style={{
@@ -148,7 +159,7 @@ export default function Home() {
               >
                 https://smry.ai/
                 <span
-                  className="bg-[#FFD54F] text-gray-700 px-2 py-1 rounded"
+                  className="bg-[#FBF719] text-gray-700 px-2 py-1 rounded"
                   style={{ fontWeight: "500" }}
                 >
                   &lt;URL&gt;

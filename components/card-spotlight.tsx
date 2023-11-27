@@ -48,7 +48,7 @@ export const CardSpotlight = ({ heading, body, icon }: CardSpotlightProps) => {
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative max-w-xs rounded-lg border-[.5px] shadow-md border-zinc-200 bg-stone-100 p-8"
+      className="relative max-w-xs rounded-lg border-[.5px] shadow-sm border-zinc-200 bg-stone-100 p-8"
     >
       <div
         className="pointer-events-none absolute -inset-px rounded-lg transition duration-500"
