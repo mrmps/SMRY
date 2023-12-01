@@ -19,12 +19,9 @@ import { headers } from "next/headers";
 import parse from "html-react-parser";
 import ArrowTabs from "@/components/arrow-tabs";
 import { track } from "@vercel/analytics/server";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ArticleContent } from "@/components/article-content";
+
+import { dir } from "console";
 // import useLocalStorage from "@/lib/use-local-storage";
 
 export const runtime = "edge";
@@ -66,7 +63,7 @@ type Article = {
   siteName: null | string;
 };
 
-type ResponseItem = {
+export type ResponseItem = {
   source: string;
   article?: Article;
   status?: string; // Assuming 'status' is optional and a string
@@ -74,29 +71,23 @@ type ResponseItem = {
   cacheURL: string;
 };
 
+export type Source = "direct" | "google" | "wayback";
+
 type ApiResponse = ResponseItem[];
 
-async function getData(url: string) {
+// if (!res.ok) {
+//   // This will activate the closest `error.js` Error Boundary
+//   throw new Error("Failed to fetch data" + JSON.stringify(res.json()));
+// }
+
+export async function getData(url: string, source: Source) {
   const urlBase = new URL(url).hostname;
   track("Search", { urlBase: urlBase, fullUrl: url });
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_URL}/api/proxy?url=${encodeURIComponent(url)}`
+    `${process.env.NEXT_PUBLIC_URL}/api/direct?url=${encodeURIComponent(
+      url
+    )}&source=${source}`
   );
-  // The return value is *not* serialized
-  // You can return Date, Map, Set, etc.
-
-  if (!res.ok) {
-    // This will activate the closest `error.js` Error Boundary
-    throw new Error("Failed to fetch data" + JSON.stringify(res.json()));
-  }
-
-  // const timeoutPromise = new Promise((_, reject) => {
-  //   setTimeout(() => {
-  //     reject(new Error("Request timed out"));
-  //   }, 100000);
-  // });
-
-  // await timeoutPromise
 
   return res.json();
 }
@@ -120,9 +111,10 @@ export default async function Page({
     return;
   }
 
-  const contents: ApiResponse = await getData(url);
+  
+  // const wayback: ResponseItem = await getData(url, "wayback");
 
-  const sources = contents.map((page) => page.source);
+  const sources = ["smry", "wayback", "google"];
 
   return (
     <div className="mt-20">
@@ -149,6 +141,7 @@ export default async function Page({
                 />
                 <div className="w-full">
                   <Suspense
+                    key={"summary"}
                     fallback={
                       <Skeleton
                         className="h-32 rounded-lg animate-pulse bg-zinc-200"
@@ -158,7 +151,6 @@ export default async function Page({
                   >
                     <Wrapper
                       ip={ip}
-                      siteText={contents[0].article?.textContent ?? "N/A"}
                       url={url}
                     />
                   </Suspense>
@@ -168,96 +160,21 @@ export default async function Page({
 
             <ArrowTabs
               sources={sources}
-              innerHTML={contents.map((content) => (
-                <div key={content.source} className="mt-10">
-                  <article>
-                    <h1>{content.article?.title || "No Title"}</h1>
-                    <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
-                      <div className="flex items-center mt-4 ml-4 space-x-1.5">
-                        <GlobeAltIcon className="w-4 h-4 text-gray-600" />
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-gray-600 hover:text-gray-400 transition"
-                        >
-                          {new URL(url).hostname}
-                        </a>
-                      </div>
-                      <div className="flex items-center mt-4 ml-4 space-x-1.5">
-                        <Link1Icon className="w-4 h-4 text-gray-600" />
-                        <a
-                          href={decodeURIComponent(content.cacheURL) ?? ""}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-gray-600 hover:text-gray-400 transition"
-                        >
-                          {content.source}
-                        </a>
-                      </div>
-                    </div>
-
-                    <Suspense
-                      fallback={
-                        <Skeleton
-                          className="h-32 rounded-lg animate-pulse bg-zinc-200"
-                          style={{ width: "100%" }}
-                        />
-                      }
-                    >
-                      {/* {content.article?.content ? (
-                        <div
-                          className="max-w-full overflow-wrap break-words mt-10"
-                          dangerouslySetInnerHTML={{
-                            __html: content.article?.content,
-                          }}
-                        />
-                      ) : (
-                        <div className="mt-10 p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
-                          <h3 className="font-bold">Error</h3>
-                          <p>
-                            Could not retrieve content:{" "}
-                            {content.error || "Unknown error occurred."}
-                          </p>
-                        </div>
-                      )} */}
-
-                      {content.article?.content ? (
-                        <div
-                          className="max-w-full overflow-wrap break-words mt-10"
-                          dangerouslySetInnerHTML={{
-                            __html: content.article?.content,
-                          }}
-                        />
-                      ) : (
-                        <div className="mt-10 flex items-center space-x-2">
-                          <p className="text-gray-600">
-                            Content not available.
-                          </p>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                {/* <span className="inline-block bg-gray-200 rounded-full p-1 cursor-help"> */}
-                                  <QuestionMarkCircleIcon className=" inline-block mb-3 -ml-2 rounded-full cursor-help" height={18} width={18}/>
-                                {/* </span> */}
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>
-                                  Error:{" "}
-                                  {content.error || "Unknown error occurred."}
-                                </p>
-                                <p>
-                                  There was an issue retrieving the content.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      )}
-                    </Suspense>
-                  </article>
-                </div>
-              ))}
+              innerHTMLDirect={
+                <Suspense key={"direct"} fallback={<div>Loading...</div>}>
+                  <ArticleContent url={url} source={"direct"} />
+                </Suspense>
+              }
+              innerHTMLWayback={
+                <Suspense key={"wayback"} fallback={<div>Loading...</div>}>
+                  <ArticleContent url={url} source={"wayback"} />
+                </Suspense>
+              }
+              innerHTMLGoogle={
+                <Suspense key={"wayback"} fallback={<div>Loading...</div>}>
+                  <ArticleContent url={url} source={"google"} />
+                </Suspense>
+              }
             />
           </main>
         </div>
@@ -289,14 +206,21 @@ function pickRandomModel() {
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
 async function Wrapper({
-  siteText,
   url,
   ip,
 }: {
-  siteText: string;
   url: string;
   ip: string;
 }) {
+  const [direct, wayback]: ResponseItem[] = await Promise.all([
+    getData(url, "direct"),
+    getData(url, "wayback"),
+  ]);
+
+  const directSiteText = direct.article?.content || "";
+  const waybackSiteText = wayback.article?.content || "";
+
+  const siteText = directSiteText?.length > waybackSiteText.length ? direct.article?.content : wayback.article?.content;
   const prompt =
     "Summarize the following in under 300 words: " + siteText + "Summary:";
 
@@ -357,51 +281,6 @@ async function Wrapper({
     const tokenLimit = 3200;
     const tokens = encode(prompt).splice(0, tokenLimit);
     const decodedText = decode(tokens);
-
-    // const response = await openai.createChatCompletion({
-    //   model: "gpt-3.5-turbo",
-    //   stream: true,
-    //   messages: [
-    //     {
-    //       role: "user",
-    //       content: decodedText,
-    //     },
-    //   ],
-    // });
-
-    // // Convert the response into a friendly text-stream
-    // const stream = OpenAIStream(response, {
-    //   async onCompletion(completion) {
-    //     await kv.set(url, completion);
-    //     // await kv.expire(prompt, 60 * 10);
-    //   },
-    // });
-
-    // const options = {
-    //   method: 'POST',
-    //   headers: {
-    //     accept: 'application/json',
-    //     'content-type': 'application/json',
-    //     Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`
-    //   },
-    //   body: JSON.stringify({
-    //     model: 'togethercomputer/llama-2-7b-chat',
-    //     prompt: decodedText,
-    //     max_tokens: 700,
-    //     temperature: 0.7,
-    //     top_p: 0.7,
-    //     top_k: 50,
-    //     repetition_penalty: 1,
-    //     stream_tokens: true
-    //   })
-    // };
-
-    // fetch('https://api.together.xyz/inference', options)
-    //   .then(response => response.json())
-    //   .then(response => console.log(response))
-    //   .catch(err => console.error(err));
-
-    // const response = await fetch('https://api.together.xyz/inference', options)
 
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",

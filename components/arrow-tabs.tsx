@@ -45,7 +45,6 @@ const EnhancedTabsList: React.FC<{
 
   const handleScrollAndSwitch = (direction: "left" | "right") => {
     if (tabsContainerRef.current) {
-
       const newIndex =
         direction === "right" ? activeTabIndex + 1 : activeTabIndex - 1;
 
@@ -101,10 +100,8 @@ const EnhancedTabsList: React.FC<{
       >
         <TabsList>
           {sources.map((source, index) => (
-            <TabsTrigger key={index} value={index.toString()}>
-             <span>
-                {source}
-             </span>
+            <TabsTrigger key={index} value={source}>
+              <span>{source}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -149,33 +146,34 @@ const EnhancedTabsList: React.FC<{
 
 interface TabProps {
   sources: string[];
-  innerHTML: React.ReactNode[];
+  innerHTMLGoogle: React.ReactNode;
+  innerHTMLWayback: React.ReactNode;
+  innerHTMLDirect: React.ReactNode;
 }
 
-const ArrowTabs: React.FC<TabProps> = ({ sources, innerHTML }) => {
+const ArrowTabs: React.FC<TabProps> = ({
+  sources,
+  innerHTMLGoogle,
+  innerHTMLDirect,
+  innerHTMLWayback,
+}) => {
   const initialTabIndex = 0;
   const [activeTabIndex, setActiveTabIndex] = useState(initialTabIndex);
 
   return (
     <Tabs
-      defaultValue={initialTabIndex.toString()}
-      value={JSON.stringify(activeTabIndex)}
-      onValueChange={(value: string) => setActiveTabIndex(parseInt(value))}
+      defaultValue={"smry"}
+      // value={JSON.stringify(sources[activeTabIndex])}
+      // onValueChange={(value: string) => setActiveTabIndex(parseInt(value))}
     >
       <EnhancedTabsList
         sources={sources}
         activeTabIndex={activeTabIndex}
         setActiveTabIndex={setActiveTabIndex}
       />
-
-      {sources.map((_, index) => (
-        <TabsContent key={index} value={index.toString()}>
-          <Suspense fallback={<div>Loading...</div>}>
-            {/* Ensure that the content you are rendering here is capable of being suspended */}
-            {innerHTML[activeTabIndex]}
-          </Suspense>
-        </TabsContent>
-      ))}
+      <TabsContent value={"smry"}>{innerHTMLDirect}</TabsContent>
+      <TabsContent value={"wayback"}>{innerHTMLWayback}</TabsContent>
+      <TabsContent value={"google"}>{innerHTMLGoogle}</TabsContent>
     </Tabs>
   );
 };
