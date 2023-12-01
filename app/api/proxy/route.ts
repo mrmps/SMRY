@@ -8,6 +8,7 @@ import Showdown from "showdown";
 import nlp from "compromise";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { Agent } from 'https';
+import { formatError } from "@/lib/format-error";
 
 interface CustomFetchOptions extends RequestInit {
   agent?: Agent;
@@ -22,15 +23,6 @@ function createErrorResponse(message: string, status: number, details = {}) {
 
 
 
-export function formatError(errorObj: any): string {
-  // This function takes an error object and returns a string representation
-  // You can customize this to extract the most relevant information
-  if (typeof errorObj === "object" && errorObj !== null) {
-    return errorObj.message || JSON.stringify(errorObj);
-  } else {
-    return "Unknown error";
-  }
-}
 
 function wrapSentencesWithSpan(html: string): {
   html: string;
@@ -380,3 +372,4 @@ function getArchiveUrl(responseJson: string): string | null {
 function isWaybackMachineResponse(url: string) {
   return url.includes("archive.org");
 }
+

@@ -1,56 +1,22 @@
-import { EyeIcon } from "lucide-react";
-import {
-  AdjustmentsHorizontalIcon,
-  GlobeAltIcon,
-} from "@heroicons/react/24/outline";
-import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
-import Link from "next/link";
 import { Configuration, OpenAIApi } from "openai-edge";
-import { OpenAIStream, StreamingTextResponse } from "ai";
+import { OpenAIStream } from "ai";
 import { kv } from "@vercel/kv";
 import { Tokens } from "ai/react";
 import { Suspense } from "react";
 import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link1Icon } from "@radix-ui/react-icons";
 import { encode, decode } from "gpt-tokenizer";
 import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
-import parse from "html-react-parser";
 import ArrowTabs from "@/components/arrow-tabs";
-import { track } from "@vercel/analytics/server";
 import { ArticleContent } from "@/components/article-content";
-
-import { dir } from "console";
-// import useLocalStorage from "@/lib/use-local-storage";
-
 export const runtime = "edge";
+import { Source, getData } from "@/lib/data";
+
 
 const apiConfig = new Configuration({
   apiKey: process.env.OPENAI_API_KEY!,
 });
-
-const openai = new OpenAIApi(apiConfig);
-
-// type PageData = {
-//   title: string;
-//   byline: null | string; // Assuming 'byline' can be a string as well
-//   dir: null | string; // Assuming 'dir' can be a string as well
-//   lang: string;
-//   content: string;
-//   textContent: string;
-//   length: number;
-//   excerpt: string;
-//   siteName: null | string; // Assuming 'siteName' can be a string as well
-//   source: string;
-//   sourceURL: string; // the url to the cache/wayback machine
-//   flattenedHTML: string;
-// };
-
-// type Page = {
-//   source: string;
-//   article: PageData;
-// };
 
 type Article = {
   title: string;
@@ -71,26 +37,8 @@ export type ResponseItem = {
   cacheURL: string;
 };
 
-export type Source = "direct" | "google" | "wayback";
 
-type ApiResponse = ResponseItem[];
 
-// if (!res.ok) {
-//   // This will activate the closest `error.js` Error Boundary
-//   throw new Error("Failed to fetch data" + JSON.stringify(res.json()));
-// }
-
-export async function getData(url: string, source: Source) {
-  const urlBase = new URL(url).hostname;
-  track("Search", { urlBase: urlBase, fullUrl: url });
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_URL}/api/direct?url=${encodeURIComponent(
-      url
-    )}&source=${source}`
-  );
-
-  return res.json();
-}
 
 export default async function Page({
   params,
@@ -110,9 +58,6 @@ export default async function Page({
     console.error("URL parameter is missing or invalid");
     return;
   }
-
-  
-  // const wayback: ResponseItem = await getData(url, "wayback");
 
   const sources = ["smry", "wayback", "google"];
 

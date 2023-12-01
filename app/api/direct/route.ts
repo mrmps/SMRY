@@ -2,8 +2,6 @@ import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { safeError } from "@/lib/safe-error";
-import { type Source } from "@/app/proxy/page";
-import { formatError } from "../proxy/route";
 
 function createErrorResponse(message: string, status: number, details = {}) {
   return new Response(JSON.stringify({ message, details }), {

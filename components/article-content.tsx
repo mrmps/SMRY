@@ -5,11 +5,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getData, Source, ResponseItem } from "@/app/proxy/page";
+import { ResponseItem } from "@/app/proxy/page";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "./ui/skeleton";
 import { Link1Icon } from "@radix-ui/react-icons";
+import { Source, getData } from "@/lib/data";
 
 interface ArticleContentProps {
   url: string;
