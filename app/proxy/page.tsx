@@ -223,7 +223,7 @@ async function Wrapper({
   }
 
   try {
-    const tokenLimit = 3200;
+    const tokenLimit = 2900;
     const tokens = encode(prompt).splice(0, tokenLimit);
     const decodedText = decode(tokens);
 
@@ -237,7 +237,7 @@ async function Wrapper({
       body: JSON.stringify({
         model: pickRandomModel(),
         stream: true,
-        max_tokens: 700,
+        max_tokens: 580,
         frequency_penalty: 1,
         temperature: 1,
         messages: [

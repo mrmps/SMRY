@@ -23,31 +23,40 @@ export const ArticleContent = async ({ url, source }: ArticleContentProps) => {
   return (
     <div className="mt-10">
       <article>
-        <h1>{content.article?.title || "No Title"}</h1>
-        <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
-          <div className="flex items-center mt-4 ml-4 space-x-1.5">
-            <GlobeAltIcon className="w-4 h-4 text-gray-600" />
-            <a
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-gray-600 hover:text-gray-400 transition"
-            >
-              {new URL(url).hostname}
-            </a>
+        <Suspense
+          fallback={
+            <Skeleton
+              className="h-10 rounded-lg animate-pulse bg-zinc-200"
+              style={{ width: "100%" }}
+            />
+          }
+        >
+          <h1>{content.article?.title || "No Title"}</h1>
+          <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
+            <div className="flex items-center mt-4 ml-4 space-x-1.5">
+              <GlobeAltIcon className="w-4 h-4 text-gray-600" />
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-gray-600 hover:text-gray-400 transition"
+              >
+                {new URL(url).hostname}
+              </a>
+            </div>
+            <div className="flex items-center mt-4 ml-4 space-x-1.5">
+              <Link1Icon className="w-4 h-4 text-gray-600" />
+              <a
+                href={decodeURIComponent(content.cacheURL) ?? ""}
+                target="_blank"
+                rel="noreferrer"
+                className="text-gray-600 hover:text-gray-400 transition"
+              >
+                {content.source}
+              </a>
+            </div>
           </div>
-          <div className="flex items-center mt-4 ml-4 space-x-1.5">
-            <Link1Icon className="w-4 h-4 text-gray-600" />
-            <a
-              href={decodeURIComponent(content.cacheURL) ?? ""}
-              target="_blank"
-              rel="noreferrer"
-              className="text-gray-600 hover:text-gray-400 transition"
-            >
-              {content.source}
-            </a>
-          </div>
-        </div>
+        </Suspense>
 
         <Suspense
           fallback={
