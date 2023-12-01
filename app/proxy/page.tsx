@@ -267,11 +267,11 @@ export default async function Page({
 }
 
 const models = [
-  { name: "mistral-7b-instruct", rateLimit: 250 },
-  { name: "openhermes-2-mistral-7b", rateLimit: 250 },
-  { name: "openhermes-2.5-mistral-7b", rateLimit: 250 },
-  { name: "llama-2-13b-chat", rateLimit: 150 },
-  { name: "llama-2-70b-chat", rateLimit: 60 },
+  { name: "mistral-7b-instruct", rateLimit: 500 },
+  { name: "pplx-70b-chat", rateLimit: 120 },
+  { name: "codellama-34b-instruct", rateLimit: 300 },
+  { name: "pplx-7b-chat", rateLimit: 150 },
+  { name: "llama-2-70b-chat", rateLimit: 120 },
 ];
 
 // Calculate total rate limits

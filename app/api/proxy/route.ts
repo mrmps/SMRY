@@ -114,6 +114,7 @@ function safeError(error: unknown) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url");
+  const origin = searchParams.get("origin") || undefined;
 
   if (!url) {
     return createErrorResponse("URL parameter is required.", 400);
@@ -124,12 +125,29 @@ export async function GET(request: Request) {
 // Add https:// prefix
   const finalUrl = `https://${cleanUrl}`;
 
+  // let sources: string[] = [];
+  // switch(origin) {
+  //   case 'archive':
+  //     sources = [`https://web.archive.org/web/2/${encodeURIComponent(url)}`];
+  //     break;
+  //   case 'google':
+  //     sources = [`https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(finalUrl)}`];
+  //     break;
+  //   case 'archive.is':
+  //     // sources = [`http://archive.is/latest/${encodeURIComponent(url)}`];
+  //     break;
+  //   default:
+  //     sources = [url];
+  // }
+
   const sources = [
     `https://web.archive.org/web/2/${encodeURIComponent(url)}`,
     `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(finalUrl)}`,
     // `http://archive.is/latest/${encodeURIComponent(url)}`,
     url,
   ];
+
+  
 
   try {
     const fetchPromises = sources.map((sourceUrl) =>
