@@ -4,12 +4,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import React from "react";
+import { count } from "console";
+import {convert} from 'html-to-text'
+import ReactDOMServer from 'react-dom/server';
 
 const EnhancedTabsList: React.FC<{
   sources: TabProps["sources"];
   activeTabIndex: number;
   setActiveTabIndex: (tabIndex: number) => void;
-}> = ({ sources, activeTabIndex, setActiveTabIndex }) => {
+  lengthGoogle: React.ReactNode;
+  lengthWayback: React.ReactNode;
+  lengthDirect: React.ReactNode;
+}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthGoogle, lengthWayback }) => {
   const tabsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToActiveTab = useCallback(() => {
@@ -58,6 +65,25 @@ const EnhancedTabsList: React.FC<{
     }
   };
 
+  const getSourceLength = (source: string): React.ReactNode => {
+    let content;
+    switch (source) {
+      case "smry":
+        content = lengthDirect;
+        break;
+      case "wayback":
+        content = lengthWayback;
+        break;
+      case "google":
+        content = lengthGoogle;
+        break;
+      default:
+        content = null;
+    }
+
+    return content;
+  }
+
   return (
     <div className="relative border border-zinc-200 rounded-md shadow-sm p-1">
       {activeTabIndex > 0 && ( // Only display the left button if it's not the first tab
@@ -101,7 +127,10 @@ const EnhancedTabsList: React.FC<{
         <TabsList>
           {sources.map((source, index) => (
             <TabsTrigger key={index} value={source}>
-              <span>{source}</span>
+              <span>
+            {source} · {" "}
+              {getSourceLength(source)}
+          </span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -149,6 +178,9 @@ interface TabProps {
   innerHTMLGoogle: React.ReactNode;
   innerHTMLWayback: React.ReactNode;
   innerHTMLDirect: React.ReactNode;
+  lengthGoogle: React.ReactNode;
+  lengthWayback: React.ReactNode;
+  lengthDirect: React.ReactNode;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
@@ -156,6 +188,9 @@ const ArrowTabs: React.FC<TabProps> = ({
   innerHTMLGoogle,
   innerHTMLDirect,
   innerHTMLWayback,
+  lengthDirect,
+  lengthGoogle,
+  lengthWayback
 }) => {
   const initialTabIndex = 0;
   const [activeTabIndex, setActiveTabIndex] = useState(initialTabIndex);
@@ -170,6 +205,9 @@ const ArrowTabs: React.FC<TabProps> = ({
         sources={sources}
         activeTabIndex={activeTabIndex}
         setActiveTabIndex={setActiveTabIndex}
+        lengthDirect={lengthDirect}
+        lengthGoogle={lengthGoogle}
+        lengthWayback={lengthWayback}
       />
       <TabsContent value={"smry"}>{innerHTMLDirect}</TabsContent>
       <TabsContent value={"wayback"}>{innerHTMLWayback}</TabsContent>

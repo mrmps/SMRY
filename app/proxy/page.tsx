@@ -12,6 +12,8 @@ import ArrowTabs from "@/components/arrow-tabs";
 import { ArticleContent } from "@/components/article-content";
 export const runtime = "edge";
 import { Source, getData } from "@/lib/data";
+import { ArticleLength } from "@/components/article-length";
+import Loading from "./loading";
 
 
 const apiConfig = new Configuration({
@@ -105,18 +107,33 @@ export default async function Page({
 
             <ArrowTabs
               sources={sources}
+              lengthDirect={
+                <Suspense key={"direct"} fallback={null}>
+                  <ArticleLength url={url} source={"direct"} />
+                </Suspense>
+              }
+              lengthWayback={
+                <Suspense key={"wayback"} fallback={null}>
+                  <ArticleLength url={url} source={"wayback"} />
+                </Suspense>
+              }
+              lengthGoogle={
+                <Suspense key={"google"} fallback={null}>
+                  <ArticleLength url={url} source={"google"} />
+                </Suspense>
+              }
               innerHTMLDirect={
-                <Suspense key={"direct"} fallback={<div>Loading...</div>}>
+                <Suspense key={"direct"} fallback={<Loading />}>
                   <ArticleContent url={url} source={"direct"} />
                 </Suspense>
               }
               innerHTMLWayback={
-                <Suspense key={"wayback"} fallback={<div>Loading...</div>}>
+                <Suspense key={"wayback"} fallback={<Loading />}>
                   <ArticleContent url={url} source={"wayback"} />
                 </Suspense>
               }
               innerHTMLGoogle={
-                <Suspense key={"wayback"} fallback={<div>Loading...</div>}>
+                <Suspense key={"google"} fallback={<Loading />}>
                   <ArticleContent url={url} source={"google"} />
                 </Suspense>
               }
@@ -227,15 +244,41 @@ async function Wrapper({
     const tokens = encode(prompt).splice(0, tokenLimit);
     const decodedText = decode(tokens);
 
-    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+    // const response = await fetch("https://api.perplexity.ai/chat/completions", {
+    //   method: "POST",
+    //   headers: {
+    //     Accept: "application/json",
+    //     "Content-Type": "application/json",
+    //     Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+    //   },
+    //   body: JSON.stringify({
+    //     model: pickRandomModel(),
+    //     stream: true,
+    //     max_tokens: 580,
+    //     frequency_penalty: 1,
+    //     temperature: 1,
+    //     messages: [
+    //       {
+    //         role: "system",
+    //         content: "Be precise and concise in your responses.",
+    //       },
+    //       {
+    //         role: "user",
+    //         content: decodedText,
+    //       },
+    //     ],
+    //   }),
+    // });
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: pickRandomModel(),
+        model: "mistralai/mixtral-8x7b-instruct",
         stream: true,
         max_tokens: 580,
         frequency_penalty: 1,

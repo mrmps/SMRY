@@ -59,6 +59,9 @@ dependencies:
   html-react-parser:
     specifier: ^5.0.6
     version: 5.0.6(react@18.2.0)
+  html-to-text:
+    specifier: ^9.0.5
+    version: 9.0.5
   https-proxy-agent:
     specifier: ^7.0.2
     version: 7.0.2
@@ -121,6 +124,9 @@ devDependencies:
   '@tailwindcss/typography':
     specifier: ^0.5.10
     version: 0.5.10(tailwindcss@3.3.5)
+  '@types/html-to-text':
+    specifier: ^9.0.4
+    version: 9.0.4
   '@types/jsdom':
     specifier: ^21.1.5
     version: 21.1.5
@@ -1023,6 +1029,10 @@ packages:
   /@types/estree@1.0.5:
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
     dev: false
+
+  /@types/html-to-text@9.0.4:
+    resolution: {integrity: sha512-pUY3cKH/Nm2yYrEmDlPR1mR7yszjGx4DrwPjQ702C4/D5CwHuZTgZdIdwPkRbcuhs7BAh2L5rg3CL5cbRiGTCQ==}
+    dev: true
 
   /@types/jsdom@21.1.5:
     resolution: {integrity: sha512-sBK/3YjS3uuPj+HzZyhB4GGTnFmk0mdyQfhzZ/sqs9ciyG41QJdZZdwcPa6OfW97OTNTwl5tBAsfEOm/dui9pQ==}
