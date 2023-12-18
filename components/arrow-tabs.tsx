@@ -128,7 +128,7 @@ const EnhancedTabsList: React.FC<{
           {sources.map((source, index) => (
             <TabsTrigger key={index} value={source}>
               <span>
-            {source} · {" "}
+            {source} 
               {getSourceLength(source)}
           </span>
             </TabsTrigger>

@@ -10,5 +10,9 @@ interface ArticleLengthProps {
 export const ArticleLength = async ({ url, source }: ArticleLengthProps) => {
   const content: ResponseItem = await getData(url, source);
 
-  return <Suspense fallback={null}>{(content.article?.length ?? 0 ) + " words"}</Suspense>;
+  return (
+    <Suspense fallback={null}>
+      {" · " + (content.article?.length ?? 0) + " words"}
+    </Suspense>
+  );
 };
