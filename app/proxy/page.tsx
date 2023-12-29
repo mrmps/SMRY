@@ -278,7 +278,7 @@ async function Wrapper({
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "mistralai/mixtral-8x7b-instruct",
+        model: "mistralai/mistral-7b-instruct",
         stream: true,
         max_tokens: 580,
         frequency_penalty: 1,
