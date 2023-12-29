@@ -184,7 +184,7 @@ async function Wrapper({
 
   const siteText = directSiteText?.length > waybackSiteText.length ? direct.article?.content : wayback.article?.content;
   const prompt =
-    "Summarize the following in under 300 words: " + siteText + "Summary:";
+    "Could you please provide a concise and comprehensive summary of the given text? The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read, with clear headings and subheadings to guide the reader through each section. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" + siteText + "\n\nSummary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
 
