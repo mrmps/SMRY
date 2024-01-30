@@ -206,13 +206,13 @@ async function Wrapper({
   ) {
     const dailyRatelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(20, "1 d"), // 10 requests per day
+      limiter: Ratelimit.slidingWindow(20, "1 d"), // 20 requests per day
     });
 
     // New rate limit for 4 requests per minute
     const minuteRatelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(6, "1 m"), // 4 requests per minute
+      limiter: Ratelimit.slidingWindow(6, "1 m"), // 6 requests per minute
     });
 
     // Usage for daily rate limit
@@ -278,7 +278,7 @@ async function Wrapper({
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "mistralai/mistral-7b-instruct",
+        model: "mistralai/mistral-7b-instruct:free",
         stream: true,
         max_tokens: 580,
         frequency_penalty: 1,
@@ -286,7 +286,7 @@ async function Wrapper({
         messages: [
           {
             role: "system",
-            content: "You are an AI specializing in summarizing articles in a digestable way. Be precise and concise in your responses.",
+            content: "You are an AI summarizer specializing in summarizing articles in a digestable way. Be precise and concise in your responses.",
           },
           {
             role: "user",
