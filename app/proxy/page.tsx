@@ -184,7 +184,7 @@ async function Wrapper({
 
   const siteText = directSiteText?.length > waybackSiteText.length ? direct.article?.content : wayback.article?.content;
   const prompt =
-    "Could you please provide a concise and comprehensive summary of the given text? The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read, with clear headings and subheadings to guide the reader through each section. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" + siteText + "\n\nSummary:";
+    "Provide a concise and comprehensive summary of the given text. The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read, with clear headings and subheadings to guide the reader through each section. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" + siteText + "\n\nSummary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
 
@@ -206,13 +206,13 @@ async function Wrapper({
   ) {
     const dailyRatelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(10, "1 d"), // 10 requests per day
+      limiter: Ratelimit.slidingWindow(20, "1 d"), // 10 requests per day
     });
 
     // New rate limit for 4 requests per minute
     const minuteRatelimit = new Ratelimit({
       redis: kv,
-      limiter: Ratelimit.slidingWindow(4, "1 m"), // 4 requests per minute
+      limiter: Ratelimit.slidingWindow(6, "1 m"), // 4 requests per minute
     });
 
     // Usage for daily rate limit
@@ -232,10 +232,10 @@ async function Wrapper({
     } = await minuteRatelimit.limit(`13ft_ratelimit_minute_${ip}`);
 
     if (!dailySuccess) {
-      return "Your daily limit of 10 summaries has been reached. Although you can continue using smry.ai for reading, additional summaries are not available today. Please return tomorrow for more summaries. If this limit is inconvenient for you, your feedback is welcome at contact@smry.ai.";
+      return "Your daily limit of 20 summaries has been reached. Although you can continue using smry.ai for reading, additional summaries are not available today. Please return tomorrow for more summaries. If this limit is inconvenient for you, your feedback is welcome at contact@smry.ai.";
     }
     if (!minuteSuccess) {
-      return "Your limit of 4 summaries per minute has been reached. Pretty sure you are a bot. Stop it!";
+      return "Your limit of 6 summaries per minute has been reached. Pretty sure you are a bot. Stop it!";
     }
   }
 
@@ -286,7 +286,7 @@ async function Wrapper({
         messages: [
           {
             role: "system",
-            content: "Be precise and concise in your responses.",
+            content: "You are an AI specializing in summarizing articles in a digestable way. Be precise and concise in your responses.",
           },
           {
             role: "user",
