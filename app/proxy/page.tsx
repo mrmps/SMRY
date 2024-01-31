@@ -39,6 +39,26 @@ export type ResponseItem = {
   cacheURL: string;
 };
 
+async function fetchWithRetry(url: string, options: RequestInit | undefined, maxRetries = 3): Promise<Response> {
+  let lastError: Error | undefined;
+
+  for (let i = 0; i < maxRetries; i++) {
+      try {
+          const response = await fetch(url, options);
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response; // If the fetch is successful, return the response
+      } catch (error) {
+          lastError = error as Error;
+          console.log(`Retrying fetch (${i + 1}/${maxRetries})...`);
+          // Optional: You may want to implement a delay here
+      }
+  }
+
+  throw lastError || new Error("Fetch failed after retrying");
+}
+
 
 
 
@@ -184,7 +204,7 @@ async function Wrapper({
 
   const siteText = directSiteText?.length > waybackSiteText.length ? direct.article?.content : wayback.article?.content;
   const prompt =
-    "Provide a concise and comprehensive summary of the given text. The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read, with clear headings and subheadings to guide the reader through each section. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" + siteText + "\n\nSummary:";
+    "Provide a concise and comprehensive summary of the given text. The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" + siteText + "\n\nSummary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
 
@@ -270,7 +290,9 @@ async function Wrapper({
     //   }),
     // });
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+
+
+    const response = await fetchWithRetry("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -278,7 +300,7 @@ async function Wrapper({
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "mistralai/mistral-7b-instruct:free",
+        model: "huggingfaceh4/zephyr-7b-beta:free",
         stream: true,
         max_tokens: 580,
         frequency_penalty: 1,
