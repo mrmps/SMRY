@@ -88,7 +88,7 @@ export function ResponsiveDrawer({ children }: { children: React.ReactNode }) {
           <DrawerTitle>Key Points From Page</DrawerTitle>
           <DrawerDescription>Generative AI is Experimental</DrawerDescription>
         </DrawerHeader>
-        <div className="p-4 border-t border-zinc-100 bg-gradient-to-b from-purple-50 via-purple-50 to-white">
+        <div className="p-4 border-t border-zinc-100 bg-gradient-to-b from-purple-50 via-purple-50 to-white overflow-auto max-h-80">
           {children}
         </div>
         <DrawerFooter className="pt-2">
