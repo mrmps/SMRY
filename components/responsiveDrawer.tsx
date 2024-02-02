@@ -33,6 +33,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { track } from "@vercel/analytics";
 
 export function ResponsiveDrawer({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
@@ -42,7 +43,10 @@ export function ResponsiveDrawer({ children }: { children: React.ReactNode }) {
     return (
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button className="bg-purple-200 text-purple-700 py-2 rounded-full hover:bg-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-opacity-50">
+          <Button
+            onClick={() => track("Generate")}
+            className="bg-purple-200 text-purple-700 py-2 rounded-full hover:bg-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-opacity-50"
+          >
             Generate
           </Button>
         </SheetTrigger>
