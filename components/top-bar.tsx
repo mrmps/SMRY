@@ -51,7 +51,7 @@ const TopBar = () => {
         <ScrollProgress progress={progress} />
       </div>
       <div
-        className={`fixed top-[1px] z-10 w-full ${isVisible ? "hidden" : ""}`}
+        className={`fixed top-[1px] z-[60] w-full ${isVisible ? "hidden" : ""}`}
       >
         <ScrollProgress progress={progress} />
       </div>

@@ -14,7 +14,8 @@ export const runtime = "edge";
 import { Source, getData } from "@/lib/data";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
-
+import { ResponsiveDrawer } from "@/components/responsiveDrawer";
+import { Button } from "@/components/ui/button";
 
 const apiConfig = new Configuration({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -39,28 +40,29 @@ export type ResponseItem = {
   cacheURL: string;
 };
 
-async function fetchWithRetry(url: string, options: RequestInit | undefined, maxRetries = 3): Promise<Response> {
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit | undefined,
+  maxRetries = 3
+): Promise<Response> {
   let lastError: Error | undefined;
 
   for (let i = 0; i < maxRetries; i++) {
-      try {
-          const response = await fetch(url, options);
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response; // If the fetch is successful, return the response
-      } catch (error) {
-          lastError = error as Error;
-          console.log(`Retrying fetch (${i + 1}/${maxRetries})...`);
-          // Optional: You may want to implement a delay here
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      return response; // If the fetch is successful, return the response
+    } catch (error) {
+      lastError = error as Error;
+      console.log(`Retrying fetch (${i + 1}/${maxRetries})...`);
+      // Optional: You may want to implement a delay here
+    }
   }
 
   throw lastError || new Error("Fetch failed after retrying");
 }
-
-
-
 
 export default async function Page({
   params,
@@ -88,7 +90,7 @@ export default async function Page({
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
-            <div
+            {/* <div
               className="tokens my-10 shadow-sm border-zinc-100 border flex border-collapse text-[#111111] text-base font-normal list-none text-left visible overflow-auto rounded-lg bg-[#f9f9fb]"
               style={{
                 animationDuration: "0.333s",
@@ -99,14 +101,7 @@ export default async function Page({
               }}
             >
               <div className="p-6 w-full grid">
-                <Image
-                  src="/logo.svg"
-                  width={150}
-                  height={150}
-                  alt={"smry logo"}
-                  className="-ml-4"
-                />
-                <div className="w-full">
+                <ResponsiveDrawer>
                   <Suspense
                     key={"summary"}
                     fallback={
@@ -116,13 +111,28 @@ export default async function Page({
                       />
                     }
                   >
-                    <Wrapper
-                      ip={ip}
-                      url={url}
-                    />
+                    <Wrapper ip={ip} url={url} />
                   </Suspense>
-                </div>
+                </ResponsiveDrawer>
               </div>
+            </div> */}
+            <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
+              <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
+                Get AI-powered key points
+              </h2>
+              <ResponsiveDrawer>
+                <Suspense
+                  key={"summary"}
+                  fallback={
+                    <Skeleton
+                      className="h-32 rounded-lg animate-pulse bg-zinc-200"
+                      style={{ width: "100%" }}
+                    />
+                  }
+                >
+                  <Wrapper ip={ip} url={url} />
+                </Suspense>
+              </ResponsiveDrawer>
             </div>
 
             <ArrowTabs
@@ -187,13 +197,7 @@ function pickRandomModel() {
 }
 
 // We add a wrapper component to avoid suspending the entire page while the OpenAI request is being made
-async function Wrapper({
-  url,
-  ip,
-}: {
-  url: string;
-  ip: string;
-}) {
+async function Wrapper({ url, ip }: { url: string; ip: string }) {
   const [direct, wayback]: ResponseItem[] = await Promise.all([
     getData(url, "direct"),
     getData(url, "wayback"),
@@ -202,9 +206,14 @@ async function Wrapper({
   const directSiteText = direct.article?.content || "";
   const waybackSiteText = wayback.article?.content || "";
 
-  const siteText = directSiteText?.length > waybackSiteText.length ? direct.article?.content : wayback.article?.content;
+  const siteText =
+    directSiteText?.length > waybackSiteText.length
+      ? direct.article?.content
+      : wayback.article?.content;
   const prompt =
-    "Provide a concise and comprehensive summary of the given text. The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" + siteText + "\n\nSummary:";
+    "Provide a concise and comprehensive summary of the given text. The summary should capture the main points and key details of the text while conveying the author's intended meaning accurately. Please ensure that the summary is well-organized and easy to read. The length of the summary should be appropriate to capture the main points and key details of the text, without including unnecessary information or becoming overly long.\n\n" +
+    siteText +
+    "\n\nSummary:";
 
   // See https://sdk.vercel.ai/docs/concepts/caching
 
@@ -290,33 +299,35 @@ async function Wrapper({
     //   }),
     // });
 
-
-
-    const response = await fetchWithRetry("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "huggingfaceh4/zephyr-7b-beta:free",
-        stream: true,
-        max_tokens: 580,
-        frequency_penalty: 1,
-        temperature: 1,
-        messages: [
-          {
-            role: "system",
-            content: "You are an AI summarizer specializing in summarizing articles in a digestable way. Be precise and concise in your responses.",
-          },
-          {
-            role: "user",
-            content: decodedText,
-          },
-        ],
-      }),
-    });
+    const response = await fetchWithRetry(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "huggingfaceh4/zephyr-7b-beta:free",
+          stream: true,
+          max_tokens: 580,
+          frequency_penalty: 1,
+          temperature: 1,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an AI summarizer specializing in summarizing articles in a digestable way. Be precise and concise in your responses.",
+            },
+            {
+              role: "user",
+              content: decodedText,
+            },
+          ],
+        }),
+      }
+    );
 
     // Convert the response into a friendly text-stream
     const stream = OpenAIStream(response, {
