@@ -15,7 +15,6 @@ import { Source, getData } from "@/lib/data";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
 import { ResponsiveDrawer } from "@/components/responsiveDrawer";
-import { Button } from "@/components/ui/button";
 
 const apiConfig = new Configuration({
   apiKey: process.env.OPENAI_API_KEY!,

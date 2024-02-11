@@ -1,6 +1,8 @@
 
 import { track } from "@vercel/analytics/server";
+import { ResponseItem } from "@/app/proxy/page";
 export type Source = "direct" | "google" | "wayback";
+
 
 export async function getData(url: string, source: Source) {
     const urlBase = new URL(url).hostname;
@@ -14,7 +16,14 @@ export async function getData(url: string, source: Source) {
     if (!res.ok) {
       // This will activate the closest `error.js` Error Boundary, but first we log it to analytics
       track("Error", { urlBase: urlBase, fullUrl: url, status: res.status, source: source, error: res.statusText });
-      throw new Error(`Error fetching data: ${res.statusText} for ${url} from ${source}`);
+      return {
+        source: source,
+        article: undefined,
+        status: res.status.toString(),
+        error: res.statusText,
+        cacheURL: url
+      } as ResponseItem;
+      // throw new Error(`Error fetching data: ${res.statusText} for ${url} from ${source}`);
     }
   
     return res.json();
