@@ -10,6 +10,12 @@ export async function getData(url: string, source: Source) {
         url
       )}&source=${source}`
     );
+
+    if (!res.ok) {
+      // This will activate the closest `error.js` Error Boundary, but first we log it to analytics
+      track("Error", { urlBase: urlBase, fullUrl: url, status: res.status, source: source, error: res.statusText });
+      throw new Error(`Error fetching data: ${res.statusText} for ${url} from ${source}`);
+    }
   
     return res.json();
   }
