@@ -68,38 +68,6 @@ export default function Home() {
 
   return (
     <>
-      <div className="z-50 w-full text-sm bg-[#0B2768] text-center hover:cursor-pointer text-gray-300 h-11 items-center flex justify-center">
-        <div className="px-2">
-          {" "}
-          {/* Add padding to the container */}
-          {/* Built by @michael_chomsky */}
-          Built by{" "}
-          <a
-            href="https://twitter.com/michael_chomsky"
-            target="_blank"
-            className="hover:cursor-pointer"
-          >
-            {" "}
-            {/* Adjust font size */}
-            @michael_chomsky.
-          </a>{" "}
-          {/* Updated text and link */}
-          <span className="mx-1">
-            {" "}
-            {/* Add margin to the text */}
-            Have feedback?
-          </span>
-          <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSfUa3qfg05zRupFY07D2AAEmw3it_Pfs3uc6su4gtkuP2UE4g/viewform?usp=sf_link"
-            className="hover:cursor-pointer text-[#D47EFF]"
-          >
-            {" "}
-            {/* Adjust font size */}
-            Reach out here so we can improve
-          </a>
-          .
-        </div>
-      </div>
       <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-gradient-to-b from-white via-[#F7F7F7] to-white">
         <div className="absolute inset-0 h-full w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_60%,transparent_100%)]"></div>
 
