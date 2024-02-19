@@ -68,8 +68,7 @@ export default function Home() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-gradient-to-b from-white via-[#F7F7F7] to-white">
-        <div className="absolute inset-0 h-full w-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_60%,transparent_100%)]"></div>
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-white bg-[radial-gradient(100%_50%_at_50%_0%,rgba(0,163,255,0.13)_0,rgba(0,163,255,0)_50%,rgba(0,163,255,0)_100%)]">
 
         <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
           <a
