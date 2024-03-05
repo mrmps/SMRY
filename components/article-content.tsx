@@ -31,7 +31,7 @@ export const ArticleContent = async ({ url, source }: ArticleContentProps) => {
             />
           }
         >
-          <h1>{content.article?.title || "No Title"}</h1>
+          <h1>{content.article?.title || "Title Not Found"}</h1>
           <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
             <div className="flex items-center mt-4 ml-4 space-x-1.5">
               <GlobeAltIcon className="w-4 h-4 text-gray-600" />

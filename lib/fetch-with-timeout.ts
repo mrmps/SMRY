@@ -8,9 +8,9 @@ interface CustomFetchOptions extends RequestInit {
 }
 
 export async function fetchWithTimeout(url: string) {
-  const timeout = 5000; // Timeout in milliseconds
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  // const timeout = 5000; // Timeout in milliseconds
+  // const controller = new AbortController();
+  // const id = setTimeout(() => controller.abort(), timeout);
 
   try {
     // Prepare fetch options
@@ -35,11 +35,16 @@ export async function fetchWithTimeout(url: string) {
       };
     }
 
-    const response = await fetch(url, options);
-
-    clearTimeout(id);
+    let response;
+    try {
+      response = await fetch(url, options);
+    } catch (error) {
+      console.error(`Failed to fetch from URL: ${url}. Error: ${error}`);
+      throw new Error(`Failed to fetch from URL: ${url}. Error: ${error}`);
+    }
 
     if (!response.ok) {
+      console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
@@ -120,15 +125,16 @@ export async function fetchWithTimeout(url: string) {
             ).toString()}`
           );
         }
-      } else if (href) {
-        // Update the href attribute for other links
-        a.setAttribute(
-          "href",
-          `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(
-            href,
-            url
-          ).toString()}`
-        );
+        // this should only be activated if the page is completely loaded and not parsed
+      // } else if (href) {
+      //   // Update the href attribute for other links
+      //   a.setAttribute(
+      //     "href",
+      //     `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(
+      //       href,
+      //       url
+      //     ).toString()}`
+      //   );
       }
     });
 
@@ -137,15 +143,16 @@ export async function fetchWithTimeout(url: string) {
       status: response.status,
     });
   } catch (err) {
-    clearTimeout(id);
+    // clearTimeout(id);
 
     // Check for AbortError before transforming the error
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("Request timed out");
-    }
+    // if (err instanceof Error && err.name === "AbortError") {
+    //   throw new Error("Request timed out");
+    // }
 
     const error = safeError(err);
     // Now, 'error' is the transformed error, so use its properties
     throw new Error(`Error fetching URL: ${error.message}`);
   }
 }
+
