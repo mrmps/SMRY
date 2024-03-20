@@ -1,24 +1,24 @@
 import { Configuration, OpenAIApi } from "openai-edge";
-import { OpenAIStream } from "ai";
 import { kv } from "@vercel/kv";
-import { Tokens } from "ai/react";
+import { Tokens } from "@/components/tokens";
 import { Suspense } from "react";
-import Image from "next/image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { encode, decode } from "gpt-tokenizer";
 import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
 import ArrowTabs from "@/components/arrow-tabs";
 import { ArticleContent } from "@/components/article-content";
-export const runtime = "edge";
-import { Source, getData } from "@/lib/data";
+import { getData } from "@/lib/data";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
 import { ResponsiveDrawer } from "@/components/responsiveDrawer";
+import {
+  GoogleGenerativeAI,
+} from "@google/generative-ai";
+import ReactMarkdown from "react-markdown";
+import gfm from "remark-gfm"; // GitHub flavored markdown
 
-const apiConfig = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+export const runtime = "edge";
 
 type Article = {
   title: string;
@@ -89,32 +89,6 @@ export default async function Page({
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
-            {/* <div
-              className="tokens my-10 shadow-sm border-zinc-100 border flex border-collapse text-[#111111] text-base font-normal list-none text-left visible overflow-auto rounded-lg bg-[#f9f9fb]"
-              style={{
-                animationDuration: "0.333s",
-                animationFillMode: "forwards",
-                animationTimingFunction: "cubic-bezier(0, 0, 0, 1)",
-                fontFamily:
-                  '-apple-system, Roboto, SegoeUI, "Segoe UI", "Helvetica Neue", Helvetica, "Microsoft YaHei", "Meiryo UI", Meiryo, "Arial Unicode MS", sans-serif',
-              }}
-            >
-              <div className="p-6 w-full grid">
-                <ResponsiveDrawer>
-                  <Suspense
-                    key={"summary"}
-                    fallback={
-                      <Skeleton
-                        className="h-32 rounded-lg animate-pulse bg-zinc-200"
-                        style={{ width: "100%" }}
-                      />
-                    }
-                  >
-                    <Wrapper ip={ip} url={url} />
-                  </Suspense>
-                </ResponsiveDrawer>
-              </div>
-            </div> */}
             <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
               <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
                 Get AI-powered key points
@@ -129,7 +103,9 @@ export default async function Page({
                     />
                   }
                 >
-                  <Wrapper ip={ip} url={url} />
+                  <div className="remove-all">
+                    <Wrapper ip={ip} url={url} />
+                  </div>
                 </Suspense>
               </ResponsiveDrawer>
             </div>
@@ -268,79 +244,55 @@ async function Wrapper({ url, ip }: { url: string; ip: string }) {
   }
 
   try {
-    const tokenLimit = 2900;
+    const tokenLimit = 25000;
     const tokens = encode(prompt).splice(0, tokenLimit);
     const decodedText = decode(tokens);
 
-    // const response = await fetch("https://api.perplexity.ai/chat/completions", {
-    //   method: "POST",
-    //   headers: {
-    //     Accept: "application/json",
-    //     "Content-Type": "application/json",
-    //     Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-    //   },
-    //   body: JSON.stringify({
-    //     model: pickRandomModel(),
-    //     stream: true,
-    //     max_tokens: 580,
-    //     frequency_penalty: 1,
-    //     temperature: 1,
-    //     messages: [
-    //       {
-    //         role: "system",
-    //         content: "Be precise and concise in your responses.",
-    //       },
-    //       {
-    //         role: "user",
-    //         content: decodedText,
-    //       },
-    //     ],
-    //   }),
-    // });
-
-    const response = await fetchWithRetry(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "huggingfaceh4/zephyr-7b-beta:free",
-          stream: true,
-          max_tokens: 580,
-          frequency_penalty: 1,
-          temperature: 1,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an AI summarizer specializing in summarizing articles in a digestable way. Be precise and concise in your responses.",
-            },
-            {
-              role: "user",
-              content: decodedText,
-            },
-          ],
-        }),
-      }
-    );
-
-    // Convert the response into a friendly text-stream
-    const stream = OpenAIStream(response, {
-      async onCompletion(completion) {
-        await kv.set(url, completion);
-        // await kv.expire(prompt, 60 * 10);
-      },
-    });
-
-    if (!response.ok) {
-      return "Well this sucks. Looks like I ran out of money to pay for summaries. Please be patient until a benevolent sponsor gives me either cash or sweet sweet OpenAI credits. If you would like to be that sponsor, feel free to reach out to contact@smry.ai!";
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("Missing GEMINI_API_KEY in environment variables.");
     }
 
-    return <Tokens stream={stream} />;
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    // const response = model.generateContent([decodedText + "\n\nSummarize the above, give me easily digestible key points. Use a numbered list to convey points. Start at 1."])
+
+    // const geminiStream = await model.generateContentStream([decodedText + "\n\nSummarize the above, give me easily digestible key points. Use a numbered list to convey points. Start at 1."])
+
+    // // Convert the response into a friendly text-stream
+    // const stream = GoogleGenerativeAIStream(geminiStream);
+
+    const gemini = await model.generateContent([
+      decodedText +
+        "\n\nSummarize the above, give me easily digestible key points.",
+    ]);
+
+    console.log(gemini.response.text());
+
+    const renderList = (tag: string, props: any, isNested: boolean) => {
+      const Tag = tag; // 'ul' or 'ol'
+      const baseClass = tag === 'ul' ? 'list-disc' : 'list-decimal';
+      const nestedClass = tag === 'ul' ? 'list-circle' : 'list-decimal';
+      return (
+        <Tag
+          className={`${isNested ? nestedClass : baseClass} list-inside ml-4`}
+          {...props}
+        />
+      );
+    };
+
+    return (
+      <ReactMarkdown className="list-disc" remarkPlugins={[gfm]} components={{
+        // Apply TailwindCSS styles to lists and list items
+        ul: ({node, ...props}) => <ul className="list-disc list-inside" {...props} />,
+        ol: ({node, ...props}) => <ol className="list-decimal list-inside" {...props} />,
+        li: ({node, ...props}) => <li className="ml-4" {...props} />,
+      }}>
+        {gemini.response.text()}
+      </ReactMarkdown>
+    );
+
+    // return <Tokens stream={stream} />;
   } catch (error) {
     return `Well this sucks. Looks like an unexpected error occured, so no summary for this site :( No I won't tell you the error, that is private. Really, you insist? Fine. The error is ${error} Happy?`;
   }
