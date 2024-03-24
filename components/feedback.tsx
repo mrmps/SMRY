@@ -4,7 +4,7 @@ import { track } from '@vercel/analytics';
 import React from "react";
 import { XIcon } from "lucide-react";
 
-const Ad = () => {
+const Feedback = () => {
   const [showAd, setShowAd] = React.useState(true);
   return (
     showAd ? (
@@ -12,7 +12,7 @@ const Ad = () => {
         <div className="mr-4 md:mr-12 px-4 py-2 md:pr-8 bg-stone-100 rounded-lg rounded-b-none border border-stone-300 text-stone-600 text-sm relative">
           <button 
             onClick={() => {
-              track('ad close');
+              track('feedback close');
               setShowAd(false);
             }} 
             className="absolute top-[8px] right-1"
@@ -21,15 +21,14 @@ const Ad = () => {
           </button>
           <h1 className="font-bold">
             smry.ai -{" "}
-            <span className="font-normal">Never get stuck writing again. Checkout{" "}
+            <span className="font-normal">We value your feedback! Please share your thoughts and help us improve.{" "}
             <a
               className="font-bold underline"
-              href="https://myjotbot.com/?aff=smry"
+              href="/feedback"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track('jotbot click')}
             >
-              Jotbot, an AI writing assistant
+              Give Feedback
             </a>
             </span>
           </h1>
@@ -39,4 +38,4 @@ const Ad = () => {
   );
 };
 
-export default Ad;
+export default Feedback;

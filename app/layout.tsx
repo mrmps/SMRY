@@ -18,12 +18,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-[#FAFAFA]">
       {/* <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head> */}
       <body
-        className={GeistSans.className}
+        className={`${GeistSans.className} bg-[#FAFAFA]`}
         // style={{background: "#E5EDF0"}}
         // style={{
         //   background:

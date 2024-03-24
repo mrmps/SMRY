@@ -16,6 +16,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
+import Feedback from "@/components/feedback";
 
 export const runtime = "edge";
 
@@ -83,10 +84,11 @@ export default async function Page({
 
   const sources = ["smry", "wayback", "google"];
 
+  const showAd = Math.random() < 0.5;
+
   return (
     <div className="mt-20">
-      <Ad />
-
+      {showAd ? <Ad /> : <Feedback />}
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">

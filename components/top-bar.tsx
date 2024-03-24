@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import useScroll from "@/lib/use-scroll";
 import ScrollProgress from "./scroll-progress";
+import { ClientOnly } from "./client-only";
 
 const TopBar = () => {
   const [progress, setProgress] = useState(0);
@@ -32,7 +33,7 @@ const TopBar = () => {
       >
         <div className="flex items-center py-5 mx-auto max-w-prose">
           <h2 className="text-xl font-bold text-gray-800">
-            <Link href="/">
+            <a href="/">
               <Image
                 src="/logo.svg"
                 width={150}
@@ -40,7 +41,7 @@ const TopBar = () => {
                 alt="smry logo"
                 className="sm:-ml-4"
               />
-            </Link>
+            </a>
           </h2>
         </div>
         <div

@@ -3,13 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ExclamationCircleIcon,
-  PaperAirplaneIcon as PaperOutline,
   DocumentTextIcon,
   LightBulbIcon,
   ClockIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
-import { PaperAirplaneIcon as PaperSolid } from "@heroicons/react/24/solid";
+import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { CardSpotlight } from "@/components/card-spotlight";
@@ -19,10 +18,10 @@ import Github from "@/components/github";
 import { Fira_Code } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/banner";
 import { SiteFooter } from "@/components/site-footer";
 import { BookmarkletComponent } from "@/components/bookmarklet";
+import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
 
 const fira = Fira_Code({
@@ -68,8 +67,7 @@ export default function Home() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-white bg-[radial-gradient(100%_50%_at_50%_0%,rgba(0,163,255,0.13)_0,rgba(0,163,255,0)_50%,rgba(0,163,255,0)_100%)]">
-
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-[#FAFAFA]">
         <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
           <a
             className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-100 mb-10 mr-4"
@@ -94,18 +92,13 @@ export default function Home() {
             <div
               className={`${
                 urlError ? "border-red-500" : ""
-              } flex rounded-lg overflow-hidden bg-[#1C1C1C] backdrop-blur-lg`}
-              style={{
-                border: "1px solid rgba(0,0,0,0.15)",
-                boxShadow:
-                  "rgba(0, 0, 0, 0.1) 0px 2px 6px 0px, rgba(0, 0, 0, 0.08) 0px 8px 16px 0px",
-              }}
+              } flex rounded-lg overflow-hidden bg-white shadow-sm border border-[#E5E5E5] focus-within:ring-offset-0 focus-within:ring-4 focus-within:ring-purple-200 focus-within:border-purple-500`}
             >
               <input
-                className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none text-white shadow-lg"
+                className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none shadow-lg p-4"
                 ref={inputRef}
                 autoComplete="off"
-                placeholder="https://example.com/article"
+                placeholder="https://example.com/page"
                 name="url"
                 value={url}
                 onChange={(e) => {
@@ -114,28 +107,42 @@ export default function Home() {
                 }}
               />
               <button
-                className="px-4 py-2 font-mono transition-all duration-300 ease-in-out rounded-r-lg cursor-pointer shadow-sm"
+                className="px-4 py-2 font-mono transition-all duration-300 ease-in-out rounded-r-lg cursor-pointer"
                 type="submit"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
               >
                 {/* Icon here */}
 
-                <PaperSolid
-                  className={clsx(
-                    "w-5 h-5 transition-transform duration-300 ease-in-out",
-                    {
-                      "text-white transform rotate-6 scale-110": isHovered,
-                      "text-gray-200": isValidUrl(url),
-                      "text-gray-500": !isValidUrl(url),
-                    }
-                  )}
-                />
+                <div className="hidden sm:block">
+                  <CornerDownLeft
+                    className={clsx(
+                      "w-4 h-4 transition-transform duration-300 ease-in-out",
+                      {
+                        "text-black transform scale-110": isHovered,
+                        "text-gray-800": isValidUrl(url),
+                        "text-gray-400": !isValidUrl(url),
+                      }
+                    )}
+                  />
+                </div>
+                <div className="sm:hidden">
+                  <PaperAirplaneIcon
+                    className={clsx(
+                      "w-5 h-5 transition-transform duration-300 ease-in-out",
+                      {
+                        "text-black transform scale-110": isHovered,
+                        "text-purple-500": isValidUrl(url),
+                        "text-gray-400": !isValidUrl(url),
+                      }
+                    )}
+                  />
+                </div>
               </button>
             </div>
           </form>
           <h2 className="w-full text-center text-stone-700 mt-4">
-            Read any online article and instantly get the{" "}
+            Remove paywalls, ads, and popups from any website and instantly get the{" "}
             <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
               <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">
                 summary.
@@ -214,7 +221,7 @@ export default function Home() {
         </div>
       </main>
 
-      <div className="container flex-1">
+      <div className="container flex-1 bg-[#FAFAFA]">
         <SiteFooter className="border-t" />
       </div>
     </>
