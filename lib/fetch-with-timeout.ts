@@ -21,7 +21,7 @@ export async function fetchWithTimeout(url: string) {
       },
     };
 
-    if (url.includes("googlecache") || url.includes("archive.is")) {
+    if (url.includes("googlecache") || !url.includes("archive.org")) { //TODO this is clunky. is a proxy really necessary for all requests?
       const proxyURL = process.env.PROXY_URL;
 
       if (!proxyURL) {

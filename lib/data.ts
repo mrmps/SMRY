@@ -21,7 +21,7 @@ export async function getData(url: string, source: Source) {
         article: undefined,
         status: res.status.toString(),
         error: res.statusText,
-        cacheURL: url
+        cacheURL: url // TODO this probably wrong, should be based on source
       } as ResponseItem;
       // throw new Error(`Error fetching data: ${res.statusText} for ${url} from ${source}`);
     }

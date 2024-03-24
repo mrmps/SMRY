@@ -52,8 +52,8 @@ export async function GET(request: Request) {
 
       return new Response(
         JSON.stringify({
-          url: urlWithSource,
-          cacheURL: url,
+          url: url,
+          cacheURL: urlWithSource,
           error: `HTTP error! status: ${response.status}`,
           status: "error",
           contentLength: 0,
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
 
     const resp = {
       source,
-      cacheURL: url,
+      cacheURL: urlWithSource,
       article,
       status: "success",
       contentLength: article?.content.length || 0,

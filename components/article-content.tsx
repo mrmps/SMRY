@@ -46,6 +46,7 @@ export const ArticleContent = async ({ url, source }: ArticleContentProps) => {
             </div>
             <div className="flex items-center mt-4 ml-4 space-x-1.5">
               <Link1Icon className="w-4 h-4 text-gray-600" />
+              {JSON.stringify(content)}
               <a
                 href={decodeURIComponent(content.cacheURL) ?? ""}
                 target="_blank"
