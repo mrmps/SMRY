@@ -1,7 +1,7 @@
 
 import { track } from "@vercel/analytics/server";
 import { ResponseItem } from "@/app/proxy/page";
-import { getUrlWithSource } from "@/app/api/direct/route";
+import { getUrlWithSource } from "@/lib/get-url-with-source";
 export type Source = "direct" | "google" | "wayback";
 
 

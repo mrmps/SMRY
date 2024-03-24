@@ -2,6 +2,7 @@ import { Readability } from "@mozilla/readability";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { safeError } from "@/lib/safe-error";
 import jsdom from 'jsdom';
+import { getUrlWithSource } from "@/lib/get-url-with-source";
 
 function createErrorResponse(message: string, status: number, details = {}) {
   return new Response(JSON.stringify({ message, details }), {
@@ -10,29 +11,7 @@ function createErrorResponse(message: string, status: number, details = {}) {
   });
 }
 
-export function getUrlWithSource(source: string, url: string) {
-  let urlWithSource;
-  switch (source) {
-    case "direct":
-      urlWithSource = url;
-      break;
-    case "wayback":
-      urlWithSource = `https://web.archive.org/web/2/${encodeURIComponent(
-        url
-      )}`;
-      break;
-    case "google":
-      const cleanUrl = url.replace(/^https?:\/+/, "");
-      const finalUrl = `https://${cleanUrl}`;
-      urlWithSource = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
-        finalUrl
-      )}`;
-      break;
-    default:
-      throw new Error("Invalid source parameter.");
-  }
-  return urlWithSource;
-}
+
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
