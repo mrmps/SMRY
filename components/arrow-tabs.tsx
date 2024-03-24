@@ -16,7 +16,8 @@ const EnhancedTabsList: React.FC<{
   lengthGoogle: React.ReactNode;
   lengthWayback: React.ReactNode;
   lengthDirect: React.ReactNode;
-}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthGoogle, lengthWayback }) => {
+  lengthArchive: React.ReactNode;
+}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthGoogle, lengthWayback, lengthArchive }) => {
   const tabsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToActiveTab = useCallback(() => {
@@ -76,6 +77,9 @@ const EnhancedTabsList: React.FC<{
         break;
       case "google":
         content = lengthGoogle;
+        break;
+      case "archive":
+        content = lengthArchive;
         break;
       default:
         content = null;
@@ -178,9 +182,11 @@ interface TabProps {
   innerHTMLGoogle: React.ReactNode;
   innerHTMLWayback: React.ReactNode;
   innerHTMLDirect: React.ReactNode;
+  innerHTMLArchive: React.ReactNode;
   lengthGoogle: React.ReactNode;
   lengthWayback: React.ReactNode;
   lengthDirect: React.ReactNode;
+  lengthArchive: React.ReactNode;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
@@ -188,9 +194,11 @@ const ArrowTabs: React.FC<TabProps> = ({
   innerHTMLGoogle,
   innerHTMLDirect,
   innerHTMLWayback,
+  innerHTMLArchive,
   lengthDirect,
   lengthGoogle,
-  lengthWayback
+  lengthWayback,
+  lengthArchive,
 }) => {
   const initialTabIndex = 0;
   const [activeTabIndex, setActiveTabIndex] = useState(initialTabIndex);
@@ -208,10 +216,12 @@ const ArrowTabs: React.FC<TabProps> = ({
         lengthDirect={lengthDirect}
         lengthGoogle={lengthGoogle}
         lengthWayback={lengthWayback}
+        lengthArchive={lengthArchive}
       />
       <TabsContent value={"smry"}>{innerHTMLDirect}</TabsContent>
       <TabsContent value={"wayback"}>{innerHTMLWayback}</TabsContent>
       <TabsContent value={"google"}>{innerHTMLGoogle}</TabsContent>
+      <TabsContent value={"archive"}>{innerHTMLArchive}</TabsContent>
     </Tabs>
   );
 };

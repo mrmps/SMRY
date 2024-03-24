@@ -1,6 +1,5 @@
 import { Configuration, OpenAIApi } from "openai-edge";
 import { kv } from "@vercel/kv";
-import { Tokens } from "@/components/tokens";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { encode, decode } from "gpt-tokenizer";
@@ -16,8 +15,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
-import Feedback from "@/components/feedback";
-import { track } from "@vercel/analytics/server";
 
 export const runtime = "edge";
 
@@ -83,7 +80,7 @@ export default async function Page({
     return;
   }
 
-  const sources = ["smry", "wayback", "google"];
+  const sources = ["smry", "wayback", "google", "archive"];
 
   const adSelection = Math.floor(Math.random() * 3);
 
@@ -152,6 +149,11 @@ export default async function Page({
                   <ArticleLength url={url} source={"google"} />
                 </Suspense>
               }
+              lengthArchive={
+                <Suspense key={"archive"} fallback={null}>
+                  <ArticleLength url={url} source={"archive"} />
+                </Suspense>
+              }
               innerHTMLDirect={
                 <Suspense key={"direct"} fallback={<Loading />}>
                   <ArticleContent url={url} source={"direct"} />
@@ -165,6 +167,11 @@ export default async function Page({
               innerHTMLGoogle={
                 <Suspense key={"google"} fallback={<Loading />}>
                   <ArticleContent url={url} source={"google"} />
+                </Suspense>
+              }
+              innerHTMLArchive={
+                <Suspense key={"archive.is"} fallback={<Loading />}>
+                  <ArticleContent url={url} source={"archive"} />
                 </Suspense>
               }
             />
