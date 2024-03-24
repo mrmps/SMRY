@@ -1,6 +1,7 @@
 
 import { track } from "@vercel/analytics/server";
 import { ResponseItem } from "@/app/proxy/page";
+import { getUrlWithSource } from "@/app/api/direct/route";
 export type Source = "direct" | "google" | "wayback";
 
 
@@ -21,7 +22,7 @@ export async function getData(url: string, source: Source) {
         article: undefined,
         status: res.status.toString(),
         error: res.statusText,
-        cacheURL: url // TODO this probably wrong, should be based on source
+        cacheURL: getUrlWithSource(source, url),
       } as ResponseItem;
       // throw new Error(`Error fetching data: ${res.statusText} for ${url} from ${source}`);
     }

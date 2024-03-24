@@ -10,18 +10,7 @@ function createErrorResponse(message: string, status: number, details = {}) {
   });
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const url = searchParams.get("url");
-  const source = searchParams.get("source");
-
-  if (!url) {
-    return createErrorResponse("URL parameter is required.", 400);
-  }
-  if (!source) {
-    return createErrorResponse("Source parameter is required.", 400);
-  }
-
+export function getUrlWithSource(source: string, url: string) {
   let urlWithSource;
   switch (source) {
     case "direct":
@@ -40,8 +29,25 @@ export async function GET(request: Request) {
       )}`;
       break;
     default:
-      return createErrorResponse("Invalid source parameter.", 400);
+      throw new Error("Invalid source parameter.");
   }
+  return urlWithSource;
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const url = searchParams.get("url");
+  const source = searchParams.get("source");
+
+  if (!url) {
+    return createErrorResponse("URL parameter is required.", 400);
+  }
+  if (!source) {
+    return createErrorResponse("Source parameter is required.", 400);
+  }
+
+  const urlWithSource = getUrlWithSource(source, url);
+  
 
   try {
     const response = await fetchWithTimeout(urlWithSource);
