@@ -21,7 +21,7 @@ const Ad = () => {
           </button>
           <h1 className="font-bold">
             smry.ai -{" "}
-            <span className="font-normal">Writing doesn&apos;t have to suck. Checkout{" "}
+            <span className="font-normal">Never get stuck writing again. Checkout{" "}
             <a
               className="font-bold underline"
               href="https://myjotbot.com/?aff=smry"
