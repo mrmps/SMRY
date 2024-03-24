@@ -27,6 +27,7 @@ const Feedback = () => {
               href="/feedback"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track('feedback click')}
             >
               Give Feedback
             </a>
