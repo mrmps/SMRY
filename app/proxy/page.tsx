@@ -12,11 +12,10 @@ import { getData } from "@/lib/data";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
 import { ResponsiveDrawer } from "@/components/responsiveDrawer";
-import {
-  GoogleGenerativeAI,
-} from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
+import Ad from "@/components/ad";
 
 export const runtime = "edge";
 
@@ -86,6 +85,8 @@ export default async function Page({
 
   return (
     <div className="mt-20">
+      <Ad />
+
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
@@ -271,8 +272,8 @@ async function Wrapper({ url, ip }: { url: string; ip: string }) {
 
     const renderList = (tag: string, props: any, isNested: boolean) => {
       const Tag = tag; // 'ul' or 'ol'
-      const baseClass = tag === 'ul' ? 'list-disc' : 'list-decimal';
-      const nestedClass = tag === 'ul' ? 'list-circle' : 'list-decimal';
+      const baseClass = tag === "ul" ? "list-disc" : "list-decimal";
+      const nestedClass = tag === "ul" ? "list-circle" : "list-decimal";
       return (
         <Tag
           className={`${isNested ? nestedClass : baseClass} list-inside ml-4`}
@@ -282,12 +283,20 @@ async function Wrapper({ url, ip }: { url: string; ip: string }) {
     };
 
     return (
-      <ReactMarkdown className="list-disc" remarkPlugins={[gfm]} components={{
-        // Apply TailwindCSS styles to lists and list items
-        ul: ({node, ...props}) => <ul className="list-disc list-inside" {...props} />,
-        ol: ({node, ...props}) => <ol className="list-decimal list-inside" {...props} />,
-        li: ({node, ...props}) => <li className="ml-4" {...props} />,
-      }}>
+      <ReactMarkdown
+        className="list-disc"
+        remarkPlugins={[gfm]}
+        components={{
+          // Apply TailwindCSS styles to lists and list items
+          ul: ({ node, ...props }) => (
+            <ul className="list-disc list-inside" {...props} />
+          ),
+          ol: ({ node, ...props }) => (
+            <ol className="list-decimal list-inside" {...props} />
+          ),
+          li: ({ node, ...props }) => <li className="ml-4" {...props} />,
+        }}
+      >
         {gemini.response.text()}
       </ReactMarkdown>
     );
