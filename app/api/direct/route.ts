@@ -26,7 +26,6 @@ export async function GET(request: Request) {
   }
 
   const urlWithSource = getUrlWithSource(source, url);
-  
 
   try {
     const response = await fetchWithTimeout(urlWithSource);

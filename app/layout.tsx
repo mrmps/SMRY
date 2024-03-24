@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Smry | AI Summarizer and Free Paywall Remover", 
   description:
-    "SMRY, remove paywalls and summarize articles for free with no login. Supports NYT, Washington Post, and thousands more.",
+    "Remove paywalls and summarize articles for free with no login. Supports NYT, Washington Post, and thousands more.",
 };
 
 export default function RootLayout({
