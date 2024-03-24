@@ -17,6 +17,7 @@ import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
 import Feedback from "@/components/feedback";
+import { track } from "@vercel/analytics/server";
 
 export const runtime = "edge";
 
@@ -84,11 +85,32 @@ export default async function Page({
 
   const sources = ["smry", "wayback", "google"];
 
-  const showAd = Math.random() < 0.5;
+  const adSelection = Math.floor(Math.random() * 3);
 
   return (
     <div className="mt-20">
-      {showAd ? <Ad /> : <Feedback />}
+      {adSelection === 0 ? (
+        <Ad
+          onClickTrack="jotbot click"
+          adStart="Never get stuck writing again. Checkout "
+          adEnd="Jotbot, an AI writing assistant"
+          link="https://myjotbot.com/?aff=smry"
+        />
+      ) : adSelection === 1 ? (
+        <Ad
+          onClickTrack="klap click"
+          adStart="Turn your videos into viral shorts with "
+          adEnd="Klap, an AI video editing tool"
+          link="https://klap.app?via=smry"
+        />
+      ) : (
+        <Ad
+          onClickTrack="feedback click"
+          adStart="We value your feedback! Please share your thoughts and help us improve. "
+          adEnd="Give Feedback "
+          link="/feedback"
+        />
+      )}
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
