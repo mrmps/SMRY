@@ -88,10 +88,10 @@ export default async function Page({
     <div className="mt-20">
       {adSelection === 0 ? (
         <Ad
-          onClickTrack="jotbot click"
-          adStart="Never get stuck writing again. Checkout "
-          adEnd="Jotbot, an AI writing assistant"
-          link="https://myjotbot.com/?aff=smry"
+          onClickTrack="stealthwriter click"
+          adStart="Bypass AI detectors. Checkout "
+          adEnd="StealthWriter, an AI writing humanizer"
+          link="https://stealthwriter.ai?via=smry"
         />
       ) : adSelection === 1 ? (
         <Ad
@@ -103,7 +103,7 @@ export default async function Page({
       ) : (
         <Ad
           onClickTrack="feedback click"
-          adStart="We value your feedback! Please share your thoughts and help us improve. "
+          adStart="I value your feedback! Please share your thoughts and help me improve smry.ai :)"
           adEnd="Give Feedback "
           link="/feedback"
         />

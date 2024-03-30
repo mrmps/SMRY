@@ -1,9 +1,20 @@
 import { Readability } from "@mozilla/readability";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import { safeError } from "@/lib/safe-error";
-import jsdom from "jsdom";
+import { JSDOM } from "jsdom";
 import { getUrlWithSource } from "@/lib/get-url-with-source";
-import { parse } from "node-html-parser";
+import { kv } from "@vercel/kv";
+import { z } from 'zod';
+
+const ArticleSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  textContent: z.string(),
+  length: z.number(),
+  siteName: z.string(),
+});
+
+type Article = z.infer<typeof ArticleSchema>;
 
 function createErrorResponse(message: string, status: number, details = {}) {
   return new Response(JSON.stringify({ message, details }), {
@@ -12,34 +23,106 @@ function createErrorResponse(message: string, status: number, details = {}) {
   });
 }
 
+async function saveToRedisIfLonger(key: string, newArticle: Article): Promise<void> {
+  try {
+      const existingArticle = await kv.get(key) as string | undefined;
 
-async function extractSiteContent(html: string) { //TODO make this work
-  console.log("Starting to extract site content...");
+      const existingArticleJson = existingArticle ? ArticleSchema.parse(existingArticle) : null;
 
-  // Parse the HTML string into a DOM object
-  console.log("Parsing HTML string into a DOM object...");
-  const root = parse(html);
-  console.log(root);
-  console.log("HTML string parsed successfully.");
+      // log both lengths
+      console.log(`Existing content length: ${existingArticleJson?.length || 0}`);
+      console.log(`New content length: ${newArticle.length}`);  
 
-  // Select the element that contains the main site content
-  // You can adjust the selector based on the actual class or id used in the HTML
-  console.log("Selecting the element that contains the main site content...");
-  const contentElement = root.querySelector('body');
-
-  if (contentElement) {
-      console.log("Element containing the main site content found.");
-
-      // Serialize the content element back to a string
-      console.log("Serializing the content element back to a string...");
-      const siteContentHtml = contentElement.outerHTML;
-      console.log("Content element serialized successfully.");
-
-      return siteContentHtml;
-  } else {
-      console.log("Element containing the main site content not found.");
-      return 'Site content not found';
+      if (!existingArticleJson || newArticle.length > existingArticleJson?.length) {
+          await kv.set(key, newArticle); // Storing the new article as a stringified JSON under the field
+      } else {
+          console.log(`Existing content for key '${key}' is longer or equal; no update needed.`);
+      }
+  } catch (error) {
+      console.error(`Error accessing Redis for key '${key}'`, error);
   }
+}
+
+
+
+async function fetchArticle(urlWithSource: string, source: string): Promise<Article | null> {
+  if (source === "archive") {
+    // Fetch and process archive source
+    return fetchArchive(urlWithSource);
+  } else {
+    // Process other sources
+    return fetchNonArchive(urlWithSource, source);
+  }
+}
+
+async function fetchArchive(urlWithSource: string): Promise<Article | null> {
+  const options = {
+      method: "GET",
+      headers: { accept: "application/json" },
+  };
+
+  if (!process.env.DIFFBOT_API_KEY) {
+      throw new Error("DIFFBOT_API_KEY is not set");
+  }
+
+  const response = await fetch(
+      `https://api.diffbot.com/v3/article?url=${encodeURIComponent(urlWithSource)}&timeout=60000&token=${process.env.DIFFBOT_API_KEY}`,
+      options
+  );
+  const jsonResponse = await response.json();
+
+  if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const firstObject = jsonResponse.objects[0];
+  const dom = new JSDOM(firstObject.html);
+  const document = dom.window.document;
+
+  // Select the figure element containing the specific a element and remove it
+  const figures = document.querySelectorAll('figure');
+  let found = false;  // Flag to check if the matching figure is found and removed
+  figures.forEach(figure => {
+      if (!found && figure.querySelector('a[href="https://archive.is/o/qEVRl/https://www.economist.com/1843/"]')) {
+          figure.remove();
+          found = true;  // Set the flag to true after removing the matching figure
+      }
+  });
+  
+
+  const content = document.body.innerHTML; // Get the modified HTML content
+
+  return ArticleSchema.parse({
+      title: firstObject.title || '',
+      content: content, // Use the modified content
+      textContent: firstObject.text || '',
+      length: content.length, // Update the length based on the modified content
+      siteName: new URL(urlWithSource).hostname,
+  });
+}
+
+async function fetchNonArchive(urlWithSource: string, source: string): Promise<Article | null> {
+    const response = await fetchWithTimeout(urlWithSource);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const doc = new JSDOM(html).window.document;
+    const reader = new Readability(doc);
+    const articleData = reader.parse();
+
+    if (articleData) {
+        return ArticleSchema.parse({
+            title: articleData.title,
+            content: articleData.content,
+            textContent: articleData.textContent,
+            length: articleData.textContent.length,
+            siteName: new URL(urlWithSource).hostname,
+        });
+    }
+
+    return null;
 }
 
 export async function GET(request: Request) {
@@ -57,128 +140,52 @@ export async function GET(request: Request) {
   const urlWithSource = getUrlWithSource(source, url);
 
   try {
-    let html: string;
+    if (source === 'direct') {
+      const cachedArticleJson = await kv.get(url); // Assuming this returns a JSON string
+      console.log("Found article in cache:", cachedArticleJson);
 
-    console.log("fetching: " + source + " " + urlWithSource);
+      if (cachedArticleJson) {
+        const article = ArticleSchema.parse(cachedArticleJson);
 
-    if (source === "archive") {
-      const options = {
-        method: "GET",
-        headers: { accept: "application/json" },
-      };
-
-      console.log('archive url', `https://api.diffbot.com/v3/article?url=${encodeURIComponent(urlWithSource)}&timeout=60000&token=7fb6f2086d9ec3a851721e3df2300ebe`)
-
-      if (!process.env.DIFFBOT_API_KEY) {
-        throw new Error("DIFFBOT_API_KEY is not set");
-      }
-
-      const reponse = await fetch(
-        `https://api.diffbot.com/v3/article?url=${encodeURIComponent(urlWithSource)}&timeout=60000&token=${process.env.DIFFBOT_API_KEY}`,
-        options
-      )
-        .then((response) => response.json())
-
-      //   (property) article: {
-      //     title: string;
-      //     content: string;
-      //     textContent: string;
-      //     length: number;
-      //     excerpt: string;
-      //     byline: string;
-      //     dir: string;
-      //     siteName: string;
-      //     lang: string;
-      // } | null
-
-      let firstObject = reponse.objects[0]
-
-      console.log(firstObject, "firstObject");
-
-      const article = {
-        title: firstObject?.title || '',
-        content: firstObject?.html || '',
-        textContent: firstObject?.text || '',
-        length: firstObject?.text.length || 0,
-        siteName: url.split("/")[2],
-      }
-
-      console.log(article, "article");
-
-      return new Response(
-        JSON.stringify({
-          source,
-          cacheURL: urlWithSource,
+        const responseObj = {
+          source, 
+          cacheUrl: url,
           article: article,
           status: "success",
-          contentLength: firstObject?.text.length || 0,
-        }),
-        {
+          contentLength: article.content.length || 0,
+        };
+
+        return new Response(JSON.stringify(responseObj), {
           headers: { "Content-Type": "application/json" },
           status: 200,
-        }
-      )
-
-      // html = uncleanedHtml as string ? await extractSiteContent(uncleanedHtml) : '';
-
-      // console.log("cleaned html: " + html);
-
-    } else {
-      const response = await fetchWithTimeout(urlWithSource);
-      html = response.ok ? await response.text() : '';
-      if (!response.ok) {
-        //   throw new Error(`HTTP error! status: ${response.status}`);
-        console.log(
-          `HTTP error! status: ${
-            response.status
-          } url: ${urlWithSource} statusText: ${JSON.stringify(
-            response.statusText
-          )}`
-        );
-  
-        return new Response(
-          JSON.stringify({
-            url: url,
-            cacheURL: urlWithSource,
-            error: `HTTP error! status: ${response.status}`,
-            status: "error",
-            contentLength: 0,
-          }),
-          {
-            headers: { "Content-Type": "application/json" },
-            status: response.status,
-          }
-        );
+        });
       }
     }
 
-  
+    const article = await fetchArticle(urlWithSource, source);
+    if (!article) {
+      return createErrorResponse("Failed to parse article content.", 500);
+    }
 
-  
-    const { JSDOM } = jsdom;
-    const virtualConsole = new jsdom.VirtualConsole();
-    virtualConsole.on("error", () => {
-      // No-op to skip console errors.
-    });
-    const doc = new JSDOM(html, { virtualConsole });
+    const parsedArticle = ArticleSchema.parse(article);
 
-    const reader = new Readability(doc.window.document);
-    const article = reader.parse();
+    await saveToRedisIfLonger(url, parsedArticle);
 
-    const resp = {
-      source,
-      cacheURL: urlWithSource,
-      article,
-      status: "success",
-      contentLength: article?.content.length || 0,
-    };
-
-    return new Response(JSON.stringify(resp), {
-      headers: { "Content-Type": "application/json" },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        source,
+        cacheURL: urlWithSource,
+        article: parsedArticle,
+        status: "success",
+        contentLength: article.length,
+      }),
+      {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (error) {
     const err = safeError(error);
-    return createErrorResponse(err.message, err.status, { sourceUrl: url });
+    return createErrorResponse(err.message, err.status || 500, { sourceUrl: url });
   }
 }

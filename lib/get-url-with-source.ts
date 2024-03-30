@@ -20,7 +20,7 @@ export function getUrlWithSource(source: string, url: string) {
         urlWithSource = `http://archive.is/latest/${encodeURIComponent(url)}`;
         break;
       default:
-        throw new Error("Invalid source parameter.");
+        throw new Error(`Invalid source parameter: ${source}`);
     }
     return urlWithSource;
   }
