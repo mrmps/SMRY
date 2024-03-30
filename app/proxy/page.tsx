@@ -17,6 +17,7 @@ import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
 
 export const runtime = "edge";
+export const dynamic = 'force-dynamic'
 
 type Article = {
   title: string;
