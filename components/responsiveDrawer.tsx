@@ -1,18 +1,8 @@
 "use client";
 
 import * as React from "react";
-
-import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Drawer,
   DrawerClose,
@@ -25,10 +15,8 @@ import {
 } from "@/components/ui/drawer";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -58,21 +46,6 @@ export function ResponsiveDrawer({ children }: { children: React.ReactNode }) {
           <div className="mt-4">{children}</div>
         </SheetContent>
       </Sheet>
-
-      // <Dialog open={open} onOpenChange={setOpen}>
-      //     <DialogTrigger asChild>
-      //     <Button className="bg-purple-200 text-purple-700 py-2 rounded-full hover:bg-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-opacity-50">
-      //         Generate
-      //     </Button>
-      //     </DialogTrigger>
-      //     <DialogContent className="sm:max-w-[425px]">
-      //     <DialogHeader>
-      //         <DialogTitle>Key Points From Page</DialogTitle>
-      //         <DialogDescription>Generative AI is Experimental</DialogDescription>
-      //     </DialogHeader>
-      //     {children}
-      //     </DialogContent>
-      // </Dialog>
     );
   }
 

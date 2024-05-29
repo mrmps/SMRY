@@ -5,9 +5,6 @@ import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import React from "react";
-import { count } from "console";
-import {convert} from 'html-to-text'
-import ReactDOMServer from 'react-dom/server';
 
 const EnhancedTabsList: React.FC<{
   sources: TabProps["sources"];
@@ -132,7 +129,7 @@ const EnhancedTabsList: React.FC<{
           {sources.map((source, index) => (
             <TabsTrigger key={index} value={source}>
               <span>
-            {source} 
+            {source === 'archive' ? 'archive (slow but best)' : source}
               {getSourceLength(source)}
           </span>
             </TabsTrigger>

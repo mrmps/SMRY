@@ -1,3 +1,4 @@
+
 import { Configuration, OpenAIApi } from "openai-edge";
 import { kv } from "@vercel/kv";
 import { Suspense } from "react";
@@ -112,7 +113,7 @@ export default async function Page({
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
-            <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
+            {/* <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
               <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
                 Get AI-powered key points
               </h2>
@@ -131,7 +132,7 @@ export default async function Page({
                   </div>
                 </Suspense>
               </ResponsiveDrawer>
-            </div>
+            </div> */}
 
             <ArrowTabs
               sources={sources}
@@ -227,7 +228,7 @@ async function Wrapper({ url, ip }: { url: string; ip: string }) {
 
   const cached = (await kv.get(url)) as string | undefined;
 
-  if (cached) {
+  if (cached && cached.length > 200) {
     console.log("cached");
     return cached;
   }
