@@ -72,6 +72,9 @@ async function fetchArchive(urlWithSource: string): Promise<Article | null> {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
+  if (!jsonResponse.objects || jsonResponse.objects.length === 0) {
+    throw new Error("No objects found in the jsonResponse");
+  }
   const firstObject = jsonResponse.objects[0];
   const dom = new JSDOM(firstObject.html);
   const document = dom.window.document;
@@ -80,10 +83,11 @@ async function fetchArchive(urlWithSource: string): Promise<Article | null> {
   let found = false;
   figures.forEach((figure) => {
     if (
-      !found &&
-      figure.querySelector(
-        'a[href="https://archive.is/o/qEVRl/https://www.economist.com/1843/"]'
-      )
+      !found 
+      // &&
+      // figure.querySelector(
+      //   'a[href="https://archive.is/o/qEVRl/https://www.economist.com/1843/"]'
+      // )
     ) {
       figure.remove();
       found = true;
