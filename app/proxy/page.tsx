@@ -16,7 +16,7 @@ import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
 
-export const dynamic = 'force-dynamic'
+// export const dynamic='force-dynamic';
 
 type Article = {
   title: string;
@@ -45,7 +45,7 @@ export default async function Page({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const headersList = headers();
-  const ip = headersList.get("x-real-ip") || "default_ip";
+  // const ip = headersList.get("x-real-ip") || "default_ip";
 
   const url =
     typeof searchParams["url"] === "string" ? searchParams["url"] : null;
