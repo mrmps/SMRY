@@ -70,7 +70,7 @@ async function fetchArchive(urlWithSource: string): Promise<Article | null> {
   );
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw new Error(`HTTP error! status: ${response.status}` + response.statusText + response.body);
   }
 
   const jsonResponse = await response.json();

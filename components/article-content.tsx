@@ -58,7 +58,7 @@ export const ArticleContent = async ({ url, source }: ArticleContentProps) => {
                 rel="noreferrer"
                 className="text-gray-600 hover:text-gray-400 transition"
               >
-                {content.source}
+                {content.cacheURL}
               </a>
             </div>
           </div>

@@ -30,6 +30,9 @@ export async function getData(url: string, source: Source): Promise<ResponseItem
             `${process.env.NEXT_PUBLIC_URL}/api/direct?url=${encodeURIComponent(url)}&source=${source}`
         );
 
+        console.log(`Fetching data with URL: ${url}`);
+        console.log(`API response: ${JSON.stringify(res, null, 2)}`);
+
         if (!res.ok) {
             // const data = await res.json();
             // return createErrorResponse(
