@@ -9,7 +9,7 @@ import { ResponseItem } from "@/app/proxy/page";
 import { GlobeAltIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "./ui/skeleton";
-import { Link1Icon } from "@radix-ui/react-icons";
+import { LinkIcon } from "@heroicons/react/24/outline";
 import { Source, getData } from "@/lib/data";
 import ShareButton from "./share-button";
 
@@ -50,7 +50,7 @@ export const ArticleContent = async ({ url, source }: ArticleContentProps) => {
               </a>
             </div>
             <div className="flex items-center mt-4 ml-4 space-x-1.5">
-              <Link1Icon className="w-4 h-4 text-gray-600" />
+              <LinkIcon className="w-4 h-4 text-gray-600" />
               <a
                 href={decodeURIComponent(content.cacheURL) ?? ""}
                 target="_blank"

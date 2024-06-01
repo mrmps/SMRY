@@ -27,7 +27,9 @@ export function createErrorResponse(
 export async function getData(url: string, source: Source): Promise<ResponseItem | any> {
     try {
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_URL}/api/direct?url=${encodeURIComponent(url)}&source=${source}`
+            `${process.env.NEXT_PUBLIC_URL}/api/direct?url=${encodeURIComponent(url)}&source=${source}`, {
+              cache: 'no-store',
+            }
         );
 
         if (!res.ok) {
