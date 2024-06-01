@@ -31,25 +31,37 @@ export async function getData(url: string, source: Source): Promise<ResponseItem
         );
 
         if (!res.ok) {
-            const data = await res.json();
-            return createErrorResponse(
-                "Failed to fetch data " + res.statusText + JSON.stringify(res.body) + JSON.stringify(data),
-                500,
-                { cacheURL: getUrlWithSource(source, url) }
-            )
             // const data = await res.json();
-            // return {
-            //     ...data,
-            // }
+            // return createErrorResponse(
+            //     "Failed to fetch data " + res.statusText + JSON.stringify(res.body) + JSON.stringify(data),
+            //     500,
+            //     { cacheURL: getUrlWithSource(source, url) }
+            // )
+            const data = await res.json();
+            return {
+                ...data,
+            }
         }
 
         return await res.json();
     } catch (error) {
-        return createErrorResponse(
-            "Failed to fetch data",
-            500,
-            { cacheURL: getUrlWithSource(source, url) }
-        );
+        console.error(error);
+        //return an example response
+        return {
+            source: "error",
+            article: undefined,
+            status: "500",
+            error: "Failed to fetch data",
+            cacheURL: getUrlWithSource(source, url),
+            details: {
+                error: error
+            }
+        }
+        // return createErrorResponse(
+        //     "Failed to fetch data",
+        //     500,
+        //     { cacheURL: getUrlWithSource(source, url) }
+        // );
     }
 }
   
