@@ -41,6 +41,9 @@ dependencies:
   '@vercel/analytics':
     specifier: ^1.2.2
     version: 1.2.2(next@15.0.0-rc.0)(react@19.0.0-rc-38e3b23483-20240529)
+  '@vercel/functions':
+    specifier: ^1.0.2
+    version: 1.0.2
   '@vercel/kv':
     specifier: ^1.0.1
     version: 1.0.1
@@ -1583,6 +1586,11 @@ packages:
       next: 15.0.0-rc.0(react-dom@19.0.0-rc-38e3b23483-20240529)(react@19.0.0-rc-38e3b23483-20240529)
       react: 19.0.0-rc-38e3b23483-20240529
       server-only: 0.0.1
+    dev: false
+
+  /@vercel/functions@1.0.2:
+    resolution: {integrity: sha512-j3udyHOv/05Y8o3WQ/ANMWa1aYagsY5B3ouImiwgYsz5z4CBUHTY5dk74oQAXYr+bgoVDpdDlmxkpnxGzKEdLQ==}
+    engines: {node: '>= 16'}
     dev: false
 
   /@vercel/kv@1.0.1:

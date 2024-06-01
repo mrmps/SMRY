@@ -15,6 +15,7 @@ import { Readability } from "@mozilla/readability";
 import showdown from "showdown";
 import { kv } from "@vercel/kv";
 import { z } from "zod";
+import { waitUntil } from "@vercel/functions";
 
 const converter = new showdown.Converter();
 
@@ -165,6 +166,8 @@ export const getData = async (
       const article = ArticleSchema.parse(cachedArticleJson);
 
       if (article.length > 4000) {
+        // Update cache in the background
+        waitUntil(updateCache(urlWithSource, cacheKey, source));
         return {
           source,
           cacheURL: urlWithSource,
@@ -179,36 +182,116 @@ export const getData = async (
       }
     }
 
-    const article = await fetchArticle(urlWithSource, source);
+    // If no valid cache or need to fetch new data
+    return await fetchAndUpdateCache(urlWithSource, cacheKey, source);
 
-    if (!article || !article.article) {
-      throw new Error("Article data is not available.");
-    }
+  } catch (error: any) {
+    const urlWithSource = getUrlWithSource(source, url);
+    return createErrorResponse(error.message, 500, { cacheURL: urlWithSource });
+  }
+};
 
-    const longerArticle = await saveOrReturnLongerArticle(cacheKey, {
+// Helper function to update cache
+const updateCache = async (urlWithSource: string, cacheKey: string, source: Source) => {
+  const article = await fetchArticle(urlWithSource, source);
+  if (article && article.article) {
+    await saveOrReturnLongerArticle(cacheKey, {
       title: article.article.title || "",
       content: article.article.content || "",
       textContent: article.article.textContent || "",
       length: article.article.length || 0,
       siteName: article.article.siteName || "",
     });
-
-    return {
-      source,
-      cacheURL: urlWithSource,
-      article: {
-        ...longerArticle,
-        byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-        dir: "", // Directionality, keep as empty if not applicable
-        lang: "", // Language, keep as empty if not known
-      },
-      status: "success",
-    };
-  } catch (error: any) {
-    const urlWithSource = getUrlWithSource(source, url);
-    return createErrorResponse(error.message, 500, { cacheURL: urlWithSource });
   }
 };
+
+// Helper function to fetch and update cache if needed
+const fetchAndUpdateCache = async (urlWithSource: string, cacheKey: string, source: Source) => {
+  const article = await fetchArticle(urlWithSource, source);
+
+  if (!article || !article.article) {
+    throw new Error("Article data is not available.");
+  }
+
+  const longerArticle = await saveOrReturnLongerArticle(cacheKey, {
+    title: article.article.title || "",
+    content: article.article.content || "",
+    textContent: article.article.textContent || "",
+    length: article.article.length || 0,
+    siteName: article.article.siteName || "",
+  });
+
+  return {
+    source,
+    cacheURL: urlWithSource,
+    article: {
+      ...longerArticle,
+      byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
+      dir: "", // Directionality, keep as empty if not applicable
+      lang: "", // Language, keep as empty if not known
+    },
+    status: "success",
+  };
+};
+
+// export const getData = async (
+//   url: string,
+//   source: Source
+// ): Promise<ResponseItem> => {
+//   try {
+//     const urlWithSource = getUrlWithSource(source, url);
+//     const cacheKey = `${source}:${url}`;
+
+//     let cachedArticleJson: string | null = null;
+//     cachedArticleJson = await kv.get(cacheKey);
+//     if (cachedArticleJson) {
+//       const article = ArticleSchema.parse(cachedArticleJson);
+
+//       if (article.length > 4000) {
+//         return {
+//           source,
+//           cacheURL: urlWithSource,
+//           article: {
+//             ...article,
+//             byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
+//             dir: "", // Directionality, keep as empty if not applicable
+//             lang: "", // Language, keep as empty if not known
+//           },
+//           status: "success",
+//         };
+//       }
+//     }
+
+//     const article = await fetchArticle(urlWithSource, source);
+
+//     if (!article || !article.article) {
+//       throw new Error("Article data is not available.");
+//     }
+
+//     const longerArticle = await saveOrReturnLongerArticle(cacheKey, {
+//       title: article.article.title || "",
+//       content: article.article.content || "",
+//       textContent: article.article.textContent || "",
+//       length: article.article.length || 0,
+//       siteName: article.article.siteName || "",
+//     });
+
+//     return {
+//       source,
+//       cacheURL: urlWithSource,
+//       article: {
+//         ...longerArticle,
+//         byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
+//         dir: "", // Directionality, keep as empty if not applicable
+//         lang: "", // Language, keep as empty if not known
+//       },
+//       status: "success",
+//     };
+//   } catch (error: any) {
+//     const urlWithSource = getUrlWithSource(source, url);
+//     return createErrorResponse(error.message, 500, { cacheURL: urlWithSource });
+//   }
+// };
 
 const fetchArticle = async (
   urlWithSource: string,
@@ -224,23 +307,33 @@ const fetchArticle = async (
 
   if (source === "jina.ai") {
     const markdown = await response.text();
-    // Optionally, parse markdown to extract title or other metadata here
-    const title = "No Title"; // Placeholder title, consider extracting from markdown if possible
+    const lines = markdown.split('\n');
+  
+    // Extract title, URL source, and main content based on consistent line positions
+    const title = lines[0].replace('Title: ', '').trim();
+    const urlSource = lines[2].replace('URL Source: ', '').trim();
+    const mainContent = lines.slice(4).join('\n').trim(); // Everything after the 4th line
+  
+    // Convert markdown to HTML
+    const contentHtml = markdownToHtml(mainContent);
+  
     return {
       source,
       cacheURL: urlWithSource,
       article: {
-        title: title, // Use extracted title or a placeholder
-        content: markdownToHtml(markdown), // The markdown content converted to HTML
-        textContent: markdown,
-        length: markdown.length,
-        siteName: new URL(urlWithSource).hostname,
+        title: title,
+        content: contentHtml,
+        textContent: mainContent,
+        length: mainContent.length,
+        siteName: new URL(urlSource).hostname,
         byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
         dir: "", // Directionality, keep as empty if not applicable
         lang: "", // Language, keep as empty if not known
       },
     };
   }
+  
+  
 
   const html = await response.text();
   const doc = new JSDOM(html).window.document;

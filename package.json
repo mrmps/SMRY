@@ -21,6 +21,7 @@
     "@radix-ui/react-tooltip": "^1.0.7",
     "@upstash/ratelimit": "^0.4.4",
     "@vercel/analytics": "^1.2.2",
+    "@vercel/functions": "^1.0.2",
     "@vercel/kv": "^1.0.1",
     "ai": "^3.0.1",
     "class-variance-authority": "^0.7.0",
