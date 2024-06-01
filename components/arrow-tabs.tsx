@@ -10,11 +10,11 @@ const EnhancedTabsList: React.FC<{
   sources: TabProps["sources"];
   activeTabIndex: number;
   setActiveTabIndex: (tabIndex: number) => void;
-  lengthGoogle: React.ReactNode;
+  lengthJina: React.ReactNode;
   lengthWayback: React.ReactNode;
   lengthDirect: React.ReactNode;
   lengthArchive: React.ReactNode;
-}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthGoogle, lengthWayback, lengthArchive }) => {
+}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthJina, lengthWayback, lengthArchive }) => {
   const tabsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToActiveTab = useCallback(() => {
@@ -72,8 +72,8 @@ const EnhancedTabsList: React.FC<{
       case "wayback":
         content = lengthWayback;
         break;
-      case "google":
-        content = lengthGoogle;
+      case "jina.ai":
+        content = lengthJina;
         break;
       case "archive":
         content = lengthArchive;
@@ -180,7 +180,7 @@ interface TabProps {
   innerHTMLWayback: React.ReactNode;
   innerHTMLDirect: React.ReactNode;
   innerHTMLArchive: React.ReactNode;
-  lengthGoogle: React.ReactNode;
+  lengthJina: React.ReactNode;
   lengthWayback: React.ReactNode;
   lengthDirect: React.ReactNode;
   lengthArchive: React.ReactNode;
@@ -193,7 +193,7 @@ const ArrowTabs: React.FC<TabProps> = ({
   innerHTMLWayback,
   innerHTMLArchive,
   lengthDirect,
-  lengthGoogle,
+  lengthJina,
   lengthWayback,
   lengthArchive,
 }) => {
@@ -211,13 +211,13 @@ const ArrowTabs: React.FC<TabProps> = ({
         activeTabIndex={activeTabIndex}
         setActiveTabIndex={setActiveTabIndex}
         lengthDirect={lengthDirect}
-        lengthGoogle={lengthGoogle}
+        lengthJina={lengthJina}
         lengthWayback={lengthWayback}
         lengthArchive={lengthArchive}
       />
       <TabsContent value={"smry"}>{innerHTMLDirect}</TabsContent>
       <TabsContent value={"wayback"}>{innerHTMLWayback}</TabsContent>
-      <TabsContent value={"google"}>{innerHTMLGoogle}</TabsContent>
+      <TabsContent value={"jina.ai"}>{innerHTMLGoogle}</TabsContent>
       <TabsContent value={"archive"}>{innerHTMLArchive}</TabsContent>
     </Tabs>
   );

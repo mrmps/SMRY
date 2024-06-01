@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { ResponseItem } from "@/app/proxy/page";
-import { Source, getData } from "@/lib/data";
+import { Source } from "@/lib/data";
+import { getData } from "./article-content";
 
 interface ArticleLengthProps {
   url: string;
