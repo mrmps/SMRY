@@ -11,13 +11,12 @@ import { ArticleContent } from "@/components/article-content";
 import { getData } from "@/lib/data";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
-import { ResponsiveDrawer } from "@/components/responsiveDrawer";
+// import { ResponsiveDrawer } from "@/components/responsiveDrawer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
 
-export const runtime = "edge";
 export const dynamic = 'force-dynamic'
 
 type Article = {
@@ -78,7 +77,7 @@ export default async function Page({
 
   if (!url) {
     // Handle the case where URL is not provided or not a string
-    console.error("URL parameter is missing or invalid", url, searchParams["url"]);
+    console.error("URL parameter is missing or invalid", url, searchParams["url"], searchParams);
     return;
   }
 

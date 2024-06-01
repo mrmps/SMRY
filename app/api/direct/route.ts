@@ -75,7 +75,7 @@ async function fetchArchive(urlWithSource: string): Promise<Article | null> {
 
   const jsonResponse = await response.json();
 
-  console.log(`API response: ${JSON.stringify(jsonResponse, null, 2)}`);
+  console.log(`API response: ${JSON.stringify(jsonResponse)}, {cacheURL: ${urlWithSource}}, https://api.diffbot.com/v3/article?url=${encodeURIComponent(urlWithSource)}&timeout=60000&token=${process.env.DIFFBOT_API_KEY}`);
 
   if (!jsonResponse.objects || jsonResponse.objects.length === 0) {
     throw new Error("No objects found in the jsonResponse");
@@ -109,61 +109,6 @@ async function fetchArchive(urlWithSource: string): Promise<Article | null> {
   return article;
 }
 
-
-// async function fetchArchive(urlWithSource: string): Promise<Article | null> {
-//   const options = {
-//     method: "GET",
-//     headers: { accept: "application/json" },
-//   };
-
-//   if (!process.env.DIFFBOT_API_KEY) {
-//     throw new Error("DIFFBOT_API_KEY is not set");
-//   }
-
-//   const response = await fetch(
-//     `https://api.diffbot.com/v3/article?url=${encodeURIComponent(
-//       urlWithSource
-//     )}&timeout=60000&token=${process.env.DIFFBOT_API_KEY}`,
-//     options
-//   );
-//   const jsonResponse = await response.json();
-
-//   if (!response.ok) {
-//     throw new Error(`HTTP error! status: ${response.status}`);
-//   }
-
-//   if (!jsonResponse.objects || jsonResponse.objects.length === 0) {
-//     throw new Error("No objects found in the jsonResponse");
-//   }
-//   const firstObject = jsonResponse.objects[0];
-//   const dom = new JSDOM(firstObject.html);
-//   const document = dom.window.document;
-
-//   const figures = document.querySelectorAll("figure");
-//   let found = false;
-//   figures.forEach((figure) => {
-//     if (
-//       !found 
-//       // &&
-//       // figure.querySelector(
-//       //   'a[href="https://archive.is/o/qEVRl/https://www.economist.com/1843/"]'
-//       // )
-//     ) {
-//       figure.remove();
-//       found = true;
-//     }
-//   });
-
-//   const content = document.body.innerHTML;
-
-//   return ArticleSchema.parse({
-//     title: firstObject.title || "",
-//     content: content,
-//     textContent: firstObject.text || "",
-//     length: content.length,
-//     siteName: new URL(urlWithSource).hostname,
-//   });
-// }
 
 async function fetchNonArchive(
   urlWithSource: string,
