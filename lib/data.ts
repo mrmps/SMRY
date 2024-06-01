@@ -32,9 +32,15 @@ export async function getData(url: string, source: Source): Promise<ResponseItem
 
         if (!res.ok) {
             const data = await res.json();
-            return {
-                ...data,
-            }
+            return createErrorResponse(
+                "Failed to fetch data " + res.statusText + JSON.stringify(res.body) + JSON.stringify(data),
+                500,
+                { cacheURL: getUrlWithSource(source, url) }
+            )
+            // const data = await res.json();
+            // return {
+            //     ...data,
+            // }
         }
 
         return await res.json();
