@@ -78,7 +78,7 @@ export default async function Page({
 
   if (!url) {
     // Handle the case where URL is not provided or not a string
-    console.error("URL parameter is missing or invalid");
+    console.error("URL parameter is missing or invalid", url, searchParams["url"]);
     return;
   }
 
