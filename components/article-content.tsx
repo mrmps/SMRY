@@ -170,7 +170,7 @@ export const getData = cache(async (
 
     if (cachedArticleJson) {
       console.log("cachedArticleJson", cachedArticleJson);
-      const article = ArticleSchema.parse(JSON.parse(cachedArticleJson));
+      const article = ArticleSchema.parse(cachedArticleJson);
 
       if (article.length > 4000) {
         // Update cache in the background
