@@ -167,9 +167,10 @@ export const getData = cache(async (
 
     let cachedArticleJson: string | null = null;
     cachedArticleJson = await kv.get(cacheKey);
+
     if (cachedArticleJson) {
       console.log("cachedArticleJson", cachedArticleJson);
-      const article = ArticleSchema.parse(cachedArticleJson);
+      const article = ArticleSchema.parse(JSON.parse(cachedArticleJson));
 
       if (article.length > 4000) {
         // Update cache in the background
@@ -193,11 +194,13 @@ export const getData = cache(async (
 
   } catch (err) {
     const validationError = fromError(err);
-    console.log(validationError.toString());
+    console.error(validationError.toString());
+
     const urlWithSource = getUrlWithSource(source, url);
     return createErrorResponse(validationError.toString(), source, urlWithSource, 500);
   }
 });
+
 
 // Helper function to update cache
 const updateCache = async (urlWithSource: string, cacheKey: string, source: Source) => {
