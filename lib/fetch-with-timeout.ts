@@ -8,9 +8,6 @@ interface CustomFetchOptions extends RequestInit {
 }
 
 export async function fetchWithTimeout(url: string) {
-  // const timeout = 5000; // Timeout in milliseconds
-  // const controller = new AbortController();
-  // const id = setTimeout(() => controller.abort(), timeout);
 
   try {
     // Prepare fetch options
@@ -21,7 +18,7 @@ export async function fetchWithTimeout(url: string) {
       },
     };
 
-    if (url.includes("googlecache")) { //TODO this is clunky. is a proxy really necessary for all requests?
+    if (url.includes("archive.is") || url.includes("web.archive")) { //TODO this is clunky. is a proxy really necessary for all requests?
       const proxyURL = process.env.PROXY_URL;
 
       if (!proxyURL) {
@@ -143,12 +140,6 @@ export async function fetchWithTimeout(url: string) {
       status: response.status,
     });
   } catch (err) {
-    // clearTimeout(id);
-
-    // Check for AbortError before transforming the error
-    // if (err instanceof Error && err.name === "AbortError") {
-    //   throw new Error("Request timed out");
-    // }
 
     const error = safeError(err);
     // Now, 'error' is the transformed error, so use its properties

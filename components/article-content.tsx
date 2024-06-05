@@ -18,6 +18,7 @@ import { z } from "zod";
 import { fromError } from 'zod-validation-error';
 import { waitUntil } from "@vercel/functions";
 import { cache } from 'react'
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 const converter = new showdown.Converter();
 export const revalidate = 3600;
@@ -345,22 +346,5 @@ const getUrlWithSource = (source: Source, url: string): string => {
     case "direct":
     default:
       return url;
-  }
-};
-
-const fetchWithTimeout = async (
-  url: string,
-  timeout = 10000
-): Promise<Response> => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
   }
 };
