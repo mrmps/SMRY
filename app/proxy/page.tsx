@@ -47,13 +47,13 @@ export default async function Page({
   const headersList = headers();
   // const ip = headersList.get("x-real-ip") || "default_ip";
 
-  const url =
-    typeof searchParams["url"] === "string" ? searchParams["url"] : null;
+  // error is here, searchParams are empty in production
+
+  const url = searchParams?.url as string;
 
   if (!url) {
     // Handle the case where URL is not provided or not a string
     console.error("URL parameter is missing or invalid", url, searchParams["url"], searchParams);
-    return;
   }
 
   const sources = ["smry", "archive", "wayback", "jina.ai"];
@@ -87,49 +87,53 @@ export default async function Page({
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
-            <ArrowTabs
-              sources={sources}
-              lengthDirect={
-                <Suspense key={"direct"} fallback={null}>
-                  <ArticleLength url={url} source={"direct"} />
-                </Suspense>
-              }
-              lengthWayback={
-                <Suspense key={"wayback"} fallback={null}>
-                  <ArticleLength url={url} source={"wayback"} />
-                </Suspense>
-              }
-              lengthJina={
-                <Suspense key={"jina.ai"} fallback={null}>
-                  <ArticleLength url={url} source={"jina.ai"} />
-                </Suspense>
-              }
-              lengthArchive={
-                <Suspense key={"archive"} fallback={null}>
-                  <ArticleLength url={url} source={"archive"} />
-                </Suspense>
-              }
-              innerHTMLDirect={
-                <Suspense key={"direct"} fallback={<Loading />}>
-                  <ArticleContent url={url} source={"direct"} />
-                </Suspense>
-              }
-              innerHTMLWayback={
-                <Suspense key={"wayback"} fallback={<Loading />}>
-                  <ArticleContent url={url} source={"wayback"} />
-                </Suspense>
-              }
-              innerHTMLGoogle={
-                <Suspense key={"jina.ai"} fallback={<Loading />}>
-                  <ArticleContent url={url} source={"jina.ai"} />
-                </Suspense>
-              }
-              innerHTMLArchive={
-                <Suspense key={"archive.is"} fallback={<Loading />}>
-                  <ArticleContent url={url} source={"archive"} />
-                </Suspense>
-              }
-            />
+            {url ? (
+              <ArrowTabs
+                sources={sources}
+                lengthDirect={
+                  <Suspense key={"direct"} fallback={null}>
+                    <ArticleLength url={url} source={"direct"} />
+                  </Suspense>
+                }
+                lengthWayback={
+                  <Suspense key={"wayback"} fallback={null}>
+                    <ArticleLength url={url} source={"wayback"} />
+                  </Suspense>
+                }
+                lengthJina={
+                  <Suspense key={"jina.ai"} fallback={null}>
+                    <ArticleLength url={url} source={"jina.ai"} />
+                  </Suspense>
+                }
+                lengthArchive={
+                  <Suspense key={"archive"} fallback={null}>
+                    <ArticleLength url={url} source={"archive"} />
+                  </Suspense>
+                }
+                innerHTMLDirect={
+                  <Suspense key={"direct"} fallback={<Loading />}>
+                    <ArticleContent url={url} source={"direct"} />
+                  </Suspense>
+                }
+                innerHTMLWayback={
+                  <Suspense key={"wayback"} fallback={<Loading />}>
+                    <ArticleContent url={url} source={"wayback"} />
+                  </Suspense>
+                }
+                innerHTMLGoogle={
+                  <Suspense key={"jina.ai"} fallback={<Loading />}>
+                    <ArticleContent url={url} source={"jina.ai"} />
+                  </Suspense>
+                }
+                innerHTMLArchive={
+                  <Suspense key={"archive.is"} fallback={<Loading />}>
+                    <ArticleContent url={url} source={"archive"} />
+                  </Suspense>
+                }
+              />
+            ) : (
+              <Skeleton />
+            )}
           </main>
         </div>
       </div>

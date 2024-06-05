@@ -3,6 +3,8 @@ import { ResponseItem } from "@/app/proxy/page";
 import { Source } from "@/lib/data";
 import { getData } from "./article-content";
 
+export const revalidate = 3600;
+
 interface ArticleLengthProps {
   url: string;
   source: Source;

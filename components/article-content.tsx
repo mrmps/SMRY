@@ -15,9 +15,12 @@ import { Readability } from "@mozilla/readability";
 import showdown from "showdown";
 import { kv } from "@vercel/kv";
 import { z } from "zod";
+import { fromError } from 'zod-validation-error';
 import { waitUntil } from "@vercel/functions";
+import { cache } from 'react'
 
 const converter = new showdown.Converter();
+export const revalidate = 3600;
 
 export type Source = "direct" | "jina.ai" | "wayback" | "archive";
 
@@ -54,7 +57,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = async ({
             <div className="flex items-center mt-4 ml-4 space-x-1.5">
               <GlobeAltIcon className="w-4 h-4 text-gray-600" />
               <a
-                href={url}
+                href={content.cacheURL}
                 target="_blank"
                 rel="noreferrer"
                 className="text-gray-600 hover:text-gray-400 transition"
@@ -122,7 +125,7 @@ const ArticleSchema = z.object({
   title: z.string(),
   content: z.string(),
   textContent: z.string(),
-  length: z.number(),
+  length: z.number().int().positive(),
   siteName: z.string(),
 });
 
@@ -134,6 +137,8 @@ async function saveOrReturnLongerArticle(
 ): Promise<Article> {
   try {
     const existingArticleString = await kv.get(key);
+
+    console.log("existingArticleString", existingArticleString);
     const existingArticle = existingArticleString
       ? ArticleSchema.parse(existingArticleString)
       : null;
@@ -144,15 +149,14 @@ async function saveOrReturnLongerArticle(
     } else {
       return existingArticle;
     }
-  } catch (error) {
-    console.error(`Error accessing Redis for key '${key}'`, error);
-    throw new Error(
-      `Failed to save or return longer article for key '${key}': ${error}`
-    );
+  } catch (err) {
+    const validationError = fromError(err);
+    console.log(validationError.toString());
+    throw validationError;
   }
 }
 
-export const getData = async (
+export const getData = cache(async (
   url: string,
   source: Source
 ): Promise<ResponseItem> => {
@@ -163,6 +167,7 @@ export const getData = async (
     let cachedArticleJson: string | null = null;
     cachedArticleJson = await kv.get(cacheKey);
     if (cachedArticleJson) {
+      console.log("cachedArticleJson", cachedArticleJson);
       const article = ArticleSchema.parse(cachedArticleJson);
 
       if (article.length > 4000) {
@@ -185,11 +190,13 @@ export const getData = async (
     // If no valid cache or need to fetch new data
     return await fetchAndUpdateCache(urlWithSource, cacheKey, source);
 
-  } catch (error: any) {
+  } catch (err) {
+    const validationError = fromError(err);
+    console.log(validationError.toString());
     const urlWithSource = getUrlWithSource(source, url);
-    return createErrorResponse(error.message, 500, { cacheURL: urlWithSource });
+    return createErrorResponse(validationError.toString(), source, urlWithSource, 500);
   }
-};
+});
 
 // Helper function to update cache
 const updateCache = async (urlWithSource: string, cacheKey: string, source: Source) => {
@@ -233,65 +240,6 @@ const fetchAndUpdateCache = async (urlWithSource: string, cacheKey: string, sour
     status: "success",
   };
 };
-
-// export const getData = async (
-//   url: string,
-//   source: Source
-// ): Promise<ResponseItem> => {
-//   try {
-//     const urlWithSource = getUrlWithSource(source, url);
-//     const cacheKey = `${source}:${url}`;
-
-//     let cachedArticleJson: string | null = null;
-//     cachedArticleJson = await kv.get(cacheKey);
-//     if (cachedArticleJson) {
-//       const article = ArticleSchema.parse(cachedArticleJson);
-
-//       if (article.length > 4000) {
-//         return {
-//           source,
-//           cacheURL: urlWithSource,
-//           article: {
-//             ...article,
-//             byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-//             dir: "", // Directionality, keep as empty if not applicable
-//             lang: "", // Language, keep as empty if not known
-//           },
-//           status: "success",
-//         };
-//       }
-//     }
-
-//     const article = await fetchArticle(urlWithSource, source);
-
-//     if (!article || !article.article) {
-//       throw new Error("Article data is not available.");
-//     }
-
-//     const longerArticle = await saveOrReturnLongerArticle(cacheKey, {
-//       title: article.article.title || "",
-//       content: article.article.content || "",
-//       textContent: article.article.textContent || "",
-//       length: article.article.length || 0,
-//       siteName: article.article.siteName || "",
-//     });
-
-//     return {
-//       source,
-//       cacheURL: urlWithSource,
-//       article: {
-//         ...longerArticle,
-//         byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-//         dir: "", // Directionality, keep as empty if not applicable
-//         lang: "", // Language, keep as empty if not known
-//       },
-//       status: "success",
-//     };
-//   } catch (error: any) {
-//     const urlWithSource = getUrlWithSource(source, url);
-//     return createErrorResponse(error.message, 500, { cacheURL: urlWithSource });
-//   }
-// };
 
 const fetchArticle = async (
   urlWithSource: string,
@@ -375,15 +323,15 @@ const fetchArticle = async (
 
 const createErrorResponse = (
   message: string,
+  source: Source,
+  cacheURL: string,
   status: number,
-  details = {}
-) => ({
-  source: "error",
+): ResponseItem => ({
+  source: source,
   article: undefined,
   status: status.toString(),
   error: message,
-  cacheURL: "",
-  details,
+  cacheURL: cacheURL,
 });
 
 const getUrlWithSource = (source: Source, url: string): string => {

@@ -143,7 +143,7 @@ export default function Home() {
           </form>
           <h2 className="w-full text-center text-stone-700 mt-4">
             Remove paywalls, ads, and popups from any website and instantly get the{" "}
-            <Link href="/proxy?url=https://www.nytimes.com/2023/11/11/us/hawaii-kaelia-pond-pink.html">
+            <Link href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091">
               <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">
                 summary.
               </span>
