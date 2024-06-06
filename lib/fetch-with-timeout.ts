@@ -108,10 +108,34 @@ function fixLinks(root: any, url: string) {
   });
 }
 
+async function fetchWithDiffbot(url: string) {
+  if (!process.env.DIFFBOT_API_KEY) {
+    throw new Error("No Diffbot API key configured in environment variables");
+  }
+
+  //https://api.diffbot.com/v3/analyze?url=https%3A%2F%2Farchive.is%2Flatest%2Fhttps%3A%2Fwww.nytimes.com%2F2024%2F06%2F05%2Fnyregion%2Fcongestion-pricing-supporters.html&token=7fb6f2086d9ec3a851721e3df2300ebe
+  const diffbotURL = `https://api.diffbot.com/v3/article?url=${url}&token=${process.env.DIFFBOT_API_KEY}`;
+
+  try {
+    const response = await fetch(diffbotURL);
+    const data = await response.json();
+    const htmlContent = data.objects[0].html;
+    return htmlContent;
+  } catch (error) {
+    console.error(`Failed to fetch from diffbot URL: ${diffbotURL}. Error: ${error}, Diffbot URL: ${diffbotURL}`);
+    throw new Error(`Failed to fetch from diffbot URL: ${diffbotURL}. Error: ${error} Diffbot URL: ${diffbotURL}`);
+  }
+}
+
 export async function fetchWithTimeout(url: string) {
   try {
     const options = await getFetchOptions(url);
-    const html = await fetchHtmlContent(url, options);
+    let html;
+    if (url.includes("archive.is") || url.includes("web.archive.org")) {
+      html = await fetchWithDiffbot(url);
+    } else {
+      html = await fetchHtmlContent(url, options);
+    }
 
     const root = parse(html);
     fixImageSources(root, url);
