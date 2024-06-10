@@ -62,20 +62,28 @@ export default async function Page({
   const adSelection = Math.floor(Math.random() * 3);
 
   return (
+    // removed other ads so that always asking for feedback
     <div className="mt-20">
-      {adSelection === 0 ? (
+      {adSelection === 999 ? (
         <Ad
           onClickTrack="stealthwriter click"
           adStart="Bypass AI detectors. Checkout "
           adEnd="StealthWriter, an AI writing humanizer"
           link="https://stealthwriter.ai?via=smry"
         />
-      ) : adSelection === 1 ? (
+      ) : adSelection === 999 ? (
         <Ad
           onClickTrack="klap click"
           adStart="Turn your videos into viral shorts with "
           adEnd="Klap, an AI video editing tool"
           link="https://klap.app?via=smry"
+        />
+      ) : adSelection === 0 || adSelection === 1 ? (
+        <Ad
+          onClickTrack="special feedback click"
+          adStart="I'd like to make money off this app :) "
+          adEnd="What features would you pay for/like to see?"
+          link="/feedback"
         />
       ) : (
         <Ad
