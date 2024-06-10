@@ -136,14 +136,11 @@ export async function fetchWithTimeout(url: string) {
       const fetchWithoutDiffbotPromise = fetchHtmlContent(url, options);
 
       try {
-        const results = await Promise.all([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise]);
-        if (results[0].length > results[1].length) {
-          console.log("fetchWithDiffbotPromise returned a longer result");
-          html = results[0];
-        } else {
-          console.log("fetchWithoutDiffbotPromise returned a longer result");
-          html = results[1];
-        }
+        const results = await Promise.allSettled([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise]);
+        const diffbotResult = results[0].status === "fulfilled" ? results[0].value : null;
+        const noDiffbotResult = results[1].status === "fulfilled" ? results[1].value : null;
+        // html is the longest result
+        html = (diffbotResult && diffbotResult.length > (noDiffbotResult?.length || 0)) ? diffbotResult : noDiffbotResult;
       } catch (error) {
         html = await fetchHtmlContent(url, options);
       }
