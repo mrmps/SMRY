@@ -132,11 +132,24 @@ export async function fetchWithTimeout(url: string) {
     const options = await getFetchOptions(url);
     let html;
     if (url.includes("archive.is") || url.includes("web.archive.org")) {
-      html = await fetchWithDiffbot(url);
+      const fetchWithDiffbotPromise = fetchWithDiffbot(url);
+      const fetchWithoutDiffbotPromise = fetchHtmlContent(url, options);
+
+      try {
+        const results = await Promise.all([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise]);
+        if (results[0].length > results[1].length) {
+          console.log("fetchWithDiffbotPromise returned a longer result");
+          html = results[0];
+        } else {
+          console.log("fetchWithoutDiffbotPromise returned a longer result");
+          html = results[1];
+        }
+      } catch (error) {
+        html = await fetchHtmlContent(url, options);
+      }
     } else {
       html = await fetchHtmlContent(url, options);
     }
-
     const root = parse(html);
     fixImageSources(root, url);
     fixLinks(root, url);

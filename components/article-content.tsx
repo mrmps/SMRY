@@ -139,7 +139,6 @@ async function saveOrReturnLongerArticle(
   try {
     const existingArticleString = await kv.get(key);
 
-    console.log("existingArticleString", existingArticleString);
     const existingArticle = existingArticleString
       ? ArticleSchema.parse(existingArticleString)
       : null;
