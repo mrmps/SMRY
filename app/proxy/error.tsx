@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect} from "react";
 import TopBar from "@/components/top-bar";
 import UnderlineLink from "@/components/underline-link";
-import { track } from '@vercel/analytics';
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function Error({
   error,
@@ -13,8 +11,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-
-  const pathname = usePathname()
+  const router = useRouter()
 
   // useEffect(() => {
   //   // Log the error to an error reporting service
@@ -37,7 +34,10 @@ export default function Error({
               We&apos;ve logged the issue and are working on it. Click{" "}
               <button
                 className={`cursor-pointer underline decoration-from-font underline-offset-2 hover:opacity-80`}
-                onClick={() => reset()}
+                onClick={() => {
+                  router.refresh();
+                  reset();
+                }}
               >
                 here
               </button>{" "}

@@ -136,7 +136,7 @@ export async function fetchWithTimeout(url: string) {
     return response;
   } catch (err) {
     const error = safeError(err);
-    throw new Error(`Error fetching URL: ${error.message}`);
+    return new Response(`Error fetching URL: ${error.message}`, { status: 500 });
   } finally {
     clearTimeout(timeoutId);
   }
