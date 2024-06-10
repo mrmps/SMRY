@@ -128,12 +128,27 @@ async function fetchWithDiffbot(url: string) {
 }
 
 export async function fetchWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 14000); // 14 seconds timeout
+
   try {
-    const options = await getFetchOptions(url);
+    const response = await fetchWithTimeoutHelper(url, { signal: controller.signal });
+    return response;
+  } catch (err) {
+    const error = safeError(err);
+    throw new Error(`Error fetching URL: ${error.message}`);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchWithTimeoutHelper(url: string, options: any) {
+  try {
+    const fetchOptions = await getFetchOptions(url);
     let html;
     if (url.includes("archive.is") || url.includes("web.archive.org")) {
       const fetchWithDiffbotPromise = fetchWithDiffbot(url);
-      const fetchWithoutDiffbotPromise = fetchHtmlContent(url, options);
+      const fetchWithoutDiffbotPromise = fetchHtmlContent(url, fetchOptions);
 
       try {
         const [diffbotResult, noDiffbotResult] = await Promise.allSettled([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise])
@@ -150,10 +165,10 @@ export async function fetchWithTimeout(url: string) {
           html = diffbotResult || noDiffbotResult;
         }
       } catch (error) {
-        html = await fetchHtmlContent(url, options);
+        html = await fetchHtmlContent(url, fetchOptions);
       }
     } else {
-      html = await fetchHtmlContent(url, options);
+      html = await fetchHtmlContent(url, fetchOptions);
     }
     const root = parse(html);
     fixImageSources(root, url);
