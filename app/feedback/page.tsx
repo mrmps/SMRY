@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { sendEmail } from "../actions";
+import { sendEmail } from "../actions/send-email";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

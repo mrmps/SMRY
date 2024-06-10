@@ -136,11 +136,19 @@ export async function fetchWithTimeout(url: string) {
       const fetchWithoutDiffbotPromise = fetchHtmlContent(url, options);
 
       try {
-        const results = await Promise.allSettled([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise]);
-        const diffbotResult = results[0].status === "fulfilled" ? results[0].value : null;
-        const noDiffbotResult = results[1].status === "fulfilled" ? results[1].value : null;
-        // html is the longest result
-        html = (diffbotResult && diffbotResult.length > (noDiffbotResult?.length || 0)) ? diffbotResult : noDiffbotResult;
+        const [diffbotResult, noDiffbotResult] = await Promise.allSettled([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise])
+          .then(results => results.map(result => result.status === "fulfilled" ? result.value : null));
+
+        const bothResultsNull = !diffbotResult && !noDiffbotResult;
+        if (bothResultsNull) {
+          throw new Error("Both diffbot and no diffbot results were null");
+        }
+
+        if (diffbotResult && noDiffbotResult) {
+          html = diffbotResult.length > noDiffbotResult.length ? diffbotResult : noDiffbotResult;
+        } else {
+          html = diffbotResult || noDiffbotResult;
+        }
       } catch (error) {
         html = await fetchHtmlContent(url, options);
       }

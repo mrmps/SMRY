@@ -10,11 +10,12 @@ import ArrowTabs from "@/components/arrow-tabs";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
-// import { ResponsiveDrawer } from "@/components/responsiveDrawer";
+import { ResponsiveDrawer } from "@/components/responsiveDrawer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
+import SummaryForm from "@/components/summary-form";
 
 export const dynamic='force-dynamic';
 
@@ -45,7 +46,7 @@ export default async function Page({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const headersList = headers();
-  // const ip = headersList.get("x-real-ip") || "default_ip";
+  const ip = headersList.get("x-real-ip") || "default_ip";
 
   // error is here, searchParams are empty in production
 
@@ -88,6 +89,28 @@ export default async function Page({
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
             {url ? (
+              <>
+               <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
+              <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
+                Get AI-powered key points
+              </h2>
+              <ResponsiveDrawer>
+                <Suspense
+                  key={"summary"}
+                  fallback={
+                    <Skeleton
+                      className="h-32 rounded-lg animate-pulse bg-zinc-200"
+                      style={{ width: "100%" }}
+                    />
+                  }
+                >
+                  <div className="remove-all">
+                    <SummaryForm urlProp={url} ipProp={ip} />
+                  </div>
+                </Suspense>
+              </ResponsiveDrawer>
+            </div> 
+
               <ArrowTabs
                 sources={sources}
                 lengthDirect={
@@ -131,6 +154,7 @@ export default async function Page({
                   </Suspense>
                 }
               />
+              </>
             ) : (
               <Skeleton />
             )}
