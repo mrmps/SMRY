@@ -68,10 +68,13 @@ export default function SummaryForm({ urlProp, ipProp }: { urlProp: string, ipPr
           </Button>
         </div>
       </form>
-      {state  && (
+      {(state !== null && state !== undefined) && (
         <div className="mt-10 p-4 bg-gray-100 rounded-lg">
           <h2 className="text-lg font-semibold text-gray-800">Summary:</h2>
-          <div className="mt-2 text-gray-700">{typeof state === 'object' ? JSON.stringify(state) : state || "No Summary Available"}</div>
+          <div className="mt-2 text-gray-700">
+            {typeof state === 'object' ? JSON.stringify(state) : state}
+            {state === null || state === '' || state === undefined ? "No Summary Available" : null}
+          </div>
         </div>
       )}
     </div>
