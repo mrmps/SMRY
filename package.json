@@ -47,6 +47,7 @@
     "puppeteer-core": "^21.11.0",
     "react": "19.0.0-rc-38e3b23483-20240529",
     "react-dom": "19.0.0-rc-38e3b23483-20240529",
+    "react-error-boundary": "^4.0.13",
     "react-hook-form": "^7.51.5",
     "react-markdown": "^9.0.1",
     "remark-breaks": "^4.0.0",

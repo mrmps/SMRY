@@ -16,6 +16,7 @@ import ReactMarkdown from "react-markdown";
 import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
 import SummaryForm from "@/components/summary-form";
+import ErrorBoundary from "@/components/error";
 
 export const dynamic='force-dynamic';
 
@@ -118,48 +119,63 @@ export default async function Page({
                 </Suspense>
               </ResponsiveDrawer>
             </div> 
-
               <ArrowTabs
                 sources={sources}
                 lengthDirect={
-                  <Suspense key={"direct"} fallback={null}>
-                    <ArticleLength url={url} source={"direct"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from direct source, refresh the page to try again</div>}>
+                    <Suspense key={"direct"} fallback={null}>
+                      <ArticleLength url={url} source={"direct"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 lengthWayback={
-                  <Suspense key={"wayback"} fallback={null}>
-                    <ArticleLength url={url} source={"wayback"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from wayback source, refresh the page to try again</div>}>
+                    <Suspense key={"wayback"} fallback={null}>
+                      <ArticleLength url={url} source={"wayback"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 lengthJina={
-                  <Suspense key={"jina.ai"} fallback={null}>
-                    <ArticleLength url={url} source={"jina.ai"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from jina.ai source, refresh the page to try again</div>}>
+                    <Suspense key={"jina.ai"} fallback={null}>
+                      <ArticleLength url={url} source={"jina.ai"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 lengthArchive={
-                  <Suspense key={"archive"} fallback={null}>
-                    <ArticleLength url={url} source={"archive"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from archive source, refresh the page to try again</div>}>
+                    <Suspense key={"archive"} fallback={null}>
+                      <ArticleLength url={url} source={"archive"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 innerHTMLDirect={
-                  <Suspense key={"direct"} fallback={<Loading />}>
-                    <ArticleContent url={url} source={"direct"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from direct source, refresh the page to try again</div>}>
+                    <Suspense key={"direct"} fallback={<Loading />}>
+                      <ArticleContent url={url} source={"direct"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 innerHTMLWayback={
-                  <Suspense key={"wayback"} fallback={<Loading />}>
-                    <ArticleContent url={url} source={"wayback"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from wayback source, refresh the page to try again</div>}>
+                    <Suspense key={"wayback"} fallback={<Loading />}>
+                      <ArticleContent url={url} source={"wayback"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 innerHTMLGoogle={
-                  <Suspense key={"jina.ai"} fallback={<Loading />}>
-                    <ArticleContent url={url} source={"jina.ai"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from jina.ai source, refresh the page to try again</div>}>
+                    <Suspense key={"jina.ai"} fallback={<Loading />}>
+                      <ArticleContent url={url} source={"jina.ai"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
                 innerHTMLArchive={
-                  <Suspense key={"archive.is"} fallback={<Loading />}>
-                    <ArticleContent url={url} source={"archive"} />
-                  </Suspense>
+                  <ErrorBoundary fallback={<div>Could not fetch from archive.is source, refresh the page to try again</div>}>
+                    <Suspense key={"archive.is"} fallback={<Loading />}>
+                      <ArticleContent url={url} source={"archive"} />
+                    </Suspense>
+                  </ErrorBoundary>
                 }
               />
               </>
