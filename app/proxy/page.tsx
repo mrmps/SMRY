@@ -58,6 +58,12 @@ export default async function Page({
     console.error("URL parameter is missing or invalid", url, searchParams["url"], searchParams);
   }
 
+  // if the url contains "orlandosentinel.com" then we should return nothing and let the user know that the orlando sentinel article is not available
+
+  if (url?.includes("orlandosentinel.com")) {
+    return <div className="mt-20">Sorry, articles from the orlando sentinel are not available</div>;
+  }
+
   const sources = ["smry", "archive", "wayback", "jina.ai"];
 
   const adSelection = Math.floor(Math.random() * 3);
