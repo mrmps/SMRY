@@ -66,7 +66,7 @@ export default async function Page({
 
   const sources = ["smry", "archive", "wayback", "jina.ai"];
 
-  const adSelection = Math.floor(Math.random() * 3);
+  const adSelection = Math.floor(Math.random() * 4);
 
   return (
     // removed other ads so that always asking for feedback
@@ -85,7 +85,15 @@ export default async function Page({
           adEnd="Klap, an AI video editing tool"
           link="https://klap.app?via=smry"
         />
-      ) : adSelection === 0 || adSelection === 1 ? (
+      ) : adSelection === 1 || adSelection === 2 ? (
+        // https://www.buymeacoffee.com/jotarokujo
+        <Ad
+          onClickTrack="buymeacoffee click"
+          adStart="I'd like to make money off this app :) "
+          adEnd="Buy me a coffee"
+          link="https://www.buymeacoffee.com/jotarokujo"
+        />
+      ) : adSelection === 0 ? (
         <Ad
           onClickTrack="special feedback click"
           adStart="I'd like to make money off this app :) "
