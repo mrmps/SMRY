@@ -1,5 +1,5 @@
 "use client";
-import { track } from '@vercel/analytics';
+// import { track } from '@vercel/analytics';
 
 import React from "react";
 import { XIcon } from "lucide-react";
@@ -19,7 +19,7 @@ const Ad: React.FC<AdProps> = ({ link, onClickTrack, adStart, adEnd }) => {
         <div className="mr-4 md:mr-12 px-4 py-2 md:pr-8 bg-stone-100 rounded-lg rounded-b-none border border-stone-300 text-stone-600 text-sm relative">
           <button 
             onClick={() => {
-              track('close banner');
+              // track('close banner');
               setShowAd(false);
             }} 
             className="absolute top-[8px] right-1"
@@ -34,7 +34,7 @@ const Ad: React.FC<AdProps> = ({ link, onClickTrack, adStart, adEnd }) => {
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => track(onClickTrack)}
+              // onClick={() => track(onClickTrack)}
             >
               {adEnd}
             </a>

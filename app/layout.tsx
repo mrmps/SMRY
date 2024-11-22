@@ -2,14 +2,19 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/react";
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Smry | AI Summarizer and Free Paywall Remover", 
-  description:
-    "Remove paywalls and summarize articles for free with no login. Supports NYT, Washington Post, and thousands more.",
+  openGraph: {
+    type: "website",
+    title: "Smry | AI Summarizer and Free Paywall Remover",
+    siteName: "smry.ai",
+    url: "https://smry.ai",
+    description:
+      "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
+  },
 };
 
 export default function RootLayout({
@@ -30,7 +35,7 @@ export default function RootLayout({
         //     "radial-gradient(circle at 18.7% 37.8%, rgb(250, 250, 250) 0%, rgb(225, 234, 238) 90%);",
         // }}
       >
-        <Analytics />
+        <GoogleAnalytics gaId="G-RFC55FX414" />
         {children}
       </body>
     </html>
