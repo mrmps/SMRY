@@ -316,7 +316,7 @@ const fetchArticle = async (
     // Prepend archive.is to all image URLs if source is 'archive'
     if (source === "archive") {
       const images = doc.querySelectorAll("img");
-      images.forEach((img) => {
+      images.forEach((img: HTMLImageElement) => {
         let src = img.getAttribute("src");
         if (src && !src.startsWith("http")) {
           src = `http://archive.is${src}`;
