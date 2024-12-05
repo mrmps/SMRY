@@ -129,7 +129,7 @@ const EnhancedTabsList: React.FC<{
           {sources.map((source, index) => (
             <TabsTrigger key={index} value={source}>
               <span>
-            {source === 'archive' ? 'archive (slow but best)' : source}
+            {source === 'archive' ? 'archive (slow)' : source}
               {getSourceLength(source)}
           </span>
             </TabsTrigger>
