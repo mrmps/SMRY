@@ -13,10 +13,10 @@ export default function Error({
 }) {
   const router = useRouter()
 
-  useEffect(() => {
+  // useEffect(() => {
   //   // Log the error to an error reporting service
-  track('Proxy error', { location: pathname });
-   }, [error, pathname])
+  // track('Proxy error', { location: pathname });
+  // }, [error, pathname])
 
   return (
     <div className="bg-zinc-50">
