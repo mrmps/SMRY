@@ -21,7 +21,7 @@ import { cache } from "react";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 const converter = new showdown.Converter();
-export const revalidate = 3600;
+export const revalidate = 3600*24*3;
 
 export type Source = "direct" | "jina.ai" | "wayback" | "archive";
 

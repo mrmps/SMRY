@@ -1,18 +1,11 @@
-import { Configuration, OpenAIApi } from "openai-edge";
-import { kv } from "@vercel/kv";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { encode, decode } from "gpt-tokenizer";
-import { Ratelimit } from "@upstash/ratelimit";
 import { headers } from "next/headers";
 import ArrowTabs from "@/components/arrow-tabs";
 import { ArticleContent } from "@/components/article-content";
 import { ArticleLength } from "@/components/article-length";
 import Loading from "./loading";
 import { ResponsiveDrawer } from "@/components/responsiveDrawer";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import ReactMarkdown from "react-markdown";
-import gfm from "remark-gfm"; // GitHub flavored markdown
 import Ad from "@/components/ad";
 import SummaryForm from "@/components/summary-form";
 import ErrorBoundary from "@/components/error";
