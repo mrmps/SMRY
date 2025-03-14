@@ -12,7 +12,7 @@ interface AdProps {
 }
 
 const Ad: React.FC<AdProps> = ({ link, onClickTrack, adStart, adEnd }) => {
-  const [showAd, setShowAd] = React.useState(true);
+  const [showAd, setShowAd] = React.useState(false);
   return (
     showAd ? (
       <div className="fixed bottom-0 right-0 z-50" id="ad">
