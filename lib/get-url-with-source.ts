@@ -9,15 +9,15 @@ export function getUrlWithSource(source: string, url: string) {
           url
         )}`;
         break;
-      // case "google":
-      //   const cleanUrl = url.replace(/^https?:\/+/, "");
-      //   const finalUrl = `https://${cleanUrl}`;
-      //   urlWithSource = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
-      //     finalUrl
-      //   )}`;
-      //   break;
+     case "google":
+       const cleanUrl = url.replace(/^https?:\/+/, "");
+       const finalUrl = `https://${cleanUrl}`;
+       urlWithSource = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(
+         finalUrl
+         )}`;
+        break;
       case "jina.ai":
-        urlWithSource = `https://r.jina.ai/${url}`;
+        urlWithSource = `https://r.jina.ai/${encodeURIComponent(url)}`;
         break;
       case "archive":
         urlWithSource = `http://archive.is/latest/${encodeURIComponent(url)}`;
