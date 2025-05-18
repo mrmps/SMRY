@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { siteConfig } from "@/app/config/site";
 import Image from "next/image";
 
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
@@ -18,7 +17,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
           <p className="text-center text-sm leading-loose md:text-left">
             Built by{" "}
             <a
-              href={siteConfig.links.twitter}
+              href={"https://twitter.com/michael_chomsky"}
               target="_blank"
               rel="noreferrer"
               className="font-medium underline underline-offset-4"
@@ -36,7 +35,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             </a>
             . The source code is available on{" "}
             <a
-              href={siteConfig.links.github}
+              href={"https://github.com/mrmps/SMRY"}
               target="_blank"
               rel="noreferrer"
               className="font-medium underline underline-offset-4"

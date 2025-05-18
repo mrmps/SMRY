@@ -1,21 +1,45 @@
-import React, { Suspense } from "react";
-import { ResponseItem } from "@/app/proxy/page";
-import { Source } from "@/lib/data";
-import { getData } from "./article-content";
+"use client";
 
-export const revalidate = 3600;
+import React, { useEffect, useState } from "react";
+import { Source } from "@/lib/data";
 
 interface ArticleLengthProps {
   url: string;
   source: Source;
 }
 
-export const ArticleLength = async ({ url, source }: ArticleLengthProps) => {
-  const content: ResponseItem = await getData(url, source);
+export const ArticleLength = ({ url, source }: ArticleLengthProps) => {
+  const [length, setLength] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  return (
-    <Suspense fallback={null}>
-      {" · " + (content.article?.length ?? 0) + " words"}
-    </Suspense>
-  );
+  useEffect(() => {
+    const fetchArticleLength = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/article?url=${encodeURIComponent(url)}&source=${source}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setLength(data.article?.length || 0);
+      } catch (err) {
+        console.error(err);
+        setLength(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArticleLength();
+  }, [url, source]);
+
+  if (isLoading) {
+    return <span> · loading...</span>;
+  }
+
+  return <span> · {length || 0} words</span>;
 };
+
+export default ArticleLength;

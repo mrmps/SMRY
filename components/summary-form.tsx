@@ -1,14 +1,10 @@
 'use client'
 
-import React from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { useFormState } from "react-dom"
+import React, { useState } from "react"
 import { z } from "zod"
-import { getSummary } from '@/app/actions/get-summary';
+import { getUrlWithSource } from "@/lib/get-url-with-source"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "./ui/button";
-import { getUrlWithSource } from "@/lib/get-url-with-source"
 
 const FormSchema = z.object({
   url: z.string(),
@@ -18,36 +14,48 @@ const FormSchema = z.object({
 });
 
 export default function SummaryForm({ urlProp, ipProp }: { urlProp: string, ipProp: string }) {
-  const [source, setSource] = React.useState("direct");
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      // url: getUrlWithSource(urlProp, "direct"),
-      url: "https://www.nytimes.com/live/2024/06/10/world/israel-gaza-war-hamas",
-      ip: ipProp,
-      source: "direct",
-      summary: "",
-    },
-  });
+  const [source, setSource] = useState("direct");
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const initialState = null;
-  // Using useFormState correctly
-  const [state, formAction, isPending] = useFormState(async (state: string | null, formData: FormData) => {
-    console.log("Form data:", formData);
-    console.log("urlProp:", urlProp);
-    console.log("source:", source);
-    const url = getUrlWithSource(source ?? "direct", urlProp);
-    formData.set("url", url);
-    formData.set("ip", ipProp);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
-    const result = await getSummary(formData);
-    form
-    return result;
-  }, initialState);
+    try {
+      const url = getUrlWithSource(source, urlProp);
+      
+      const response = await fetch('/api/summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+          ip: ipProp,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate summary');
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="mt-2">
-      <form action={formAction} method="POST">
+      <form onSubmit={handleSubmit}>
         <div className="flex flex-col space-y-4">
           <label htmlFor="url" className="text-sm font-semibold text-gray-600">
             Choose Source:
@@ -63,17 +71,23 @@ export default function SummaryForm({ urlProp, ipProp }: { urlProp: string, ipPr
               <SelectItem value="jina.ai">Jina.ai</SelectItem>
             </SelectContent>
           </Select>
-          <Button type="submit" disabled={form.formState.isSubmitting || isPending}>
-            {form.formState.isSubmitting || isPending ? 'Generating Summary...' : 'Generate Summary'}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Generating Summary...' : 'Generate Summary'}
           </Button>
         </div>
       </form>
-      {(state !== null && state !== undefined) && (
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-md">
+          {error}
+        </div>
+      )}
+
+      {summary && (
         <div className="mt-10 p-4 bg-gray-100 rounded-lg">
           <h2 className="text-lg font-semibold text-gray-800">Summary:</h2>
           <div className="mt-2 text-gray-700">
-            {typeof state === 'object' ? JSON.stringify(state) : state}
-            {state === null || state === '' || state === undefined ? "No Summary Available" : null}
+            {summary}
           </div>
         </div>
       )}
