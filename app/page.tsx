@@ -23,6 +23,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { BookmarkletComponent } from "@/components/bookmarklet";
 import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
+import TemporaryMaintenance from "@/components/temporary-maintenence";
 
 const fira = Fira_Code({
   subsets: ["latin"],
@@ -67,6 +68,7 @@ export default function Home() {
 
   return (
     <>
+      <TemporaryMaintenance />
       <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-[#FAFAFA]">
         <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
           <a

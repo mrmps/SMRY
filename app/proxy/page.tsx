@@ -8,6 +8,7 @@ import Ad from "@/components/ad";
 import SummaryForm from "@/components/summary-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import TemporaryMaintenance from "@/components/temporary-maintenence";
 
 // Main page component
 export default function Page() {
@@ -174,6 +175,7 @@ export default function Page() {
 
   return (
     <div className="mt-20">
+      <TemporaryMaintenance />
       {showAd && (
         <Ad
           link={adData.link}
