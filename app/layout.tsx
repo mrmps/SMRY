@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { GoogleAnalytics } from '@next/third-parties/google'
+import TemporaryMaintenance from "@/components/temporary";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,6 +38,7 @@ export default function RootLayout({
       >
         <GoogleAnalytics gaId="G-RFC55FX414" />
         {children}
+        <TemporaryMaintenance />
       </body>
     </html>
   );
