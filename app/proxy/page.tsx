@@ -146,7 +146,7 @@ export default async function Page({
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
-            {url ? (
+            {/* {url ? (
               <>
                 <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
                   <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
@@ -286,7 +286,7 @@ export default async function Page({
               </>
             ) : (
               <Skeleton />
-            )}
+            )} */}
           </main>
         </div>
       </div>
