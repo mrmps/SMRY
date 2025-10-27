@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     // Generate summary with OpenAI
     const openaiResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       messages: [
         {
           role: "system",

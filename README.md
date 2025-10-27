@@ -9,7 +9,7 @@ A Next.js application that bypasses paywalls and generates AI-powered summaries 
    - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages
    - **Jina.ai**: Fetches markdown from Jina.ai reader and converts to HTML
    
-2. **AI Summaries**: Generates concise summaries in 8 languages using OpenAI's GPT-4o-mini
+2. **AI Summaries**: Generates concise summaries in 8 languages using OpenAI's gpt-5-nano
 
 3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with fallback to Jina.ai's markdown format
 
@@ -92,7 +92,7 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **Zod** for runtime type validation
 - **neverthrow** for Result-based error handling
 - **Vercel KV** (Upstash Redis) for caching
-- **OpenAI GPT-4o-mini** for summaries
+- **OpenAI gpt-5-nano** for summaries
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
 - **Showdown** for markdown to HTML conversion (Jina.ai source)
 - **Radix UI** + **Tailwind CSS** for UI
@@ -155,7 +155,7 @@ POST /api/summary with content + language
     ↓
 Check cache by language:url key
     ↓
-If miss: OpenAI GPT-4o-mini with language-specific prompt
+If miss: OpenAI gpt-5-nano with language-specific prompt
     ↓
 Cache result
     ↓

@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
                 letterSpacing: '0.01em',
               }}
             >
-              Read without limits — AI-powered summaries in 8 languages
+              Read without limits
             </div>
             <div
               style={{
