@@ -19,11 +19,21 @@ import { fromError } from "zod-validation-error";
 import { waitUntil } from "@vercel/functions";
 import { cache } from "react";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { Result, ResultAsync, ok, err } from "neverthrow";
+import {
+  AppError,
+  createCacheError,
+  createNetworkError,
+  createParseError,
+  createUnknownError,
+  createValidationError,
+} from "@/lib/errors";
+import { ErrorDisplay } from "./error-display";
 
 const converter = new showdown.Converter();
-export const revalidate = 3600*24*3;
+export const revalidate = 3600 * 24 * 3;
 
-export type Source = "direct" | "jina.ai" | "wayback" | "archive";
+export type Source = "direct" | "jina.ai" | "wayback";
 
 interface ArticleContentProps {
   url: string;
@@ -34,13 +44,18 @@ export const ArticleContent: React.FC<ArticleContentProps> = async ({
   url,
   source,
 }) => {
-  let content: ResponseItem;
-  try {
-    content = await getData(url, source);
-  } catch (err) {
-    console.error(err);
-    return <div>Error loading data</div>;
+  const contentResult = await getDataResult(url, source);
+
+  // Handle error case
+  if (contentResult.isErr()) {
+    return (
+      <div className="mt-10">
+        <ErrorDisplay error={contentResult.error} />
+      </div>
+    );
   }
+
+  const content = contentResult.value;
 
   return (
     <div className="mt-10">
@@ -140,10 +155,13 @@ const ArticleSchema = z.object({
 
 type Article = z.infer<typeof ArticleSchema>;
 
+/**
+ * Save or return longer article with proper error handling
+ */
 async function saveOrReturnLongerArticle(
   key: string,
   newArticle: Article
-): Promise<Article> {
+): Promise<Result<Article, AppError>> {
   try {
     const existingArticleString = await kv.get(key);
 
@@ -153,61 +171,83 @@ async function saveOrReturnLongerArticle(
 
     if (!existingArticle || newArticle.length > existingArticle.length) {
       await kv.set(key, JSON.stringify(newArticle));
-      return newArticle;
+      return ok(newArticle);
     } else {
-      return existingArticle;
+      return ok(existingArticle);
     }
-  } catch (err) {
-    const validationError = fromError(err);
-    console.log(validationError.toString());
-    throw validationError;
+  } catch (error) {
+    const validationError = fromError(error);
+    console.error("Cache validation error:", validationError.toString());
+    return err(
+      createValidationError("Failed to validate cached article", "article", error)
+    );
   }
 }
 
-export const getData = cache(
-  async (url: string, source: Source): Promise<ResponseItem> => {
+/**
+ * Type-safe version of getData that returns a Result
+ */
+export const getDataResult = cache(
+  async (url: string, source: Source): Promise<Result<ResponseItem, AppError>> => {
     try {
       const urlWithSource = getUrlWithSource(source, url);
       const cacheKey = `${source}:${url}`;
 
+      // Try to get from cache
       let cachedArticleJson: string | null = null;
-      cachedArticleJson = await kv.get(cacheKey);
+      try {
+        cachedArticleJson = await kv.get(cacheKey);
+      } catch (error) {
+        console.warn("⚠️  Cache read error:", error instanceof Error ? error.message : String(error));
+        // Continue without cache
+      }
 
       if (cachedArticleJson) {
-        console.log("cachedArticleJson", cachedArticleJson);
-        const article = ArticleSchema.parse(cachedArticleJson);
+        console.log(`✓ Using cached article for ${source}:${new URL(url).hostname}`);
+        try {
+          const article = ArticleSchema.parse(cachedArticleJson);
 
-        if (article.length > 4000) {
-          // Update cache in the background
-          waitUntil(updateCache(urlWithSource, cacheKey, source));
-          return {
-            source,
-            cacheURL: urlWithSource,
-            article: {
-              ...article,
-              byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-              dir: "", // Directionality, keep as empty if not applicable
-              lang: "", // Language, keep as empty if not known
-            },
-            status: "success",
-          };
+          if (article.length > 4000) {
+            // Update cache in the background
+            waitUntil(updateCache(urlWithSource, cacheKey, source));
+            return ok({
+              source,
+              cacheURL: urlWithSource,
+              article: {
+                ...article,
+                byline: "",
+                dir: "",
+                lang: "",
+              },
+              status: "success",
+            });
+          }
+        } catch (error) {
+          console.warn("⚠️  Cache parse error:", error instanceof Error ? error.message : String(error));
+          // Continue to fetch fresh data
         }
       }
 
       // If no valid cache or need to fetch new data
       return await fetchAndUpdateCache(urlWithSource, cacheKey, source);
-    } catch (err) {
-      const validationError = fromError(err);
-      console.error(validationError.toString());
-
-      const urlWithSource = getUrlWithSource(source, url);
-      return createErrorResponse(
-        validationError.toString(),
-        source,
-        urlWithSource,
-        500
-      );
+    } catch (error) {
+      console.error("Unexpected error in getDataResult:", error);
+      return err(createUnknownError(error));
     }
+  }
+);
+
+/**
+ * Legacy getData function for backwards compatibility
+ * Throws errors instead of returning Results
+ */
+export const getData = cache(
+  async (url: string, source: Source): Promise<ResponseItem> => {
+    const result = await getDataResult(url, source);
+    if (result.isErr()) {
+      throw new Error(result.error.message);
+    }
+    return result.value;
   }
 );
 
@@ -218,18 +258,35 @@ const updateCache = async (
   source: Source
 ) => {
   try {
-    const article = await fetchArticle(urlWithSource, source);
+    const articleResult = await fetchArticle(urlWithSource, source);
+    
+    if (articleResult.isErr()) {
+      const error = articleResult.error;
+      console.warn(
+        `⚠️  Background cache update failed for ${source}:`,
+        `${error.type} - ${error.message}`
+      );
+      return;
+    }
+    
+    const article = articleResult.value;
     if (article && article.article) {
-      await saveOrReturnLongerArticle(cacheKey, {
+      const saveResult = await saveOrReturnLongerArticle(cacheKey, {
         title: article.article.title || "",
         content: article.article.content || "",
         textContent: article.article.textContent || "",
         length: article.article.length || 0,
         siteName: article.article.siteName || "",
       });
+      
+      if (saveResult.isOk()) {
+        console.log(`✓ Background cache updated for ${source} (${saveResult.value.length} chars)`);
+      } else {
+        console.warn(`⚠️  Failed to save to cache:`, saveResult.error.message);
+      }
     }
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.warn("⚠️  Cache update error:", error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -238,48 +295,81 @@ const fetchAndUpdateCache = async (
   urlWithSource: string,
   cacheKey: string,
   source: Source
-) => {
-  try {
-    const article = await fetchArticle(urlWithSource, source);
+): Promise<Result<ResponseItem, AppError>> => {
+  const articleResult = await fetchArticle(urlWithSource, source);
 
-    if (!article || !article.article) {
-      throw new Error("Article data is not available.");
-    }
-
-    const longerArticle = await saveOrReturnLongerArticle(cacheKey, {
-      title: article.article.title || "",
-      content: article.article.content || "",
-      textContent: article.article.textContent || "",
-      length: article.article.length || 0,
-      siteName: article.article.siteName || "",
-    });
-
-    return {
-      source,
-      cacheURL: urlWithSource,
-      article: {
-        ...longerArticle,
-        byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-        dir: "", // Directionality, keep as empty if not applicable
-        lang: "", // Language, keep as empty if not known
-      },
-      status: "success",
-    };
-  } catch (err) {
-    console.error(err);
-    throw err;
+  if (articleResult.isErr()) {
+    return err(articleResult.error);
   }
+
+  const article = articleResult.value;
+
+  if (!article || !article.article) {
+    return err(
+      createNetworkError("Article data is not available", urlWithSource)
+    );
+  }
+
+  const saveResult = await saveOrReturnLongerArticle(cacheKey, {
+    title: article.article.title || "",
+    content: article.article.content || "",
+    textContent: article.article.textContent || "",
+    length: article.article.length || 0,
+    siteName: article.article.siteName || "",
+  });
+
+  if (saveResult.isErr()) {
+    // Log cache error but still return the article
+    console.warn("Failed to cache article:", saveResult.error);
+  }
+
+  const longerArticle = saveResult.isOk() ? saveResult.value : {
+    title: article.article.title || "",
+    content: article.article.content || "",
+    textContent: article.article.textContent || "",
+    length: article.article.length || 0,
+    siteName: article.article.siteName || "",
+  };
+
+  return ok({
+    source,
+    cacheURL: urlWithSource,
+    article: {
+      ...longerArticle,
+      byline: "",
+      dir: "",
+      lang: "",
+    },
+    status: "success",
+  });
 };
 
+/**
+ * Fetch article with proper Result error handling
+ */
 const fetchArticle = async (
   urlWithSource: string,
   source: Source
-): Promise<ResponseItem | null> => {
+): Promise<Result<ResponseItem, AppError>> => {
+  const responseResult = await fetchWithTimeout(urlWithSource);
+
+  if (responseResult.isErr()) {
+    return err(responseResult.error);
+  }
+
+  const response = responseResult.value;
+
+  if (!response.ok) {
+    return err(
+      createNetworkError(
+        `HTTP error! status: ${response.status}`,
+        urlWithSource,
+        response.status
+      )
+    );
+  }
+
   try {
-    const response = await fetchWithTimeout(urlWithSource);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
     const markdownToHtml = (markdown: string) => {
       return converter.makeHtml(markdown);
     };
@@ -296,7 +386,7 @@ const fetchArticle = async (
       // Convert markdown to HTML
       const contentHtml = markdownToHtml(mainContent);
 
-      return {
+      return ok({
         source,
         cacheURL: urlWithSource,
         article: {
@@ -305,33 +395,21 @@ const fetchArticle = async (
           textContent: mainContent,
           length: mainContent.length,
           siteName: new URL(urlSource).hostname,
-          byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-          dir: "", // Directionality, keep as empty if not applicable
-          lang: "", // Language, keep as empty if not known
+          byline: "",
+          dir: "",
+          lang: "",
         },
-      };
+      });
     }
 
     const html = await response.text();
     const doc = new JSDOM(html).window.document;
 
-    // Prepend archive.is to all image URLs if source is 'archive'
-    if (source === "archive") {
-      const images = doc.querySelectorAll("img");
-      images.forEach((img: HTMLImageElement) => {
-        let src = img.getAttribute("src");
-        if (src && !src.startsWith("http")) {
-          src = `http://archive.is${src}`;
-          img.setAttribute("src", src);
-        }
-      });
-    }
-
     const reader = new Readability(doc);
     const articleData = reader.parse();
 
     if (articleData) {
-      return {
+      return ok({
         source,
         cacheURL: urlWithSource,
         article: {
@@ -344,28 +422,17 @@ const fetchArticle = async (
           dir: articleData.dir,
           lang: articleData.lang,
         },
-      };
+      });
     }
-  } catch (err) {
-    console.error(err);
-    return null;
+
+    return err(
+      createParseError("Failed to parse article content", source)
+    );
+  } catch (error) {
+    console.error("Article parsing error:", error);
+    return err(createParseError("Failed to parse article", source, error));
   }
-
-  return null;
 };
-
-const createErrorResponse = (
-  message: string,
-  source: Source,
-  cacheURL: string,
-  status: number
-): ResponseItem => ({
-  source: source,
-  article: undefined,
-  status: status.toString(),
-  error: message,
-  cacheURL: cacheURL,
-});
 
 const getUrlWithSource = (source: Source, url: string): string => {
   switch (source) {
@@ -373,8 +440,6 @@ const getUrlWithSource = (source: Source, url: string): string => {
       return `https://r.jina.ai/${url}`;
     case "wayback":
       return `https://web.archive.org/web/2/${encodeURIComponent(url)}`;
-    case "archive":
-      return `http://archive.is/latest/${encodeURIComponent(url)}`;
     case "direct":
     default:
       return url;

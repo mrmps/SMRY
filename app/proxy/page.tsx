@@ -145,7 +145,7 @@ export default async function Page({
     );
   }
 
-  const sources = ["smry", "archive", "wayback", "jina.ai"];
+  const sources = ["smry", "wayback", "jina.ai"];
 
   // Move random number generation to client-side or use a deterministic value
   const adSelection = 5; // Using a fixed value to avoid Math.random() during render
@@ -228,20 +228,6 @@ export default async function Page({
                       </Suspense>
                     </ErrorBoundary>
                   }
-                  lengthArchive={
-                    <ErrorBoundary
-                      fallback={
-                        <div>
-                          Could not fetch from archive source, refresh the page
-                          to try again
-                        </div>
-                      }
-                    >
-                      <Suspense key={"archive"} fallback={null}>
-                        <ArticleLength url={url} source={"archive"} />
-                      </Suspense>
-                    </ErrorBoundary>
-                  }
                   innerHTMLDirect={
                     <ErrorBoundary
                       fallback={
@@ -281,20 +267,6 @@ export default async function Page({
                     >
                       <Suspense key={"jina.ai"} fallback={<Loading />}>
                         <ArticleContent url={url} source={"jina.ai"} />
-                      </Suspense>
-                    </ErrorBoundary>
-                  }
-                  innerHTMLArchive={
-                    <ErrorBoundary
-                      fallback={
-                        <div>
-                          Could not fetch from archive.is source, refresh the
-                          page to try again
-                        </div>
-                      }
-                    >
-                      <Suspense key={"archive.is"} fallback={<Loading />}>
-                        <ArticleContent url={url} source={"archive"} />
                       </Suspense>
                     </ErrorBoundary>
                   }

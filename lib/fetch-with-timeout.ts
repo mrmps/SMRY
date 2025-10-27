@@ -1,13 +1,26 @@
 import { parse } from "node-html-parser";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { Agent } from "https";
-import { safeError } from "./safe-error";
 import { Diffbot, DiffbotArticleResponse } from "diffbot";
+import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import {
+  AppError,
+  createDiffbotError,
+  createNetworkError,
+  createParseError,
+  createProxyError,
+  createRateLimitError,
+  createTimeoutError,
+  createUnknownError,
+} from "./errors";
 
 interface CustomFetchOptions extends RequestInit {
   agent?: Agent;
 }
 
+/**
+ * Get fetch options including proxy configuration if needed
+ */
 async function getFetchOptions(url: string): Promise<CustomFetchOptions> {
   const options: CustomFetchOptions = {
     headers: {
@@ -16,40 +29,65 @@ async function getFetchOptions(url: string): Promise<CustomFetchOptions> {
     },
   };
 
-  if (url.includes("archive.is") || url.includes("web.archive")) {
+  if (url.includes("web.archive")) {
     const proxyURL = process.env.PROXY_URL;
 
     if (!proxyURL) {
-      throw new Error("No proxy URL configured in environment variables");
+      throw createProxyError("No proxy URL configured in environment variables", url);
     }
 
     options.agent = new HttpsProxyAgent(proxyURL);
-    // options.headers = {
-    //   "User-Agent":
-    //     "Mozilla/5.0 (X11; U; Linux i686 (x86_64); en-US; rv:1.8.1.4) Gecko/20070515 Firefox/2.0.0.4",
-    // };
   }
 
   return options;
 }
 
-async function fetchHtmlContent(url: string, options: CustomFetchOptions): Promise<string> {
+/**
+ * Fetch HTML content from a URL with proper error handling
+ */
+async function fetchHtmlContent(
+  url: string,
+  options: CustomFetchOptions
+): Promise<string> {
   let response;
   try {
     response = await fetch(url, options);
   } catch (error) {
-    console.error(`Failed to fetch from URL: ${url}. Error: ${error}`);
-    throw new Error(`Failed to fetch from URL: ${url}. Error: ${error}`);
+    const hostname = new URL(url).hostname;
+    console.error(`❌ Network fetch failed for ${hostname}:`, error instanceof Error ? error.message : String(error));
+    throw createNetworkError(`Failed to fetch from URL`, url, undefined, error);
   }
 
   if (!response.ok) {
-    // Log rate limit errors as warnings since we have fallbacks
+    // Handle specific HTTP status codes
     if (response.status === 429) {
-      console.warn(`Rate limited (429) for URL: ${url}. Will use fallback if available.`);
+      console.warn(`⚠️  Rate limited (429) for URL: ${url}. Will use fallback if available.`);
+      const retryAfter = response.headers.get("retry-after");
+      throw createRateLimitError(url, retryAfter ? parseInt(retryAfter) : undefined);
+    } else if (response.status === 403) {
+      // 403 is expected for many sites (NYTimes, etc.) - they block direct access
+      console.warn(`⚠️  Access forbidden (403) for: ${new URL(url).hostname}. This is expected - will use fallback methods.`);
+      throw createNetworkError(
+        `HTTP error! status: ${response.status}`,
+        url,
+        response.status
+      );
+    } else if (response.status === 404) {
+      console.warn(`⚠️  Page not found (404) for URL: ${url}`);
+      throw createNetworkError(
+        `HTTP error! status: ${response.status}`,
+        url,
+        response.status
+      );
     } else {
-      console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
+      // 500+ errors and other unexpected status codes
+      console.error(`❌ HTTP error! status: ${response.status} for URL: ${url}`);
+      throw createNetworkError(
+        `HTTP error! status: ${response.status}`,
+        url,
+        response.status
+      );
     }
-    throw new Error(`HTTP error! status: ${response.status}`);
   }
 
   const buffer = await response.arrayBuffer();
@@ -57,6 +95,9 @@ async function fetchHtmlContent(url: string, options: CustomFetchOptions): Promi
   return decoder.decode(buffer);
 }
 
+/**
+ * Fix relative image sources to absolute URLs
+ */
 function fixImageSources(root: any, url: string) {
   root.querySelectorAll("img").forEach((img: any) => {
     const src = img.getAttribute("src");
@@ -94,6 +135,9 @@ function fixImageSources(root: any, url: string) {
   });
 }
 
+/**
+ * Fix archive.org links to point to our proxy
+ */
 function fixLinks(root: any, url: string) {
   root.querySelectorAll("a").forEach((a: any) => {
     const href = a.getAttribute("href");
@@ -108,104 +152,206 @@ function fixLinks(root: any, url: string) {
       }
 
       if (originalUrl) {
-        a.setAttribute("href", `${process.env.NEXT_PUBLIC_URL}/${new URL(originalUrl, url).toString()}`);
+        a.setAttribute(
+          "href",
+          `${process.env.NEXT_PUBLIC_URL}/${new URL(originalUrl, url).toString()}`
+        );
       }
     }
   });
 }
 
-async function fetchWithDiffbot(url: string): Promise<string> {
+/**
+ * Fetch content using Diffbot API with proper error handling
+ */
+function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
   if (!process.env.DIFFBOT_API_KEY) {
-    throw new Error("No Diffbot API key configured in environment variables");
+    console.warn(`⚠️  No Diffbot API key configured - skipping Diffbot extraction`);
+    return errAsync(
+      createDiffbotError("No Diffbot API key configured in environment variables", url)
+    );
   }
+  
+  console.log(`🔄 Attempting Diffbot extraction for ${new URL(url).hostname}...`);
 
-  return new Promise((resolve, reject) => {
-    try {
-      const diffbot = new Diffbot(process.env.DIFFBOT_API_KEY!);
+  return ResultAsync.fromPromise(
+    new Promise<string>((resolve, reject) => {
+      try {
+        const diffbot = new Diffbot(process.env.DIFFBOT_API_KEY!);
+
+        // Old diffbot API uses callbacks and 'uri' instead of 'url'
+        diffbot.article(
+          { uri: url, html: true },
+          (err: Error | null, response: DiffbotArticleResponse) => {
+            if (err) {
+              // Check if it's a rate limit error
+              const errorMsg = err.message || String(err);
+              if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
+                console.warn(`⚠️  Diffbot rate limit exceeded for ${new URL(url).hostname}`);
+              } else {
+                console.warn(`⚠️  Diffbot API error for ${new URL(url).hostname}:`, errorMsg);
+              }
+              reject(err);
+              return;
+            }
+
+            // The old diffbot package returns the newer API format with objects array
+            let htmlContent: string | undefined;
+
+            // Try new API format first (objects array)
+            if (
+              response?.objects &&
+              Array.isArray(response.objects) &&
+              response.objects.length > 0
+            ) {
+              htmlContent = response.objects[0].html;
+            }
+            // Fallback to old API format (html directly on response)
+            else if (response?.html) {
+              htmlContent = response.html;
+            }
+
+            // Check if HTML content exists
+            if (!htmlContent) {
+              console.warn(
+                `⚠️  Diffbot returned article data but no HTML for ${new URL(url).hostname} (will use direct fetch fallback)`
+              );
+              reject(new Error(`Diffbot API returned no HTML content for URL: ${url}`));
+              return;
+            }
+
+            console.log(`✓ Diffbot successfully extracted HTML (${htmlContent.length.toLocaleString()} chars)`);
+            resolve(htmlContent);
+          }
+        );
+      } catch (error) {
+        console.error(`Failed to initialize Diffbot for URL: ${url}. Error:`, error);
+        reject(error);
+      }
+    }),
+    (error) => {
+      // Extract meaningful error message
+      const errorMsg = error instanceof Error ? error.message : String(error);
       
-      // Old diffbot API uses callbacks and 'uri' instead of 'url'
-      diffbot.article({ uri: url, html: true }, (err: Error | null, response: DiffbotArticleResponse) => {
-        if (err) {
-          console.error(`Diffbot API error for URL: ${url}`, err);
-          reject(err);
-          return;
-        }
-        
-        // The old diffbot package returns the newer API format with objects array
-        let htmlContent: string | undefined;
-        
-        // Try new API format first (objects array)
-        if (response?.objects && Array.isArray(response.objects) && response.objects.length > 0) {
-          htmlContent = response.objects[0].html;
-        } 
-        // Fallback to old API format (html directly on response)
-        else if (response?.html) {
-          htmlContent = response.html;
-        }
-        
-        // Check if HTML content exists
-        if (!htmlContent) {
-          console.error(`Diffbot returned no HTML content:`, JSON.stringify(response, null, 2));
-          reject(new Error(`Diffbot API returned no HTML content for URL: ${url}`));
-          return;
-        }
-        
-        resolve(htmlContent);
-      });
-    } catch (error) {
-      console.error(`Failed to initialize Diffbot for URL: ${url}. Error:`, error);
-      reject(error);
+      // Check for specific error types
+      if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
+        return createDiffbotError(`Rate limit exceeded`, url, error);
+      } else if (errorMsg.toLowerCase().includes('timeout')) {
+        return createDiffbotError(`Request timeout`, url, error);
+      } else if (errorMsg.toLowerCase().includes('unauthorized') || errorMsg.includes('401')) {
+        return createDiffbotError(`API authentication failed`, url, error);
+      } else if (errorMsg.toLowerCase().includes('no html content')) {
+        return createDiffbotError(`No HTML content returned`, url, error);
+      } else {
+        return createDiffbotError(`API error: ${errorMsg.substring(0, 100)}`, url, error);
+      }
     }
-  });
+  );
 }
 
-export async function fetchWithTimeout(url: string) {
+/**
+ * Main fetch function with timeout and error handling using ResultAsync
+ */
+export function fetchWithTimeout(url: string): ResultAsync<Response, AppError> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 14000); // 14 seconds timeout
 
-  try {
-    const response = await fetchWithTimeoutHelper(url, { signal: controller.signal });
-    return response;
-  } catch (err) {
-    const error = safeError(err);
-    return new Response(`Error fetching URL: ${error.message}`, { status: 500 });
-  } finally {
+  return ResultAsync.fromPromise(
+    fetchWithTimeoutHelper(url, { signal: controller.signal }),
+    (error) => {
+      if (error instanceof Error && error.name === "AbortError") {
+        return createTimeoutError(url, 14000);
+      }
+      // If it's already an AppError, return it as is
+      if (isAppError(error)) {
+        return error as AppError;
+      }
+      return createUnknownError(error);
+    }
+  ).andThen((response) => {
     clearTimeout(timeoutId);
-  }
+    return okAsync(response);
+  });
 }
 
-async function fetchWithTimeoutHelper(url: string, options: any) {
+/**
+ * Helper function that does the actual fetching logic
+ */
+async function fetchWithTimeoutHelper(url: string, options: any): Promise<Response> {
   try {
     const fetchOptions = await getFetchOptions(url);
+
     let html: string;
-    if (url.includes("archive.is") || url.includes("web.archive.org")) {
-      const fetchWithDiffbotPromise = fetchWithDiffbot(url);
-      const fetchWithoutDiffbotPromise = fetchHtmlContent(url, fetchOptions);
 
-      try {
-        const [diffbotResult, noDiffbotResult] = await Promise.allSettled([fetchWithDiffbotPromise, fetchWithoutDiffbotPromise])
-          .then(results => results.map(result => result.status === "fulfilled" ? result.value : null));
-
-        const bothResultsNull = !diffbotResult && !noDiffbotResult;
-        if (bothResultsNull) {
-          throw new Error("Both diffbot and no diffbot results were null");
+    if (url.includes("web.archive.org")) {
+      const diffbotResult = await fetchWithDiffbot(url);
+      const noDiffbotResult = await ResultAsync.fromPromise(
+        fetchHtmlContent(url, fetchOptions),
+        (error) => {
+          if (isAppError(error)) {
+            return error as AppError;
+          }
+          return createNetworkError("Failed to fetch HTML", url, undefined, error);
         }
+      );
 
-        if (diffbotResult && noDiffbotResult) {
-          html = diffbotResult.length > noDiffbotResult.length ? diffbotResult : noDiffbotResult;
-          console.log(`Using ${diffbotResult.length > noDiffbotResult.length ? 'Diffbot' : 'direct'} result (longer content)`);
-        } else {
-          // TypeScript now knows at least one is non-null from the check above
-          html = (diffbotResult || noDiffbotResult) as string;
-          console.log(`Using ${diffbotResult ? 'Diffbot' : 'direct'} result (only available option)`);
-        }
-      } catch (error) {
-        console.warn(`Both primary methods failed, falling back to direct fetch: ${error}`);
-        html = await fetchHtmlContent(url, fetchOptions);
+      // Combine results and choose the best one
+      const results = await Promise.allSettled([
+        diffbotResult.match(
+          (value) => value,
+          (error) => {
+            console.warn(`Diffbot fetch failed: ${error.message}`);
+            return null;
+          }
+        ),
+        noDiffbotResult.match(
+          (value) => value,
+          (error) => {
+            console.warn(`Direct fetch failed: ${error.message}`);
+            return null;
+          }
+        ),
+      ]);
+
+      const diffbotHtml = results[0].status === "fulfilled" ? results[0].value : null;
+      const directHtml = results[1].status === "fulfilled" ? results[1].value : null;
+
+      const bothResultsNull = !diffbotHtml && !directHtml;
+      if (bothResultsNull) {
+        // Get the actual errors for better error messages
+        const diffbotError = await diffbotResult.mapErr(e => e.message).match(
+          () => "succeeded",
+          (msg) => msg
+        );
+        const directError = await noDiffbotResult.mapErr(e => e.message).match(
+          () => "succeeded", 
+          (msg) => msg
+        );
+        
+        throw createNetworkError(
+          `Failed to fetch content. Diffbot: ${diffbotError}. Direct: ${directError}`,
+          url,
+          undefined,
+          "All fetch methods exhausted"
+        );
+      }
+
+      if (diffbotHtml && directHtml) {
+        const useDiffbot = diffbotHtml.length > directHtml.length;
+        html = useDiffbot ? diffbotHtml : directHtml;
+        console.log(
+          `✓ Both methods succeeded for ${new URL(url).hostname}: Using ${useDiffbot ? "Diffbot" : "direct"} (${html.length.toLocaleString()} chars vs ${useDiffbot ? directHtml.length.toLocaleString() : diffbotHtml.length.toLocaleString()} chars)`
+        );
+      } else {
+        // TypeScript now knows at least one is non-null from the check above
+        html = (diffbotHtml || directHtml) as string;
+        const method = diffbotHtml ? "Diffbot" : "direct";
+        console.log(`✓ Using ${method} for ${new URL(url).hostname} (${html.length.toLocaleString()} chars)`);
       }
     } else {
       html = await fetchHtmlContent(url, fetchOptions);
     }
+
     const root = parse(html);
     fixImageSources(root, url);
     fixLinks(root, url);
@@ -220,7 +366,34 @@ async function fetchWithTimeoutHelper(url: string, options: any) {
       status: 200,
     });
   } catch (err) {
-    const error = safeError(err);
-    throw new Error(`Error fetching URL: ${error.message}`);
+    // Re-throw AppErrors as is
+    if (isAppError(err)) {
+      throw err;
+    }
+    // Wrap unknown errors
+    throw createUnknownError(err);
   }
+}
+
+/**
+ * Type guard to check if an error is an AppError
+ */
+function isAppError(error: unknown): error is AppError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    typeof (error as any).type === "string" &&
+    [
+      "NETWORK_ERROR",
+      "PROXY_ERROR",
+      "DIFFBOT_ERROR",
+      "PARSE_ERROR",
+      "TIMEOUT_ERROR",
+      "RATE_LIMIT_ERROR",
+      "CACHE_ERROR",
+      "VALIDATION_ERROR",
+      "UNKNOWN_ERROR",
+    ].includes((error as any).type)
+  );
 }

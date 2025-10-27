@@ -1,6 +1,6 @@
 # SMRY.ai
 
-**SMRY.ai**: Revolutionizing article reading and paywall bypass with the power of AI. This tool generates summaries and gets past hard to avoid paywalls by using archive.org, googlebot, and (soon) archive.is, harnessing the advanced capabilities of OpenAI's ChatGPT API and the Vercel AI SDK. Experience seamless streaming and real-time responses with our edge computing approach.
+**SMRY.ai**: Revolutionizing article reading and paywall bypass with the power of AI. This tool generates summaries and gets past hard to avoid paywalls by using archive.org and advanced extraction methods, harnessing the advanced capabilities of OpenAI's ChatGPT API and the Vercel AI SDK. Experience seamless streaming and real-time responses with our edge computing approach.
 
 ## How it Works
 SMRY.ai integrates the [ChatGPT API](https://openai.com/api/) with the [Vercel AI SDK](https://sdk.vercel.ai/docs) to offer a streamlined, efficient summary generation process. By utilizing edge streaming, we ensure fast, responsive interactions. For insights into similar technologies, explore [RSC With Streaming](https://rsc-llm-on-the-edge.vercel.app/).

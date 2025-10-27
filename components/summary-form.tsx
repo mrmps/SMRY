@@ -3,12 +3,10 @@
 import React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFormState } from "react-dom"
 import { z } from "zod"
-import { getSummary } from '@/app/actions/get-summary';
+import { getSummaryWithSource } from '@/app/actions/get-summary';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "./ui/button";
-import { getUrlWithSource } from "@/lib/get-url-with-source"
 
 const FormSchema = z.object({
   url: z.string(),
@@ -31,23 +29,15 @@ export default function SummaryForm({ urlProp, ipProp }: { urlProp: string, ipPr
   });
 
   const initialState = null;
-  // Using useFormState correctly
-  const [state, formAction, isPending] = useFormState(async (state: string | null, formData: FormData) => {
-    console.log("Form data:", formData);
-    console.log("urlProp:", urlProp);
-    console.log("source:", source);
-    const url = getUrlWithSource(source ?? "direct", urlProp);
-    formData.set("url", url);
-    formData.set("ip", ipProp);
-
-    const result = await getSummary(formData);
-    form
-    return result;
-  }, initialState);
+  // Using useActionState with server action
+  const [state, formAction, isPending] = React.useActionState(getSummaryWithSource, initialState);
 
   return (
     <div className="mt-2">
-      <form action={formAction} method="POST">
+      <form action={formAction}>
+        <input type="hidden" name="source" value={source} />
+        <input type="hidden" name="originalUrl" value={urlProp} />
+        <input type="hidden" name="ip" value={ipProp} />
         <div className="flex flex-col space-y-4">
           <label htmlFor="url" className="text-sm font-semibold text-gray-600">
             Choose Source:
@@ -57,7 +47,6 @@ export default function SummaryForm({ urlProp, ipProp }: { urlProp: string, ipPr
               <SelectValue placeholder="Direct (fastest)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="archive">Archive (best but slow)</SelectItem>
               <SelectItem value="wayback">Wayback</SelectItem>
               <SelectItem value="direct">Direct (fastest)</SelectItem>
               <SelectItem value="jina.ai">Jina.ai</SelectItem>

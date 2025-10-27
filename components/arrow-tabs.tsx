@@ -13,8 +13,7 @@ const EnhancedTabsList: React.FC<{
   lengthJina: React.ReactNode;
   lengthWayback: React.ReactNode;
   lengthDirect: React.ReactNode;
-  lengthArchive: React.ReactNode;
-}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthJina, lengthWayback, lengthArchive }) => {
+}> = ({ sources, activeTabIndex, setActiveTabIndex, lengthDirect, lengthJina, lengthWayback }) => {
   const tabsContainerRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToActiveTab = useCallback(() => {
@@ -75,9 +74,6 @@ const EnhancedTabsList: React.FC<{
       case "jina.ai":
         content = lengthJina;
         break;
-      case "archive":
-        content = lengthArchive;
-        break;
       default:
         content = null;
     }
@@ -129,7 +125,7 @@ const EnhancedTabsList: React.FC<{
           {sources.map((source, index) => (
             <TabsTrigger key={index} value={source}>
               <span>
-            {source === 'archive' ? 'archive (slow)' : source}
+            {source}
               {getSourceLength(source)}
           </span>
             </TabsTrigger>
@@ -179,11 +175,9 @@ interface TabProps {
   innerHTMLGoogle: React.ReactNode;
   innerHTMLWayback: React.ReactNode;
   innerHTMLDirect: React.ReactNode;
-  innerHTMLArchive: React.ReactNode;
   lengthJina: React.ReactNode;
   lengthWayback: React.ReactNode;
   lengthDirect: React.ReactNode;
-  lengthArchive: React.ReactNode;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
@@ -191,11 +185,9 @@ const ArrowTabs: React.FC<TabProps> = ({
   innerHTMLGoogle,
   innerHTMLDirect,
   innerHTMLWayback,
-  innerHTMLArchive,
   lengthDirect,
   lengthJina,
   lengthWayback,
-  lengthArchive,
 }) => {
   const initialTabIndex = 0;
   const [activeTabIndex, setActiveTabIndex] = useState(initialTabIndex);
@@ -213,12 +205,10 @@ const ArrowTabs: React.FC<TabProps> = ({
         lengthDirect={lengthDirect}
         lengthJina={lengthJina}
         lengthWayback={lengthWayback}
-        lengthArchive={lengthArchive}
       />
       <TabsContent value={"smry"}>{innerHTMLDirect}</TabsContent>
       <TabsContent value={"wayback"}>{innerHTMLWayback}</TabsContent>
       <TabsContent value={"jina.ai"}>{innerHTMLGoogle}</TabsContent>
-      <TabsContent value={"archive"}>{innerHTMLArchive}</TabsContent>
     </Tabs>
   );
 };

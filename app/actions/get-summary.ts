@@ -3,11 +3,42 @@
 import { kv } from "@vercel/kv";
 import { Ratelimit } from "@upstash/ratelimit";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import { getUrlWithSource } from "@/lib/get-url-with-source";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+export async function getSummaryWithSource(prevState: string | null, formData: FormData) {
+  try {
+    const originalUrl = formData.get("originalUrl") as string;
+    const source = formData.get("source") as string;
+    const ip = formData.get("ip") as string;
+
+    if (!originalUrl) {
+      return "URL parameter is missing or invalid";
+    }
+
+    console.log("getSummaryWithSource - originalUrl:", originalUrl);
+    console.log("getSummaryWithSource - source:", source);
+    
+    // Construct the URL with the source
+    const url = getUrlWithSource(source ?? "direct", originalUrl);
+    console.log("getSummaryWithSource - constructed URL:", url);
+    
+    // Create new FormData with the constructed URL
+    const newFormData = new FormData();
+    newFormData.set("url", url);
+    newFormData.set("ip", ip);
+    
+    // Call the original getSummary function
+    return await getSummary(newFormData);
+  } catch (error) {
+    console.error(`Error in getSummaryWithSource: ${error}`);
+    return `Error: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
 
 export async function getSummary(formData: FormData) {
   try {
@@ -45,7 +76,13 @@ export async function getSummary(formData: FormData) {
       return cached;
     }
 
-    const response = await fetchWithTimeout(url);
+    const responseResult = await fetchWithTimeout(url);
+    
+    if (responseResult.isErr()) {
+      return `Error fetching content: ${responseResult.error.message}`;
+    }
+
+    const response = responseResult.value;
     const text = await response.text();
 
     if (!text) {
@@ -60,23 +97,12 @@ export async function getSummary(formData: FormData) {
       model: "gpt-4o-mini",
       messages: [
         {
-          "role": "system",
-          // @ts-ignore
-          "content": [
-            {
-              "type": "text",
-              "text": "You are an intelligent summary assistant."
-            }
-          ]
+          role: "system",
+          content: "You are an intelligent summary assistant."
         },
         {
-          "role": "user",
-          "content": [
-            {
-              "type": "text",
-              "text": `Create a useful summary of the following article:\n\n${text.substring(0, 4000)}\n\nOnly return the short summary and nothing else, no quotes, just a useful summary in the form of a paragraph.`
-            }
-          ]
+          role: "user",
+          content: `Create a useful summary of the following article:\n\n${text.substring(0, 4000)}\n\nOnly return the short summary and nothing else, no quotes, just a useful summary in the form of a paragraph.`
         }
       ],
       temperature: 1,

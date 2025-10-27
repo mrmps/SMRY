@@ -1,7 +1,8 @@
 import React, { Suspense } from "react";
 import { ResponseItem } from "@/app/proxy/page";
 import { Source } from "@/lib/data";
-import { getData } from "./article-content";
+import { getDataResult } from "./article-content";
+import { ErrorBadge } from "./error-display";
 
 export const revalidate = 3600;
 
@@ -11,7 +12,19 @@ interface ArticleLengthProps {
 }
 
 export const ArticleLength = async ({ url, source }: ArticleLengthProps) => {
-  const content: ResponseItem = await getData(url, source);
+  const contentResult = await getDataResult(url, source);
+
+  // Handle error case with a simple indicator
+  if (contentResult.isErr()) {
+    return (
+      <Suspense fallback={null}>
+        {" · "}
+        <ErrorBadge error={contentResult.error} />
+      </Suspense>
+    );
+  }
+
+  const content = contentResult.value;
 
   return (
     <Suspense fallback={null}>

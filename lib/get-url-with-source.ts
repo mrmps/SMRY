@@ -19,9 +19,6 @@ export function getUrlWithSource(source: string, url: string) {
       case "jina.ai":
         urlWithSource = `https://r.jina.ai/${url}`;
         break;
-      case "archive":
-        urlWithSource = `http://archive.is/latest/${encodeURIComponent(url)}`;
-        break;
       default:
         throw new Error(`Invalid source parameter: ${source}`);
     }

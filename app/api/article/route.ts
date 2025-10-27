@@ -6,6 +6,16 @@ import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import showdown from 'showdown';
 import { Source } from '@/lib/data';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+import { Result, ok, err } from 'neverthrow';
+import {
+  AppError,
+  createNetworkError,
+  createParseError,
+  createValidationError,
+  getErrorMessage,
+  getErrorTitle,
+} from '@/lib/errors';
 
 const converter = new showdown.Converter();
 
@@ -42,43 +52,67 @@ const getUrlWithSource = (source: Source, url: string): string => {
       return `https://r.jina.ai/${url}`;
     case "wayback":
       return `https://web.archive.org/web/2/${encodeURIComponent(url)}`;
-    case "archive":
-      return `http://archive.is/latest/${encodeURIComponent(url)}`;
     case "direct":
     default:
       return url;
   }
 };
 
-const fetchWithTimeout = async (url: string, timeout = 30000): Promise<Response> => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  
+/**
+ * Save or return longer article with Result error handling
+ */
+async function saveOrReturnLongerArticle(
+  key: string,
+  newArticle: Article
+): Promise<Result<Article, AppError>> {
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-};
+    const existingArticleString = await kv.get(key);
 
+    const existingArticle = existingArticleString
+      ? ArticleSchema.parse(existingArticleString)
+      : null;
+
+    if (!existingArticle || newArticle.length > existingArticle.length) {
+      await kv.set(key, JSON.stringify(newArticle));
+      return ok(newArticle);
+    } else {
+      return ok(existingArticle);
+    }
+  } catch (error) {
+    const validationError = fromError(error);
+    console.error('Cache validation error:', validationError.toString());
+    return err(
+      createValidationError('Failed to validate cached article', 'article', error)
+    );
+  }
+}
+
+/**
+ * Fetch article with Result error handling
+ */
 const fetchArticle = async (
   urlWithSource: string,
   source: Source
-): Promise<ResponseItem | null> => {
+): Promise<Result<ResponseItem, AppError>> => {
+  const responseResult = await fetchWithTimeout(urlWithSource);
+
+  if (responseResult.isErr()) {
+    return err(responseResult.error);
+  }
+
+  const response = responseResult.value;
+
+  if (!response.ok) {
+    return err(
+      createNetworkError(
+        `HTTP error! status: ${response.status}`,
+        urlWithSource,
+        response.status
+      )
+    );
+  }
+
   try {
-    const response = await fetchWithTimeout(urlWithSource);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
     const markdownToHtml = (markdown: string) => {
       return converter.makeHtml(markdown);
     };
@@ -87,15 +121,13 @@ const fetchArticle = async (
       const markdown = await response.text();
       const lines = markdown.split("\n");
 
-      // Extract title, URL source, and main content based on consistent line positions
       const title = lines[0].replace("Title: ", "").trim();
       const urlSource = lines[2].replace("URL Source: ", "").trim();
-      const mainContent = lines.slice(4).join("\n").trim(); // Everything after the 4th line
+      const mainContent = lines.slice(4).join("\n").trim();
 
-      // Convert markdown to HTML
       const contentHtml = markdownToHtml(mainContent);
 
-      return {
+      return ok({
         source,
         cacheURL: urlWithSource,
         article: {
@@ -104,34 +136,22 @@ const fetchArticle = async (
           textContent: mainContent,
           length: mainContent.length,
           siteName: new URL(urlSource).hostname,
-          byline: "", // Placeholder, as byline is unlikely to be extracted from markdown
-          dir: "", // Directionality, keep as empty if not applicable
-          lang: "", // Language, keep as empty if not known
+          byline: "",
+          dir: "",
+          lang: "",
         },
         status: "success",
-      };
+      });
     }
 
     const html = await response.text();
     const doc = new JSDOM(html).window.document;
 
-    // Prepend archive.is to all image URLs if source is 'archive'
-    if (source === "archive") {
-      const images = doc.querySelectorAll("img");
-      images.forEach((img: HTMLImageElement) => {
-        let src = img.getAttribute("src");
-        if (src && !src.startsWith("http")) {
-          src = `http://archive.is${src}`;
-          img.setAttribute("src", src);
-        }
-      });
-    }
-
     const reader = new Readability(doc);
     const articleData = reader.parse();
 
     if (articleData) {
-      return {
+      return ok({
         source,
         cacheURL: urlWithSource,
         article: {
@@ -145,40 +165,21 @@ const fetchArticle = async (
           lang: articleData.lang || "",
         },
         status: "success",
-      };
+      });
     }
-  } catch (err) {
-    console.error(err);
-    return null;
-  }
 
-  return null;
+    return err(
+      createParseError("Failed to parse article content", source)
+    );
+  } catch (error) {
+    console.error('Article parsing error:', error);
+    return err(createParseError("Failed to parse article", source, error));
+  }
 };
 
-async function saveOrReturnLongerArticle(
-  key: string,
-  newArticle: Article
-): Promise<Article> {
-  try {
-    const existingArticleString = await kv.get(key);
-
-    const existingArticle = existingArticleString
-      ? ArticleSchema.parse(existingArticleString)
-      : null;
-
-    if (!existingArticle || newArticle.length > existingArticle.length) {
-      await kv.set(key, JSON.stringify(newArticle));
-      return newArticle;
-    } else {
-      return existingArticle;
-    }
-  } catch (err) {
-    const validationError = fromError(err);
-    console.log(validationError.toString());
-    throw validationError;
-  }
-}
-
+/**
+ * API route handler with comprehensive error handling
+ */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -187,7 +188,11 @@ export async function GET(request: NextRequest) {
 
     if (!url || !source) {
       return NextResponse.json(
-        { error: 'Missing url or source parameter' },
+        {
+          error: 'Missing url or source parameter',
+          errorType: 'VALIDATION_ERROR',
+          message: 'Both url and source parameters are required',
+        },
         { status: 400 }
       );
     }
@@ -197,56 +202,111 @@ export async function GET(request: NextRequest) {
 
     // Check cache first
     let cachedArticleJson: string | null = null;
-    cachedArticleJson = await kv.get(cacheKey);
+    try {
+      cachedArticleJson = await kv.get(cacheKey);
+    } catch (err) {
+      console.warn('Cache read error:', err);
+      // Continue without cache
+    }
 
     if (cachedArticleJson) {
-      const article = ArticleSchema.parse(cachedArticleJson);
+      try {
+        const article = ArticleSchema.parse(cachedArticleJson);
 
-      if (article.length > 500) { // Lower threshold for cached content
-        return NextResponse.json({
-          source,
-          cacheURL: urlWithSource,
-          article: {
-            ...article,
-            byline: "",
-            dir: "",
-            lang: "",
-          },
-          status: "success",
-        });
+        if (article.length > 500) {
+          return NextResponse.json({
+            source,
+            cacheURL: urlWithSource,
+            article: {
+              ...article,
+              byline: "",
+              dir: "",
+              lang: "",
+            },
+            status: "success",
+          });
+        }
+      } catch (err) {
+        console.warn('Cache parse error:', err);
+        // Continue to fetch fresh data
       }
     }
 
     // Fetch new content
     const result = await fetchArticle(urlWithSource, source);
-    
-    if (!result || !result.article) {
+
+    if (result.isErr()) {
+      const error = result.error;
+      return NextResponse.json(
+        {
+          source,
+          article: undefined,
+          status: "error",
+          error: getErrorMessage(error),
+          errorType: error.type,
+          errorTitle: getErrorTitle(error),
+          cacheURL: urlWithSource,
+          // Include additional error details for debugging
+          errorDetails: {
+            type: error.type,
+            ...(error.type === 'NETWORK_ERROR' && { statusCode: error.statusCode }),
+            ...(error.type === 'TIMEOUT_ERROR' && { timeoutMs: error.timeoutMs }),
+            ...(error.type === 'RATE_LIMIT_ERROR' && { retryAfter: error.retryAfter }),
+          },
+        },
+        {
+          status:
+            error.type === 'RATE_LIMIT_ERROR' ? 429 :
+            error.type === 'NETWORK_ERROR' && error.statusCode ? error.statusCode :
+            error.type === 'VALIDATION_ERROR' ? 400 :
+            500
+        }
+      );
+    }
+
+    const article = result.value;
+
+    if (!article.article) {
       return NextResponse.json({
         source,
         article: undefined,
         status: "error",
         error: "Failed to fetch article",
+        errorType: "UNKNOWN_ERROR",
         cacheURL: urlWithSource,
-      });
+      }, { status: 500 });
     }
 
     // Save to cache
-    const longerArticle = await saveOrReturnLongerArticle(cacheKey, {
-      title: result.article.title || "",
-      content: result.article.content || "",
-      textContent: result.article.textContent || "",
-      length: result.article.length || 0,
-      siteName: result.article.siteName || "",
+    const saveResult = await saveOrReturnLongerArticle(cacheKey, {
+      title: article.article.title || "",
+      content: article.article.content || "",
+      textContent: article.article.textContent || "",
+      length: article.article.length || 0,
+      siteName: article.article.siteName || "",
     });
+
+    if (saveResult.isErr()) {
+      // Log cache error but still return the article
+      console.warn('Failed to cache article:', saveResult.error);
+    }
+
+    const longerArticle = saveResult.isOk() ? saveResult.value : {
+      title: article.article.title || "",
+      content: article.article.content || "",
+      textContent: article.article.textContent || "",
+      length: article.article.length || 0,
+      siteName: article.article.siteName || "",
+    };
 
     return NextResponse.json({
       source,
       cacheURL: urlWithSource,
       article: {
         ...longerArticle,
-        byline: result.article.byline || "",
-        dir: result.article.dir || "",
-        lang: result.article.lang || "",
+        byline: article.article.byline || "",
+        dir: article.article.dir || "",
+        lang: article.article.lang || "",
       },
       status: "success",
     });
@@ -254,10 +314,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('API Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
+        errorType: 'UNKNOWN_ERROR',
         source: request.nextUrl.searchParams.get('source') || 'unknown',
         article: undefined,
         status: "error",
@@ -266,4 +327,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
+
