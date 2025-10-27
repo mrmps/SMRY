@@ -16,8 +16,8 @@ export async function sendEmail(formData: {
       //   to: ["contact@smry.ai"],
       from: "Acme <onboarding@resend.dev>",
       to: [process.env.EMAIL_TO_ADDRESS as string],
-      subject: formData.subject,
-      html: formData.message + " from " + formData.from,
+      subject: 'Subject: ' + formData.subject,
+      html: 'Message: ' + formData.message + " from " + formData.from,
     });
     console.log("success")
 
