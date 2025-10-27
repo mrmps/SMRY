@@ -5,13 +5,13 @@ A Next.js application that bypasses paywalls and generates AI-powered summaries 
 ## What This Does
 
 1. **Paywall Bypass**: Fetches article content from three sources in parallel:
-   - Direct fetch from the original URL
-   - Wayback Machine archives
-   - Jina.ai reader API
+   - **Direct**: Uses Diffbot API for intelligent article extraction from original URLs
+   - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages
+   - **Jina.ai**: Fetches markdown from Jina.ai reader and converts to HTML
    
 2. **AI Summaries**: Generates concise summaries in 8 languages using OpenAI's GPT-4o-mini
 
-3. **Smart Extraction**: Uses a race condition between Diffbot API and direct fetch for archive.org content, choosing the better result
+3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with fallback to Jina.ai's markdown format
 
 ## Architecture Highlights
 
@@ -44,28 +44,36 @@ Nine distinct error types (NetworkError, RateLimitError, TimeoutError, etc.) wit
 
 Articles are cached by `source:url` key. When fetching, if a longer version exists in cache, it's preserved.
 
-### Race Condition for Archive.org
-When fetching from Wayback Machine, two methods race:
-1. Diffbot's article extraction API
-2. Direct fetch with custom parser
+### Intelligent Source Routing
+Different sources require different extraction strategies:
 
-The system uses whichever succeeds first, or the longer result if both succeed.
-
+**Direct & Wayback** → Diffbot API
 ```typescript
-const [diffbotResult, directResult] = await Promise.allSettled([
-  fetchWithDiffbot(url),
-  fetchHtmlContent(url)
-]);
-// Use the better result
+// Diffbot extracts structured article data (title, html, text, siteName)
+const diffbotResult = await fetchArticleWithDiffbot(urlWithSource);
 ```
 
+**Jina.ai** → Markdown Parsing
+```typescript
+// Jina returns markdown, so we parse it directly
+const markdown = await fetch(jinaUrl).then(r => r.text());
+const html = converter.makeHtml(markdown);
+```
+
+This approach maximizes Diffbot's AI-powered extraction while properly handling Jina.ai's markdown format.
+
 ### Content Parsing Pipeline
-1. Fetch HTML from source
-2. Parse with Mozilla Readability or Jina.ai markdown
-3. Fix relative image URLs to absolute
-4. Rewrite archive.org links to proxy through the app
-5. Convert markdown to HTML (for Jina.ai)
-6. Cache the parsed result
+
+**For Direct & Wayback (via Diffbot):**
+1. Send URL to Diffbot API
+2. Receive structured article data (title, HTML, text, siteName)
+3. Cache the parsed result
+
+**For Jina.ai (Markdown):**
+1. Fetch markdown from Jina.ai reader
+2. Extract title, URL source, and content
+3. Convert markdown to HTML using Showdown
+4. Cache the parsed result
 
 ### Multilingual Summaries
 Language-specific prompts for 8 languages (en, es, fr, de, zh, ja, pt, ru). Each language gets its own cache key:
@@ -85,9 +93,8 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **neverthrow** for Result-based error handling
 - **Vercel KV** (Upstash Redis) for caching
 - **OpenAI GPT-4o-mini** for summaries
-- **Diffbot API** for enhanced article extraction
-- **Mozilla Readability** for content parsing
-- **JSDOM** for HTML manipulation
+- **Diffbot API** for AI-powered article extraction (direct & wayback sources)
+- **Showdown** for markdown to HTML conversion (Jina.ai source)
 - **Radix UI** + **Tailwind CSS** for UI
 
 ## Key Files
@@ -101,7 +108,7 @@ app/
 └── page.tsx                  # Landing page
 
 lib/
-├── fetch-with-timeout.ts     # Core fetch logic with Diffbot race condition
+├── fetch-with-timeout.ts     # Diffbot API integration and utilities
 ├── errors.ts                 # Type-safe error definitions (9 types)
 ├── api-client.ts             # Type-safe API client
 └── hooks/
@@ -129,9 +136,9 @@ useArticles() hook - fires 3 parallel requests
     ↓
 API route /api/article?url=...&source=...
     ↓
-fetchWithTimeout() - handles Diffbot race for archive.org
-    ↓
-Parse with Readability or Jina.ai
+Route to appropriate fetcher:
+  - Direct/Wayback → fetchArticleWithDiffbot()
+  - Jina.ai → fetchJinaArticle() (markdown parsing)
     ↓
 Cache in Vercel KV (if longer than existing)
     ↓
@@ -172,12 +179,12 @@ OPENAI_API_KEY=
 NEXT_PUBLIC_URL=https://your-domain.com
 ```
 
-Optional:
+Optional (but recommended):
 ```bash
-# Diffbot (enhances archive.org extraction)
+# Diffbot (required for direct and wayback sources)
 DIFFBOT_API_KEY=
 
-# Proxy (for archive.org)
+# Proxy (for archive.org if needed)
 PROXY_URL=
 ```
 
@@ -225,14 +232,18 @@ https://your-domain.com/https://example.com/article
 ## Interesting Implementation Details
 
 ### Why Three Sources?
-- **Direct**: Fast, but often blocked by paywalls or anti-bot measures
-- **Wayback**: Reliable for archived content, but may be outdated
-- **Jina.ai**: Returns clean markdown, but not always available
+- **Direct + Diffbot**: AI-powered extraction bypasses most paywalls and anti-bot measures
+- **Wayback + Diffbot**: Extracts clean content from archived pages, removing archive.org UI clutter
+- **Jina.ai**: Returns pre-parsed markdown format, works when Diffbot is unavailable
 
 By fetching all three in parallel and displaying any that succeed, the app maximizes success rate.
 
-### Why Diffbot Race Condition?
-Archive.org pages can be bloated with navigation and metadata. Diffbot's API is specifically trained to extract just article content. However, it can fail or be slower than direct fetch. Racing both methods ensures optimal results.
+### Why Diffbot for Direct & Wayback?
+Diffbot's API is specifically trained to extract article content from HTML, removing navigation, ads, and other clutter. This works excellently for:
+- Direct URLs: Bypasses many paywall implementations
+- Wayback archives: Removes archive.org's UI wrapper and metadata
+
+Jina.ai is handled separately because it returns markdown (not HTML), so we parse it directly without Diffbot.
 
 ### Caching Strategy
 Articles are cached with the article itself as the value, not just metadata. When a new fetch completes, it compares text length to the cached version and keeps the longer one. This prevents losing content if a source returns a partial article.

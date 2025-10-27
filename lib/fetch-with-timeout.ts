@@ -181,7 +181,7 @@ function fixLinks(root: any, url: string) {
 }
 
 /**
- * Fetch content using Diffbot API with proper error handling
+ * Fetch content using Diffbot API with proper error handling (HTML only)
  */
 function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
   if (!process.env.DIFFBOT_API_KEY) {
@@ -261,6 +261,113 @@ function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
         return createDiffbotError(`API authentication failed`, url, error);
       } else if (errorMsg.toLowerCase().includes('no html content')) {
         return createDiffbotError(`No HTML content returned`, url, error);
+      } else {
+        return createDiffbotError(`API error: ${errorMsg.substring(0, 100)}`, url, error);
+      }
+    }
+  );
+}
+
+/**
+ * Structured article data from Diffbot
+ */
+export interface DiffbotArticle {
+  title: string;
+  html: string;
+  text: string;
+  siteName: string;
+}
+
+/**
+ * Fetch structured article data using Diffbot API
+ * Returns title, html, text, and siteName
+ */
+export function fetchArticleWithDiffbot(url: string): ResultAsync<DiffbotArticle, AppError> {
+  if (!process.env.DIFFBOT_API_KEY) {
+    devWarn(`⚠️  No Diffbot API key configured - skipping Diffbot extraction`);
+    return errAsync(
+      createDiffbotError("No Diffbot API key configured in environment variables", url)
+    );
+  }
+  
+  devLog(`🔄 Attempting Diffbot article extraction for ${new URL(url).hostname}...`);
+
+  return ResultAsync.fromPromise(
+    new Promise<DiffbotArticle>((resolve, reject) => {
+      try {
+        const diffbot = new Diffbot(process.env.DIFFBOT_API_KEY!);
+
+        diffbot.article(
+          { uri: url, html: true },
+          (err: Error | null, response: DiffbotArticleResponse) => {
+            if (err) {
+              const errorMsg = err.message || String(err);
+              if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
+                devWarn(`⚠️  Diffbot rate limit exceeded for ${new URL(url).hostname}`);
+              } else {
+                devWarn(`⚠️  Diffbot API error for ${new URL(url).hostname}:`, errorMsg);
+              }
+              reject(err);
+              return;
+            }
+
+            // Extract data from response
+            let articleData: DiffbotArticle | null = null;
+
+            // Try new API format first (objects array)
+            if (
+              response?.objects &&
+              Array.isArray(response.objects) &&
+              response.objects.length > 0
+            ) {
+              const obj = response.objects[0];
+              if (obj.html && obj.text && obj.title) {
+                articleData = {
+                  title: obj.title,
+                  html: obj.html,
+                  text: obj.text,
+                  siteName: obj.siteName || new URL(url).hostname,
+                };
+              }
+            }
+            // Fallback to old API format
+            else if (response?.html && response?.text && response?.title) {
+              articleData = {
+                title: response.title,
+                html: response.html,
+                text: response.text,
+                siteName: new URL(url).hostname,
+              };
+            }
+
+            if (!articleData) {
+              devWarn(
+                `⚠️  Diffbot returned incomplete article data for ${new URL(url).hostname}`
+              );
+              reject(new Error(`Diffbot API returned incomplete article data for URL: ${url}`));
+              return;
+            }
+
+            devLog(`✓ Diffbot successfully extracted article: "${articleData.title}" (${articleData.text.length.toLocaleString()} chars)`);
+            resolve(articleData);
+          }
+        );
+      } catch (error) {
+        devError(`Failed to initialize Diffbot for URL: ${url}. Error:`, error);
+        reject(error);
+      }
+    }),
+    (error) => {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      
+      if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
+        return createDiffbotError(`Rate limit exceeded`, url, error);
+      } else if (errorMsg.toLowerCase().includes('timeout')) {
+        return createDiffbotError(`Request timeout`, url, error);
+      } else if (errorMsg.toLowerCase().includes('unauthorized') || errorMsg.includes('401')) {
+        return createDiffbotError(`API authentication failed`, url, error);
+      } else if (errorMsg.toLowerCase().includes('incomplete')) {
+        return createDiffbotError(`Incomplete article data returned`, url, error);
       } else {
         return createDiffbotError(`API error: ${errorMsg.substring(0, 100)}`, url, error);
       }
