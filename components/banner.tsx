@@ -103,7 +103,6 @@ const Outlet = ({ name, url, famousArticle }: OutletType) => (
             width={32}
             height={32}
             className="rounded-full grayscale"
-            unoptimized
           />
         </div>
     {/* </Link> */}
