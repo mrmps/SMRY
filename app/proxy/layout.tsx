@@ -12,5 +12,5 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <section><Nav />{children}</section>
+  return <div><Nav />{children}</div>
 }

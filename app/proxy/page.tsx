@@ -100,23 +100,38 @@ export default async function Page({
   params,
   searchParams,
 }: {
-  params: { slug: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const headersList = headers();
-  const ip = headersList.get("x-real-ip") || "default_ip";
+  const headersList = await headers();
+  
+  // In Next.js 16, headers() returns a Headers object that needs to be accessed differently
+  let ip = "default_ip";
+  try {
+    // Try to access the header value - headers might be a Headers object or a plain object
+    if (headersList && typeof headersList.get === 'function') {
+      ip = headersList.get("x-real-ip") || "default_ip";
+    } else if (headersList && typeof headersList === 'object') {
+      // Fallback for plain object access or iterator
+      const headersObj = Object.fromEntries(headersList as any);
+      ip = headersObj["x-real-ip"] || "default_ip";
+    }
+  } catch (error) {
+    console.error("Error accessing headers:", error);
+    ip = "default_ip";
+  }
 
-  // error is here, searchParams are empty in production
-
-  const url = searchParams?.url as string;
+  // In Next.js 15+, searchParams and params are now Promises that need to be awaited
+  const resolvedSearchParams = await searchParams;
+  const url = resolvedSearchParams?.url as string;
 
   if (!url) {
     // Handle the case where URL is not provided or not a string
     console.error(
       "URL parameter is missing or invalid",
       url,
-      searchParams["url"],
-      searchParams
+      resolvedSearchParams?.url,
+      resolvedSearchParams
     );
   }
 
@@ -132,7 +147,8 @@ export default async function Page({
 
   const sources = ["smry", "archive", "wayback", "jina.ai"];
 
-  const adSelection = Math.floor(Math.random() * 10);
+  // Move random number generation to client-side or use a deterministic value
+  const adSelection = 5; // Using a fixed value to avoid Math.random() during render
 
   return (
     <div className="mt-20">
@@ -146,7 +162,7 @@ export default async function Page({
       <div className="px-4 py-8 md:py-12 mt-20">
         <div className="mx-auto space-y-10 max-w-prose">
           <main className="prose">
-            {/* {url ? (
+            {url ? (
               <>
                 <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
                   <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
@@ -286,7 +302,7 @@ export default async function Page({
               </>
             ) : (
               <Skeleton />
-            )} */}
+            )}
           </main>
         </div>
       </div>

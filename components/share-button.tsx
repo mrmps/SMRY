@@ -40,10 +40,10 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="flex items-center rounded-full">
+        <button className="flex items-center rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2">
           <ShareIcon className="h-3 w-3" />
           <span className="ml-2">Share</span>
-        </Button>
+        </button>
       </PopoverTrigger>
       <PopoverContent className="rounded-lg shadow-lg p-2 flex flex-col bg-white text-black">
         <div className="text-sm mb-2 ml-2 font-semibold">Share article cache</div>

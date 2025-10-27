@@ -1,6 +1,6 @@
 "use client";
 // "EcGjSuUaBYQByIJiudNwWNhcBHWtfhDs"
-import React, { useEffect, useRef, useState } from "react";
+import { JSX, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import {
   ArrowsPointingInIcon,
@@ -721,7 +721,7 @@ export function Dashboard() {
                 {json.segments.map((segment, index) => (
                   <div
                     key={index}
-                    ref={(el) => (segmentRefs.current[index] = el)}
+                    ref={(el) => { segmentRefs.current[index] = el; }}
                     className="p-4 prose lg:prose-lg"
                   >
                     {/* {parse( */}

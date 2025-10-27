@@ -33,7 +33,7 @@ const TopBar = () => {
       >
         <div className="flex items-center py-5 mx-auto max-w-prose">
           <h2 className="text-xl font-bold text-gray-800">
-            <a href="/">
+            <Link href="/">
               <Image
                 src="/logo.svg"
                 width={150}
@@ -41,7 +41,7 @@ const TopBar = () => {
                 alt="smry logo"
                 className="sm:-ml-4"
               />
-            </a>
+            </Link>
           </h2>
         </div>
         <div

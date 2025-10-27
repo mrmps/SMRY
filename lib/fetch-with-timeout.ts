@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { Agent } from "https";
 import { safeError } from "./safe-error";
+import { Diffbot, DiffbotArticleResponse } from "diffbot";
 
 interface CustomFetchOptions extends RequestInit {
   agent?: Agent;
@@ -42,7 +43,12 @@ async function fetchHtmlContent(url: string, options: CustomFetchOptions): Promi
   }
 
   if (!response.ok) {
-    console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
+    // Log rate limit errors as warnings since we have fallbacks
+    if (response.status === 429) {
+      console.warn(`Rate limited (429) for URL: ${url}. Will use fallback if available.`);
+    } else {
+      console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
+    }
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
@@ -108,23 +114,49 @@ function fixLinks(root: any, url: string) {
   });
 }
 
-async function fetchWithDiffbot(url: string) {
+async function fetchWithDiffbot(url: string): Promise<string> {
   if (!process.env.DIFFBOT_API_KEY) {
     throw new Error("No Diffbot API key configured in environment variables");
   }
 
-  //https://api.diffbot.com/v3/analyze?url=https%3A%2F%2Farchive.is%2Flatest%2Fhttps%3A%2Fwww.nytimes.com%2F2024%2F06%2F05%2Fnyregion%2Fcongestion-pricing-supporters.html&token=7fb6f2086d9ec3a851721e3df2300ebe
-  const diffbotURL = `https://api.diffbot.com/v3/article?url=${url}&token=${process.env.DIFFBOT_API_KEY}`;
-
-  try {
-    const response = await fetch(diffbotURL);
-    const data = await response.json();
-    const htmlContent = data.objects[0].html;
-    return htmlContent;
-  } catch (error) {
-    console.error(`Failed to fetch from diffbot URL: ${diffbotURL}. Error: ${error}, Diffbot URL: ${diffbotURL}`);
-    throw new Error(`Failed to fetch from diffbot URL: ${diffbotURL}. Error: ${error} Diffbot URL: ${diffbotURL}`);
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      const diffbot = new Diffbot(process.env.DIFFBOT_API_KEY!);
+      
+      // Old diffbot API uses callbacks and 'uri' instead of 'url'
+      diffbot.article({ uri: url, html: true }, (err: Error | null, response: DiffbotArticleResponse) => {
+        if (err) {
+          console.error(`Diffbot API error for URL: ${url}`, err);
+          reject(err);
+          return;
+        }
+        
+        // The old diffbot package returns the newer API format with objects array
+        let htmlContent: string | undefined;
+        
+        // Try new API format first (objects array)
+        if (response?.objects && Array.isArray(response.objects) && response.objects.length > 0) {
+          htmlContent = response.objects[0].html;
+        } 
+        // Fallback to old API format (html directly on response)
+        else if (response?.html) {
+          htmlContent = response.html;
+        }
+        
+        // Check if HTML content exists
+        if (!htmlContent) {
+          console.error(`Diffbot returned no HTML content:`, JSON.stringify(response, null, 2));
+          reject(new Error(`Diffbot API returned no HTML content for URL: ${url}`));
+          return;
+        }
+        
+        resolve(htmlContent);
+      });
+    } catch (error) {
+      console.error(`Failed to initialize Diffbot for URL: ${url}. Error:`, error);
+      reject(error);
+    }
+  });
 }
 
 export async function fetchWithTimeout(url: string) {
@@ -145,7 +177,7 @@ export async function fetchWithTimeout(url: string) {
 async function fetchWithTimeoutHelper(url: string, options: any) {
   try {
     const fetchOptions = await getFetchOptions(url);
-    let html;
+    let html: string;
     if (url.includes("archive.is") || url.includes("web.archive.org")) {
       const fetchWithDiffbotPromise = fetchWithDiffbot(url);
       const fetchWithoutDiffbotPromise = fetchHtmlContent(url, fetchOptions);
@@ -161,10 +193,14 @@ async function fetchWithTimeoutHelper(url: string, options: any) {
 
         if (diffbotResult && noDiffbotResult) {
           html = diffbotResult.length > noDiffbotResult.length ? diffbotResult : noDiffbotResult;
+          console.log(`Using ${diffbotResult.length > noDiffbotResult.length ? 'Diffbot' : 'direct'} result (longer content)`);
         } else {
-          html = diffbotResult || noDiffbotResult;
+          // TypeScript now knows at least one is non-null from the check above
+          html = (diffbotResult || noDiffbotResult) as string;
+          console.log(`Using ${diffbotResult ? 'Diffbot' : 'direct'} result (only available option)`);
         }
       } catch (error) {
+        console.warn(`Both primary methods failed, falling back to direct fetch: ${error}`);
         html = await fetchHtmlContent(url, fetchOptions);
       }
     } else {
@@ -188,154 +224,3 @@ async function fetchWithTimeoutHelper(url: string, options: any) {
     throw new Error(`Error fetching URL: ${error.message}`);
   }
 }
-
-
-// import { parse } from "node-html-parser";
-// import { HttpsProxyAgent } from "https-proxy-agent";
-// import { Agent } from "https";
-// import { safeError } from "./safe-error";
-
-// interface CustomFetchOptions extends RequestInit {
-//   agent?: Agent;
-// }
-
-// export async function fetchWithTimeout(url: string) {
-
-//   try {
-//     // Prepare fetch options
-//     const options: CustomFetchOptions = {
-//       headers: {
-//         "User-Agent":
-//           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
-//       },
-//     };
-
-//     if (url.includes("archive.is") || url.includes("web.archive")) { //TODO this is clunky. is a proxy really necessary for all requests?
-//       const proxyURL = process.env.PROXY_URL;
-
-//       if (!proxyURL) {
-//         throw new Error("no proxy url");
-//       }
-
-//       options.agent = new HttpsProxyAgent(proxyURL);
-//       options.headers = {
-//         "User-Agent":
-//           "Mozilla/5.0 (X11; U; Linux i686 (x86_64); en-US; rv:1.8.1.4) Gecko/20070515 Firefox/2.0.0.4",
-//       };
-//     }
-
-//     let response;
-//     try {
-//       response = await fetch(url, options);
-//     } catch (error) {
-//       console.error(`Failed to fetch from URL: ${url}. Error: ${error}`);
-//       throw new Error(`Failed to fetch from URL: ${url}. Error: ${error}`);
-//     }
-
-//     if (!response.ok) {
-//       console.error(`HTTP error! status: ${response.status} for URL: ${url}`);
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-
-//     const buffer = await response.arrayBuffer();
-//     const decoder = new TextDecoder("utf-8");
-//     const html = decoder.decode(buffer);
-
-//     // Parse the HTML
-//     const root = parse(html);
-
-//     // Update image sources
-//     root.querySelectorAll("img").forEach((img) => {
-//       // Fix 'src' attribute
-//       const src = img.getAttribute("src");
-//       if (src && src.startsWith("/")) {
-//         img.setAttribute("src", new URL(src, url).toString());
-//       }
-//       if (src && src.includes("web.archive.org/web/")) {
-//         const originalUrl = src.split("im_/")[1];
-//         if (originalUrl) {
-//           img.setAttribute("src", originalUrl);
-//         }
-//       }
-
-//       // Fix 'srcset' attribute
-//       const srcset = img.getAttribute("srcset");
-//       if (srcset) {
-//         const newSrcset = srcset
-//           .split(",")
-//           .map((srcEntry) => {
-//             let [src, descriptor] = srcEntry.trim().split(" ");
-//             if (src && src.startsWith("/")) {
-//               src = new URL(src, url).toString();
-//             }
-//             if (src && src.includes("web.archive.org/web/")) {
-//               const originalUrl = src.split("im_/")[1];
-//               if (originalUrl) {
-//                 src = originalUrl;
-//               }
-//             }
-//             return descriptor ? `${src} ${descriptor}` : src;
-//           })
-//           .join(", ");
-
-//         img.setAttribute("srcset", newSrcset);
-//       }
-//     });
-
-//     // remove google cache header
-//     const cacheHeader = root.querySelector("#bN015htcoyT__google-cache-hdr");
-//     if (cacheHeader) {
-//       cacheHeader.remove();
-//     }
-
-//     // Update links
-//     root.querySelectorAll("a").forEach((a) => {
-//       const href = a.getAttribute("href");
-//       if (href && href.includes("web.archive.org/web/")) {
-//         // Log found Wayback Machine link
-
-//         // Determine if the original URL starts with http:// or https://
-//         let originalUrl;
-//         if (href.includes("/http://")) {
-//           originalUrl = href.split("/http://")[1];
-//           originalUrl = "http://" + originalUrl;
-//         } else if (href.includes("/https://")) {
-//           originalUrl = href.split("/https://")[1];
-//           originalUrl = "https://" + originalUrl;
-//         }
-
-//         if (originalUrl) {
-//           // Update the href attribute with the original URL
-//           a.setAttribute(
-//             "href",
-//             `${process.env.NEXT_PUBLIC_URL}/${new URL(
-//               originalUrl,
-//               url
-//             ).toString()}`
-//           );
-//         }
-//         // this should only be activated if the page is completely loaded and not parsed
-//       // } else if (href) {
-//       //   // Update the href attribute for other links
-//       //   a.setAttribute(
-//       //     "href",
-//       //     `${process.env.NEXT_PUBLIC_URL}/proxy?url=${new URL(
-//       //       href,
-//       //       url
-//       //     ).toString()}`
-//       //   );
-//       }
-//     });
-
-//     return new Response(root.toString(), {
-//       headers: { "Content-Type": "application/json" },
-//       status: response.status,
-//     });
-//   } catch (err) {
-
-//     const error = safeError(err);
-//     // Now, 'error' is the transformed error, so use its properties
-//     throw new Error(`Error fetching URL: ${error.message}`);
-//   }
-// }
-

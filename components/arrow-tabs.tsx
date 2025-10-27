@@ -121,7 +121,7 @@ const EnhancedTabsList: React.FC<{
         </button>
       )}
 
-      <motion.div
+      <div
         ref={tabsContainerRef}
         className="overflow-x-auto whitespace-nowrap scrollbar-hide"
       >
@@ -135,7 +135,7 @@ const EnhancedTabsList: React.FC<{
             </TabsTrigger>
           ))}
         </TabsList>
-      </motion.div>
+      </div>
 
       {activeTabIndex < sources.length - 1 && ( // Only display the right button if it's not the last tab
         <button
