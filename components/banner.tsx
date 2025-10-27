@@ -94,7 +94,7 @@ export function Banner() {
   );
 }
 const Outlet = ({ name, url, famousArticle }: OutletType) => {
-  const logoDevToken = process.env.NEXT_PUBLIC_LOGODEV_TOKEN || 'pk_XHzluFMzS06CK1vGR9jpLg';
+  const logoDevToken = process.env.NEXT_PUBLIC_LOGODEV_TOKEN;
   const logoUrl = `https://img.logo.dev/${url}?token=${logoDevToken}&size=64&greyscale=true&format=png`;
   
   return (
