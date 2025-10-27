@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import Ad from "@/components/ad";
 import { ProxyContent } from "@/components/proxy-content";
+import type { Metadata } from "next";
 
 const adCopies = [
   {
@@ -85,6 +86,117 @@ export type ResponseItem = {
   error?: string;
   cacheURL: string;
 };
+
+/**
+ * Fetch article data from the most reliable source for metadata
+ */
+async function fetchArticleForMetadata(url: string): Promise<Article | null> {
+  try {
+    // Try sources in order: direct, jina.ai, wayback
+    const sources = ["direct", "jina.ai", "wayback"];
+    
+    for (const source of sources) {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_URL}/api/article?url=${encodeURIComponent(url)}&source=${source}`,
+          { 
+            cache: 'no-store',
+            next: { revalidate: 0 }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.article && data.article.title) {
+            return data.article;
+          }
+        }
+      } catch (error) {
+        // Try next source
+        continue;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error fetching article for metadata:", error);
+    return null;
+  }
+}
+
+/**
+ * Generate dynamic metadata based on the article being viewed
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const url = resolvedSearchParams?.url as string;
+  
+  if (!url) {
+    return {
+      title: "SMRY - Article Reader & Summarizer",
+      description: "Read articles without paywalls and get AI-powered summaries",
+    };
+  }
+
+  // Fetch article data
+  const article = await fetchArticleForMetadata(url);
+  
+  if (!article) {
+    return {
+      title: "SMRY - Article Reader & Summarizer",
+      description: "Read articles without paywalls and get AI-powered summaries",
+      openGraph: {
+        title: "SMRY - Article Reader & Summarizer",
+        description: "Read articles without paywalls and get AI-powered summaries",
+        url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(url)}`,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "SMRY - Article Reader & Summarizer",
+        description: "Read articles without paywalls and get AI-powered summaries",
+      },
+    };
+  }
+
+  const title = article.title || "Article";
+  const siteName = article.siteName || new URL(url).hostname;
+  const description = article.textContent 
+    ? article.textContent.slice(0, 160).trim() + "..."
+    : `Read "${title}" on SMRY - No paywalls, AI summaries available`;
+
+  // Generate OG image URL using our own API
+  const ogImageUrl = `${process.env.NEXT_PUBLIC_URL}/api/og?title=${encodeURIComponent(title)}&siteName=${encodeURIComponent(siteName)}`;
+
+  return {
+    title: `${title} - SMRY`,
+    description,
+    openGraph: {
+      title: title,
+      description: description,
+      url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(url)}`,
+      siteName: "SMRY",
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: title,
+      description: description,
+      images: [ogImageUrl],
+    },
+  };
+}
 
 export default async function Page({
   params,
