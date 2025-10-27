@@ -18,101 +18,118 @@ export async function GET(request: NextRequest) {
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#fff',
-            backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '60px',
+            backgroundColor: '#FAFAFA',
+            fontFamily: 'Inter, system-ui, sans-serif',
           }}
         >
+          {/* Header with branding */}
           <div
             style={{
               display: 'flex',
-              flexDirection: 'column',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              borderRadius: '24px',
-              padding: '60px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-              width: '90%',
-              height: '80%',
+              padding: '48px 64px',
+              borderBottom: '1px solid #E5E7EB',
             }}
           >
-            {/* Logo/Brand */}
             <div
               style={{
+                fontSize: '28px',
+                fontWeight: '600',
+                color: '#111827',
+                letterSpacing: '-0.02em',
                 display: 'flex',
                 alignItems: 'center',
-                marginBottom: '40px',
               }}
             >
-              <div
-                style={{
-                  fontSize: '48px',
-                  fontWeight: 'bold',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                }}
-              >
-                📰 SMRY
-              </div>
+              SMRY
+            </div>
+            <div
+              style={{
+                fontSize: '16px',
+                color: '#6B7280',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              {siteName}
+            </div>
+          </div>
+
+          {/* Main content */}
+          <div
+            style={{
+              display: 'flex',
+              flex: 1,
+              flexDirection: 'column',
+              justifyContent: 'center',
+              padding: '0 64px',
+              maxWidth: '1000px',
+            }}
+          >
+            {/* Title */}
+            <div
+              style={{
+                fontSize: title.length > 60 ? '52px' : title.length > 40 ? '60px' : '72px',
+                fontWeight: '700',
+                color: '#111827',
+                lineHeight: 1.1,
+                letterSpacing: '-0.03em',
+                marginBottom: '24px',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {title}
             </div>
 
-            {/* Article Title */}
+            {/* Subtle accent line */}
+            <div
+              style={{
+                width: '80px',
+                height: '4px',
+                backgroundColor: '#111827',
+                borderRadius: '2px',
+              }}
+            />
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '48px 64px',
+              borderTop: '1px solid #E5E7EB',
+            }}
+          >
             <div
               style={{
                 display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                flex: 1,
-                justifyContent: 'center',
-                width: '100%',
+                gap: '32px',
+                fontSize: '15px',
+                color: '#6B7280',
+                fontWeight: '500',
               }}
             >
-              <div
-                style={{
-                  fontSize: title.length > 80 ? '48px' : '60px',
-                  fontWeight: 'bold',
-                  color: '#1a202c',
-                  lineHeight: 1.2,
-                  marginBottom: '24px',
-                  maxWidth: '90%',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {title}
-              </div>
-
-              {/* Site Name */}
-              <div
-                style={{
-                  fontSize: '28px',
-                  color: '#718096',
-                  fontWeight: '500',
-                }}
-              >
-                {siteName}
-              </div>
+              <span>No Paywalls</span>
+              <span>•</span>
+              <span>AI Summaries</span>
+              <span>•</span>
+              <span>Free Forever</span>
             </div>
-
-            {/* Footer */}
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginTop: '40px',
-                fontSize: '20px',
-                color: '#a0aec0',
+                fontSize: '15px',
+                color: '#9CA3AF',
+                fontWeight: '500',
               }}
             >
-              No Paywalls • AI Summaries • Free Reading
+              smry.ai
             </div>
           </div>
         </div>
