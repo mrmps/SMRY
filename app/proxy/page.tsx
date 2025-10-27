@@ -2,8 +2,6 @@ import { headers } from "next/headers";
 import Ad from "@/components/ad";
 import { ProxyContent } from "@/components/proxy-content";
 
-export const dynamic = "force-dynamic";
-
 const adCopies = [
   {
     onClickTrack:
