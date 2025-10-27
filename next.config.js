@@ -6,10 +6,10 @@ const nextConfig = {
           protocol: 'https',
           hostname: 'www.google.com',
         },
-      {
-        protocol: 'https',
-        hostname: 'img.logokit.com',
-      },
+        {
+          protocol: 'https',
+          hostname: 'img.logo.dev',
+        },
       ],
     },
   }

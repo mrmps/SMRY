@@ -59,13 +59,13 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
           </p>
           <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 leading-loose md:text-left">
             <a
-              href="https://logokit.com"
+              href="https://logo.dev"
               target="_blank"
               rel="noreferrer"
               title="Logo API"
               className="hover:text-zinc-500 dark:hover:text-zinc-500"
             >
-              Logos by LogoKit.com
+              Logos provided by Logo.dev
             </a>
           </p>
         </div>

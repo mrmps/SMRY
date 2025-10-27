@@ -95,7 +95,7 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **OpenAI gpt-5-nano** for summaries
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
 - **Showdown** for markdown to HTML conversion (Jina.ai source)
-- **LogoKit API** for company logos
+- **Logo.dev API** for company logos (client-side)
 - **Radix UI** + **Tailwind CSS** for UI
 
 ## Key Files
@@ -179,8 +179,8 @@ OPENAI_API_KEY=
 # Base URL
 NEXT_PUBLIC_URL=https://your-domain.com
 
-# LogoKit (for company logos - get free token at logokit.com)
-NEXT_PUBLIC_LOGOKIT_TOKEN=
+# Logo.dev (for company logos - get your publishable key from dashboard)
+NEXT_PUBLIC_LOGODEV_TOKEN=
 ```
 
 Optional (but recommended):
@@ -202,7 +202,7 @@ pnpm install
 2. **Set up environment variables**:
    - Create a Vercel KV database at vercel.com/storage
    - Get an OpenAI API key at platform.openai.com
-   - Get a free LogoKit token at logokit.com (optional)
+   - Get your Logo.dev publishable key (pk_) from https://www.logo.dev/dashboard
    - Copy `.env.example` to `.env.local` and fill in values
 
 3. **Run development server**:

@@ -93,18 +93,23 @@ export function Banner() {
     </section>
   );
 }
-const Outlet = ({ name, url, famousArticle }: OutletType) => (
-  <div className="flex flex-col items-center space-y-2">
-    {/* <Link href={`/${famousArticle}`} target='_blank'> */}
-        <div className="w-16 h-16 flex justify-center items-center"> {/* Adjust width and height as needed */}
-          <Image
-            alt={name}
-            src={`https://img.logokit.com/${url}?token=${process.env.NEXT_PUBLIC_LOGOKIT_TOKEN}&size=64&fallback=monogram`}
-            width={32}
-            height={32}
-            className="rounded-full grayscale"
-          />
-        </div>
-    {/* </Link> */}
-  </div>
-);
+const Outlet = ({ name, url, famousArticle }: OutletType) => {
+  const logoDevToken = process.env.NEXT_PUBLIC_LOGODEV_TOKEN || 'pk_XHzluFMzS06CK1vGR9jpLg';
+  const logoUrl = `https://img.logo.dev/${url}?token=${logoDevToken}&size=64&greyscale=true&format=png`;
+  
+  return (
+    <div className="flex flex-col items-center space-y-2">
+      {/* <Link href={`/${famousArticle}`} target='_blank'> */}
+          <div className="w-16 h-16 flex justify-center items-center"> {/* Adjust width and height as needed */}
+            <Image
+              alt={name}
+              src={logoUrl}
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
+          </div>
+      {/* </Link> */}
+    </div>
+  );
+};
