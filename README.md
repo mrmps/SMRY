@@ -178,6 +178,9 @@ OPENAI_API_KEY=
 
 # Base URL
 NEXT_PUBLIC_URL=https://your-domain.com
+
+# LogoKit (for company logos - get free token at logokit.com)
+NEXT_PUBLIC_LOGOKIT_TOKEN=
 ```
 
 Optional (but recommended):
@@ -199,6 +202,7 @@ pnpm install
 2. **Set up environment variables**:
    - Create a Vercel KV database at vercel.com/storage
    - Get an OpenAI API key at platform.openai.com
+   - Get a free LogoKit token at logokit.com (optional)
    - Copy `.env.example` to `.env.local` and fill in values
 
 3. **Run development server**:
