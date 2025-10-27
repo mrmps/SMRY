@@ -1,34 +1,42 @@
-import React, { Suspense } from "react";
-import { ResponseItem } from "@/app/proxy/page";
-import { Source } from "@/lib/data";
-import { getDataResult } from "./article-content";
+"use client";
+
+import React from "react";
+import { Source } from "@/types/api";
+import { UseQueryResult } from "@tanstack/react-query";
+import { ArticleResponse } from "@/types/api";
 import { ErrorBadge } from "./error-display";
 
-export const revalidate = 3600;
-
 interface ArticleLengthProps {
-  url: string;
+  query: UseQueryResult<ArticleResponse, Error>;
   source: Source;
 }
 
-export const ArticleLength = async ({ url, source }: ArticleLengthProps) => {
-  const contentResult = await getDataResult(url, source);
+export const ArticleLength = ({ query, source }: ArticleLengthProps) => {
+  const { data, isLoading, isError, error } = query;
 
-  // Handle error case with a simple indicator
-  if (contentResult.isErr()) {
+  // Loading state
+  if (isLoading) {
+    return <span className="text-gray-400">...</span>;
+  }
+
+  // Error state
+  if (isError) {
     return (
-      <Suspense fallback={null}>
+      <>
         {" · "}
-        <ErrorBadge error={contentResult.error} />
-      </Suspense>
+        <ErrorBadge error={{
+          type: "NETWORK_ERROR",
+          message: error?.message || "Failed to load",
+          url: "",
+        }} />
+      </>
     );
   }
 
-  const content = contentResult.value;
+  // Success state
+  if (data?.article?.length) {
+    return <>{" · " + data.article.length + " words"}</>;
+  }
 
-  return (
-    <Suspense fallback={null}>
-      {" · " + (content.article?.length ?? 0) + " words"}
-    </Suspense>
-  );
+  return null;
 };

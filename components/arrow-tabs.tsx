@@ -1,13 +1,17 @@
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import React from "react";
+import { ArticleContent } from "./article-content";
+import { ArticleLength } from "./article-length";
+import { Source, ArticleResponse } from "@/types/api";
+import Loading from "@/app/proxy/loading";
+import { UseQueryResult } from "@tanstack/react-query";
 
 const EnhancedTabsList: React.FC<{
-  sources: TabProps["sources"];
+  sources: string[];
   activeTabIndex: number;
   setActiveTabIndex: (tabIndex: number) => void;
   lengthJina: React.ReactNode;
@@ -171,44 +175,68 @@ const EnhancedTabsList: React.FC<{
 };
 
 interface TabProps {
-  sources: string[];
-  innerHTMLGoogle: React.ReactNode;
-  innerHTMLWayback: React.ReactNode;
-  innerHTMLDirect: React.ReactNode;
-  lengthJina: React.ReactNode;
-  lengthWayback: React.ReactNode;
-  lengthDirect: React.ReactNode;
+  url: string;
+  articleResults: {
+    direct: UseQueryResult<ArticleResponse, Error>;
+    wayback: UseQueryResult<ArticleResponse, Error>;
+    "jina.ai": UseQueryResult<ArticleResponse, Error>;
+  };
 }
 
-const ArrowTabs: React.FC<TabProps> = ({
-  sources,
-  innerHTMLGoogle,
-  innerHTMLDirect,
-  innerHTMLWayback,
-  lengthDirect,
-  lengthJina,
-  lengthWayback,
-}) => {
+const ArrowTabs: React.FC<TabProps> = ({ url, articleResults }) => {
   const initialTabIndex = 0;
   const [activeTabIndex, setActiveTabIndex] = useState(initialTabIndex);
+  const sources = ["smry", "wayback", "jina.ai"];
+  
+  // Use the passed-in results
+  const results = articleResults;
 
   return (
-    <Tabs
-      defaultValue={"smry"}
-      // value={JSON.stringify(sources[activeTabIndex])}
-      // onValueChange={(value: string) => setActiveTabIndex(parseInt(value))}
-    >
+    <Tabs defaultValue={"smry"}>
       <EnhancedTabsList
         sources={sources}
         activeTabIndex={activeTabIndex}
         setActiveTabIndex={setActiveTabIndex}
-        lengthDirect={lengthDirect}
-        lengthJina={lengthJina}
-        lengthWayback={lengthWayback}
+        lengthDirect={
+          <ArticleLength 
+            query={results.direct} 
+            source="direct"
+          />
+        }
+        lengthJina={
+          <ArticleLength 
+            query={results["jina.ai"]} 
+            source="jina.ai"
+          />
+        }
+        lengthWayback={
+          <ArticleLength 
+            query={results.wayback} 
+            source="wayback"
+          />
+        }
       />
-      <TabsContent value={"smry"}>{innerHTMLDirect}</TabsContent>
-      <TabsContent value={"wayback"}>{innerHTMLWayback}</TabsContent>
-      <TabsContent value={"jina.ai"}>{innerHTMLGoogle}</TabsContent>
+      <TabsContent value={"smry"}>
+        <ArticleContent 
+          query={results.direct} 
+          source="direct"
+          url={url}
+        />
+      </TabsContent>
+      <TabsContent value={"wayback"}>
+        <ArticleContent 
+          query={results.wayback} 
+          source="wayback"
+          url={url}
+        />
+      </TabsContent>
+      <TabsContent value={"jina.ai"}>
+        <ArticleContent 
+          query={results["jina.ai"]} 
+          source="jina.ai"
+          url={url}
+        />
+      </TabsContent>
     </Tabs>
   );
 };

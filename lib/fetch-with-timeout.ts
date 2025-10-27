@@ -14,6 +14,25 @@ import {
   createUnknownError,
 } from "./errors";
 
+// Development-only logger
+const devLog = (...args: any[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
+
+const devWarn = (...args: any[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.warn(...args);
+  }
+};
+
+const devError = (...args: any[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.error(...args);
+  }
+};
+
 interface CustomFetchOptions extends RequestInit {
   agent?: Agent;
 }
@@ -54,26 +73,26 @@ async function fetchHtmlContent(
     response = await fetch(url, options);
   } catch (error) {
     const hostname = new URL(url).hostname;
-    console.error(`❌ Network fetch failed for ${hostname}:`, error instanceof Error ? error.message : String(error));
+    devError(`❌ Network fetch failed for ${hostname}:`, error instanceof Error ? error.message : String(error));
     throw createNetworkError(`Failed to fetch from URL`, url, undefined, error);
   }
 
   if (!response.ok) {
     // Handle specific HTTP status codes
     if (response.status === 429) {
-      console.warn(`⚠️  Rate limited (429) for URL: ${url}. Will use fallback if available.`);
+      devWarn(`⚠️  Rate limited (429) for URL: ${url}. Will use fallback if available.`);
       const retryAfter = response.headers.get("retry-after");
       throw createRateLimitError(url, retryAfter ? parseInt(retryAfter) : undefined);
     } else if (response.status === 403) {
       // 403 is expected for many sites (NYTimes, etc.) - they block direct access
-      console.warn(`⚠️  Access forbidden (403) for: ${new URL(url).hostname}. This is expected - will use fallback methods.`);
+      devWarn(`⚠️  Access forbidden (403) for: ${new URL(url).hostname}. This is expected - will use fallback methods.`);
       throw createNetworkError(
         `HTTP error! status: ${response.status}`,
         url,
         response.status
       );
     } else if (response.status === 404) {
-      console.warn(`⚠️  Page not found (404) for URL: ${url}`);
+      devWarn(`⚠️  Page not found (404) for URL: ${url}`);
       throw createNetworkError(
         `HTTP error! status: ${response.status}`,
         url,
@@ -81,7 +100,7 @@ async function fetchHtmlContent(
       );
     } else {
       // 500+ errors and other unexpected status codes
-      console.error(`❌ HTTP error! status: ${response.status} for URL: ${url}`);
+      devError(`❌ HTTP error! status: ${response.status} for URL: ${url}`);
       throw createNetworkError(
         `HTTP error! status: ${response.status}`,
         url,
@@ -166,13 +185,13 @@ function fixLinks(root: any, url: string) {
  */
 function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
   if (!process.env.DIFFBOT_API_KEY) {
-    console.warn(`⚠️  No Diffbot API key configured - skipping Diffbot extraction`);
+    devWarn(`⚠️  No Diffbot API key configured - skipping Diffbot extraction`);
     return errAsync(
       createDiffbotError("No Diffbot API key configured in environment variables", url)
     );
   }
   
-  console.log(`🔄 Attempting Diffbot extraction for ${new URL(url).hostname}...`);
+  devLog(`🔄 Attempting Diffbot extraction for ${new URL(url).hostname}...`);
 
   return ResultAsync.fromPromise(
     new Promise<string>((resolve, reject) => {
@@ -187,9 +206,9 @@ function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
               // Check if it's a rate limit error
               const errorMsg = err.message || String(err);
               if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
-                console.warn(`⚠️  Diffbot rate limit exceeded for ${new URL(url).hostname}`);
+                devWarn(`⚠️  Diffbot rate limit exceeded for ${new URL(url).hostname}`);
               } else {
-                console.warn(`⚠️  Diffbot API error for ${new URL(url).hostname}:`, errorMsg);
+                devWarn(`⚠️  Diffbot API error for ${new URL(url).hostname}:`, errorMsg);
               }
               reject(err);
               return;
@@ -213,19 +232,19 @@ function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
 
             // Check if HTML content exists
             if (!htmlContent) {
-              console.warn(
+              devWarn(
                 `⚠️  Diffbot returned article data but no HTML for ${new URL(url).hostname} (will use direct fetch fallback)`
               );
               reject(new Error(`Diffbot API returned no HTML content for URL: ${url}`));
               return;
             }
 
-            console.log(`✓ Diffbot successfully extracted HTML (${htmlContent.length.toLocaleString()} chars)`);
+            devLog(`✓ Diffbot successfully extracted HTML (${htmlContent.length.toLocaleString()} chars)`);
             resolve(htmlContent);
           }
         );
       } catch (error) {
-        console.error(`Failed to initialize Diffbot for URL: ${url}. Error:`, error);
+        devError(`Failed to initialize Diffbot for URL: ${url}. Error:`, error);
         reject(error);
       }
     }),
@@ -300,14 +319,14 @@ async function fetchWithTimeoutHelper(url: string, options: any): Promise<Respon
         diffbotResult.match(
           (value) => value,
           (error) => {
-            console.warn(`Diffbot fetch failed: ${error.message}`);
+            devWarn(`⚠️  Diffbot fetch failed: ${error.message}`);
             return null;
           }
         ),
         noDiffbotResult.match(
           (value) => value,
           (error) => {
-            console.warn(`Direct fetch failed: ${error.message}`);
+            devWarn(`⚠️  Direct fetch failed: ${error.message}`);
             return null;
           }
         ),
@@ -339,14 +358,14 @@ async function fetchWithTimeoutHelper(url: string, options: any): Promise<Respon
       if (diffbotHtml && directHtml) {
         const useDiffbot = diffbotHtml.length > directHtml.length;
         html = useDiffbot ? diffbotHtml : directHtml;
-        console.log(
+        devLog(
           `✓ Both methods succeeded for ${new URL(url).hostname}: Using ${useDiffbot ? "Diffbot" : "direct"} (${html.length.toLocaleString()} chars vs ${useDiffbot ? directHtml.length.toLocaleString() : diffbotHtml.length.toLocaleString()} chars)`
         );
       } else {
         // TypeScript now knows at least one is non-null from the check above
         html = (diffbotHtml || directHtml) as string;
         const method = diffbotHtml ? "Diffbot" : "direct";
-        console.log(`✓ Using ${method} for ${new URL(url).hostname} (${html.length.toLocaleString()} chars)`);
+        devLog(`✓ Using ${method} for ${new URL(url).hostname} (${html.length.toLocaleString()} chars)`);
       }
     } else {
       html = await fetchHtmlContent(url, fetchOptions);
