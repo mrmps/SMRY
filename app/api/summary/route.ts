@@ -166,7 +166,6 @@ export async function POST(request: NextRequest) {
           content: prompts.user.replace("{text}", content.substring(0, 6000)),
         },
       ],
-      temperature: 0,
     });
 
     const summary = openaiResponse.choices[0].message.content;
