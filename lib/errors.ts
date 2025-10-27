@@ -53,6 +53,7 @@ export type TimeoutError = {
   message: string;
   url: string;
   timeoutMs: number;
+  originalError?: string;
 };
 
 // Rate limiting errors
@@ -62,6 +63,7 @@ export type RateLimitError = {
   statusCode: 429;
   url: string;
   retryAfter?: number;
+  originalError?: string;
 };
 
 // Cache-related errors
@@ -134,22 +136,25 @@ export const createParseError = (
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
 });
 
-export const createTimeoutError = (url: string, timeoutMs: number): TimeoutError => ({
+export const createTimeoutError = (url: string, timeoutMs: number, originalError?: unknown): TimeoutError => ({
   type: "TIMEOUT_ERROR",
   message: `Request timed out after ${timeoutMs}ms`,
   url,
   timeoutMs,
+  originalError: originalError instanceof Error ? originalError.message : originalError ? String(originalError) : undefined,
 });
 
 export const createRateLimitError = (
   url: string,
-  retryAfter?: number
+  retryAfter?: number,
+  originalError?: unknown
 ): RateLimitError => ({
   type: "RATE_LIMIT_ERROR",
   message: "Rate limit exceeded. Please try again later.",
   statusCode: 429,
   url,
   retryAfter,
+  originalError: originalError instanceof Error ? originalError.message : originalError ? String(originalError) : undefined,
 });
 
 export const createCacheError = (
