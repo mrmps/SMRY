@@ -5,26 +5,41 @@ A Next.js application that bypasses paywalls and generates AI-powered summaries 
 ## What This Does
 
 1. **Paywall Bypass**: Fetches article content from three sources in parallel:
-   - **Direct**: Uses Diffbot API for intelligent article extraction from original URLs
-   - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages
-   - **Jina.ai**: Fetches markdown from Jina.ai reader and converts to HTML
+   - **Direct**: Uses Diffbot API for intelligent article extraction from original URLs (server-side)
+   - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages (server-side)
+   - **Jina.ai**: Fetches and parses markdown directly in the browser (client-side)
    
 2. **AI Summaries**: Generates concise summaries in 8 languages using OpenAI's gpt-5-nano
 
-3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with fallback to Jina.ai's markdown format
+3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with client-side markdown parsing for Jina.ai to reduce server load
 
 ## Architecture Highlights
 
 ### Multi-Source Parallel Fetching
-Uses TanStack Query's `useQueries` to fetch from all sources simultaneously, displaying whichever responds first. Each source is independently cached.
+Uses TanStack Query to fetch from all sources simultaneously, displaying whichever responds first. Each source is independently cached.
 
+**Server-side sources (Direct, Wayback):**
 ```typescript
-// Fetches happen in parallel, not sequential
-const queries = useQueries({
-  queries: SOURCES.map((source) => ({
+// These hit the /api/article endpoint
+const serverQueries = useQueries({
+  queries: SERVER_SOURCES.map((source) => ({
     queryKey: ["article", source, url],
     queryFn: () => articleAPI.getArticle(url, source),
   }))
+});
+```
+
+**Client-side source (Jina.ai):**
+```typescript
+// Jina is fetched directly in the browser, reducing server load
+const jinaQuery = useQuery({
+  queryKey: ["article", "jina.ai", url],
+  queryFn: async () => {
+    // 1. Check cache via GET /api/jina
+    // 2. If miss, fetch from r.jina.ai client-side
+    // 3. Parse markdown in browser
+    // 4. Update cache via POST /api/jina
+  }
 });
 ```
 

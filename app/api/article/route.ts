@@ -5,9 +5,6 @@ import { kv } from "@vercel/kv";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { AppError, createValidationError, createNetworkError, createParseError, createUnknownError } from "@/lib/errors";
-import showdown from "showdown";
-
-const converter = new showdown.Converter();
 
 // Development-only logger
 const devLog = (...args: any[]) => {
@@ -32,8 +29,6 @@ type CachedArticle = z.infer<typeof CachedArticleSchema>;
  */
 function getUrlWithSource(source: string, url: string): string {
   switch (source) {
-    case "jina.ai":
-      return `https://r.jina.ai/${url}`;
     case "wayback":
       return `https://web.archive.org/web/2/${encodeURIComponent(url)}`;
     case "direct":
@@ -69,54 +64,6 @@ async function saveOrReturnLongerArticle(
     devLog("⚠️  Cache validation error:", validationError.toString());
     // Return the new article even if caching fails
     return newArticle;
-  }
-}
-
-/**
- * Fetch markdown from Jina.ai and convert to article format
- */
-async function fetchJinaArticle(
-  urlWithSource: string
-): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
-  try {
-    devLog(`🔄 Fetching markdown from Jina.ai: ${urlWithSource}`);
-    
-    const response = await fetch(urlWithSource);
-    
-    if (!response.ok) {
-      const error = createNetworkError(
-        `HTTP error! status: ${response.status}`,
-        urlWithSource,
-        response.status
-      );
-      devLog(`❌ HTTP error for jina.ai:`, response.status);
-      return { error };
-    }
-
-    const markdown = await response.text();
-    const lines = markdown.split("\n");
-
-    // Extract title, URL source, and main content from Jina.ai markdown format
-    const title = lines[0].replace("Title: ", "").trim();
-    const urlSource = lines[2].replace("URL Source: ", "").trim();
-    const mainContent = lines.slice(4).join("\n").trim();
-
-    // Convert markdown to HTML
-    const contentHtml = converter.makeHtml(mainContent);
-
-    const article: CachedArticle = {
-      title: title,
-      content: contentHtml,
-      textContent: mainContent,
-      length: mainContent.length,
-      siteName: new URL(urlSource).hostname,
-    };
-
-    devLog(`✓ Jina.ai article parsed: ${title} (${mainContent.length} chars)`);
-    return { article, cacheURL: urlWithSource };
-  } catch (error) {
-    devLog(`❌ Jina.ai parsing exception:`, error);
-    return { error: createParseError("Failed to parse Jina.ai markdown", "jina.ai", error) };
   }
 }
 
@@ -163,11 +110,6 @@ async function fetchArticle(
   urlWithSource: string,
   source: string
 ): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
-  // Jina.ai returns markdown, so we handle it specially
-  if (source === "jina.ai") {
-    return fetchJinaArticle(urlWithSource);
-  }
-  
   // Direct and Wayback use Diffbot
   return fetchArticleWithDiffbotWrapper(urlWithSource, source);
 }
@@ -197,6 +139,18 @@ export async function GET(request: NextRequest) {
     }
 
     const { url: validatedUrl, source: validatedSource } = validationResult.data;
+
+    // Jina.ai is handled by a separate endpoint (/api/jina) for client-side fetching
+    if (validatedSource === "jina.ai") {
+      devLog("❌ Jina.ai source not supported in this endpoint");
+      return NextResponse.json(
+        ErrorResponseSchema.parse({
+          error: "Jina.ai source is handled client-side. Use /api/jina endpoint instead.",
+          type: "VALIDATION_ERROR",
+        }),
+        { status: 400 }
+      );
+    }
 
     devLog(`\n🔄 API Request: ${validatedSource} - ${new URL(validatedUrl).hostname}`);
 

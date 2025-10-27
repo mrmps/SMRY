@@ -60,6 +60,25 @@ export const SummaryResponseSchema = z.object({
 });
 export type SummaryResponse = z.infer<typeof SummaryResponseSchema>;
 
+// Jina cache GET request schema
+export const JinaCacheRequestSchema = z.object({
+  url: z.string().url("Invalid URL format"),
+});
+export type JinaCacheRequest = z.infer<typeof JinaCacheRequestSchema>;
+
+// Jina cache POST/update schema
+export const JinaCacheUpdateSchema = z.object({
+  url: z.string().url("Invalid URL format"),
+  article: z.object({
+    title: z.string(),
+    content: z.string(),
+    textContent: z.string(),
+    length: z.number().int().positive(),
+    siteName: z.string(),
+  }),
+});
+export type JinaCacheUpdate = z.infer<typeof JinaCacheUpdateSchema>;
+
 // Available languages
 export const LANGUAGES = [
   { code: "en", name: "English" },
