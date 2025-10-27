@@ -147,10 +147,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate content length
-    if (content.length < 2200) {
+    if (content.length < 2000) {
       devLog("⚠️  Content too short");
       return NextResponse.json(
-        { error: "Content is too short to be summarized (minimum 2200 characters)" },
+        { error: "Content is too short to be summarized (minimum 2000 characters)" },
         { status: 400 }
       );
     }
