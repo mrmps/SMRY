@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const title = searchParams.get('title') || 'Article';
     const siteName = searchParams.get('siteName') || 'SMRY';
 
-    return new ImageResponse(
+    const response = new ImageResponse(
       (
         <div
           style={{
@@ -119,8 +119,14 @@ export async function GET(request: NextRequest) {
       {
         width: 1200,
         height: 630,
+        headers: {
+          'Cache-Control': 'public, immutable, no-transform, max-age=31536000',
+          'CDN-Cache-Control': 'public, max-age=31536000',
+        },
       },
     );
+
+    return response;
   } catch (error) {
     console.error('Error generating OG image:', error);
     return new Response('Failed to generate image', { status: 500 });

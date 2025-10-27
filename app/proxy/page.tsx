@@ -97,13 +97,20 @@ async function fetchArticleForMetadata(url: string): Promise<Article | null> {
     
     for (const source of sources) {
       try {
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_URL}/api/article?url=${encodeURIComponent(url)}&source=${source}`,
           { 
             cache: 'no-store',
-            next: { revalidate: 0 }
+            next: { revalidate: 0 },
+            signal: controller.signal
           }
         );
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           const data = await response.json();
@@ -142,31 +149,39 @@ export async function generateMetadata({
     };
   }
 
-  // Fetch article data
+  // Fetch article data with timeout
   const article = await fetchArticleForMetadata(url);
   
-  if (!article) {
-    return {
-      title: "SMRY - Article Reader & Summarizer",
-      description: "Read articles without paywalls and get AI-powered summaries",
-      openGraph: {
-        title: "SMRY - Article Reader & Summarizer",
-        description: "Read articles without paywalls and get AI-powered summaries",
-        url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(url)}`,
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: "SMRY - Article Reader & Summarizer",
-        description: "Read articles without paywalls and get AI-powered summaries",
-      },
-    };
+  // Generate basic metadata from URL as fallback
+  let title = "Article";
+  let siteName = "Unknown";
+  
+  try {
+    const urlObj = new URL(url);
+    siteName = urlObj.hostname.replace('www.', '');
+    // Extract a reasonable title from URL path
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    if (pathParts.length > 0) {
+      title = pathParts[pathParts.length - 1]
+        .replace(/[-_]/g, ' ')
+        .replace(/\.[^/.]+$/, '') // Remove file extension
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ') || 'Article';
+    }
+  } catch (error) {
+    console.error("Error parsing URL for fallback metadata:", error);
   }
-
-  const title = article.title || "Article";
-  const siteName = article.siteName || new URL(url).hostname;
-  const description = article.textContent 
+  
+  // Override with actual article data if available
+  if (article) {
+    title = article.title || title;
+    siteName = article.siteName || siteName;
+  }
+  
+  const description = (article && article.textContent)
     ? article.textContent.slice(0, 160).trim() + "..."
-    : `Read "${title}" on SMRY - No paywalls, AI summaries available`;
+    : `Read "${title}" from ${siteName} on SMRY - No paywalls, AI summaries available`;
 
   // Generate OG image URL using our own API
   const ogImageUrl = `${process.env.NEXT_PUBLIC_URL}/api/og?title=${encodeURIComponent(title)}&siteName=${encodeURIComponent(siteName)}`;
