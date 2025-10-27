@@ -8,6 +8,9 @@ import { QueryProvider } from "@/components/query-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  title: "Smry | AI Summarizer and Free Paywall Remover",
+  description:
+    "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
   openGraph: {
     type: "website",
     title: "Smry | AI Summarizer and Free Paywall Remover",
@@ -15,6 +18,21 @@ export const metadata: Metadata = {
     url: "https://smry.ai",
     description:
       "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
+    images: [
+      {
+        url: "https://smry.ai/api/og?title=Read%20Any%20Article%2C%20Anywhere&siteName=No%20Paywalls%20%E2%80%A2%20AI%20Summaries%20%E2%80%A2%20Free%20Forever",
+        width: 1200,
+        height: 630,
+        alt: "Smry - AI Summarizer and Free Paywall Remover",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Smry | AI Summarizer and Free Paywall Remover",
+    description:
+      "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
+    images: ["https://smry.ai/api/og?title=Read%20Any%20Article%2C%20Anywhere&siteName=No%20Paywalls%20%E2%80%A2%20AI%20Summaries%20%E2%80%A2%20Free%20Forever"],
   },
 };
 
