@@ -103,47 +103,47 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
   };
 
   return (
-    <div className="mt-2">
-      <form onSubmit={handleSubmit}>
-        <div className="flex flex-col space-y-4">
+    <div className="mt-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-5">
           <div>
-            <label htmlFor="source" className="block text-sm font-semibold text-gray-600 mb-2">
-              Choose Source:
+            <label htmlFor="source" className="block text-xs font-medium text-gray-500 mb-1.5">
+              Source
             </label>
             <select
               id="source"
               value={selectedSource}
               onChange={(e) => setSelectedSource(e.target.value as Source)}
               disabled={anyLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2.5 text-sm border border-zinc-200 rounded-lg bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500 transition-colors"
             >
               <option value="direct">
-                Direct {contentLengths.direct > 0 && `(${contentLengths.direct.toLocaleString()} chars)`}
-                {longestSource === "direct" && " ⭐"}
+                Direct {contentLengths.direct > 0 && `• ${contentLengths.direct.toLocaleString()} chars`}
+                {longestSource === "direct" && " • Recommended"}
               </option>
               <option value="wayback">
-                Wayback {contentLengths.wayback > 0 && `(${contentLengths.wayback.toLocaleString()} chars)`}
-                {longestSource === "wayback" && " ⭐"}
+                Wayback {contentLengths.wayback > 0 && `• ${contentLengths.wayback.toLocaleString()} chars`}
+                {longestSource === "wayback" && " • Recommended"}
               </option>
               <option value="jina.ai">
-                Jina.ai {contentLengths["jina.ai"] > 0 && `(${contentLengths["jina.ai"].toLocaleString()} chars)`}
-                {longestSource === "jina.ai" && " ⭐"}
+                Jina.ai {contentLengths["jina.ai"] > 0 && `• ${contentLengths["jina.ai"].toLocaleString()} chars`}
+                {longestSource === "jina.ai" && " • Recommended"}
               </option>
             </select>
             {anyLoading && (
-              <p className="mt-1 text-xs text-gray-500">Loading article content...</p>
+              <p className="mt-1.5 text-xs text-gray-400">Loading article content...</p>
             )}
           </div>
 
           <div>
-            <label htmlFor="language" className="block text-sm font-semibold text-gray-600 mb-2">
-              Summary Language:
+            <label htmlFor="language" className="block text-xs font-medium text-gray-500 mb-1.5">
+              Language
             </label>
             <select
               id="language"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2.5 text-sm border border-zinc-200 rounded-lg bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 transition-colors"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -156,23 +156,24 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
           <Button 
             type="submit" 
             disabled={isLoading || anyLoading || !selectedArticle?.article?.textContent}
+            className="w-full h-10 text-sm font-medium"
           >
-            {isLoading ? "Generating Summary..." : "Generate Summary"}
+            {isLoading ? "Generating..." : "Generate Summary"}
           </Button>
         </div>
       </form>
 
       {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h3 className="text-sm font-semibold text-red-800">Error</h3>
-          <p className="mt-1 text-sm text-red-700">{error}</p>
+        <div className="mt-5 p-4 bg-red-50 border border-red-100 rounded-lg">
+          <h3 className="text-xs font-medium text-red-900 mb-1">Error</h3>
+          <p className="text-sm text-red-700 leading-relaxed">{error}</p>
         </div>
       )}
 
       {summary && (
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-semibold text-blue-800 mb-2">Summary</h3>
-          <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+        <div className="mt-5 p-5 bg-white border border-zinc-200 rounded-lg shadow-sm">
+          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Summary</h3>
+          <p className="text-sm text-gray-800 leading-relaxed">{summary}</p>
         </div>
       )}
     </div>

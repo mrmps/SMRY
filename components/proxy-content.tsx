@@ -17,10 +17,12 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
   return (
     <>
-      <div className="flex items-center justify-between bg-[#FBF8FB] p-2 rounded-lg shadow-sm mb-4 border-zinc-100 border">
-        <h2 className="ml-4 mt-0 mb-0 text-sm font-semibold text-gray-600">
-          Get AI-powered key points
-        </h2>
+      <div className="flex items-center justify-between bg-white px-3 py-2.5 rounded-lg border border-zinc-200 mb-4 hover:border-zinc-300 transition-colors">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-600">AI Summary</span>
+          <span className="text-xs text-gray-400">•</span>
+          <span className="text-xs text-gray-500">Generate key points</span>
+        </div>
         <ResponsiveDrawer>
           <div className="remove-all">
             <SummaryForm 

@@ -142,13 +142,25 @@ export default function Home() {
             </div>
           </form>
           <h2 className="w-full text-center text-stone-700 mt-4">
-            Remove paywalls, ads, and popups from any website and instantly get the{" "}
+            Bypass paywalls and get instant{" "}
             <Link href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091">
               <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">
-                summary.
+                summaries
               </span>
             </Link>
+            .
           </h2>
+          <p className="text-center text-sm text-stone-500 mt-2">
+            by{" "}
+            <a
+              href="https://x.com/michael_chomsky"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-stone-700 transition-colors border-b border-stone-300"
+            >
+              @michael_chomsky
+            </a>
+          </p>
 
           <h3 className="mt-24 text-center text-lg font-semibold text-gray-800">
             OR
