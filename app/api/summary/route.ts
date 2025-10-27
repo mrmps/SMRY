@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
 import { Ratelimit } from "@upstash/ratelimit";
-import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import OpenAI from "openai";
 import { z } from "zod";
+import { createLogger } from "@/lib/logger";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Development-only logger
-const devLog = (...args: any[]) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(...args);
-  }
-};
+const logger = createLogger('api:summary');
 
 // Request schema
 const SummaryRequestSchema = z.object({
@@ -69,16 +64,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    devLog(`\n🔄 Summary Request:`, { 
+    logger.info({ 
       contentLength: body.content?.length, 
       title: body.title,
       language: body.language 
-    });
+    }, 'Summary Request');
 
     const validationResult = SummaryRequestSchema.safeParse(body);
 
     if (!validationResult.success) {
-      devLog("❌ Validation error:", validationResult.error);
+      logger.error({ error: validationResult.error }, 'Validation error');
       return NextResponse.json(
         { error: "Invalid request parameters" },
         { status: 400 }
@@ -88,9 +83,7 @@ export async function POST(request: NextRequest) {
     const { content, title, url, ip, language } = validationResult.data;
     const clientIp = ip || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "unknown";
 
-    devLog(`📍 Client IP: ${clientIp}`);
-    devLog(`🌐 Language: ${language}`);
-    devLog(`📝 Content length: ${content.length} chars`);
+    logger.debug({ clientIp, language, contentLength: content.length }, 'Request details');
 
     // Rate limiting
     if (process.env.NODE_ENV !== "development") {
@@ -112,7 +105,7 @@ export async function POST(request: NextRequest) {
       );
 
       if (!dailySuccess) {
-        devLog("⚠️  Daily rate limit exceeded");
+        logger.warn({ clientIp }, 'Daily rate limit exceeded');
         return NextResponse.json(
           {
             error:
@@ -123,7 +116,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!minuteSuccess) {
-        devLog("⚠️  Minute rate limit exceeded");
+        logger.warn({ clientIp }, 'Minute rate limit exceeded');
         return NextResponse.json(
           {
             error:
@@ -142,13 +135,13 @@ export async function POST(request: NextRequest) {
     const cached = await kv.get(cacheKey);
 
     if (cached && typeof cached === "string") {
-      devLog(`✓ Cache hit`);
+      logger.debug('Cache hit');
       return NextResponse.json({ summary: cached, cached: true });
     }
 
     // Content length is already validated by schema (minimum 2000 characters)
 
-    devLog(`📝 Generating summary for ${title || 'article'}...`);
+    logger.info({ title: title || 'article' }, 'Generating summary');
 
     // Get language-specific prompts
     const prompts = LANGUAGE_PROMPTS[language] || LANGUAGE_PROMPTS.en;
@@ -171,21 +164,21 @@ export async function POST(request: NextRequest) {
     const summary = openaiResponse.choices[0].message.content;
 
     if (!summary) {
-      devLog("❌ No summary generated");
+      logger.error('No summary generated');
       return NextResponse.json(
         { error: "Failed to generate summary" },
         { status: 500 }
       );
     }
 
-    devLog(`✅ Summary generated (${summary.length} chars)`);
+    logger.info({ length: summary.length }, 'Summary generated');
 
     // Cache the summary
     await kv.set(cacheKey, summary);
 
     return NextResponse.json({ summary, cached: false });
   } catch (error) {
-    devLog("❌ Unexpected error:", error);
+    logger.error({ error }, 'Unexpected error');
     return NextResponse.json(
       {
         error:

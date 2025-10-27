@@ -3,13 +3,9 @@ import { JinaCacheRequestSchema, JinaCacheUpdateSchema, ArticleResponseSchema, E
 import { kv } from "@vercel/kv";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { createLogger } from "@/lib/logger";
 
-// Development-only logger
-const devLog = (...args: any[]) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(...args);
-  }
-};
+const logger = createLogger('api:jina');
 
 // Cached article schema
 const CachedArticleSchema = z.object({
@@ -35,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      devLog("❌ Validation error:", error.toString());
+      logger.error({ error: error.toString() }, 'Validation error');
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -48,7 +44,7 @@ export async function GET(request: NextRequest) {
     const { url: validatedUrl } = validationResult.data;
     const cacheKey = `jina.ai:${validatedUrl}`;
 
-    devLog(`🔍 Checking Jina cache for: ${new URL(validatedUrl).hostname}`);
+    logger.debug({ hostname: new URL(validatedUrl).hostname }, 'Checking Jina cache');
 
     try {
       const cachedArticleJson = await kv.get(cacheKey);
@@ -58,7 +54,7 @@ export async function GET(request: NextRequest) {
 
         // Only return if cached article is reasonably long
         if (article.length > 4000) {
-          devLog(`✓ Jina cache hit: ${new URL(validatedUrl).hostname} (${article.length} chars)`);
+          logger.debug({ hostname: new URL(validatedUrl).hostname, length: article.length }, 'Jina cache hit');
           
           const response = ArticleResponseSchema.parse({
             source: "jina.ai",
@@ -74,13 +70,13 @@ export async function GET(request: NextRequest) {
 
           return NextResponse.json(response);
         } else {
-          devLog(`⚠️  Jina cache too short: ${article.length} chars, will fetch fresh`);
+          logger.debug({ length: article.length }, 'Jina cache too short, will fetch fresh');
         }
       } else {
-        devLog(`⚠️  Jina cache miss for: ${new URL(validatedUrl).hostname}`);
+        logger.debug({ hostname: new URL(validatedUrl).hostname }, 'Jina cache miss');
       }
     } catch (error) {
-      devLog("⚠️  Jina cache read error:", error instanceof Error ? error.message : String(error));
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Jina cache read error');
     }
 
     // No cache or cache too short - return empty success
@@ -92,7 +88,7 @@ export async function GET(request: NextRequest) {
       { status: 404 }
     );
   } catch (error) {
-    devLog("❌ Unexpected error in Jina GET:", error);
+    logger.error({ error }, 'Unexpected error in Jina GET');
     
     return NextResponse.json(
       ErrorResponseSchema.parse({
@@ -117,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      devLog("❌ Validation error:", error.toString());
+      logger.error({ error: error.toString() }, 'Validation error');
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -130,7 +126,7 @@ export async function POST(request: NextRequest) {
     const { url, article } = validationResult.data;
     const cacheKey = `jina.ai:${url}`;
 
-    devLog(`💾 Updating Jina cache for: ${new URL(url).hostname} (${article.length} chars)`);
+    logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Updating Jina cache');
 
     try {
       const existingArticleString = await kv.get(cacheKey);
@@ -142,7 +138,7 @@ export async function POST(request: NextRequest) {
       // Only update if new article is longer or doesn't exist
       if (!existingArticle || article.length > existingArticle.length) {
         await kv.set(cacheKey, JSON.stringify(article));
-        devLog(`✓ Jina cache updated: ${new URL(url).hostname} (${article.length} chars)`);
+        logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Jina cache updated');
         
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
@@ -158,7 +154,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(response);
       } else {
-        devLog(`✓ Keeping existing Jina cache: ${new URL(url).hostname} (${existingArticle.length} chars > ${article.length} chars)`);
+        logger.debug({ hostname: new URL(url).hostname, existingLength: existingArticle.length, newLength: article.length }, 'Keeping existing Jina cache');
         
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
@@ -175,7 +171,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(response);
       }
     } catch (error) {
-      devLog("⚠️  Jina cache update error:", error instanceof Error ? error.message : String(error));
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Jina cache update error');
       
       // Return the article even if caching fails
       const response = ArticleResponseSchema.parse({
@@ -193,7 +189,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(response);
     }
   } catch (error) {
-    devLog("❌ Unexpected error in Jina POST:", error);
+    logger.error({ error }, 'Unexpected error in Jina POST');
     
     return NextResponse.json(
       ErrorResponseSchema.parse({

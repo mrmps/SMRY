@@ -1,1 +1,0 @@
-export type Source = "direct" | "wayback" | "jina.ai";

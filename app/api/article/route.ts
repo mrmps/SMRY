@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ArticleRequestSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
-import { fetchArticleWithDiffbot } from "@/lib/fetch-with-timeout";
+import { fetchArticleWithDiffbot } from "@/lib/api/diffbot";
 import { kv } from "@vercel/kv";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { AppError, createValidationError, createNetworkError, createParseError, createUnknownError } from "@/lib/errors";
+import { AppError, createParseError } from "@/lib/errors";
+import { createLogger } from "@/lib/logger";
 
-// Development-only logger
-const devLog = (...args: any[]) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(...args);
-  }
-};
+const logger = createLogger('api:article');
 
 // Article schema for caching
 const CachedArticleSchema = z.object({
@@ -53,15 +49,15 @@ async function saveOrReturnLongerArticle(
 
     if (!existingArticle || newArticle.length > existingArticle.length) {
       await kv.set(key, JSON.stringify(newArticle));
-      devLog(`✓ Cached article for ${key} (${newArticle.length} chars)`);
+      logger.debug({ key, length: newArticle.length }, 'Cached article');
       return newArticle;
     } else {
-      devLog(`✓ Using existing cached article for ${key} (${existingArticle.length} chars)`);
+      logger.debug({ key, length: existingArticle.length }, 'Using existing cached article');
       return existingArticle;
     }
   } catch (error) {
     const validationError = fromError(error);
-    devLog("⚠️  Cache validation error:", validationError.toString());
+    logger.warn({ error: validationError.toString() }, 'Cache validation error');
     // Return the new article even if caching fails
     return newArticle;
   }
@@ -75,13 +71,13 @@ async function fetchArticleWithDiffbotWrapper(
   source: string
 ): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   try {
-    devLog(`🔄 Fetching article with Diffbot for ${source}: ${new URL(urlWithSource).hostname}`);
+    logger.info({ source, hostname: new URL(urlWithSource).hostname }, 'Fetching article with Diffbot');
     
     const diffbotResult = await fetchArticleWithDiffbot(urlWithSource);
 
     if (diffbotResult.isErr()) {
       const error = diffbotResult.error;
-      devLog(`❌ Diffbot fetch failed for ${source}:`, error.type, error.message);
+      logger.error({ source, errorType: error.type, message: error.message }, 'Diffbot fetch failed');
       return { error };
     }
 
@@ -95,10 +91,10 @@ async function fetchArticleWithDiffbotWrapper(
       siteName: diffbotArticle.siteName,
     };
 
-    devLog(`✓ Diffbot article parsed for ${source}: ${article.title} (${article.length} chars)`);
+    logger.debug({ source, title: article.title, length: article.length }, 'Diffbot article parsed');
     return { article, cacheURL: urlWithSource };
   } catch (error) {
-    devLog(`❌ Article parsing exception for ${source}:`, error);
+    logger.error({ source, error }, 'Article parsing exception');
     return { error: createParseError("Failed to parse article", source, error) };
   }
 }
@@ -128,7 +124,7 @@ export async function GET(request: NextRequest) {
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      devLog("❌ Validation error:", error.toString());
+      logger.error({ error: error.toString() }, 'Validation error');
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -142,7 +138,7 @@ export async function GET(request: NextRequest) {
 
     // Jina.ai is handled by a separate endpoint (/api/jina) for client-side fetching
     if (validatedSource === "jina.ai") {
-      devLog("❌ Jina.ai source not supported in this endpoint");
+      logger.warn({ source: validatedSource }, 'Jina.ai source not supported in this endpoint');
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: "Jina.ai source is handled client-side. Use /api/jina endpoint instead.",
@@ -152,7 +148,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    devLog(`\n🔄 API Request: ${validatedSource} - ${new URL(validatedUrl).hostname}`);
+    logger.info({ source: validatedSource, hostname: new URL(validatedUrl).hostname }, 'API Request');
 
     const urlWithSource = getUrlWithSource(validatedSource, validatedUrl);
     const cacheKey = `${validatedSource}:${validatedUrl}`;
@@ -165,7 +161,7 @@ export async function GET(request: NextRequest) {
         const article = CachedArticleSchema.parse(cachedArticleJson);
 
         if (article.length > 4000) {
-          devLog(`✓ Cache hit for ${validatedSource}:${new URL(validatedUrl).hostname} (${article.length} chars)`);
+          logger.debug({ source: validatedSource, hostname: new URL(validatedUrl).hostname, length: article.length }, 'Cache hit');
           
           const response = ArticleResponseSchema.parse({
             source: validatedSource,
@@ -183,17 +179,17 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (error) {
-      devLog("⚠️  Cache read error:", error instanceof Error ? error.message : String(error));
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Cache read error');
       // Continue to fetch fresh data
     }
 
     // Fetch fresh data
-    devLog(`📥 Fetching fresh data for ${validatedSource}...`);
+    logger.info({ source: validatedSource }, 'Fetching fresh data');
     const result = await fetchArticle(urlWithSource, validatedSource);
 
     if ("error" in result) {
       const appError = result.error;
-      devLog(`❌ Fetch failed for ${validatedSource}:`, appError.type, appError.message);
+      logger.error({ source: validatedSource, errorType: appError.type, message: appError.message }, 'Fetch failed');
       
       return NextResponse.json(
         ErrorResponseSchema.parse({
@@ -223,10 +219,10 @@ export async function GET(request: NextRequest) {
         status: "success",
       });
 
-      devLog(`✅ Success for ${validatedSource}: ${savedArticle.title}`);
+      logger.info({ source: validatedSource, title: savedArticle.title }, 'Success');
       return NextResponse.json(response);
     } catch (error) {
-      devLog("⚠️  Cache save error:", error instanceof Error ? error.message : String(error));
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Cache save error');
       
       // Return article even if caching fails
       const response = ArticleResponseSchema.parse({
@@ -244,7 +240,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response);
     }
   } catch (error) {
-    devLog("❌ Unexpected error in API route:", error);
+    logger.error({ error }, 'Unexpected error in API route');
     
     return NextResponse.json(
       ErrorResponseSchema.parse({

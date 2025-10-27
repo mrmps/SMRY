@@ -274,8 +274,14 @@ All API routes validate inputs with Zod schemas at runtime. This catches invalid
 ### Error Resilience
 Using neverthrow's Result types instead of exceptions means errors are handled explicitly. Each error type has a user-friendly message, so users get helpful feedback instead of generic errors.
 
-### Development Logging
-All console.log statements are wrapped in dev-only functions that check `NODE_ENV`. This gives detailed debugging info in development without polluting production logs.
+### Structured Logging
+Uses **Pino** for production-ready logging:
+- **Development**: Pretty-printed, colorized output for easy debugging
+- **Production**: Structured JSON logs for parsing and monitoring
+- **Contextual**: Each module has its own logger context (e.g., `api:article`, `lib:fetch`)
+- **Levels**: debug, info, warn, error with appropriate defaults
+
+See [LOGGING.md](./LOGGING.md) for detailed documentation and integration with log aggregation services like Axiom, Logtail, or Datadog.
 
 ## Contributing
 

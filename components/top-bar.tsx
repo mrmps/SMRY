@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import useScroll from "@/lib/use-scroll";
+import useScroll from "@/lib/hooks/use-scroll";
 import ScrollProgress from "./scroll-progress";
 import { ClientOnly } from "./client-only";
 

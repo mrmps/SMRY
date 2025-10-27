@@ -1,9 +1,9 @@
 "use client";
 
 import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
-import { articleAPI } from "@/lib/api-client";
+import { articleAPI } from "@/lib/api/client";
 import { ArticleResponse, Source } from "@/types/api";
-import { fetchJinaArticle } from "@/lib/jina-client";
+import { fetchJinaArticle } from "@/lib/api/jina";
 
 const SERVER_SOURCES: Source[] = ["direct", "wayback"];
 
