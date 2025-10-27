@@ -5,5 +5,7 @@
 # Disallow: /
 
 User-agent: *
+# Allow social media crawlers to access OG images
+Allow: /api/og/*
 Disallow: /api/proxy
 Disallow: /proxy

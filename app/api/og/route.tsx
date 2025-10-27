@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
+// Use Node.js runtime (default) as per Vercel docs
+// @vercel/og automatically adds correct caching headers
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
     const title = searchParams.get('title') || 'Article';
     const siteName = searchParams.get('siteName') || 'SMRY';
 
-    const response = new ImageResponse(
+    return new ImageResponse(
       (
         <div
           style={{
@@ -119,14 +120,8 @@ export async function GET(request: NextRequest) {
       {
         width: 1200,
         height: 630,
-        headers: {
-          'Cache-Control': 'public, immutable, no-transform, max-age=31536000',
-          'CDN-Cache-Control': 'public, max-age=31536000',
-        },
       },
     );
-
-    return response;
   } catch (error) {
     console.error('Error generating OG image:', error);
     return new Response('Failed to generate image', { status: 500 });
