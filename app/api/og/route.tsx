@@ -109,18 +109,13 @@ export async function GET(request: NextRequest) {
           >
             <div
               style={{
-                display: 'flex',
-                gap: '32px',
                 fontSize: '15px',
                 color: '#6B7280',
                 fontWeight: '500',
+                letterSpacing: '0.01em',
               }}
             >
-              <span>No Paywalls</span>
-              <span>•</span>
-              <span>AI Summaries</span>
-              <span>•</span>
-              <span>Free Forever</span>
+              Read without limits — AI-powered summaries in 8 languages
             </div>
             <div
               style={{
