@@ -18,7 +18,7 @@ const devLog = (...args: any[]) => {
 
 // Request schema
 const SummaryRequestSchema = z.object({
-  content: z.string().min(100, "Content must be at least 100 characters"),
+  content: z.string().min(2000, "Content must be at least 2000 characters"),
   title: z.string().optional(),
   url: z.string().optional(),
   ip: z.string().optional(),
@@ -146,14 +146,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ summary: cached, cached: true });
     }
 
-    // Validate content length
-    if (content.length < 2000) {
-      devLog("⚠️  Content too short");
-      return NextResponse.json(
-        { error: "Content is too short to be summarized (minimum 2000 characters)" },
-        { status: 400 }
-      );
-    }
+    // Content length is already validated by schema (minimum 2000 characters)
 
     devLog(`📝 Generating summary for ${title || 'article'}...`);
 

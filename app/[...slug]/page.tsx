@@ -8,6 +8,11 @@ export default function RedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Skip Next.js internal routes and API routes
+    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+      return;
+    }
+
     // Extract the path after the initial '/'
     const slug = pathname.substring(1);
 
