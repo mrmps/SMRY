@@ -99,7 +99,7 @@ const Outlet = ({ name, url, famousArticle }: OutletType) => (
         <div className="w-16 h-16 flex justify-center items-center"> {/* Adjust width and height as needed */}
           <Image
             alt={name}
-            src={`https://logo.clearbit.com/${url}?grayscale=true`}
+            src={`https://img.logokit.com/${url}?size=64&fallback=monogram`}
             width={32} // Increased size
             height={32} // Increased size
             className="rounded-full"

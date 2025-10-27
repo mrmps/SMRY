@@ -95,6 +95,7 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **OpenAI gpt-5-nano** for summaries
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
 - **Showdown** for markdown to HTML conversion (Jina.ai source)
+- **LogoKit API** for company logos
 - **Radix UI** + **Tailwind CSS** for UI
 
 ## Key Files
