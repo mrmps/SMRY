@@ -1,9 +1,9 @@
 "use client";
 
 import React from 'react';
-import { Button } from './ui/button'; // Update with the correct import path
+import { Button } from '../ui/button';
 import { Share2 as ShareIcon, Copy as CopyIcon, Mail as EmailIcon, Facebook as FacebookIcon, X as CloseIcon, MessageCircle as TelegramIcon } from 'lucide-react';
-import { Popover, PopoverTrigger, PopoverContent } from './ui/popover'; // Update with the correct import path
+import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 
 interface ShareButtonProps {
     url: string;    

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import useScroll from "@/lib/hooks/use-scroll";
 import ScrollProgress from "./scroll-progress";
-import { ClientOnly } from "./client-only";
+import { ClientOnly } from "../shared/client-only";
 
 const TopBar = () => {
   const [progress, setProgress] = useState(0);

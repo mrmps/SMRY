@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import Ad from "@/components/ad";
-import { ProxyContent } from "@/components/proxy-content";
+import Ad from "@/components/marketing/ad";
+import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
 
 const adCopies = [

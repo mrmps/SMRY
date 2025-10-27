@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/tooltip";
 import { GlobeAltIcon, LinkIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
-import { Skeleton } from "./ui/skeleton";
-import ShareButton from "./share-button";
+import { Skeleton } from "../ui/skeleton";
+import ShareButton from "../features/share-button";
 import { UseQueryResult } from "@tanstack/react-query";
 import { ArticleResponse, Source } from "@/types/api";
-import { ErrorDisplay } from "./error-display";
+import { ErrorDisplay } from "../shared/error-display";
 
 export type { Source };
 

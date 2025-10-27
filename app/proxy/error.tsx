@@ -1,7 +1,7 @@
 "use client";
 
-import TopBar from "@/components/top-bar";
-import UnderlineLink from "@/components/underline-link";
+import TopBar from "@/components/layout/top-bar";
+import UnderlineLink from "@/components/shared/underline-link";
 import { useRouter } from "next/navigation";
 
 export default function Error({

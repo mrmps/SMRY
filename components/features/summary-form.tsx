@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { LANGUAGES, Source, ArticleResponse } from "@/types/api";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { UseQueryResult } from "@tanstack/react-query";
 
 interface SummaryFormProps {

@@ -2,8 +2,8 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import React from "react";
-import { ArticleContent } from "./article-content";
-import { ArticleLength } from "./article-length";
+import { ArticleContent } from "./content";
+import { ArticleLength } from "./length";
 import { Source, ArticleResponse } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 

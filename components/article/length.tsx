@@ -4,7 +4,7 @@ import React from "react";
 import { Source } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { ArticleResponse } from "@/types/api";
-import { ErrorBadge } from "./error-display";
+import { ErrorBadge } from "../shared/error-display";
 
 interface ArticleLengthProps {
   query: UseQueryResult<ArticleResponse, Error>;

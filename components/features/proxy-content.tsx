@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import ArrowTabs from "@/components/arrow-tabs";
-import { ResponsiveDrawer } from "@/components/responsiveDrawer";
-import SummaryForm from "@/components/summary-form";
+import ArrowTabs from "@/components/article/tabs";
+import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
+import SummaryForm from "@/components/features/summary-form";
 import { useArticles } from "@/lib/hooks/use-articles";
 
 interface ProxyContentProps {

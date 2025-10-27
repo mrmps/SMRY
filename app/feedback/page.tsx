@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import TopBar from "@/components/top-bar";
-import { ClientOnly } from "@/components/client-only";
+import TopBar from "@/components/layout/top-bar";
+import { ClientOnly } from "@/components/shared/client-only";
 
 export default function Page() {
   const [emailData, setEmailData] = useState({

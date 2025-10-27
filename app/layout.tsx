@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { QueryProvider } from "@/components/query-provider";
+import { QueryProvider } from "@/components/shared/query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 

@@ -11,16 +11,16 @@ import {
 import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { CardSpotlight } from "@/components/card-spotlight";
+import { CardSpotlight } from "@/components/marketing/card-spotlight";
 import { Unlock, Globe } from "lucide-react";
 import { z } from "zod";
-import Github from "@/components/github";
+import Github from "@/components/marketing/github";
 import { Fira_Code } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Banner } from "@/components/banner";
-import { SiteFooter } from "@/components/site-footer";
-import { BookmarkletComponent } from "@/components/bookmarklet";
+import { Banner } from "@/components/marketing/banner";
+import { SiteFooter } from "@/components/layout/site-footer";
+import { BookmarkletComponent } from "@/components/marketing/bookmarklet";
 import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
 
