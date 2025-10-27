@@ -2,25 +2,16 @@ import pino from 'pino';
 
 /**
  * Centralized logger using Pino
- * - Development: Pretty formatted, colorized output
+ * - Development: JSON logs (compatible with Next.js)
  * - Production: JSON structured logs for parsing/monitoring
  * - Supports: debug, info, warn, error levels
+ * 
+ * Note: pino-pretty transport is disabled because it uses worker threads
+ * that don't work in Next.js API routes. For pretty logs in development,
+ * pipe the output through pino-pretty CLI: `npm run dev | pino-pretty`
  */
 const logger = pino({
   level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
-  
-  // Production: JSON logs (parseable by log aggregators)
-  // Development: Pretty printed with colors
-  ...(process.env.NODE_ENV !== 'production' && {
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'HH:MM:ss',
-        ignore: 'pid,hostname',
-      },
-    },
-  }),
   
   // Base fields included in every log
   base: {
@@ -32,6 +23,15 @@ const logger = pino({
     err: pino.stdSerializers.err,
     error: pino.stdSerializers.err,
   },
+  
+  // Format for better readability in development (no worker threads)
+  ...(process.env.NODE_ENV !== 'production' && {
+    formatters: {
+      level: (label) => {
+        return { level: label };
+      },
+    },
+  }),
 });
 
 /**

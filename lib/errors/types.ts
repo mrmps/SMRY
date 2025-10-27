@@ -208,8 +208,14 @@ export const getErrorMessage = (error: AppError): string => {
       return "Proxy connection failed. Please try a different source or try again later.";
 
     case "DIFFBOT_ERROR":
+      if (error.message.includes("JavaScript to render") || error.message.includes("JavaScript-rendered")) {
+        return "This page requires JavaScript to display content. Please try the \"jina.ai\" tab above, which can handle JavaScript-rendered pages.";
+      }
       if (error.message.includes("no HTML content")) {
         return "Content extraction service returned data but no readable HTML. The direct fetch method will be used as fallback.";
+      }
+      if (error.message.includes("insufficient content") || error.message.includes("Incomplete article data")) {
+        return "Unable to extract article content. This may be a search page or non-article content. Try the \"jina.ai\" tab for better results.";
       }
       return "Content extraction service encountered an error. Trying alternative methods...";
 
