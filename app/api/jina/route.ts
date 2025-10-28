@@ -16,8 +16,6 @@ const CachedArticleSchema = z.object({
   siteName: z.string(),
 });
 
-type CachedArticle = z.infer<typeof CachedArticleSchema>;
-
 /**
  * GET /api/jina?url=...
  * Check cache for Jina article

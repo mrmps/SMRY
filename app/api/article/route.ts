@@ -9,6 +9,14 @@ import { createLogger } from "@/lib/logger";
 
 const logger = createLogger('api:article');
 
+// Diffbot Article schema - validates the response from fetchArticleWithDiffbot
+const DiffbotArticleSchema = z.object({
+  title: z.string().min(1, "Article title cannot be empty"),
+  html: z.string().min(1, "Article HTML content cannot be empty"),
+  text: z.string().min(1, "Article text content cannot be empty"),
+  siteName: z.string().min(1, "Site name cannot be empty"),
+});
+
 // Article schema for caching
 const CachedArticleSchema = z.object({
   title: z.string(),
@@ -41,23 +49,63 @@ async function saveOrReturnLongerArticle(
   newArticle: CachedArticle
 ): Promise<CachedArticle> {
   try {
+    // Validate incoming article first
+    const incomingValidation = CachedArticleSchema.safeParse(newArticle);
+    
+    if (!incomingValidation.success) {
+      const validationError = fromError(incomingValidation.error);
+      logger.error({ 
+        key, 
+        validationError: validationError.toString(),
+        articleData: {
+          hasTitle: !!newArticle.title,
+          hasContent: !!newArticle.content,
+          hasTextContent: !!newArticle.textContent,
+          length: newArticle.length,
+        }
+      }, 'Incoming article validation failed');
+      throw new Error(`Invalid article data: ${validationError.toString()}`);
+    }
+    
+    const validatedNewArticle = incomingValidation.data;
+    
     const existingArticleString = await kv.get(key);
 
-    const existingArticle = existingArticleString
-      ? CachedArticleSchema.parse(existingArticleString)
-      : null;
+    if (existingArticleString) {
+      const existingValidation = CachedArticleSchema.safeParse(existingArticleString);
+      
+      if (!existingValidation.success) {
+        const validationError = fromError(existingValidation.error);
+        logger.warn({ 
+          key,
+          validationError: validationError.toString() 
+        }, 'Existing cache validation failed - replacing with new article');
+        
+        // Save new article since existing is invalid
+        await kv.set(key, JSON.stringify(validatedNewArticle));
+        logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (replaced invalid)');
+        return validatedNewArticle;
+      }
+      
+      const existingArticle = existingValidation.data;
 
-    if (!existingArticle || newArticle.length > existingArticle.length) {
-      await kv.set(key, JSON.stringify(newArticle));
-      logger.debug({ key, length: newArticle.length }, 'Cached article');
-      return newArticle;
+      if (validatedNewArticle.length > existingArticle.length) {
+        await kv.set(key, JSON.stringify(validatedNewArticle));
+        logger.debug({ key, newLength: validatedNewArticle.length, oldLength: existingArticle.length }, 'Cached longer article');
+        return validatedNewArticle;
+      } else {
+        logger.debug({ key, length: existingArticle.length }, 'Using existing cached article');
+        return existingArticle;
+      }
     } else {
-      logger.debug({ key, length: existingArticle.length }, 'Using existing cached article');
-      return existingArticle;
+      // No existing article, save the new one
+      await kv.set(key, JSON.stringify(validatedNewArticle));
+      logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (new)');
+      return validatedNewArticle;
     }
   } catch (error) {
     const validationError = fromError(error);
-    logger.warn({ error: validationError.toString() }, 'Cache validation error');
+    logger.warn({ error: validationError.toString() }, 'Cache operation error');
     // Return the new article even if caching fails
     return newArticle;
   }
@@ -84,15 +132,45 @@ async function fetchArticleWithDiffbotWrapper(
 
     const diffbotArticle = diffbotResult.value;
 
+    // Validate Diffbot response with Zod
+    const validationResult = DiffbotArticleSchema.safeParse(diffbotArticle);
+    
+    if (!validationResult.success) {
+      const validationError = fromError(validationResult.error);
+      logger.error({ 
+        source, 
+        validationError: validationError.toString(),
+        receivedData: {
+          hasTitle: !!diffbotArticle.title,
+          hasHtml: !!diffbotArticle.html,
+          hasText: !!diffbotArticle.text,
+          hasSiteName: !!diffbotArticle.siteName,
+          titleLength: diffbotArticle.title?.length || 0,
+          htmlLength: diffbotArticle.html?.length || 0,
+          textLength: diffbotArticle.text?.length || 0,
+        }
+      }, 'Diffbot response validation failed');
+      
+      return { 
+        error: createParseError(
+          `Invalid Diffbot response: ${validationError.toString()}`, 
+          source, 
+          validationError
+        )
+      };
+    }
+
+    const validatedArticle = validationResult.data;
+
     const article: CachedArticle = {
-      title: diffbotArticle.title,
-      content: diffbotArticle.html,
-      textContent: diffbotArticle.text,
-      length: diffbotArticle.text.length,
-      siteName: diffbotArticle.siteName,
+      title: validatedArticle.title,
+      content: validatedArticle.html,
+      textContent: validatedArticle.text,
+      length: validatedArticle.text.length,
+      siteName: validatedArticle.siteName,
     };
 
-    logger.debug({ source, title: article.title, length: article.length }, 'Diffbot article parsed');
+    logger.debug({ source, title: article.title, length: article.length }, 'Diffbot article parsed and validated');
     return { article, cacheURL: urlWithSource };
   } catch (error) {
     logger.error({ source, error }, 'Article parsing exception');
@@ -163,28 +241,51 @@ export async function GET(request: NextRequest) {
       const cachedArticleJson = await kv.get(cacheKey);
 
       if (cachedArticleJson) {
-        const article = CachedArticleSchema.parse(cachedArticleJson);
+        // Validate cached data
+        const cacheValidation = CachedArticleSchema.safeParse(cachedArticleJson);
+        
+        if (!cacheValidation.success) {
+          const validationError = fromError(cacheValidation.error);
+          logger.warn({ 
+            cacheKey,
+            validationError: validationError.toString(),
+            receivedType: typeof cachedArticleJson,
+            hasKeys: cachedArticleJson ? Object.keys(cachedArticleJson as any) : []
+          }, 'Cache validation failed - will fetch fresh');
+          // Continue to fetch fresh data instead of using invalid cache
+        } else {
+          const article = cacheValidation.data;
 
-        if (article.length > 4000) {
-          logger.debug({ source: validatedSource, hostname: new URL(validatedUrl).hostname, length: article.length }, 'Cache hit');
-          
-          const response = ArticleResponseSchema.parse({
-            source: validatedSource,
-            cacheURL: urlWithSource,
-            article: {
-              ...article,
-              byline: "",
-              dir: "",
-              lang: "",
-            },
-            status: "success",
-          });
+          if (article.length > 4000) {
+            logger.debug({ source: validatedSource, hostname: new URL(validatedUrl).hostname, length: article.length }, 'Cache hit');
+            
+            // Validate final response structure
+            const response = ArticleResponseSchema.parse({
+              source: validatedSource,
+              cacheURL: urlWithSource,
+              article: {
+                title: article.title,
+                byline: "",
+                dir: "",
+                lang: "",
+                content: article.content,
+                textContent: article.textContent,
+                length: article.length,
+                siteName: article.siteName,
+              },
+              status: "success",
+            });
 
-          return NextResponse.json(response);
+            return NextResponse.json(response);
+          }
         }
       }
     } catch (error) {
-      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Cache read error');
+      const validationError = fromError(error);
+      logger.warn({ 
+        error: error instanceof Error ? error.message : String(error),
+        validationError: validationError.toString()
+      }, 'Cache read error');
       // Continue to fetch fresh data
     }
 
@@ -227,32 +328,96 @@ export async function GET(request: NextRequest) {
     try {
       const savedArticle = await saveOrReturnLongerArticle(cacheKey, article);
       
+      // Validate saved article
+      const savedValidation = CachedArticleSchema.safeParse(savedArticle);
+      
+      if (!savedValidation.success) {
+        const validationError = fromError(savedValidation.error);
+        logger.error({ 
+          cacheKey,
+          validationError: validationError.toString() 
+        }, 'Saved article validation failed');
+        
+        // Use original article if saved validation fails
+        const response = ArticleResponseSchema.parse({
+          source: validatedSource,
+          cacheURL,
+          article: {
+            title: article.title,
+            byline: "",
+            dir: "",
+            lang: "",
+            content: article.content,
+            textContent: article.textContent,
+            length: article.length,
+            siteName: article.siteName,
+          },
+          status: "success",
+        });
+        
+        return NextResponse.json(response);
+      }
+      
+      const validatedSavedArticle = savedValidation.data;
+      
       const response = ArticleResponseSchema.parse({
         source: validatedSource,
         cacheURL,
         article: {
-          ...savedArticle,
+          title: validatedSavedArticle.title,
           byline: "",
           dir: "",
           lang: "",
+          content: validatedSavedArticle.content,
+          textContent: validatedSavedArticle.textContent,
+          length: validatedSavedArticle.length,
+          siteName: validatedSavedArticle.siteName,
         },
         status: "success",
       });
 
-      logger.info({ source: validatedSource, title: savedArticle.title }, 'Success');
+      logger.info({ source: validatedSource, title: validatedSavedArticle.title }, 'Success');
       return NextResponse.json(response);
     } catch (error) {
-      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Cache save error');
+      const validationError = fromError(error);
+      logger.warn({ 
+        error: error instanceof Error ? error.message : String(error),
+        validationError: validationError.toString()
+      }, 'Cache save error');
       
-      // Return article even if caching fails
+      // Return article even if caching fails - validate it first
+      const articleValidation = CachedArticleSchema.safeParse(article);
+      
+      if (!articleValidation.success) {
+        const articleError = fromError(articleValidation.error);
+        logger.error({ 
+          validationError: articleError.toString() 
+        }, 'Article validation failed in error handler');
+        
+        // Return error if we can't validate the article
+        return NextResponse.json(
+          ErrorResponseSchema.parse({
+            error: `Article validation failed: ${articleError.toString()}`,
+            type: "VALIDATION_ERROR",
+          }),
+          { status: 500 }
+        );
+      }
+      
+      const validatedArticle = articleValidation.data;
+      
       const response = ArticleResponseSchema.parse({
         source: validatedSource,
         cacheURL,
         article: {
-          ...article,
+          title: validatedArticle.title,
           byline: "",
           dir: "",
           lang: "",
+          content: validatedArticle.content,
+          textContent: validatedArticle.textContent,
+          length: validatedArticle.length,
+          siteName: validatedArticle.siteName,
         },
         status: "success",
       });

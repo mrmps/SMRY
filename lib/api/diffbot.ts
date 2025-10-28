@@ -9,8 +9,80 @@ import {
 import { createLogger } from "@/lib/logger";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const logger = createLogger('lib:diffbot');
+
+// Zod schemas for Diffbot API responses
+const DiffbotStatsSchema = z.object({
+  fetchTime: z.number().optional(),
+  confidence: z.number().optional(),
+}).optional();
+
+const DiffbotArticleObjectSchema = z.object({
+  title: z.string().optional(),
+  text: z.string().optional(),
+  html: z.string().optional(),
+  dom: z.string().optional(),
+  author: z.string().optional(),
+  date: z.string().optional(),
+  url: z.string().optional(),
+  pageUrl: z.string().optional(),
+  authorUrl: z.string().optional(),
+  siteName: z.string().optional(),
+  humanLanguage: z.string().optional(),
+  images: z.array(z.any()).optional(),
+  media: z.array(z.any()).optional(),
+  tags: z.array(z.any()).optional(),
+  categories: z.array(z.any()).optional(),
+  authors: z.array(z.any()).optional(),
+  stats: DiffbotStatsSchema,
+}).passthrough(); // Allow additional fields
+
+const DiffbotRequestSchema = z.object({
+  pageUrl: z.string(),
+  api: z.string(),
+  version: z.number(),
+  options: z.array(z.string()).optional(),
+}).passthrough();
+
+const DiffbotArticleResponseSchema = z.object({
+  // Old API format (direct properties)
+  title: z.string().optional(),
+  text: z.string().optional(),
+  html: z.string().optional(),
+  dom: z.string().optional(),
+  author: z.string().optional(),
+  date: z.string().optional(),
+  url: z.string().optional(),
+  media: z.array(z.any()).optional(),
+  stats: DiffbotStatsSchema,
+  
+  // New API format (objects array)
+  request: DiffbotRequestSchema.optional(),
+  objects: z.array(DiffbotArticleObjectSchema).optional(),
+  
+  // Error response
+  errorCode: z.number().optional(),
+  error: z.string().optional(),
+}).passthrough(); // Allow additional fields
+
+// Schema for the article we extract and return
+const DiffbotArticleSchema = z.object({
+  title: z.string().min(1, "Article title cannot be empty"),
+  html: z.string().min(1, "Article HTML content cannot be empty"),
+  text: z.string().min(100, "Article text must be at least 100 characters"),
+  siteName: z.string().min(1, "Site name cannot be empty"),
+});
+
+// Schema for Readability parsed article
+const ReadabilityArticleSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  textContent: z.string(),
+  siteName: z.string().optional().nullable(),
+}).passthrough();
 
 /**
  * Helper to create a debug context
@@ -110,26 +182,50 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         const article = reader.parse();
         
         if (article && article.textContent && article.textContent.length > 500) {
+          // Validate Readability result
+          const validationResult = ReadabilityArticleSchema.safeParse(article);
+          
+          if (!validationResult.success) {
+            const validationError = fromError(validationResult.error);
+            logger.warn({ 
+              url, 
+              validationError: validationError.toString() 
+            }, 'Readability result validation failed (targeted)');
+            continue; // Try next selector
+          }
+          
+          const validatedArticle = validationResult.data;
+          
           logger.info({ 
             hostname: new URL(url).hostname,
-            title: article.title,
-            textLength: article.textContent.length,
+            title: validatedArticle.title,
+            textLength: validatedArticle.textContent.length,
             method: 'targeted-container'
           }, 'Successfully extracted article using targeted container');
           
           addDebugStep(debugContext, 'readability_extraction', 'success', 'Readability extraction succeeded (targeted)', {
             selector,
-            extractedTitle: article.title,
-            extractedTextLength: article.textContent.length,
-            extractedHtmlLength: article.content.length,
+            extractedTitle: validatedArticle.title,
+            extractedTextLength: validatedArticle.textContent.length,
+            extractedHtmlLength: validatedArticle.content.length,
           });
           
-          return {
-            title: article.title || doc.title || 'Untitled',
-            html: article.content,
-            text: article.textContent,
-            siteName: article.siteName || new URL(url).hostname,
+          const result: DiffbotArticle = {
+            title: validatedArticle.title || doc.title || 'Untitled',
+            html: validatedArticle.content,
+            text: validatedArticle.textContent,
+            siteName: validatedArticle.siteName || new URL(url).hostname,
           };
+          
+          // Final validation before returning
+          const finalValidation = DiffbotArticleSchema.safeParse(result);
+          if (!finalValidation.success) {
+            const finalError = fromError(finalValidation.error);
+            logger.warn({ url, finalError: finalError.toString() }, 'Final article validation failed (targeted)');
+            continue; // Try next selector
+          }
+          
+          return finalValidation.data;
         }
       }
     }
@@ -140,24 +236,54 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
     const article = reader.parse();
     
     if (article && article.textContent && article.textContent.length > 100) {
+      // Validate Readability result
+      const validationResult = ReadabilityArticleSchema.safeParse(article);
+      
+      if (!validationResult.success) {
+        const validationError = fromError(validationResult.error);
+        logger.warn({ 
+          url, 
+          validationError: validationError.toString() 
+        }, 'Readability result validation failed');
+        addDebugStep(debugContext, 'readability_validation', 'warning', 'Readability result validation failed', {
+          validationError: validationError.toString(),
+        });
+        return null;
+      }
+      
+      const validatedArticle = validationResult.data;
+      
       logger.info({ 
         hostname: new URL(url).hostname,
-        title: article.title,
-        textLength: article.textContent.length,
+        title: validatedArticle.title,
+        textLength: validatedArticle.textContent.length,
       }, 'Successfully extracted article with Readability fallback');
       
       addDebugStep(debugContext, 'readability_extraction', 'success', 'Readability extraction succeeded', {
-        extractedTitle: article.title,
-        extractedTextLength: article.textContent.length,
-        extractedHtmlLength: article.content.length,
+        extractedTitle: validatedArticle.title,
+        extractedTextLength: validatedArticle.textContent.length,
+        extractedHtmlLength: validatedArticle.content.length,
       });
       
-      return {
-        title: article.title || 'Untitled',
-        html: article.content,
-        text: article.textContent,
-        siteName: article.siteName || new URL(url).hostname,
+      const result: DiffbotArticle = {
+        title: validatedArticle.title || 'Untitled',
+        html: validatedArticle.content,
+        text: validatedArticle.textContent,
+        siteName: validatedArticle.siteName || new URL(url).hostname,
       };
+      
+      // Final validation before returning
+      const finalValidation = DiffbotArticleSchema.safeParse(result);
+      if (!finalValidation.success) {
+        const finalError = fromError(finalValidation.error);
+        logger.warn({ url, finalError: finalError.toString() }, 'Final article validation failed');
+        addDebugStep(debugContext, 'final_validation', 'warning', 'Final article validation failed', {
+          validationError: finalError.toString(),
+        });
+        return null;
+      }
+      
+      return finalValidation.data;
     }
     
     addDebugStep(debugContext, 'readability_extraction', 'warning', 'Readability returned insufficient content');
@@ -218,7 +344,29 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'direct'):
           return;
         }
 
-        const data: DiffbotArticleResponse = await response.json();
+        const rawData = await response.json();
+        
+        // Validate Diffbot API response structure
+        const responseValidation = DiffbotArticleResponseSchema.safeParse(rawData);
+        
+        if (!responseValidation.success) {
+          const validationError = fromError(responseValidation.error);
+          logger.error({ 
+            url, 
+            validationError: validationError.toString(),
+            receivedKeys: rawData ? Object.keys(rawData) : []
+          }, 'Diffbot API response validation failed');
+          
+          addDebugStep(debugContext, 'response_validation', 'error', 'Diffbot API response validation failed', {
+            validationError: validationError.toString(),
+            receivedKeys: rawData ? Object.keys(rawData) : []
+          });
+          
+          reject(new Error(`Invalid Diffbot API response structure: ${validationError.toString()}`));
+          return;
+        }
+        
+        const data = responseValidation.data;
 
         // Handle error responses
         if (data.errorCode || data.error) {
@@ -271,14 +419,37 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'direct'):
               text: obj.text,
               siteName: obj.siteName || new URL(url).hostname,
             };
-            logger.info({ title: completeArticle.title, length: completeArticle.text.length }, 'Diffbot successfully extracted article');
-            addDebugStep(debugContext, 'diffbot_extraction', 'success', 'Diffbot extracted article successfully', {
-              extractedTitle: completeArticle.title,
-              extractedTextLength: completeArticle.text.length,
-              extractedHtmlLength: completeArticle.html.length,
-            });
-            resolve(completeArticle);
-            return;
+            
+            // Validate the extracted article
+            const articleValidation = DiffbotArticleSchema.safeParse(completeArticle);
+            
+            if (!articleValidation.success) {
+              const validationError = fromError(articleValidation.error);
+              logger.warn({ 
+                url, 
+                validationError: validationError.toString(),
+                articleData: {
+                  titleLength: completeArticle.title.length,
+                  htmlLength: completeArticle.html.length,
+                  textLength: completeArticle.text.length,
+                }
+              }, 'Diffbot article validation failed');
+              
+              addDebugStep(debugContext, 'article_validation', 'warning', 'Article validation failed, will try fallback', {
+                validationError: validationError.toString(),
+              });
+              // Don't return, let it fall through to Readability fallback
+            } else {
+              const validatedArticle = articleValidation.data;
+              logger.info({ title: validatedArticle.title, length: validatedArticle.text.length }, 'Diffbot successfully extracted article');
+              addDebugStep(debugContext, 'diffbot_extraction', 'success', 'Diffbot extracted article successfully', {
+                extractedTitle: validatedArticle.title,
+                extractedTextLength: validatedArticle.text.length,
+                extractedHtmlLength: validatedArticle.html.length,
+              });
+              resolve(validatedArticle);
+              return;
+            }
           }
           
           // Incomplete article data - use Readability on DOM
@@ -309,14 +480,37 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'direct'):
             text: data.text,
             siteName: new URL(url).hostname,
           };
-          logger.info({ title: articleData.title, length: articleData.text.length }, 'Diffbot successfully extracted article (old format)');
-          addDebugStep(debugContext, 'diffbot_extraction', 'success', 'Diffbot extracted article (old format)', {
-            extractedTitle: articleData.title,
-            extractedTextLength: articleData.text.length,
-            extractedHtmlLength: articleData.html.length,
-          });
-          resolve(articleData);
-          return;
+          
+          // Validate the extracted article
+          const articleValidation = DiffbotArticleSchema.safeParse(articleData);
+          
+          if (!articleValidation.success) {
+            const validationError = fromError(articleValidation.error);
+            logger.warn({ 
+              url, 
+              validationError: validationError.toString(),
+              articleData: {
+                titleLength: articleData.title.length,
+                htmlLength: articleData.html.length,
+                textLength: articleData.text.length,
+              }
+            }, 'Diffbot article validation failed (old format)');
+            
+            addDebugStep(debugContext, 'article_validation', 'warning', 'Article validation failed (old format), will try fallback', {
+              validationError: validationError.toString(),
+            });
+            // Don't resolve, let it fall through to check for DOM fallback
+          } else {
+            const validatedArticle = articleValidation.data;
+            logger.info({ title: validatedArticle.title, length: validatedArticle.text.length }, 'Diffbot successfully extracted article (old format)');
+            addDebugStep(debugContext, 'diffbot_extraction', 'success', 'Diffbot extracted article (old format)', {
+              extractedTitle: validatedArticle.title,
+              extractedTextLength: validatedArticle.text.length,
+              extractedHtmlLength: validatedArticle.html.length,
+            });
+            resolve(validatedArticle);
+            return;
+          }
         } else {
           // Store DOM for potential fallback
           domForFallback = (data as any)?.dom || null;
@@ -339,13 +533,34 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'direct'):
           
           const readabilityResult = extractWithReadability(domForFallback, url, debugContext);
           if (readabilityResult) {
-            logger.info({ 
-              hostname: new URL(url).hostname,
-              title: readabilityResult.title,
-              textLength: readabilityResult.text.length,
-            }, 'Successfully extracted article using Readability fallback');
-            resolve(readabilityResult);
-            return;
+            // Validate Readability result
+            const readabilityValidation = DiffbotArticleSchema.safeParse(readabilityResult);
+            
+            if (!readabilityValidation.success) {
+              const validationError = fromError(readabilityValidation.error);
+              logger.warn({ 
+                url, 
+                validationError: validationError.toString(),
+                resultData: {
+                  titleLength: readabilityResult.title.length,
+                  htmlLength: readabilityResult.html.length,
+                  textLength: readabilityResult.text.length,
+                }
+              }, 'Readability result validation failed in main function');
+              
+              addDebugStep(debugContext, 'readability_final_validation', 'warning', 'Readability result validation failed', {
+                validationError: validationError.toString(),
+              });
+            } else {
+              const validatedResult = readabilityValidation.data;
+              logger.info({ 
+                hostname: new URL(url).hostname,
+                title: validatedResult.title,
+                textLength: validatedResult.text.length,
+              }, 'Successfully extracted article using Readability fallback');
+              resolve(validatedResult);
+              return;
+            }
           }
         } else {
           logger.warn({ hostname: new URL(url).hostname }, 'No DOM available for Readability fallback');
