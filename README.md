@@ -47,11 +47,20 @@ const jinaQuery = useQuery({
 Uses `neverthrow`'s Result types for error handling instead of try-catch, making errors type-safe:
 
 ```typescript
-// Returns Result<Response, AppError> instead of throwing
-export function fetchWithTimeout(url: string): ResultAsync<Response, AppError>
+// Returns Result<DiffbotArticle, AppError> instead of throwing
+export function fetchArticleWithDiffbot(url: string, source: string): ResultAsync<DiffbotArticle, AppError>
 ```
 
 Nine distinct error types (NetworkError, RateLimitError, TimeoutError, etc.) with user-friendly messages.
+
+**Enhanced Error Context:**
+All errors now include debug context showing:
+- What extraction methods were attempted
+- Why each method failed or succeeded
+- Content length at each step
+- Complete extraction timeline
+
+This makes debugging extraction failures much easier.
 
 ### Dual Caching Strategy
 - **Server-side**: Vercel KV for persistent caching across requests
@@ -62,10 +71,14 @@ Articles are cached by `source:url` key. When fetching, if a longer version exis
 ### Intelligent Source Routing
 Different sources require different extraction strategies:
 
-**Direct & Wayback** → Diffbot API
+**Direct & Wayback** → Diffbot API with Multi-Layer Fallbacks
 ```typescript
-// Diffbot extracts structured article data (title, html, text, siteName)
-const diffbotResult = await fetchArticleWithDiffbot(urlWithSource);
+// Diffbot extracts structured article data with fallback chain:
+// 1. Diffbot API extraction
+// 2. Mozilla Readability on returned DOM
+// 3. Multiple Diffbot fields (html, text, media)
+// 4. Wayback-specific original URL extraction
+const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source);
 ```
 
 **Jina.ai** → Markdown Parsing
@@ -75,20 +88,35 @@ const markdown = await fetch(jinaUrl).then(r => r.text());
 const html = converter.makeHtml(markdown);
 ```
 
-This approach maximizes Diffbot's AI-powered extraction while properly handling Jina.ai's markdown format.
+This multi-layered approach maximizes content extraction success across diverse article formats and site structures.
 
 ### Content Parsing Pipeline
 
 **For Direct & Wayback (via Diffbot):**
 1. Send URL to Diffbot API
 2. Receive structured article data (title, HTML, text, siteName)
-3. Cache the parsed result
+3. **Fallback chain if extraction incomplete:**
+   - Try Mozilla Readability on Diffbot's returned DOM
+   - For Wayback: Try extracting original URL and re-parsing
+   - Attempt multiple Diffbot article fields
+4. Track extraction steps in debug context
+5. Cache the parsed result
 
 **For Jina.ai (Markdown):**
 1. Fetch markdown from Jina.ai reader
 2. Extract title, URL source, and content
 3. Convert markdown to HTML using Showdown
 4. Cache the parsed result
+
+### Debug Context & Error Tracking
+Each article fetch now includes detailed debug context that tracks:
+- All extraction attempts and their outcomes
+- Fallback strategies that were tried
+- Content length at each step
+- Timestamps for performance analysis
+- Error details for troubleshooting
+
+Debug context is preserved through errors and displayed in the UI for debugging.
 
 ### Multilingual Summaries
 Language-specific prompts for 8 languages (en, es, fr, de, zh, ja, pt, ru). Each language gets its own cache key:
@@ -109,6 +137,7 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **Vercel KV** (Upstash Redis) for caching
 - **OpenAI gpt-5-nano** for summaries
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
+- **Mozilla Readability** for fallback content extraction
 - **Showdown** for markdown to HTML conversion (Jina.ai source)
 - **Logo.dev API** for company logos (client-side)
 - **Radix UI** + **Tailwind CSS** for UI
@@ -124,9 +153,15 @@ app/
 └── page.tsx                  # Landing page
 
 lib/
-├── fetch-with-timeout.ts     # Diffbot API integration and utilities
-├── errors.ts                 # Type-safe error definitions (9 types)
-├── api-client.ts             # Type-safe API client
+├── api/
+│   ├── diffbot.ts            # Diffbot API with multi-layer fallback extraction
+│   ├── jina.ts               # Jina.ai markdown fetching
+│   └── client.ts             # Type-safe API client
+├── errors/
+│   ├── types.ts              # Type-safe error definitions (9 types)
+│   ├── safe-error.ts         # Safe error utilities
+│   └── index.ts              # Barrel export
+├── logger.ts                 # Pino structured logging
 └── hooks/
     └── use-articles.ts       # TanStack Query hook for parallel fetching
 
@@ -153,7 +188,7 @@ useArticles() hook - fires 3 parallel requests
 API route /api/article?url=...&source=...
     ↓
 Route to appropriate fetcher:
-  - Direct/Wayback → fetchArticleWithDiffbot()
+  - Direct/Wayback → fetchArticleWithDiffbot() with multi-layer fallback
   - Jina.ai → fetchJinaArticle() (markdown parsing)
     ↓
 Cache in Vercel KV (if longer than existing)
@@ -251,6 +286,20 @@ https://your-domain.com/https://example.com/article
 
 ## Interesting Implementation Details
 
+### Multi-Layer Content Extraction
+The Diffbot integration uses a sophisticated fallback chain to maximize extraction success:
+
+1. **Primary: Diffbot API** - AI-powered article extraction
+2. **Fallback 1: Mozilla Readability** - Applied to Diffbot's returned DOM for complex layouts
+3. **Fallback 2: Multiple Diffbot fields** - Tries html, text, and media fields
+4. **Fallback 3: Wayback re-extraction** - For archived pages, extracts original URL and re-parses
+
+Each step is tracked in debug context, making it easy to understand what worked and what didn't. This approach handles challenging cases like:
+- Google Blogger sites with complex DOM structures
+- Paywalled content with dynamic loading
+- Archive.org pages with wrapped content
+- Sites with heavy JavaScript rendering
+
 ### Why Three Sources?
 - **Direct + Diffbot**: AI-powered extraction bypasses most paywalls and anti-bot measures
 - **Wayback + Diffbot**: Extracts clean content from archived pages, removing archive.org UI clutter
@@ -262,6 +311,14 @@ By fetching all three in parallel and displaying any that succeed, the app maxim
 Diffbot's API is specifically trained to extract article content from HTML, removing navigation, ads, and other clutter. This works excellently for:
 - Direct URLs: Bypasses many paywall implementations
 - Wayback archives: Removes archive.org's UI wrapper and metadata
+
+**Fallback Strategy:**
+If Diffbot's extraction is incomplete, the system automatically tries:
+1. **Mozilla Readability** on the returned DOM for better extraction
+2. **Multiple Diffbot fields** (html, text, media) to find the best content
+3. **Wayback-specific logic** to extract and re-parse original URLs
+
+This multi-layered approach maximizes content extraction success, especially for complex sites like Google Blogger or pages with dynamic layouts.
 
 Jina.ai is handled separately because it returns markdown (not HTML), so we parse it directly without Diffbot.
 
