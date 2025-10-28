@@ -125,7 +125,8 @@ export async function GET(request: NextRequest) {
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      logger.error({ error: error.toString() }, 'Validation error');
+      const debugSmryUrl = url ? `https://smry.ai/${url}${source && source !== 'direct' ? `?source=${source}` : ''}` : undefined;
+      logger.error({ error: error.toString(), smryUrl: debugSmryUrl, url, source }, 'Validation error - Full URL for debugging');
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -137,9 +138,12 @@ export async function GET(request: NextRequest) {
 
     const { url: validatedUrl, source: validatedSource } = validationResult.data;
 
+    // Construct the full smry.ai URL for debugging
+    const smryUrl = `https://smry.ai/${validatedUrl}${validatedSource !== 'direct' ? `?source=${validatedSource}` : ''}`;
+
     // Jina.ai is handled by a separate endpoint (/api/jina) for client-side fetching
     if (validatedSource === "jina.ai") {
-      logger.warn({ source: validatedSource }, 'Jina.ai source not supported in this endpoint');
+      logger.warn({ source: validatedSource, smryUrl }, 'Jina.ai source not supported in this endpoint');
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: "Jina.ai source is handled client-side. Use /api/jina endpoint instead.",
@@ -149,7 +153,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    logger.info({ source: validatedSource, hostname: new URL(validatedUrl).hostname }, 'API Request');
+    logger.info({ source: validatedSource, hostname: new URL(validatedUrl).hostname, smryUrl }, 'API Request');
 
     const urlWithSource = getUrlWithSource(validatedSource, validatedUrl);
     const cacheKey = `${validatedSource}:${validatedUrl}`;
@@ -185,17 +189,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch fresh data
-    logger.info({ source: validatedSource }, 'Fetching fresh data');
+    logger.info({ source: validatedSource, smryUrl }, 'Fetching fresh data');
     const result = await fetchArticle(urlWithSource, validatedSource);
 
     if ("error" in result) {
       const appError = result.error;
-      logger.error({ source: validatedSource, errorType: appError.type, message: appError.message, hasDebugContext: !!appError.debugContext }, 'Fetch failed');
+      logger.error({ 
+        source: validatedSource, 
+        errorType: appError.type, 
+        message: appError.message, 
+        hasDebugContext: !!appError.debugContext,
+        smryUrl,
+        urlWithSource,
+      }, 'Fetch failed - Full URL for debugging');
       
       // Include cacheURL in error details so frontend can show the actual URL that was attempted
       const errorDetails = {
         ...appError,
         url: urlWithSource, // The actual URL that was attempted (with source prefix)
+        smryUrl, // Full smry.ai URL for easy debugging
       };
       
       return NextResponse.json(
@@ -248,7 +260,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response);
     }
   } catch (error) {
-    logger.error({ error }, 'Unexpected error in API route');
+    // Try to extract URL info for better debugging
+    const searchParams = request.nextUrl.searchParams;
+    const url = searchParams.get("url");
+    const source = searchParams.get("source") || "direct";
+    const debugSmryUrl = url ? `https://smry.ai/${url}${source !== 'direct' ? `?source=${source}` : ''}` : undefined;
+    
+    logger.error({ 
+      error, 
+      smryUrl: debugSmryUrl,
+      url,
+      source,
+    }, 'Unexpected error in API route - Full URL for debugging');
     
     return NextResponse.json(
       ErrorResponseSchema.parse({
