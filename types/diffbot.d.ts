@@ -10,6 +10,7 @@ declare module 'diffbot' {
     title?: string;
     text?: string;
     html?: string;
+    dom?: string; // Full page HTML (optional field)
     author?: string;
     date?: string;
     url?: string;
@@ -35,6 +36,7 @@ declare module 'diffbot' {
     title?: string;
     text?: string;
     html?: string;
+    dom?: string; // Full page HTML (optional field)
     author?: string;
     date?: string;
     url?: string;
@@ -53,6 +55,10 @@ declare module 'diffbot' {
       [key: string]: any;
     };
     objects?: DiffbotArticleObject[];
+    
+    // Error response
+    errorCode?: number;
+    error?: string;
     
     [key: string]: any;
   }

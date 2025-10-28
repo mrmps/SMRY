@@ -1,9 +1,25 @@
 import { z } from "zod";
-import { AppError } from "@/lib/errors";
+import type { AppError, DebugContext } from "@/lib/errors/types";
 
 // Source type
 export const SourceSchema = z.enum(["direct", "wayback", "jina.ai"]);
 export type Source = z.infer<typeof SourceSchema>;
+
+// Debug context schema
+export const DebugStepSchema = z.object({
+  step: z.string(),
+  timestamp: z.string(),
+  status: z.enum(['success', 'error', 'warning', 'info']),
+  message: z.string(),
+  data: z.any().optional(),
+});
+
+export const DebugContextSchema = z.object({
+  timestamp: z.string(),
+  url: z.string(),
+  source: z.string(),
+  steps: z.array(DebugStepSchema),
+});
 
 // Article schema
 export const ArticleSchema = z.object({
@@ -32,6 +48,7 @@ export const ArticleResponseSchema = z.object({
   article: ArticleSchema.optional(),
   status: z.string().optional(),
   error: z.string().optional(),
+  debugContext: DebugContextSchema.optional(),
 });
 export type ArticleResponse = z.infer<typeof ArticleResponseSchema>;
 
@@ -40,6 +57,7 @@ export const ErrorResponseSchema = z.object({
   error: z.string(),
   type: z.string().optional(),
   details: z.any().optional(),
+  debugContext: DebugContextSchema.optional(),
 });
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 

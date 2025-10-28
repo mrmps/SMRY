@@ -1,4 +1,33 @@
 /**
+ * Debug context for troubleshooting extraction issues
+ * Captures all intermediate data and steps in the extraction pipeline
+ */
+export interface DebugContext {
+  timestamp: string;
+  url: string;
+  source: string;
+  steps: DebugStep[];
+}
+
+export interface DebugStep {
+  step: string;
+  timestamp: string;
+  status: 'success' | 'error' | 'warning' | 'info';
+  message: string;
+  data?: {
+    htmlLength?: number;
+    htmlPreview?: string; // First 500 chars
+    diffbotResponse?: any;
+    readabilityResult?: any;
+    extractedTitle?: string;
+    extractedTextLength?: number;
+    extractedHtmlLength?: number;
+    errorDetails?: any;
+    [key: string]: any;
+  };
+}
+
+/**
  * Comprehensive error types for the application
  * These errors are type-safe and can be used with neverthrow's Result types
  */
@@ -21,6 +50,7 @@ export type NetworkError = {
   statusCode?: number;
   url: string;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Proxy-related errors
@@ -29,6 +59,7 @@ export type ProxyError = {
   message: string;
   url: string;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Diffbot API errors
@@ -37,6 +68,7 @@ export type DiffbotError = {
   message: string;
   url: string;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // HTML/Content parsing errors
@@ -45,6 +77,7 @@ export type ParseError = {
   message: string;
   source: string;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Timeout errors
@@ -54,6 +87,7 @@ export type TimeoutError = {
   url: string;
   timeoutMs: number;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Rate limiting errors
@@ -64,6 +98,7 @@ export type RateLimitError = {
   url: string;
   retryAfter?: number;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Cache-related errors
@@ -72,6 +107,7 @@ export type CacheError = {
   message: string;
   operation: "read" | "write";
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Validation errors
@@ -80,6 +116,7 @@ export type ValidationError = {
   message: string;
   field?: string;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Unknown/unexpected errors
@@ -87,6 +124,7 @@ export type UnknownError = {
   type: "UNKNOWN_ERROR";
   message: string;
   originalError?: string;
+  debugContext?: DebugContext;
 };
 
 // Error factory functions for easy creation
@@ -94,35 +132,41 @@ export const createNetworkError = (
   message: string,
   url: string,
   statusCode?: number,
-  originalError?: unknown
+  originalError?: unknown,
+  debugContext?: DebugContext
 ): NetworkError => ({
   type: "NETWORK_ERROR",
   message,
   url,
   statusCode,
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
+  debugContext,
 });
 
 export const createProxyError = (
   message: string,
   url: string,
-  originalError?: unknown
+  originalError?: unknown,
+  debugContext?: DebugContext
 ): ProxyError => ({
   type: "PROXY_ERROR",
   message,
   url,
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
+  debugContext,
 });
 
 export const createDiffbotError = (
   message: string,
   url: string,
-  originalError?: unknown
+  originalError?: unknown,
+  debugContext?: DebugContext
 ): DiffbotError => ({
   type: "DIFFBOT_ERROR",
   message,
   url,
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
+  debugContext,
 });
 
 export const createParseError = (
@@ -208,16 +252,28 @@ export const getErrorMessage = (error: AppError): string => {
       return "Proxy connection failed. Please try a different source or try again later.";
 
     case "DIFFBOT_ERROR":
-      if (error.message.includes("JavaScript to render") || error.message.includes("JavaScript-rendered")) {
-        return "This page requires JavaScript to display content. Please try the \"jina.ai\" tab above, which can handle JavaScript-rendered pages.";
+      if (error.message.includes("404") || error.message.includes("not found") || error.message.includes("could not download page")) {
+        return "This page couldn't be accessed. The article may no longer be available at this URL, or the site may be blocking access.";
       }
-      if (error.message.includes("no HTML content")) {
-        return "Content extraction service returned data but no readable HTML. The direct fetch method will be used as fallback.";
+      if (error.message.includes("403") || error.message.includes("forbidden")) {
+        return "Access to this content is restricted. The site appears to be blocking access to this page.";
       }
-      if (error.message.includes("insufficient content") || error.message.includes("Incomplete article data")) {
-        return "Unable to extract article content. This may be a search page or non-article content. Try the \"jina.ai\" tab for better results.";
+      if (error.message.includes("Rate limit") || error.message.includes("429")) {
+        return "We've hit our request limit for now. Please try again in a few moments, or try using a different source tab.";
       }
-      return "Content extraction service encountered an error. Trying alternative methods...";
+      if (error.message.includes("500") || error.message.includes("502") || error.message.includes("503") || error.message.includes("Server error")) {
+        return "The page's server is having issues right now. This is temporary—try again in a moment or use a different source tab.";
+      }
+      if (error.message.includes("timeout")) {
+        return "The request took too long to complete. The page may be slow to load—try again or use a different source tab.";
+      }
+      if (error.message.includes("No Diffbot API key")) {
+        return "Content extraction is not configured. Please contact support.";
+      }
+      if (error.message.includes("Incomplete article data")) {
+        return "We couldn't extract the full article content from this page. Try viewing the page directly to see if it's available.";
+      }
+      return "We couldn't retrieve the content from this page. Try viewing it directly or using a different source tab.";
 
     case "PARSE_ERROR":
       return "Failed to parse the article content. The page format may not be supported.";

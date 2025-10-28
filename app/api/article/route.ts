@@ -73,11 +73,12 @@ async function fetchArticleWithDiffbotWrapper(
   try {
     logger.info({ source, hostname: new URL(urlWithSource).hostname }, 'Fetching article with Diffbot');
     
-    const diffbotResult = await fetchArticleWithDiffbot(urlWithSource);
+    // Pass source parameter to enable debug tracking
+    const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source);
 
     if (diffbotResult.isErr()) {
       const error = diffbotResult.error;
-      logger.error({ source, errorType: error.type, message: error.message }, 'Diffbot fetch failed');
+      logger.error({ source, errorType: error.type, message: error.message, hasDebugContext: !!error.debugContext }, 'Diffbot fetch failed');
       return { error };
     }
 
@@ -189,13 +190,20 @@ export async function GET(request: NextRequest) {
 
     if ("error" in result) {
       const appError = result.error;
-      logger.error({ source: validatedSource, errorType: appError.type, message: appError.message }, 'Fetch failed');
+      logger.error({ source: validatedSource, errorType: appError.type, message: appError.message, hasDebugContext: !!appError.debugContext }, 'Fetch failed');
+      
+      // Include cacheURL in error details so frontend can show the actual URL that was attempted
+      const errorDetails = {
+        ...appError,
+        url: urlWithSource, // The actual URL that was attempted (with source prefix)
+      };
       
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: appError.message,
           type: appError.type,
-          details: appError,
+          details: errorDetails,
+          debugContext: appError.debugContext,
         }),
         { status: 500 }
       );

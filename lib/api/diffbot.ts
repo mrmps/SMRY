@@ -1,14 +1,10 @@
-import { parse } from "node-html-parser";
-import { HttpsProxyAgent } from "https-proxy-agent";
-import { Agent } from "https";
 import { Diffbot, DiffbotArticleResponse } from "diffbot";
 import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import {
   AppError,
   createDiffbotError,
-  createNetworkError,
-  createProxyError,
-  createRateLimitError,
+  DebugContext,
+  DebugStep,
 } from "@/lib/errors/types";
 import { createLogger } from "@/lib/logger";
 import { JSDOM } from "jsdom";
@@ -16,335 +12,37 @@ import { Readability } from "@mozilla/readability";
 
 const logger = createLogger('lib:diffbot');
 
-interface CustomFetchOptions extends RequestInit {
-  agent?: Agent;
-}
-
 /**
- * Get fetch options including proxy configuration if needed
+ * Helper to create a debug context
  */
-async function getFetchOptions(url: string): Promise<CustomFetchOptions> {
-  const options: CustomFetchOptions = {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
-    },
-  };
-
-  if (url.includes("web.archive")) {
-    const proxyURL = process.env.PROXY_URL;
-
-    if (!proxyURL) {
-      throw createProxyError("No proxy URL configured in environment variables", url);
-    }
-
-    options.agent = new HttpsProxyAgent(proxyURL);
-  }
-
-  return options;
-}
-
-/**
- * Fetch HTML content from a URL with proper error handling
- */
-async function fetchHtmlContent(
-  url: string,
-  options: CustomFetchOptions
-): Promise<string> {
-  let response;
-  try {
-    response = await fetch(url, options);
-  } catch (error) {
-    const hostname = new URL(url).hostname;
-    logger.error({ hostname, error: error instanceof Error ? error.message : String(error) }, 'Network fetch failed');
-    throw createNetworkError(`Failed to fetch from URL`, url, undefined, error);
-  }
-
-  if (!response.ok) {
-    // Handle specific HTTP status codes
-    if (response.status === 429) {
-      logger.warn({ url }, 'Rate limited (429), will use fallback if available');
-      const retryAfter = response.headers.get("retry-after");
-      throw createRateLimitError(url, retryAfter ? parseInt(retryAfter) : undefined);
-    } else if (response.status === 403) {
-      // 403 is expected for many sites (NYTimes, etc.) - they block direct access
-      logger.warn({ hostname: new URL(url).hostname }, 'Access forbidden (403), this is expected - will use fallback methods');
-      throw createNetworkError(
-        `HTTP error! status: ${response.status}`,
-        url,
-        response.status
-      );
-    } else if (response.status === 404) {
-      logger.warn({ url }, 'Page not found (404)');
-      throw createNetworkError(
-        `HTTP error! status: ${response.status}`,
-        url,
-        response.status
-      );
-    } else {
-      // 500+ errors and other unexpected status codes
-      logger.error({ status: response.status, url }, 'HTTP error');
-      throw createNetworkError(
-        `HTTP error! status: ${response.status}`,
-        url,
-        response.status
-      );
-    }
-  }
-
-  const buffer = await response.arrayBuffer();
-  const decoder = new TextDecoder("utf-8");
-  return decoder.decode(buffer);
-}
-
-/**
- * Fetch content using Diffbot API with proper error handling (HTML only)
- */
-function fetchWithDiffbot(url: string): ResultAsync<string, AppError> {
-  if (!process.env.DIFFBOT_API_KEY) {
-    logger.warn('No Diffbot API key configured - skipping Diffbot extraction');
-    return errAsync(
-      createDiffbotError("No Diffbot API key configured in environment variables", url)
-    );
-  }
-  
-  logger.info({ hostname: new URL(url).hostname }, 'Attempting Diffbot extraction');
-
-  return ResultAsync.fromPromise(
-    new Promise<string>((resolve, reject) => {
-      try {
-        const diffbot = new Diffbot(process.env.DIFFBOT_API_KEY!);
-
-        // Old diffbot API uses callbacks and 'uri' instead of 'url'
-        diffbot.article(
-          { uri: url, html: true },
-          (err: Error | null, response: DiffbotArticleResponse) => {
-            if (err) {
-              // Check if it's a rate limit error
-              const errorMsg = err.message || String(err);
-              if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
-                logger.warn({ hostname: new URL(url).hostname }, 'Diffbot rate limit exceeded');
-              } else {
-                logger.warn({ hostname: new URL(url).hostname, errorMsg }, 'Diffbot API error');
-              }
-              reject(err);
-              return;
-            }
-
-            // The old diffbot package returns the newer API format with objects array
-            let htmlContent: string | undefined;
-
-            // Try new API format first (objects array)
-            if (
-              response?.objects &&
-              Array.isArray(response.objects) &&
-              response.objects.length > 0
-            ) {
-              htmlContent = response.objects[0].html;
-            }
-            // Fallback to old API format (html directly on response)
-            else if (response?.html) {
-              htmlContent = response.html;
-            }
-
-            // Check if HTML content exists
-            if (!htmlContent) {
-              logger.warn({ hostname: new URL(url).hostname }, 'Diffbot returned article data but no HTML (will use direct fetch fallback)');
-              reject(new Error(`Diffbot API returned no HTML content for URL: ${url}`));
-              return;
-            }
-
-            logger.debug({ length: htmlContent.length }, 'Diffbot successfully extracted HTML');
-            resolve(htmlContent);
-          }
-        );
-      } catch (error) {
-        logger.error({ url, error }, 'Failed to initialize Diffbot');
-        reject(error);
-      }
-    }),
-    (error) => {
-      // Extract meaningful error message
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      
-      // Check for specific error types
-      if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
-        return createDiffbotError(`Rate limit exceeded`, url, error);
-      } else if (errorMsg.toLowerCase().includes('timeout')) {
-        return createDiffbotError(`Request timeout`, url, error);
-      } else if (errorMsg.toLowerCase().includes('unauthorized') || errorMsg.includes('401')) {
-        return createDiffbotError(`API authentication failed`, url, error);
-      } else if (errorMsg.toLowerCase().includes('no html content')) {
-        return createDiffbotError(`No HTML content returned`, url, error);
-      } else {
-        return createDiffbotError(`API error: ${errorMsg.substring(0, 100)}`, url, error);
-      }
-    }
-  );
-}
-
-/**
- * Check if page is JavaScript-rendered (SPA/CSR)
- */
-function isJavaScriptRenderedPage(html: string, doc: Document): boolean {
-  const bodyText = doc.body?.textContent?.trim() || '';
-  
-  // Common indicators of JS-rendered pages
-  const jsIndicators = [
-    'You need to enable JavaScript',
-    'Please enable JavaScript',
-    'JavaScript is required',
-    'This app requires JavaScript',
-    'Enable JavaScript to run this app',
-  ];
-  
-  // Check if body is nearly empty or only contains JS warnings
-  if (bodyText.length < 100) {
-    return jsIndicators.some(indicator => 
-      bodyText.includes(indicator)
-    );
-  }
-  
-  // Check for React/Vue/Angular root divs with no content
-  const rootSelectors = ['#root', '#app', '[data-reactroot]', '[data-server-rendered]'];
-  for (const selector of rootSelectors) {
-    const root = doc.querySelector(selector);
-    if (root && root.children.length === 0) {
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-/**
- * Extract content using custom logic when Readability fails
- */
-function extractWithCustomLogic(doc: Document, url: string): DiffbotArticle | null {
-  // Remove unwanted elements
-  const unwantedSelectors = [
-    'script', 'style', 'nav', 'header', 'footer', 
-    'aside', '.ad', '.advertisement', '#comments', '.sidebar'
-  ];
-  
-  unwantedSelectors.forEach(selector => {
-    doc.querySelectorAll(selector).forEach(el => el.remove());
-  });
-  
-  // Try to find main content
-  const contentSelectors = [
-    'article',
-    'main',
-    '[role="main"]',
-    '#main-content',
-    '.main-content',
-    '#content',
-    '.content',
-    '.post-content',
-    '.entry-content',
-  ];
-  
-  let contentElement = null;
-  for (const selector of contentSelectors) {
-    const elem = doc.querySelector(selector);
-    if (elem && elem.textContent && elem.textContent.length > 200) {
-      contentElement = elem;
-      break;
-    }
-  }
-  
-  // Fall back to body if nothing better found
-  if (!contentElement || contentElement.textContent!.length < 200) {
-    contentElement = doc.body;
-  }
-  
-  if (!contentElement) {
-    return null;
-  }
-  
-  const title = doc.querySelector('title')?.textContent || 
-                doc.querySelector('h1')?.textContent || 
-                doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
-                new URL(url).hostname;
-  
-  const text = contentElement.textContent?.replace(/\s+/g, ' ').trim() || '';
-  
-  // If content is too short, it's likely not real content
-  if (text.length < 100) {
-    return null;
-  }
-  
-  const htmlContent = contentElement.innerHTML;
-  const siteName = doc.querySelector('meta[property="og:site_name"]')?.getAttribute('content') ||
-                   new URL(url).hostname;
-  
+function createDebugContext(url: string, source: string): DebugContext {
   return {
-    title: title.trim(),
-    html: htmlContent,
-    text: text,
-    siteName: siteName,
+    timestamp: new Date().toISOString(),
+    url,
+    source,
+    steps: [],
   };
 }
 
 /**
- * Fallback: Extract article content from raw HTML using Mozilla Readability
- * with custom extraction as secondary fallback
+ * Helper to add a debug step
  */
-async function extractArticleFromHtml(
-  url: string
-): Promise<DiffbotArticle> {
-  logger.info({ hostname: new URL(url).hostname }, 'Falling back to raw HTML extraction with Readability');
-  
-  const options = await getFetchOptions(url);
-  const html = await fetchHtmlContent(url, options);
-  
-  // Parse with JSDOM
-  const dom = new JSDOM(html, { url });
-  const doc = dom.window.document;
-  
-  // Check if page is JavaScript-rendered
-  if (isJavaScriptRenderedPage(html, doc)) {
-    logger.warn({ hostname: new URL(url).hostname }, 'Page appears to be JavaScript-rendered (SPA/CSR) - cannot extract without browser');
-    throw new Error('This page requires JavaScript to render content. Please use the "jina.ai" tab which can handle JavaScript-rendered pages.');
-  }
-  
-  // Try Mozilla Readability first
-  const reader = new Readability(doc);
-  const article = reader.parse();
-  
-  if (article && article.textContent.length > 100) {
-    logger.info({ 
-      hostname: new URL(url).hostname,
-      title: article.title,
-      textLength: article.textContent.length,
-      method: 'readability'
-    }, 'Successfully extracted article with Readability');
-    
-    return {
-      title: article.title || 'Untitled',
-      html: article.content,
-      text: article.textContent,
-      siteName: article.siteName || new URL(url).hostname,
-    };
-  }
-  
-  // Try custom extraction as secondary fallback
-  logger.info({ hostname: new URL(url).hostname }, 'Readability failed, trying custom extraction');
-  const customResult = extractWithCustomLogic(doc, url);
-  
-  if (customResult) {
-    logger.info({ 
-      hostname: new URL(url).hostname,
-      title: customResult.title,
-      textLength: customResult.text.length,
-      method: 'custom'
-    }, 'Successfully extracted article with custom logic');
-    
-    return customResult;
-  }
-  
-  throw new Error('Failed to extract article content from HTML. The page may be JavaScript-rendered or have insufficient content.');
+function addDebugStep(
+  context: DebugContext,
+  step: string,
+  status: DebugStep['status'],
+  message: string,
+  data?: DebugStep['data']
+): void {
+  context.steps.push({
+    step,
+    timestamp: new Date().toISOString(),
+    status,
+    message,
+    data,
+  });
 }
+
 
 /**
  * Structured article data from Diffbot
@@ -357,140 +55,339 @@ export interface DiffbotArticle {
 }
 
 /**
- * Fetch structured article data using Diffbot API with fallback to raw HTML extraction
- * Returns title, html, text, and siteName
+ * Extract article from HTML/DOM using Mozilla Readability
  */
-export function fetchArticleWithDiffbot(url: string): ResultAsync<DiffbotArticle, AppError> {
+function extractWithReadability(html: string, url: string, debugContext: DebugContext): DiffbotArticle | null {
+  logger.info({ hostname: new URL(url).hostname, htmlLength: html.length }, 'Attempting Readability extraction on Diffbot DOM');
+  addDebugStep(debugContext, 'readability_fallback', 'info', 'Diffbot did not fully extract article, trying Readability on DOM', {
+    domLength: html.length,
+  });
+  
+  try {
+    // Extract original URL from Wayback URL if present
+    let baseUrl = url;
+    if (url.includes('web.archive.org')) {
+      const match = url.match(/web\.archive\.org\/web\/\d+\/(.+)/);
+      if (match) {
+        // Decode the URL in case it's URL-encoded
+        baseUrl = decodeURIComponent(match[1]);
+        logger.debug({ originalUrl: url, extractedUrl: baseUrl }, 'Extracted original URL from Wayback');
+      }
+    }
+    
+    // Suppress CSS parsing errors
+    const { VirtualConsole } = require('jsdom');
+    const virtualConsole = new VirtualConsole();
+    virtualConsole.on("error", () => {}); // Suppress errors
+    
+    const dom = new JSDOM(html, { url: baseUrl, virtualConsole });
+    const doc = dom.window.document;
+    
+    // Try to find the main article container first
+    // This helps with pages that have complex layouts (like Google Blogger)
+    const contentSelectors = [
+      '[id^="docs-internal-guid-"]', // Google Docs embedded content
+      '.post-body',
+      '.post-content',
+      '.entry-content',
+      'article .content',
+      '[role="article"]',
+    ];
+    
+    for (const selector of contentSelectors) {
+      const container = doc.querySelector(selector);
+      if (container && container.textContent && container.textContent.length > 500) {
+        logger.debug({ selector, contentLength: container.textContent.length }, 'Found article container');
+        
+        // Create a clean document with just the article content
+        const cleanDoc = new JSDOM(`
+          <!DOCTYPE html>
+          <html><head><title>${doc.title || 'Article'}</title></head>
+          <body><article>${container.innerHTML}</article></body></html>
+        `, { url: baseUrl, virtualConsole }).window.document;
+        
+        const reader = new Readability(cleanDoc);
+        const article = reader.parse();
+        
+        if (article && article.textContent && article.textContent.length > 500) {
+          logger.info({ 
+            hostname: new URL(url).hostname,
+            title: article.title,
+            textLength: article.textContent.length,
+            method: 'targeted-container'
+          }, 'Successfully extracted article using targeted container');
+          
+          addDebugStep(debugContext, 'readability_extraction', 'success', 'Readability extraction succeeded (targeted)', {
+            selector,
+            extractedTitle: article.title,
+            extractedTextLength: article.textContent.length,
+            extractedHtmlLength: article.content.length,
+          });
+          
+          return {
+            title: article.title || doc.title || 'Untitled',
+            html: article.content,
+            text: article.textContent,
+            siteName: article.siteName || new URL(url).hostname,
+          };
+        }
+      }
+    }
+    
+    // Fallback to standard Readability on full document
+    logger.debug({}, 'Using standard Readability on full document');
+    const reader = new Readability(doc);
+    const article = reader.parse();
+    
+    if (article && article.textContent && article.textContent.length > 100) {
+      logger.info({ 
+        hostname: new URL(url).hostname,
+        title: article.title,
+        textLength: article.textContent.length,
+      }, 'Successfully extracted article with Readability fallback');
+      
+      addDebugStep(debugContext, 'readability_extraction', 'success', 'Readability extraction succeeded', {
+        extractedTitle: article.title,
+        extractedTextLength: article.textContent.length,
+        extractedHtmlLength: article.content.length,
+      });
+      
+      return {
+        title: article.title || 'Untitled',
+        html: article.content,
+        text: article.textContent,
+        siteName: article.siteName || new URL(url).hostname,
+      };
+    }
+    
+    addDebugStep(debugContext, 'readability_extraction', 'warning', 'Readability returned insufficient content');
+    return null;
+  } catch (error) {
+    logger.warn({ url, error }, 'Readability extraction failed');
+    addDebugStep(debugContext, 'readability_extraction', 'error', 'Readability extraction failed', {
+      errorDetails: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+/**
+ * Fetch structured article data using Diffbot API (no fallback)
+ * Returns title, html, text, and siteName with comprehensive debug information
+ */
+export function fetchArticleWithDiffbot(url: string, source: string = 'direct'): ResultAsync<DiffbotArticle, AppError> {
+  const debugContext = createDebugContext(url, source);
+  
   if (!process.env.DIFFBOT_API_KEY) {
-    logger.warn({ hostname: new URL(url).hostname }, 'No Diffbot API key - using raw HTML fallback');
-    // If no API key, go straight to fallback
-    return ResultAsync.fromPromise(
-      extractArticleFromHtml(url),
-      (error) => createDiffbotError(
-        `Fallback extraction failed: ${error instanceof Error ? error.message : String(error)}`,
+    logger.error({ hostname: new URL(url).hostname }, 'No Diffbot API key configured');
+    addDebugStep(debugContext, 'init', 'error', 'No Diffbot API key configured');
+    
+    return errAsync(
+      createDiffbotError(
+        'No Diffbot API key configured in environment variables',
         url,
-        error
+        undefined,
+        debugContext
       )
     );
   }
   
   logger.info({ hostname: new URL(url).hostname }, 'Attempting Diffbot article extraction');
+  addDebugStep(debugContext, 'init', 'info', 'Starting Diffbot extraction');
 
-  // Try Diffbot first, then fallback to raw HTML extraction if it fails
   return ResultAsync.fromPromise(
     new Promise<DiffbotArticle>(async (resolve, reject) => {
       try {
-        const diffbot = new Diffbot(process.env.DIFFBOT_API_KEY!);
+        // Use REST API directly to support fields parameter
+        const apiUrl = new URL('https://api.diffbot.com/v3/article');
+        apiUrl.searchParams.set('token', process.env.DIFFBOT_API_KEY!);
+        apiUrl.searchParams.set('url', url);
+        apiUrl.searchParams.set('fields', 'title,text,html,siteName,dom'); // Request both article data AND raw DOM
+        
+        addDebugStep(debugContext, 'diffbot_request', 'info', 'Requesting article with DOM field for fallback', {
+          requestedFields: 'title,text,html,siteName,dom',
+        });
 
-        diffbot.article(
-          { uri: url, html: true },
-          async (err: Error | null, response: DiffbotArticleResponse) => {
-            if (err) {
-              const errorMsg = err.message || String(err);
-              if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
-                logger.warn({ hostname: new URL(url).hostname }, 'Diffbot rate limit exceeded - trying fallback');
-              } else {
-                logger.warn({ hostname: new URL(url).hostname, errorMsg }, 'Diffbot API error - trying fallback');
-              }
-              
-              // Try fallback extraction
-              try {
-                const fallbackArticle = await extractArticleFromHtml(url);
-                resolve(fallbackArticle);
-                return;
-              } catch (fallbackError) {
-                logger.error({ hostname: new URL(url).hostname, error: fallbackError }, 'Both Diffbot and fallback extraction failed');
-                reject(err); // Reject with original Diffbot error
-                return;
-              }
-            }
+        const response = await fetch(apiUrl.toString());
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          logger.error({ status: response.status, errorText }, 'Diffbot HTTP error');
+          addDebugStep(debugContext, 'diffbot_api', 'error', `HTTP ${response.status} error`);
+          reject(new Error(`Diffbot HTTP error: ${response.status}`));
+          return;
+        }
 
-            // Extract data from response
-            let articleData: DiffbotArticle | null = null;
+        const data: DiffbotArticleResponse = await response.json();
 
-            // Try new API format first (objects array)
-            if (
-              response?.objects &&
-              Array.isArray(response.objects) &&
-              response.objects.length > 0
-            ) {
-              const obj = response.objects[0];
-              if (obj.html && obj.text && obj.title) {
-                articleData = {
-                  title: obj.title,
-                  html: obj.html,
-                  text: obj.text,
-                  siteName: obj.siteName || new URL(url).hostname,
-                };
-              } else {
-                // Log what fields are missing
-                logger.warn({ 
-                  hostname: new URL(url).hostname,
-                  hasHtml: !!obj.html,
-                  hasText: !!obj.text,
-                  hasTitle: !!obj.title,
-                  objectKeys: Object.keys(obj).join(', ')
-                }, 'Diffbot response missing required fields (objects format)');
-              }
-            }
-            // Fallback to old API format
-            else if (response?.html && response?.text && response?.title) {
-              articleData = {
-                title: response.title,
-                html: response.html,
-                text: response.text,
-                siteName: new URL(url).hostname,
-              };
-            } else {
-              // Log what we got
-              logger.warn({ 
-                hostname: new URL(url).hostname,
-                hasObjects: !!response?.objects,
-                objectsLength: response?.objects?.length || 0,
-                hasHtml: !!response?.html,
-                hasText: !!response?.text,
-                hasTitle: !!response?.title,
-                responseKeys: response ? Object.keys(response).join(', ') : 'no response'
-              }, 'Diffbot response structure unexpected');
-            }
+        // Handle error responses
+        if (data.errorCode || data.error) {
+          const errorMsg = data.error || `Diffbot error code: ${data.errorCode}`;
+          logger.error({ 
+            hostname: new URL(url).hostname,
+            errorCode: data.errorCode,
+            errorMessage: data.error
+          }, 'Diffbot returned error response');
+          
+          addDebugStep(debugContext, 'diffbot_api', 'error', 'Diffbot returned error response', {
+            errorCode: data.errorCode,
+            errorMessage: data.error,
+          });
+          
+          reject(new Error(errorMsg));
+          return;
+        }
 
-            if (!articleData) {
-              logger.warn({ hostname: new URL(url).hostname }, 'Diffbot returned incomplete article data - trying fallback');
-              
-              // Try fallback extraction
-              try {
-                const fallbackArticle = await extractArticleFromHtml(url);
-                resolve(fallbackArticle);
-                return;
-              } catch (fallbackError) {
-                logger.error({ hostname: new URL(url).hostname, error: fallbackError }, 'Both Diffbot and fallback extraction failed');
-                reject(new Error(`Diffbot API returned incomplete article data for URL: ${url}`));
-                return;
-              }
-            }
+        // Capture the full Diffbot response for debugging
+        addDebugStep(debugContext, 'diffbot_response', 'info', 'Received Diffbot API response', {
+          diffbotResponse: {
+            hasObjects: !!data?.objects,
+            objectsLength: data?.objects?.length || 0,
+            hasHtml: !!data?.html,
+            hasText: !!data?.text,
+            hasTitle: !!data?.title,
+            hasDom: !!(data?.objects?.[0]?.dom || (data as any)?.dom),
+            responseKeys: data ? Object.keys(data) : [],
+          },
+        });
 
-            logger.debug({ title: articleData.title, length: articleData.text.length }, 'Diffbot successfully extracted article');
-            resolve(articleData);
+        // Extract data from response
+        let articleData: DiffbotArticle | null = null;
+        let domForFallback: string | null = null;
+
+        // Try new API format first (objects array)
+        if (data?.objects && Array.isArray(data.objects) && data.objects.length > 0) {
+          const obj = data.objects[0];
+          
+          // Store DOM for potential fallback - this is the full page HTML
+          domForFallback = obj.dom || null;
+          
+          // Check if we have complete article data with substantial content
+          // Diffbot should return html when it recognizes the article structure
+          if (obj.html && obj.text && obj.title && obj.text.length > 100) {
+            const completeArticle: DiffbotArticle = {
+              title: obj.title,
+              html: obj.html,
+              text: obj.text,
+              siteName: obj.siteName || new URL(url).hostname,
+            };
+            logger.info({ title: completeArticle.title, length: completeArticle.text.length }, 'Diffbot successfully extracted article');
+            addDebugStep(debugContext, 'diffbot_extraction', 'success', 'Diffbot extracted article successfully', {
+              extractedTitle: completeArticle.title,
+              extractedTextLength: completeArticle.text.length,
+              extractedHtmlLength: completeArticle.html.length,
+            });
+            resolve(completeArticle);
+            return;
           }
-        );
+          
+          // Incomplete article data - use Readability on DOM
+          logger.warn({ 
+            hostname: new URL(url).hostname,
+            hasHtml: !!obj.html,
+            hasText: !!obj.text,
+            textLength: obj.text?.length || 0,
+            hasTitle: !!obj.title,
+            hasDom: !!obj.dom,
+            domLength: obj.dom?.length || 0,
+          }, 'Diffbot article extraction incomplete, will use Readability on DOM');
+          addDebugStep(debugContext, 'diffbot_extraction', 'warning', 'Diffbot article extraction incomplete, using Readability fallback', {
+            hasHtml: !!obj.html,
+            hasText: !!obj.text,
+            textLength: obj.text?.length || 0,
+            hasTitle: !!obj.title,
+            hasDom: !!obj.dom,
+            domLength: obj.dom?.length || 0,
+            availableFields: Object.keys(obj),
+          });
+        }
+        // Try old API format
+        else if (data?.html && data?.text && data?.title) {
+          articleData = {
+            title: data.title,
+            html: data.html,
+            text: data.text,
+            siteName: new URL(url).hostname,
+          };
+          logger.info({ title: articleData.title, length: articleData.text.length }, 'Diffbot successfully extracted article (old format)');
+          addDebugStep(debugContext, 'diffbot_extraction', 'success', 'Diffbot extracted article (old format)', {
+            extractedTitle: articleData.title,
+            extractedTextLength: articleData.text.length,
+            extractedHtmlLength: articleData.html.length,
+          });
+          resolve(articleData);
+          return;
+        } else {
+          // Store DOM for potential fallback
+          domForFallback = (data as any)?.dom || null;
+          
+          logger.warn({ 
+            hostname: new URL(url).hostname,
+            hasObjects: !!data?.objects,
+            objectsLength: data?.objects?.length || 0,
+            hasDom: !!domForFallback,
+          }, 'Diffbot response structure unexpected, will try Readability fallback');
+          addDebugStep(debugContext, 'diffbot_extraction', 'warning', 'Diffbot response structure unexpected');
+        }
+
+        // Fallback to Readability if we have DOM
+        if (domForFallback) {
+          logger.info({ hostname: new URL(url).hostname, domLength: domForFallback.length }, 'Using Readability fallback on DOM');
+          addDebugStep(debugContext, 'readability_attempt', 'info', 'Attempting Readability extraction on DOM', {
+            domLength: domForFallback.length,
+          });
+          
+          const readabilityResult = extractWithReadability(domForFallback, url, debugContext);
+          if (readabilityResult) {
+            logger.info({ 
+              hostname: new URL(url).hostname,
+              title: readabilityResult.title,
+              textLength: readabilityResult.text.length,
+            }, 'Successfully extracted article using Readability fallback');
+            resolve(readabilityResult);
+            return;
+          }
+        } else {
+          logger.warn({ hostname: new URL(url).hostname }, 'No DOM available for Readability fallback');
+          addDebugStep(debugContext, 'readability_attempt', 'warning', 'No DOM available for Readability fallback');
+        }
+
+        // No article data and no fallback succeeded
+        logger.error({ hostname: new URL(url).hostname, hadDom: !!domForFallback }, 'All extraction methods failed');
+        addDebugStep(debugContext, 'final_error', 'error', 'All extraction methods failed', {
+          hadDiffbotArticle: !!articleData,
+          hadDom: !!domForFallback,
+        });
+        reject(new Error(`Could not extract article content for URL: ${url}`));
+
       } catch (error) {
-        logger.error({ url, error }, 'Failed to initialize Diffbot');
+        logger.error({ url, error }, 'Exception during Diffbot request');
+        addDebugStep(debugContext, 'diffbot_exception', 'error', 'Exception during request', {
+          errorDetails: error instanceof Error ? error.message : String(error),
+        });
         reject(error);
       }
     }),
     (error) => {
       const errorMsg = error instanceof Error ? error.message : String(error);
       
+      // Check for specific error patterns
       if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
-        return createDiffbotError(`Rate limit exceeded`, url, error);
+        return createDiffbotError(`Rate limit exceeded`, url, error, debugContext);
       } else if (errorMsg.toLowerCase().includes('timeout')) {
-        return createDiffbotError(`Request timeout`, url, error);
+        return createDiffbotError(`Request timeout`, url, error, debugContext);
       } else if (errorMsg.toLowerCase().includes('unauthorized') || errorMsg.includes('401')) {
-        return createDiffbotError(`API authentication failed`, url, error);
+        return createDiffbotError(`API authentication failed`, url, error, debugContext);
       } else if (errorMsg.toLowerCase().includes('incomplete')) {
-        return createDiffbotError(`Incomplete article data returned`, url, error);
+        return createDiffbotError(`Incomplete article data returned`, url, error, debugContext);
+      } else if (errorMsg.includes('404') || errorMsg.toLowerCase().includes('could not download page')) {
+        return createDiffbotError(`Page not found or could not be accessed (404)`, url, error, debugContext);
+      } else if (errorMsg.includes('403')) {
+        return createDiffbotError(`Access forbidden (403)`, url, error, debugContext);
+      } else if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) {
+        return createDiffbotError(`Server error while fetching page`, url, error, debugContext);
       } else {
-        return createDiffbotError(`API error: ${errorMsg.substring(0, 100)}`, url, error);
+        return createDiffbotError(`${errorMsg.substring(0, 150)}`, url, error, debugContext);
       }
     }
   );

@@ -14,6 +14,8 @@ import ShareButton from "../features/share-button";
 import { UseQueryResult } from "@tanstack/react-query";
 import { ArticleResponse, Source } from "@/types/api";
 import { ErrorDisplay } from "../shared/error-display";
+import { DebugPanel } from "../shared/debug-panel";
+import { ArticleFetchError } from "@/lib/api/client";
 
 export type { Source };
 
@@ -29,6 +31,11 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   url,
 }) => {
   const { data, isLoading, isError, error } = query;
+  
+  // Extract debug context from error if available
+  const debugContext = error instanceof ArticleFetchError 
+    ? error.debugContext 
+    : data?.debugContext;
 
   // Loading state
   if (isLoading) {
@@ -48,14 +55,29 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
   // Error state
   if (isError) {
-    return (
-      <div className="mt-10">
-        <ErrorDisplay error={{
-          type: "NETWORK_ERROR",
+    // If it's an ArticleFetchError, extract the AppError from it
+    const appError = error instanceof ArticleFetchError && error.errorType
+      ? {
+          type: error.errorType as any,
+          message: error.message,
+          url: data?.cacheURL || url,
+          originalError: error.details?.originalError,
+          debugContext: error.debugContext,
+          ...(error.details || {}),
+        }
+      : {
+          type: "NETWORK_ERROR" as const,
           message: error?.message || "Failed to load article",
-          url,
-        }} />
-      </div>
+          url: data?.cacheURL || url,
+        };
+    
+    return (
+      <>
+        <div className="mt-10">
+          <ErrorDisplay error={appError} />
+        </div>
+        <DebugPanel debugContext={debugContext} />
+      </>
     );
   }
 
@@ -86,7 +108,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           <div className="flex items-center mt-4 ml-4 space-x-1.5">
             <GlobeAltIcon className="w-4 h-4 text-gray-600" />
             <a
-              href={content.cacheURL}
+              href={url}
               target="_blank"
               rel="noreferrer"
               className="text-gray-600 hover:text-gray-400 transition"
@@ -132,6 +154,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           </div>
         )}
       </article>
+      <DebugPanel debugContext={debugContext} />
     </div>
   );
 };
