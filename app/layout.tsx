@@ -10,14 +10,14 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Smry | AI Summarizer and Free Paywall Remover",
   description:
-    "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
+    "Remove paywalls and summarize articles for free. Instant access to content without login for faster insights.",
   openGraph: {
     type: "website",
     title: "Smry | AI Summarizer and Free Paywall Remover",
     siteName: "smry.ai",
     url: "https://smry.ai",
     description:
-      "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
+      "Remove paywalls and summarize articles for free. Instant access to content without login for faster insights.",
     images: [
       {
         url: "https://smry.ai/og-image.png",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Smry | AI Summarizer and Free Paywall Remover",
     description:
-      "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
+      "Remove paywalls and summarize articles for free. Instant access to content without login for faster insights.",
     images: ["https://smry.ai/og-image.png"],
   },
 };
