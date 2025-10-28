@@ -183,9 +183,6 @@ export async function generateMetadata({
     ? article.textContent.slice(0, 160).trim() + "..."
     : `Read "${title}" from ${siteName} on SMRY - No paywalls, AI summaries available`;
 
-  // Generate OG image URL using our own API
-  const ogImageUrl = `${process.env.NEXT_PUBLIC_URL}/api/og?title=${encodeURIComponent(title)}&siteName=${encodeURIComponent(siteName)}`;
-
   return {
     title: `${title} - SMRY`,
     description,
@@ -194,21 +191,21 @@ export async function generateMetadata({
       description: description,
       url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(url)}`,
       siteName: "SMRY",
+      type: "article",
       images: [
         {
-          url: ogImageUrl,
+          url: "https://smry.ai/og-image.png",
           width: 1200,
           height: 630,
-          alt: title,
+          alt: "Smry - AI Summarizer and Free Paywall Remover",
         },
       ],
-      type: "article",
     },
     twitter: {
       card: "summary_large_image",
       title: title,
       description: description,
-      images: [ogImageUrl],
+      images: ["https://smry.ai/og-image.png"],
     },
   };
 }

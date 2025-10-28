@@ -20,7 +20,7 @@ export const metadata: Metadata = {
       "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
     images: [
       {
-        url: "https://smry.ai/api/og?title=Read%20Any%20Article%2C%20Anywhere&siteName=No%20Paywalls%20%E2%80%A2%20AI%20Summaries%20%E2%80%A2%20Free%20Forever",
+        url: "https://smry.ai/og-image.png",
         width: 1200,
         height: 630,
         alt: "Smry - AI Summarizer and Free Paywall Remover",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title: "Smry | AI Summarizer and Free Paywall Remover",
     description:
       "Remove paywalls and summarize articles for free, covering NYT, Washington Post & more. Instant access to content without login for faster insights.",
-    images: ["https://smry.ai/api/og?title=Read%20Any%20Article%2C%20Anywhere&siteName=No%20Paywalls%20%E2%80%A2%20AI%20Summaries%20%E2%80%A2%20Free%20Forever"],
+    images: ["https://smry.ai/og-image.png"],
   },
 };
 
