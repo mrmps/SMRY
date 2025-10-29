@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
-import { BookmarkletComponent } from "@/components/marketing/bookmarklet";
+import { BookmarkletLink } from "@/components/marketing/bookmarklet";
 import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
 
@@ -162,30 +162,6 @@ export default function Home() {
             </a>
           </p>
 
-          <h3 className="mt-24 text-center text-lg font-semibold text-gray-800">
-            OR
-            <span className="ml-3 text-gray-700 hover:text-gray-900 inline-block">
-              <span
-                className={cn(
-                  "bg-white text-gray-700 font-mono py-2 px-4 rounded-md border border-zinc-200",
-                  fira.className
-                )}
-                style={{
-                  lineHeight: "1.4",
-                  fontSize: "0.875rem",
-                }}
-              >
-                https://smry.ai/
-                <span
-                  className="bg-[#FBF719] text-gray-700 px-2 py-1 rounded"
-                  style={{ fontWeight: "500" }}
-                >
-                  &lt;URL&gt;
-                </span>
-              </span>
-            </span>
-          </h3>
-
           {urlError && (
             <p
               className="text-red-500 mt-2 flex items-center animate-fade-in"
@@ -195,8 +171,24 @@ export default function Home() {
               Please enter a valid URL (e.g., https://example.com).
             </p>
           )}
+
+          <div className="mt-12 text-center max-w-2xl mx-auto space-y-4">
+            <p className="text-stone-600 text-[15px] leading-relaxed">
+              You can also use smry by prepending{" "}
+              <code className="bg-yellow-200 px-2 py-0.5 rounded text-stone-700 font-mono text-xs">
+                https://smry.ai/
+              </code>{" "}
+              to any URL.
+            </p>
+            
+            <div className="hidden sm:block pt-2 border-t border-stone-200">
+              <p className="text-stone-600 text-sm leading-relaxed">
+                For quick access, bookmark this <BookmarkletLink />. Drag it to your bookmarks bar, 
+                then click it on any page to open in SMRY.
+              </p>
+            </div>
+          </div>
         </div>
-        <BookmarkletComponent />
 
         <Banner />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -38,7 +38,7 @@ console.log('');
 
 console.log('4. Testing Wayback URL construction:');
 const source = 'wayback';
-const waybackURL = `https://archive.today/?run=1&url=${encodeURIComponent(testURL)}`;
+const waybackURL = `https://web.archive.org/web/2/${encodeURIComponent(testURL)}`;
 console.log('   Wayback URL:', waybackURL);
 console.log('');
 
