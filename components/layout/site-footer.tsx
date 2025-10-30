@@ -47,16 +47,6 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
           </p>
         </div>
         <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
-          <p className="text-center text-sm leading-loose md:text-left">
-            <a
-              href="/feedback"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-4"
-            >
-              feedback
-            </a>
-          </p>
           <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 leading-loose md:text-left">
             <a
               href="https://logo.dev"

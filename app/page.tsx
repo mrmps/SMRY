@@ -3,16 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ExclamationCircleIcon,
-  DocumentTextIcon,
-  LightBulbIcon,
-  ClockIcon,
-  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { CardSpotlight } from "@/components/marketing/card-spotlight";
-import { Unlock, Globe } from "lucide-react";
 import { z } from "zod";
 import Github from "@/components/marketing/github";
 import { Fira_Code } from "next/font/google";
@@ -23,6 +17,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
 import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
+import { FAQ } from "@/components/marketing/faq";
 
 const fira = Fira_Code({
   subsets: ["latin"],
@@ -191,38 +186,7 @@ export default function Home() {
         </div>
 
         <Banner />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          <CardSpotlight
-            heading="Quick Summaries"
-            body="Get concise summaries of long articles in seconds."
-            icon={<DocumentTextIcon className="h-4 w-4 text-neutral-600" />}
-          />
-          <CardSpotlight
-            heading="Paywall Bypass"
-            body="Access content behind paywalls without hassle."
-            icon={<Unlock className="h-4 w-4 text-neutral-600" />}
-          />
-          <CardSpotlight
-            heading="AI Powered"
-            body="Leverage advanced AI to understand content contextually."
-            icon={<LightBulbIcon className="h-4 w-4 text-neutral-600" />}
-          />
-          <CardSpotlight
-            heading="Browser Friendly"
-            body="Easily use our tool with your favorite web browser."
-            icon={<Globe className="h-4 w-4 text-neutral-600" />}
-          />
-          <CardSpotlight
-            heading="Save Time"
-            body="Read less, learn more. Save time on extensive articles."
-            icon={<ClockIcon className="h-4 w-4 text-neutral-600" />}
-          />
-          <CardSpotlight
-            heading="User-Friendly Interface"
-            body="Enjoy a seamless, intuitive interface for easy navigation."
-            icon={<UserCircleIcon className="h-4 w-4 text-neutral-600" />}
-          />
-        </div>
+        <FAQ />
       </main>
 
       <div className="container flex-1 bg-[#FAFAFA]">
