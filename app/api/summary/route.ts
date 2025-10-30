@@ -25,40 +25,57 @@ const SummaryRequestSchema = z.object({
   language: z.string().optional().default("en"),
 });
 
-// Language prompts
-const LANGUAGE_PROMPTS: Record<string, { system: string; user: string }> = {
-  en: {
-    system: "You are an intelligent summary assistant.",
-    user: "Create a useful summary of the following article:\n\n{text}\n\nOnly return the short summary and nothing else, no quotes, just a useful summary in the form of a paragraph.",
-  },
-  es: {
-    system: "Eres un asistente inteligente de resúmenes.",
-    user: "Crea un resumen útil del siguiente artículo:\n\n{text}\n\nDevuelve solo el resumen corto y nada más, sin comillas, solo un resumen útil en forma de párrafo.",
-  },
-  fr: {
-    system: "Vous êtes un assistant de résumé intelligent.",
-    user: "Créez un résumé utile de l'article suivant :\n\n{text}\n\nRetournez uniquement le résumé court et rien d'autre, sans guillemets, juste un résumé utile sous forme de paragraphe.",
-  },
-  de: {
-    system: "Sie sind ein intelligenter Zusammenfassungsassistent.",
-    user: "Erstellen Sie eine nützliche Zusammenfassung des folgenden Artikels:\n\n{text}\n\nGeben Sie nur die kurze Zusammenfassung zurück und sonst nichts, keine Anführungszeichen, nur eine nützliche Zusammenfassung in Form eines Absatzes.",
-  },
-  zh: {
-    system: "你是一个智能摘要助手。",
-    user: "创建以下文章的有用摘要：\n\n{text}\n\n只返回简短摘要，不要其他内容，没有引号，只是一个有用的段落形式的摘要。",
-  },
-  ja: {
-    system: "あなたは知的な要約アシスタントです。",
-    user: "次の記事の有用な要約を作成してください：\n\n{text}\n\n短い要約だけを返し、他のものは返さないでください。引用符なしで、段落形式の有用な要約だけです。",
-  },
-  pt: {
-    system: "Você é um assistente inteligente de resumos.",
-    user: "Crie um resumo útil do seguinte artigo:\n\n{text}\n\nRetorne apenas o resumo curto e nada mais, sem aspas, apenas um resumo útil em forma de parágrafo.",
-  },
-  ru: {
-    system: "Вы - интеллектуальный помощник по созданию резюме.",
-    user: "Создайте полезное резюме следующей статьи:\n\n{text}\n\nВерните только короткое резюме и ничего более, без кавычек, просто полезное резюме в форме абзаца.",
-  },
+// Base summary prompt template
+const BASE_SUMMARY_PROMPT = `You are an expert researcher and editor, skilled at distilling complex texts into clear, concise, and accurate summaries.
+
+I will provide you with an article. Your task is to generate a summary that captures the essence of the text while adhering to the following instructions.
+
+Instructions for the summary:
+
+Core Thesis: Begin by identifying and stating the article's central argument or main topic in a single, clear sentence.
+
+Key Points: Extract the primary supporting arguments, findings, or main points of the article. Present these as a bulleted list, with each point being a complete and self-contained sentence.
+
+Conclusion: Summarize the article's conclusion, implications, or call to action in a final sentence.
+
+What to Exclude:
+
+Do not include minor details, tangential information, or lengthy, specific examples.
+
+Paraphrase all information; do not use direct quotes.
+
+Exclude your own opinions, interpretations, or any information not explicitly present in the provided article.
+
+Format and Structure:
+
+Start with a brief introductory paragraph that states the core thesis.
+
+Follow with a bulleted list of the key supporting points.
+
+End with a concluding sentence that captures the article's final message.
+
+Length: The entire summary should be approximately 2-3 paragraphs.
+
+Tone and Audience:
+
+Maintain a neutral, objective, and informative tone throughout.
+
+The summary should be written for an audience that has not read the article and needs to quickly grasp its essential information.
+
+Here is the article to summarize:
+
+{text}`;
+
+// Language-specific instructions
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  en: "Summarize in English.",
+  es: "Summarize in Spanish.",
+  fr: "Summarize in French.",
+  de: "Summarize in German.",
+  zh: "Summarize in Chinese.",
+  ja: "Summarize in Japanese.",
+  pt: "Summarize in Portuguese.",
+  ru: "Summarize in Russian.",
 };
 
 /**
@@ -148,8 +165,11 @@ export async function POST(request: NextRequest) {
 
     logger.info({ title: title || 'article' }, 'Generating summary');
 
-    // Get language-specific prompts
-    const prompts = LANGUAGE_PROMPTS[language] || LANGUAGE_PROMPTS.en;
+    // Get language-specific instruction
+    const languageInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS.en;
+    
+    // Combine base prompt with language instruction
+    const userPrompt = `${BASE_SUMMARY_PROMPT}\n\n${languageInstruction}`;
 
     // Generate summary with OpenAI
     const openaiResponse = await openai.chat.completions.create({
@@ -157,11 +177,11 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: prompts.system,
+          content: "You are an intelligent summary assistant.",
         },
         {
           role: "user",
-          content: prompts.user.replace("{text}", content.substring(0, 6000)),
+          content: userPrompt.replace("{text}", content.substring(0, 6000)),
         },
       ],
     });
