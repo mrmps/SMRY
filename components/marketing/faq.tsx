@@ -95,7 +95,7 @@ export function FAQ() {
           </AccordionItem>
         ))}
       </Accordion>
-      <div className="mt-8 pt-8 border-t border-zinc-200 text-center space-y-2">
+      <div className="mt-12 text-center space-y-2">
         <p className="text-neutral-600">
           Have feedback or questions?{" "}
           <Link
