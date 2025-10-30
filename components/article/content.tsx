@@ -23,12 +23,14 @@ interface ArticleContentProps {
   query: UseQueryResult<ArticleResponse, Error>;
   source: Source;
   url: string;
+  viewMode?: "markdown" | "iframe";
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = ({
   query,
   source,
   url,
+  viewMode = "markdown",
 }) => {
   const { data, isLoading, isError, error } = query;
   
@@ -37,18 +39,52 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     ? error.debugContext 
     : data?.debugContext;
 
+  // Helper function to get cacheURL, constructing it if needed
+  const getCacheURL = (): string | undefined => {
+    // First try to get from data
+    if (data?.cacheURL) {
+      return data.cacheURL;
+    }
+    
+    // If not available, construct based on source
+    switch (source) {
+      case "wayback":
+        return `https://web.archive.org/web/0/${url}`;
+      case "jina.ai":
+        return `https://r.jina.ai/${url}`;
+      case "smry-fast":
+      case "smry-slow":
+      default:
+        return url;
+    }
+  };
+
   // Loading state
   if (isLoading) {
+    const cacheURL = getCacheURL();
+    
     return (
       <div className="mt-10">
-        <Skeleton
-          className="h-10 rounded-lg animate-pulse bg-zinc-200 mb-4"
-          style={{ width: "60%" }}
-        />
-        <Skeleton
-          className="h-32 rounded-lg animate-pulse bg-zinc-200"
-          style={{ width: "100%" }}
-        />
+        {viewMode === "iframe" && cacheURL ? (
+          <iframe
+            src={cacheURL}
+            className="w-full h-[600px] border border-zinc-200 rounded-lg"
+            title={`${source} view of ${url}`}
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            loading="lazy"
+          />
+        ) : (
+          <>
+            <Skeleton
+              className="h-10 rounded-lg animate-pulse bg-zinc-200 mb-4"
+              style={{ width: "60%" }}
+            />
+            <Skeleton
+              className="h-32 rounded-lg animate-pulse bg-zinc-200"
+              style={{ width: "100%" }}
+            />
+          </>
+        )}
       </div>
     );
   }
@@ -71,6 +107,8 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           url: data?.cacheURL || url,
         };
     
+    const cacheURL = getCacheURL();
+    
     return (
       <>
         <div className="mt-10">
@@ -79,6 +117,17 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             source={source}
             originalUrl={url}
           />
+          {viewMode === "iframe" && cacheURL && (
+            <div className="mt-10 w-full">
+              <iframe
+                src={cacheURL}
+                className="w-full h-[600px] border border-zinc-200 rounded-lg"
+                title={`${source} view of ${url}`}
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                loading="lazy"
+              />
+            </div>
+          )}
         </div>
         <DebugPanel debugContext={debugContext} />
       </>
@@ -87,9 +136,21 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
   // No data state
   if (!data) {
+    const cacheURL = getCacheURL();
+    
     return (
       <div className="mt-10">
-        <p className="text-gray-600">No data available.</p>
+        {viewMode === "iframe" && cacheURL ? (
+          <iframe
+            src={cacheURL}
+            className="w-full h-[600px] border border-zinc-200 rounded-lg"
+            title={`${source} view of ${url}`}
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            loading="lazy"
+          />
+        ) : (
+          <p className="text-gray-600">No data available.</p>
+        )}
       </div>
     );
   }
@@ -100,7 +161,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     <div className="mt-10">
       <article>
         {content.article?.title && <h1>{content.article.title}</h1>}
-        {!content.article?.content && (
+        {!content.article?.content && viewMode === "markdown" && (
           <div className="mt-10 flex items-center space-x-2">
             <p className="text-gray-600">Article could not be retrieved.</p>
           </div>
@@ -130,12 +191,48 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                 rel="noreferrer"
                 className="text-gray-600 hover:text-gray-400 transition"
               >
-                {content.source === "wayback" ? "archive.today" : "jina.ai reader"}
+                {content.source === "wayback" ? "Wayback Machine" : "jina.ai reader"}
               </a>
             </div>
           )}
         </div>
-        {content.article?.content ? (
+        {viewMode === "iframe" ? (() => {
+          const cacheURL = getCacheURL();
+          return (
+            <div className="mt-10 w-full">
+              {cacheURL ? (
+                <iframe
+                  src={cacheURL}
+                  className="w-full h-[600px] border border-zinc-200 rounded-lg"
+                  title={`${source} view of ${url}`}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="mt-10 flex items-center space-x-2">
+                  <p className="text-gray-600">Iframe URL not available.</p>
+                  {content.error && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <QuestionMarkCircleIcon
+                            className="inline-block mb-3 -ml-2 rounded-full cursor-help"
+                            height={18}
+                            width={18}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Error: {content.error || "Unknown error occurred."}</p>
+                          <p>There was an issue retrieving the content.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })() : content.article?.content ? (
           <div
             className="max-w-full overflow-wrap break-words mt-10"
             dangerouslySetInnerHTML={{ __html: content.article.content }}

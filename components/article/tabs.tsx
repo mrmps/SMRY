@@ -6,6 +6,9 @@ import { ArticleContent } from "./content";
 import { ArticleLength } from "./length";
 import { Source, ArticleResponse } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { DocumentTextIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import useLocalStorage from "@/lib/hooks/use-local-storage";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "smry (fast)",
@@ -48,6 +51,7 @@ interface TabProps {
 const ArrowTabs: React.FC<TabProps> = ({ url, articleResults }) => {
   const sources: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
   const results = articleResults;
+  const [viewMode, setViewMode] = useLocalStorage<"markdown" | "iframe">("article-view-mode", "markdown");
 
   const lengths: Record<Source, React.ReactNode> = {
     "smry-fast": (
@@ -77,40 +81,71 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults }) => {
   };
 
   return (
-    <Tabs defaultValue={"smry-fast"}>
-      <EnhancedTabsList
-        sources={sources}
-        lengths={lengths}
-      />
-      <TabsContent value={"smry-fast"}>
-        <ArticleContent 
-          query={results["smry-fast"]} 
-          source="smry-fast"
-          url={url}
+    <div>
+      {/* View Mode Toggle */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-600">View:</span>
+        <div className="inline-flex rounded-lg border border-zinc-200 bg-white p-1">
+          <Button
+            variant={viewMode === "markdown" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("markdown")}
+            className="h-8 px-3 text-xs"
+          >
+            <DocumentTextIcon className="mr-1.5 h-3.5 w-3.5" />
+            Markdown
+          </Button>
+          <Button
+            variant={viewMode === "iframe" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("iframe")}
+            className="h-8 px-3 text-xs"
+          >
+            <Squares2X2Icon className="mr-1.5 h-3.5 w-3.5" />
+            Iframe
+          </Button>
+        </div>
+      </div>
+
+      <Tabs defaultValue={"smry-fast"}>
+        <EnhancedTabsList
+          sources={sources}
+          lengths={lengths}
         />
-      </TabsContent>
-      <TabsContent value={"smry-slow"}>
-        <ArticleContent 
-          query={results["smry-slow"]} 
-          source="smry-slow"
-          url={url}
-        />
-      </TabsContent>
-      <TabsContent value={"wayback"}>
-        <ArticleContent 
-          query={results.wayback} 
-          source="wayback"
-          url={url}
-        />
-      </TabsContent>
-      <TabsContent value={"jina.ai"}>
-        <ArticleContent 
-          query={results["jina.ai"]} 
-          source="jina.ai"
-          url={url}
-        />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value={"smry-fast"}>
+          <ArticleContent 
+            query={results["smry-fast"]} 
+            source="smry-fast"
+            url={url}
+            viewMode={viewMode}
+          />
+        </TabsContent>
+        <TabsContent value={"smry-slow"}>
+          <ArticleContent 
+            query={results["smry-slow"]} 
+            source="smry-slow"
+            url={url}
+            viewMode={viewMode}
+          />
+        </TabsContent>
+        <TabsContent value={"wayback"}>
+          <ArticleContent 
+            query={results.wayback} 
+            source="wayback"
+            url={url}
+            viewMode={viewMode}
+          />
+        </TabsContent>
+        <TabsContent value={"jina.ai"}>
+          <ArticleContent 
+            query={results["jina.ai"]} 
+            source="jina.ai"
+            url={url}
+            viewMode={viewMode}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

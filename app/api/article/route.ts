@@ -41,7 +41,7 @@ type CachedArticle = z.infer<typeof CachedArticleSchema>;
 function getUrlWithSource(source: string, url: string): string {
   switch (source) {
     case "wayback":
-      return `https://archive.today/?run=1&url=${encodeURIComponent(url)}`;
+      return `https://web.archive.org/web/0/${url}`;
     case "smry-fast":
     case "smry-slow":
     default:
