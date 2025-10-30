@@ -238,10 +238,6 @@ Optional (but recommended):
 # Diffbot (required for direct and wayback sources)
 DIFFBOT_API_KEY=
 
-# Proxy (for archive.org if needed)
-PROXY_URL=
-```
-
 ## Setup
 
 1. **Install dependencies**:

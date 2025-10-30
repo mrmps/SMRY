@@ -5,7 +5,7 @@ import { articleAPI } from "@/lib/api/client";
 import { ArticleResponse, Source } from "@/types/api";
 import { fetchJinaArticle } from "@/lib/api/jina";
 
-const SERVER_SOURCES: Source[] = ["direct", "wayback"];
+const SERVER_SOURCES = ["smry-fast", "smry-slow", "wayback"] as const satisfies readonly Source[];
 
 /**
  * Custom hook to fetch Jina article (client-side)
@@ -77,10 +77,10 @@ function useJinaArticle(url: string): UseQueryResult<ArticleResponse, Error> {
 /**
  * Custom hook to fetch articles from all three sources in parallel
  * Uses TanStack Query for caching and state management
- * Jina is fetched client-side, while direct and wayback are server-side
+ * Jina is fetched client-side, while smry-fast, smry-slow, and wayback are server-side
  */
 export function useArticles(url: string) {
-  // Fetch server-side sources (direct, wayback)
+  // Fetch server-side sources (smry-fast, smry-slow, wayback)
   const serverQueries = useQueries({
     queries: SERVER_SOURCES.map((source) => ({
       queryKey: ["article", source, url],
@@ -96,9 +96,10 @@ export function useArticles(url: string) {
   const jinaQuery = useJinaArticle(url);
 
   // Map queries to a more convenient structure
-  const results = {
-    direct: serverQueries[0] as UseQueryResult<ArticleResponse, Error>,
-    wayback: serverQueries[1] as UseQueryResult<ArticleResponse, Error>,
+  const results: Record<Source, UseQueryResult<ArticleResponse, Error>> = {
+    "smry-fast": serverQueries[0] as UseQueryResult<ArticleResponse, Error>,
+    "smry-slow": serverQueries[1] as UseQueryResult<ArticleResponse, Error>,
+    wayback: serverQueries[2] as UseQueryResult<ArticleResponse, Error>,
     "jina.ai": jinaQuery,
   };
 

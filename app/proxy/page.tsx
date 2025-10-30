@@ -92,8 +92,8 @@ export type ResponseItem = {
  */
 async function fetchArticleForMetadata(url: string): Promise<Article | null> {
   try {
-    // Try sources in order: direct, jina.ai, wayback
-    const sources = ["direct", "jina.ai", "wayback"];
+    // Try sources in order: smry-fast, smry-slow, jina.ai, wayback
+    const sources = ["smry-fast", "smry-slow", "jina.ai", "wayback"];
     
     for (const source of sources) {
       try {

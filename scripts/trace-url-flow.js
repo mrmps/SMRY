@@ -51,7 +51,7 @@ steps.push({
 const { z } = require('zod');
 const ArticleRequestSchema = z.object({
   url: z.string().url("Invalid URL format"),
-  source: z.enum(["direct", "wayback", "jina.ai"]),
+  source: z.enum(["smry-fast", "smry-slow", "wayback", "jina.ai"]),
 });
 
 const validationResult = ArticleRequestSchema.safeParse({
@@ -68,7 +68,9 @@ steps.push({
 // Step 6: Construct smryUrl for logging
 const validatedUrl = validationResult.success ? validationResult.data.url : apiExtractedURL;
 const validatedSource = 'wayback';
-const smryUrl = `https://smry.ai/${validatedUrl}${validatedSource !== 'direct' ? `?source=${validatedSource}` : ''}`;
+const smryUrl = validatedSource === 'smry-fast'
+  ? `https://smry.ai/${validatedUrl}`
+  : `https://smry.ai/${validatedUrl}?source=${validatedSource}`;
 steps.push({
   step: '6. Construct smryUrl for logging',
   url: smryUrl,

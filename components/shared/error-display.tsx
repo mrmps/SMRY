@@ -8,13 +8,15 @@ interface ErrorDisplayProps {
   error: AppError;
   onRetry?: () => void;
   compact?: boolean;
+  source?: string;
+  originalUrl?: string;
 }
 
 /**
  * A comprehensive error display component that shows user-friendly error messages
  * with optional retry functionality
  */
-export function ErrorDisplay({ error, onRetry, compact = false }: ErrorDisplayProps) {
+export function ErrorDisplay({ error, onRetry, compact = false, source, originalUrl }: ErrorDisplayProps) {
   const [isRetrying, setIsRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -31,6 +33,34 @@ export function ErrorDisplay({ error, onRetry, compact = false }: ErrorDisplayPr
   const title = getErrorTitle(error);
   const message = getErrorMessage(error);
   const canRetry = isRetryableError(error) && onRetry;
+  
+  // Determine the actual URL to display (prefer originalUrl prop, fallback to error.url if it exists)
+  const errorUrl = 'url' in error ? error.url : undefined;
+  const displayUrl = originalUrl || errorUrl;
+  
+  // Check if we should show the proxy link (not for smry-fast or smry-slow)
+  const showProxyLink = source && source !== "smry-fast" && source !== "smry-slow";
+  
+  // Get the external service URL based on source
+  const getExternalUrl = (src: string, url: string) => {
+    switch (src) {
+      case "wayback": 
+        return `https://archive.org/web/2/${encodeURIComponent(url)}`;
+      case "jina.ai": 
+        return `https://r.jina.ai/${url}`;
+      default: 
+        return undefined;
+    }
+  };
+  
+  // Get source-specific labels
+  const getSourceLabel = (src: string) => {
+    switch (src) {
+      case "wayback": return "Try archived version (archive.org)";
+      case "jina.ai": return "Try reader view (jina.ai)";
+      default: return "Try cached version";
+    }
+  };
 
   // Compact mode for inline display
   if (compact) {
@@ -64,17 +94,33 @@ export function ErrorDisplay({ error, onRetry, compact = false }: ErrorDisplayPr
         <div className="flex-1 min-w-0">
           <p className="text-sm text-gray-700 leading-relaxed">{message}</p>
 
-          {/* URL link if available */}
-          {(error.type === "NETWORK_ERROR" || error.type === "DIFFBOT_ERROR" || error.type === "TIMEOUT_ERROR") && error.url && (
-            <a
-              href={error.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-3 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
-            >
-              View page directly
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+          {/* Links section */}
+          {displayUrl && (
+            <div className="flex flex-col gap-2 mt-3">
+              {/* Original page link - always show if we have a URL */}
+              <a
+                href={displayUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors w-fit"
+              >
+                Open original page directly
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+
+              {/* Proxy/cache link - only for wayback and jina.ai */}
+              {showProxyLink && source && displayUrl && getExternalUrl(source, displayUrl) && (
+                <a
+                  href={getExternalUrl(source, displayUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors w-fit"
+                >
+                  {getSourceLabel(source)}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
           )}
 
           {/* Retry button */}

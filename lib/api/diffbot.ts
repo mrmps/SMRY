@@ -301,7 +301,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
  * Fetch structured article data using Diffbot API (no fallback)
  * Returns title, html, text, and siteName with comprehensive debug information
  */
-export function fetchArticleWithDiffbot(url: string, source: string = 'direct'): ResultAsync<DiffbotArticle, AppError> {
+export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow'): ResultAsync<DiffbotArticle, AppError> {
   const debugContext = createDebugContext(url, source);
   
   if (!process.env.DIFFBOT_API_KEY) {

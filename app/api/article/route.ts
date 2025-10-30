@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ArticleRequestSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
 import { fetchArticleWithDiffbot } from "@/lib/api/diffbot";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { AppError, createParseError } from "@/lib/errors";
+import { AppError, createNetworkError, createParseError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
+import { Readability } from "@mozilla/readability";
+import { JSDOM } from "jsdom";
 
 const logger = createLogger('api:article');
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 // Diffbot Article schema - validates the response from fetchArticleWithDiffbot
 const DiffbotArticleSchema = z.object({
@@ -35,10 +42,19 @@ function getUrlWithSource(source: string, url: string): string {
   switch (source) {
     case "wayback":
       return `https://archive.today/?run=1&url=${encodeURIComponent(url)}`;
-    case "direct":
+    case "smry-fast":
+    case "smry-slow":
     default:
       return url;
   }
+}
+
+function buildSmryUrl(url: string, source?: string | null): string {
+  if (!source || source === "smry-fast") {
+    return `https://smry.ai/${url}`;
+  }
+
+  return `https://smry.ai/${url}?source=${source}`;
 }
 
 /**
@@ -69,10 +85,10 @@ async function saveOrReturnLongerArticle(
     
     const validatedNewArticle = incomingValidation.data;
     
-    const existingArticleString = await kv.get(key);
+    const cachedData = await redis.get<CachedArticle>(key);
 
-    if (existingArticleString) {
-      const existingValidation = CachedArticleSchema.safeParse(existingArticleString);
+    if (cachedData) {
+      const existingValidation = CachedArticleSchema.safeParse(cachedData);
       
       if (!existingValidation.success) {
         const validationError = fromError(existingValidation.error);
@@ -82,7 +98,7 @@ async function saveOrReturnLongerArticle(
         }, 'Existing cache validation failed - replacing with new article');
         
         // Save new article since existing is invalid
-        await kv.set(key, JSON.stringify(validatedNewArticle));
+        await redis.set(key, validatedNewArticle);
         logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (replaced invalid)');
         return validatedNewArticle;
       }
@@ -90,7 +106,7 @@ async function saveOrReturnLongerArticle(
       const existingArticle = existingValidation.data;
 
       if (validatedNewArticle.length > existingArticle.length) {
-        await kv.set(key, JSON.stringify(validatedNewArticle));
+        await redis.set(key, validatedNewArticle);
         logger.debug({ key, newLength: validatedNewArticle.length, oldLength: existingArticle.length }, 'Cached longer article');
         return validatedNewArticle;
       } else {
@@ -99,7 +115,7 @@ async function saveOrReturnLongerArticle(
       }
     } else {
       // No existing article, save the new one
-      await kv.set(key, JSON.stringify(validatedNewArticle));
+      await redis.set(key, validatedNewArticle);
       logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (new)');
       return validatedNewArticle;
     }
@@ -111,8 +127,98 @@ async function saveOrReturnLongerArticle(
   }
 }
 
+async function fetchArticleWithSmryFast(
+  url: string
+): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
+  try {
+    logger.info({ source: "smry-fast", hostname: new URL(url).hostname }, 'Fetching article directly');
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "smry.ai bot/1.0 (+https://smry.ai)",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      cache: "no-store",
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      logger.error({ source: "smry-fast", status: response.status }, 'Direct fetch HTTP error');
+      return {
+        error: createNetworkError(
+          `HTTP ${response.status} error when fetching article`,
+          url,
+          response.status
+        ),
+      };
+    }
+
+    const html = await response.text();
+
+    if (!html) {
+      logger.warn({ source: "smry-fast", htmlLength: 0 }, 'Received empty HTML content');
+      return {
+        error: createParseError('Received empty HTML content', 'smry-fast'),
+      };
+    }
+
+    const dom = new JSDOM(html, { url });
+    const reader = new Readability(dom.window.document);
+    const parsed = reader.parse();
+
+    if (!parsed || !parsed.content || !parsed.textContent) {
+      logger.warn({ source: "smry-fast" }, 'Readability extraction failed');
+      return {
+        error: createParseError('Failed to extract article content with Readability', 'smry-fast'),
+      };
+    }
+
+    const articleCandidate: CachedArticle = {
+      title: parsed.title || dom.window.document.title || 'Untitled',
+      content: parsed.content,
+      textContent: parsed.textContent,
+      length: parsed.textContent.length,
+      siteName: (() => {
+        try {
+          return new URL(url).hostname;
+        } catch {
+          return parsed.siteName || 'unknown';
+        }
+      })(),
+    };
+
+    const validationResult = CachedArticleSchema.safeParse(articleCandidate);
+
+    if (!validationResult.success) {
+      const validationError = fromError(validationResult.error);
+      logger.error({ source: "smry-fast", validationError: validationError.toString() }, 'Readability article validation failed');
+      return {
+        error: createParseError(
+          `Invalid Readability article: ${validationError.toString()}`,
+          'smry-fast',
+          validationError
+        ),
+      };
+    }
+
+    const validatedArticle = validationResult.data;
+    logger.debug({ source: "smry-fast", title: validatedArticle.title, length: validatedArticle.length }, 'Direct article parsed and validated');
+
+    return {
+      article: validatedArticle,
+      cacheURL: url,
+    };
+  } catch (error) {
+    logger.error({ source: "smry-fast", error }, 'Direct fetch exception');
+    return {
+      error: createNetworkError('Failed to fetch article directly', url, undefined, error),
+    };
+  }
+}
+
 /**
- * Fetch and parse article using Diffbot (for direct and wayback sources)
+ * Fetch and parse article using Diffbot (for smry-slow and wayback sources)
  */
 async function fetchArticleWithDiffbotWrapper(
   urlWithSource: string,
@@ -185,8 +291,17 @@ async function fetchArticle(
   urlWithSource: string,
   source: string
 ): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
-  // Direct and Wayback use Diffbot
-  return fetchArticleWithDiffbotWrapper(urlWithSource, source);
+  switch (source) {
+    case "smry-fast":
+      return fetchArticleWithSmryFast(urlWithSource);
+    case "smry-slow":
+    case "wayback":
+      return fetchArticleWithDiffbotWrapper(urlWithSource, source);
+    default:
+      return {
+        error: createParseError(`Unsupported source: ${source}`, source),
+      };
+  }
 }
 
 /**
@@ -203,7 +318,7 @@ export async function GET(request: NextRequest) {
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      const debugSmryUrl = url ? `https://smry.ai/${url}${source && source !== 'direct' ? `?source=${source}` : ''}` : undefined;
+      const debugSmryUrl = url ? buildSmryUrl(url, source ?? "smry-fast") : undefined;
       logger.error({ error: error.toString(), smryUrl: debugSmryUrl, url, source }, 'Validation error - Full URL for debugging');
       return NextResponse.json(
         ErrorResponseSchema.parse({
@@ -217,7 +332,7 @@ export async function GET(request: NextRequest) {
     const { url: validatedUrl, source: validatedSource } = validationResult.data;
 
     // Construct the full smry.ai URL for debugging
-    const smryUrl = `https://smry.ai/${validatedUrl}${validatedSource !== 'direct' ? `?source=${validatedSource}` : ''}`;
+    const smryUrl = buildSmryUrl(validatedUrl, validatedSource);
 
     // Jina.ai is handled by a separate endpoint (/api/jina) for client-side fetching
     if (validatedSource === "jina.ai") {
@@ -238,19 +353,19 @@ export async function GET(request: NextRequest) {
 
     // Try to get from cache
     try {
-      const cachedArticleJson = await kv.get(cacheKey);
+      const cachedArticle = await redis.get<CachedArticle>(cacheKey);
 
-      if (cachedArticleJson) {
+      if (cachedArticle) {
         // Validate cached data
-        const cacheValidation = CachedArticleSchema.safeParse(cachedArticleJson);
+        const cacheValidation = CachedArticleSchema.safeParse(cachedArticle);
         
         if (!cacheValidation.success) {
           const validationError = fromError(cacheValidation.error);
           logger.warn({ 
             cacheKey,
             validationError: validationError.toString(),
-            receivedType: typeof cachedArticleJson,
-            hasKeys: cachedArticleJson ? Object.keys(cachedArticleJson as any) : []
+            receivedType: typeof cachedArticle,
+            hasKeys: cachedArticle ? Object.keys(cachedArticle as any) : []
           }, 'Cache validation failed - will fetch fresh');
           // Continue to fetch fresh data instead of using invalid cache
         } else {
@@ -428,8 +543,8 @@ export async function GET(request: NextRequest) {
     // Try to extract URL info for better debugging
     const searchParams = request.nextUrl.searchParams;
     const url = searchParams.get("url");
-    const source = searchParams.get("source") || "direct";
-    const debugSmryUrl = url ? `https://smry.ai/${url}${source !== 'direct' ? `?source=${source}` : ''}` : undefined;
+    const source = searchParams.get("source") || "smry-fast";
+    const debugSmryUrl = url ? buildSmryUrl(url, source) : undefined;
     
     logger.error({ 
       error, 

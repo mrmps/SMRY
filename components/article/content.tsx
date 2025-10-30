@@ -74,7 +74,11 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     return (
       <>
         <div className="mt-10">
-          <ErrorDisplay error={appError} />
+          <ErrorDisplay 
+            error={appError} 
+            source={source}
+            originalUrl={url}
+          />
         </div>
         <DebugPanel debugContext={debugContext} />
       </>
@@ -116,17 +120,20 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               {new URL(url).hostname}
             </a>
           </div>
-          <div className="flex items-center mt-4 ml-4 space-x-1.5">
-            <LinkIcon className="w-4 h-4 text-gray-600" />
-            <a
-              href={decodeURIComponent(content.cacheURL) ?? ""}
-              target="_blank"
-              rel="noreferrer"
-              className="text-gray-600 hover:text-gray-400 transition"
-            >
-              {content.source}
-            </a>
-          </div>
+          {/* Only show cache URL link for wayback and jina.ai sources */}
+          {(content.source === "wayback" || content.source === "jina.ai") && (
+            <div className="flex items-center mt-4 ml-4 space-x-1.5">
+              <LinkIcon className="w-4 h-4 text-gray-600" />
+              <a
+                href={decodeURIComponent(content.cacheURL) ?? ""}
+                target="_blank"
+                rel="noreferrer"
+                className="text-gray-600 hover:text-gray-400 transition"
+              >
+                {content.source === "wayback" ? "archive.today" : "jina.ai reader"}
+              </a>
+            </div>
+          )}
         </div>
         {content.article?.content ? (
           <div

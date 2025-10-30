@@ -7,87 +7,92 @@ import { ArticleLength } from "./length";
 import { Source, ArticleResponse } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 
-const EnhancedTabsList: React.FC<{
-  sources: string[];
-  lengthJina: React.ReactNode;
-  lengthWayback: React.ReactNode;
-  lengthDirect: React.ReactNode;
-}> = ({ sources, lengthDirect, lengthJina, lengthWayback }) => {
-  const getSourceLength = (source: string): React.ReactNode => {
-    let content;
-    switch (source) {
-      case "smry":
-        content = lengthDirect;
-        break;
-      case "wayback":
-        content = lengthWayback;
-        break;
-      case "jina.ai":
-        content = lengthJina;
-        break;
-      default:
-        content = null;
-    }
+const SOURCE_LABELS: Record<Source, string> = {
+  "smry-fast": "smry (fast)",
+  "smry-slow": "smry (slow)",
+  wayback: "wayback",
+  "jina.ai": "jina.ai",
+};
 
-    return content;
-  }
+const EnhancedTabsList: React.FC<{
+  sources: Source[];
+  lengths: Record<Source, React.ReactNode>;
+}> = ({ sources, lengths }) => {
+  const getSourceLength = (source: Source): React.ReactNode => lengths[source] ?? null;
 
   return (
     <div className="border border-zinc-200 rounded-lg p-1 bg-white">
-      <TabsList className="flex-col md:flex-row w-full md:w-auto h-auto md:h-10 gap-1">
-        {sources.map((source, index) => (
-          <TabsTrigger key={index} value={source} className="w-full md:w-auto">
-            <span>
-              {source}
-              {getSourceLength(source)}
-            </span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
+      <div className="md:-mx-1 md:overflow-x-auto md:px-1 md:[&::-webkit-scrollbar]:h-1 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-zinc-300/70 md:[&::-webkit-scrollbar-track]:bg-transparent" style={{ scrollbarWidth: "thin" }}>
+        <TabsList className="flex-col md:flex-row md:flex-nowrap w-full md:w-max h-auto md:h-10 gap-1 justify-start md:justify-start md:whitespace-nowrap">
+          {sources.map((source, index) => (
+            <TabsTrigger key={index} value={source} className="w-full md:w-auto md:flex-shrink-0">
+              <span>
+                {SOURCE_LABELS[source]}
+                {getSourceLength(source)}
+              </span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
     </div>
   );
 };
 
+type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
+
 interface TabProps {
   url: string;
-  articleResults: {
-    direct: UseQueryResult<ArticleResponse, Error>;
-    wayback: UseQueryResult<ArticleResponse, Error>;
-    "jina.ai": UseQueryResult<ArticleResponse, Error>;
-  };
+  articleResults: ArticleResults;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({ url, articleResults }) => {
-  const sources = ["smry", "wayback", "jina.ai"];
+  const sources: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
   const results = articleResults;
 
+  const lengths: Record<Source, React.ReactNode> = {
+    "smry-fast": (
+      <ArticleLength 
+        query={results["smry-fast"]}
+        source="smry-fast"
+      />
+    ),
+    "smry-slow": (
+      <ArticleLength 
+        query={results["smry-slow"]}
+        source="smry-slow"
+      />
+    ),
+    wayback: (
+      <ArticleLength 
+        query={results.wayback}
+        source="wayback"
+      />
+    ),
+    "jina.ai": (
+      <ArticleLength 
+        query={results["jina.ai"]}
+        source="jina.ai"
+      />
+    ),
+  };
+
   return (
-    <Tabs defaultValue={"smry"}>
+    <Tabs defaultValue={"smry-fast"}>
       <EnhancedTabsList
         sources={sources}
-        lengthDirect={
-          <ArticleLength 
-            query={results.direct} 
-            source="direct"
-          />
-        }
-        lengthJina={
-          <ArticleLength 
-            query={results["jina.ai"]} 
-            source="jina.ai"
-          />
-        }
-        lengthWayback={
-          <ArticleLength 
-            query={results.wayback} 
-            source="wayback"
-          />
-        }
+        lengths={lengths}
       />
-      <TabsContent value={"smry"}>
+      <TabsContent value={"smry-fast"}>
         <ArticleContent 
-          query={results.direct} 
-          source="direct"
+          query={results["smry-fast"]} 
+          source="smry-fast"
+          url={url}
+        />
+      </TabsContent>
+      <TabsContent value={"smry-slow"}>
+        <ArticleContent 
+          query={results["smry-slow"]} 
+          source="smry-slow"
           url={url}
         />
       </TabsContent>

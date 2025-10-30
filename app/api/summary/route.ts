@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import OpenAI from "openai";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -88,12 +93,12 @@ export async function POST(request: NextRequest) {
     // Rate limiting
     if (process.env.NODE_ENV !== "development") {
       const dailyRatelimit = new Ratelimit({
-        redis: kv,
+        redis: redis,
         limiter: Ratelimit.slidingWindow(20, "1 d"),
       });
 
       const minuteRatelimit = new Ratelimit({
-        redis: kv,
+        redis: redis,
         limiter: Ratelimit.slidingWindow(6, "1 m"),
       });
 
@@ -132,7 +137,7 @@ export async function POST(request: NextRequest) {
       ? `summary:${language}:${url}`
       : `summary:${language}:${Buffer.from(content.substring(0, 500)).toString('base64').substring(0, 50)}`;
     
-    const cached = await kv.get(cacheKey);
+    const cached = await redis.get<string>(cacheKey);
 
     if (cached && typeof cached === "string") {
       logger.debug('Cache hit');
@@ -174,7 +179,7 @@ export async function POST(request: NextRequest) {
     logger.info({ length: summary.length }, 'Summary generated');
 
     // Cache the summary
-    await kv.set(cacheKey, summary);
+    await redis.set(cacheKey, summary);
 
     return NextResponse.json({ summary, cached: false });
   } catch (error) {

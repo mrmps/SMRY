@@ -10,7 +10,7 @@ console.log('=== Zod URL Validation Test ===\n');
 
 const ArticleRequestSchema = z.object({
   url: z.string().url("Invalid URL format"),
-  source: z.enum(["direct", "wayback", "jina.ai"]),
+  source: z.enum(["smry-fast", "smry-slow", "wayback", "jina.ai"]),
 });
 
 const testCases = [

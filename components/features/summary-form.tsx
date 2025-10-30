@@ -5,14 +5,21 @@ import { LANGUAGES, Source, ArticleResponse } from "@/types/api";
 import { Button } from "../ui/button";
 import { UseQueryResult } from "@tanstack/react-query";
 
+type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
+
+const SOURCE_LABELS: Record<Source, string> = {
+  "smry-fast": "smry (fast)",
+  "smry-slow": "smry (slow)",
+  wayback: "Wayback",
+  "jina.ai": "Jina.ai",
+};
+
+const SUMMARY_SOURCES: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
+
 interface SummaryFormProps {
   urlProp: string;
   ipProp: string;
-  articleResults: {
-    direct: UseQueryResult<ArticleResponse, Error>;
-    wayback: UseQueryResult<ArticleResponse, Error>;
-    "jina.ai": UseQueryResult<ArticleResponse, Error>;
-  };
+  articleResults: ArticleResults;
 }
 
 export default function SummaryForm({ urlProp, ipProp, articleResults }: SummaryFormProps) {
@@ -23,20 +30,10 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
 
   // Find the source with the longest content
   const longestSource = useMemo(() => {
-    const sources: { source: Source; length: number }[] = [
-      {
-        source: "direct",
-        length: articleResults.direct.data?.article?.textContent?.length || 0,
-      },
-      {
-        source: "wayback",
-        length: articleResults.wayback.data?.article?.textContent?.length || 0,
-      },
-      {
-        source: "jina.ai",
-        length: articleResults["jina.ai"].data?.article?.textContent?.length || 0,
-      },
-    ];
+    const sources: { source: Source; length: number }[] = SUMMARY_SOURCES.map((source) => ({
+      source,
+      length: articleResults[source]?.data?.article?.textContent?.length || 0,
+    }));
 
     // Sort by length and return the longest
     sources.sort((a, b) => b.length - a.length);
@@ -96,11 +93,15 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
   const anyLoading = Object.values(articleResults).some((result) => result.isLoading);
 
   // Get content lengths for display
-  const contentLengths = {
-    direct: articleResults.direct.data?.article?.textContent?.length || 0,
-    wayback: articleResults.wayback.data?.article?.textContent?.length || 0,
-    "jina.ai": articleResults["jina.ai"].data?.article?.textContent?.length || 0,
-  };
+  const contentLengths = SUMMARY_SOURCES.reduce<Record<Source, number>>((acc, source) => {
+    acc[source] = articleResults[source].data?.article?.textContent?.length || 0;
+    return acc;
+  }, {
+    "smry-fast": 0,
+    "smry-slow": 0,
+    wayback: 0,
+    "jina.ai": 0,
+  });
 
   return (
     <div className="mt-6">
@@ -117,16 +118,20 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
               disabled={anyLoading}
               className="w-full px-3 py-2.5 text-sm border border-zinc-200 rounded-lg bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500 transition-colors"
             >
-              <option value="direct">
-                Direct {contentLengths.direct > 0 && `• ${contentLengths.direct.toLocaleString()} chars`}
-                {longestSource === "direct" && " • Recommended"}
+              <option value="smry-fast">
+                {SOURCE_LABELS["smry-fast"]} {contentLengths["smry-fast"] > 0 && `• ${contentLengths["smry-fast"].toLocaleString()} chars`}
+                {longestSource === "smry-fast" && " • Recommended"}
+              </option>
+              <option value="smry-slow">
+                {SOURCE_LABELS["smry-slow"]} {contentLengths["smry-slow"] > 0 && `• ${contentLengths["smry-slow"].toLocaleString()} chars`}
+                {longestSource === "smry-slow" && " • Recommended"}
               </option>
               <option value="wayback">
-                Wayback {contentLengths.wayback > 0 && `• ${contentLengths.wayback.toLocaleString()} chars`}
+                {SOURCE_LABELS.wayback} {contentLengths.wayback > 0 && `• ${contentLengths.wayback.toLocaleString()} chars`}
                 {longestSource === "wayback" && " • Recommended"}
               </option>
               <option value="jina.ai">
-                Jina.ai {contentLengths["jina.ai"] > 0 && `• ${contentLengths["jina.ai"].toLocaleString()} chars`}
+                {SOURCE_LABELS["jina.ai"]} {contentLengths["jina.ai"] > 0 && `• ${contentLengths["jina.ai"].toLocaleString()} chars`}
                 {longestSource === "jina.ai" && " • Recommended"}
               </option>
             </select>

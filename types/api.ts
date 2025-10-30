@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AppError, DebugContext } from "@/lib/errors/types";
 
 // Source type
-export const SourceSchema = z.enum(["direct", "wayback", "jina.ai"]);
+export const SourceSchema = z.enum(["smry-fast", "smry-slow", "wayback", "jina.ai"]);
 export type Source = z.infer<typeof SourceSchema>;
 
 // Debug context schema

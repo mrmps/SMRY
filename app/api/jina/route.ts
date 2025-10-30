@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { JinaCacheRequestSchema, JinaCacheUpdateSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
-import { kv } from "@vercel/kv";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { createLogger } from "@/lib/logger";
+import { Redis } from "@upstash/redis";
 
 const logger = createLogger('api:jina');
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 // Cached article schema
 const CachedArticleSchema = z.object({
@@ -45,10 +50,10 @@ export async function GET(request: NextRequest) {
     logger.debug({ hostname: new URL(validatedUrl).hostname }, 'Checking Jina cache');
 
     try {
-      const cachedArticleJson = await kv.get(cacheKey);
+      const cachedArticle = await redis.get<z.infer<typeof CachedArticleSchema>>(cacheKey);
 
-      if (cachedArticleJson) {
-        const article = CachedArticleSchema.parse(cachedArticleJson);
+      if (cachedArticle) {
+        const article = CachedArticleSchema.parse(cachedArticle);
 
         // Only return if cached article is reasonably long
         if (article.length > 4000) {
@@ -127,15 +132,15 @@ export async function POST(request: NextRequest) {
     logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Updating Jina cache');
 
     try {
-      const existingArticleString = await kv.get(cacheKey);
+      const existingArticle = await redis.get<z.infer<typeof CachedArticleSchema>>(cacheKey);
 
-      const existingArticle = existingArticleString
-        ? CachedArticleSchema.parse(existingArticleString)
+      const validatedExisting = existingArticle
+        ? CachedArticleSchema.parse(existingArticle)
         : null;
 
       // Only update if new article is longer or doesn't exist
-      if (!existingArticle || article.length > existingArticle.length) {
-        await kv.set(cacheKey, JSON.stringify(article));
+      if (!validatedExisting || article.length > validatedExisting.length) {
+        await redis.set(cacheKey, article);
         logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Jina cache updated');
         
         const response = ArticleResponseSchema.parse({
@@ -152,13 +157,13 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(response);
       } else {
-        logger.debug({ hostname: new URL(url).hostname, existingLength: existingArticle.length, newLength: article.length }, 'Keeping existing Jina cache');
+        logger.debug({ hostname: new URL(url).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
         
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
           cacheURL: `https://r.jina.ai/${url}`,
           article: {
-            ...existingArticle,
+            ...validatedExisting,
             byline: "",
             dir: "",
             lang: "",
