@@ -45,7 +45,7 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
             // onClick={() => track("Generate")}
             className="bg-purple-600 text-white px-4 py-2 h-9 text-sm font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:ring-offset-0 transition-colors"
           >
-            Generate
+            Generate Summary
           </Button>
         </SheetTrigger>
         <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden">
@@ -63,7 +63,7 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
     <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerTrigger asChild>
         <Button className="bg-purple-600 text-white px-3 py-1.5 h-8 text-xs font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:ring-offset-0 transition-colors">
-          Generate
+          Generate Summary
         </Button>
       </DrawerTrigger>
       <DrawerContent className="max-h-[85vh] flex flex-col">

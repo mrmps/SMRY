@@ -6,9 +6,6 @@ import { ArticleContent } from "./content";
 import { ArticleLength } from "./length";
 import { Source, ArticleResponse } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { DocumentTextIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
-import useLocalStorage from "@/lib/hooks/use-local-storage";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "smry (fast)",
@@ -46,12 +43,12 @@ type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 interface TabProps {
   url: string;
   articleResults: ArticleResults;
+  viewMode: "markdown" | "iframe";
 }
 
-const ArrowTabs: React.FC<TabProps> = ({ url, articleResults }) => {
+const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
   const sources: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
   const results = articleResults;
-  const [viewMode, setViewMode] = useLocalStorage<"markdown" | "iframe">("article-view-mode", "markdown");
 
   const lengths: Record<Source, React.ReactNode> = {
     "smry-fast": (
@@ -82,31 +79,6 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults }) => {
 
   return (
     <div>
-      {/* View Mode Toggle */}
-      <div className="mb-4 flex items-center justify-end gap-2">
-        <span className="text-sm text-gray-600">View:</span>
-        <div className="inline-flex rounded-lg border border-zinc-200 bg-white p-1">
-          <Button
-            variant={viewMode === "markdown" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("markdown")}
-            className="h-8 px-3 text-xs"
-          >
-            <DocumentTextIcon className="mr-1.5 h-3.5 w-3.5" />
-            Markdown
-          </Button>
-          <Button
-            variant={viewMode === "iframe" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("iframe")}
-            className="h-8 px-3 text-xs"
-          >
-            <Squares2X2Icon className="mr-1.5 h-3.5 w-3.5" />
-            Iframe
-          </Button>
-        </div>
-      </div>
-
       <Tabs defaultValue={"smry-fast"}>
         <EnhancedTabsList
           sources={sources}
