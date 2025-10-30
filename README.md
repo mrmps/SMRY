@@ -63,7 +63,7 @@ All errors now include debug context showing:
 This makes debugging extraction failures much easier.
 
 ### Dual Caching Strategy
-- **Server-side**: Vercel KV for persistent caching across requests
+- **Server-side**: Upstash Redis for persistent caching across requests
 - **Client-side**: TanStack Query for instant UI updates (1min stale time, 5min GC)
 
 Articles are cached by `source:url` key. When fetching, if a longer version exists in cache, it's preserved.
@@ -134,7 +134,7 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **TanStack Query** for client-side data fetching and caching
 - **Zod** for runtime type validation
 - **neverthrow** for Result-based error handling
-- **Vercel KV** (Upstash Redis) for caching
+- **Upstash Redis** for caching
 - **OpenAI gpt-5-nano** for summaries
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
 - **Mozilla Readability** for fallback content extraction
@@ -191,7 +191,7 @@ Route to appropriate fetcher:
   - Direct/Wayback → fetchArticleWithDiffbot() with multi-layer fallback
   - Jina.ai → fetchJinaArticle() (markdown parsing)
     ↓
-Cache in Vercel KV (if longer than existing)
+Cache in Upstash Redis (if longer than existing)
     ↓
 Return to client
     ↓
@@ -217,11 +217,10 @@ Return summary
 
 Required:
 ```bash
-# Vercel KV (for caching)
-KV_URL=
-KV_REST_API_URL=
-KV_REST_API_TOKEN=
-KV_REST_API_READ_ONLY_TOKEN=
+# Upstash Redis (for caching)
+# Get these from https://console.upstash.com
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 
 # OpenAI (for summaries)
 OPENAI_API_KEY=
@@ -246,7 +245,7 @@ pnpm install
 ```
 
 2. **Set up environment variables**:
-   - Create a Vercel KV database at vercel.com/storage
+   - Create an Upstash Redis database at https://console.upstash.com
    - Get an OpenAI API key at platform.openai.com
    - Get your Logo.dev publishable key (pk_) from https://www.logo.dev/dashboard
    - Copy `.env.example` to `.env.local` and fill in values
@@ -352,7 +351,7 @@ See [LOGGING.md](./LOGGING.md) for detailed documentation and integration with l
 - [ ] Webhook support for asynchronous processing
 - [ ] Support for video/podcast content
 - [ ] OCR for image-based paywalls
-- [ ] Self-hosted alternative to Vercel KV
+- [x] Upstash Redis for caching (self-hosted compatible)
 
 ### UI/UX Enhancements
 - [ ] Dark mode
