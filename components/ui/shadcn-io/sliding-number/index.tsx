@@ -41,7 +41,7 @@ function SlidingNumberRoller({
     <span
       ref={measureRef}
       data-slot="sliding-number-roller"
-      className="relative inline-block w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums"
+      className="relative inline-block w-[1ch] overflow-y-clip overflow-x-visible tabular-nums leading-none"
     >
       <span className="invisible">0</span>
       {Array.from({ length: 10 }, (_, i) => (
@@ -133,24 +133,25 @@ function SlidingNumber({
   const isInView = !inView || inViewResult;
  
   const prevNumberRef = React.useRef<number>(0);
- 
+  const [prevNumber, setPrevNumber] = React.useState<number>(0);
+
   const effectiveNumber = React.useMemo(
     () => (!isInView ? 0 : Math.abs(Number(number))),
     [number, isInView],
   );
- 
+
   const formatNumber = React.useCallback(
     (num: number) =>
       decimalPlaces != null ? num.toFixed(decimalPlaces) : num.toString(),
     [decimalPlaces],
   );
- 
+
   const numberStr = formatNumber(effectiveNumber);
   const [newIntStrRaw, newDecStrRaw = ''] = numberStr.split('.');
   const newIntStr =
     padStart && newIntStrRaw?.length === 1 ? '0' + newIntStrRaw : newIntStrRaw;
- 
-  const prevFormatted = formatNumber(prevNumberRef.current);
+
+  const prevFormatted = formatNumber(prevNumber);
   const [prevIntStrRaw = '', prevDecStrRaw = ''] = prevFormatted.split('.');
   const prevIntStr =
     padStart && prevIntStrRaw.length === 1
@@ -171,7 +172,10 @@ function SlidingNumber({
   }, [prevDecStrRaw, newDecStrRaw]);
  
   React.useEffect(() => {
-    if (isInView) prevNumberRef.current = effectiveNumber;
+    if (isInView) {
+      prevNumberRef.current = effectiveNumber;
+      setPrevNumber(effectiveNumber);
+    }
   }, [effectiveNumber, isInView]);
  
   const intDigitCount = newIntStr?.length ?? 0;

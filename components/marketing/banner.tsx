@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 
 type OutletType = {
   name: string;
@@ -81,8 +80,8 @@ export function Banner() {
   const repeatedOutlets = Array(5).fill(outlets).flat(); // Adjust the number as needed
 
   return (
-    <section className="z-20 py-12 overflow-hidden max-w-xs sm:max-w-full">
-      <h2 className="text-center text-2xl font-bold text-zinc-700 dark:text-zinc-200 mb-6">
+    <section className="z-20 max-w-xs overflow-hidden py-12 sm:max-w-full">
+      <h2 className="mb-6 text-center text-2xl font-bold text-zinc-700 dark:text-zinc-200">
         Hop over these paywalls:
       </h2>
       <div className="mx-auto flex space-x-4" style={{ maxWidth: '1000px', animation: 'scroll 60s linear infinite' }}>
@@ -93,20 +92,20 @@ export function Banner() {
     </section>
   );
 }
-const Outlet = ({ name, url, famousArticle }: OutletType) => {
+const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
   const logoDevToken = process.env.NEXT_PUBLIC_LOGODEV_TOKEN;
   const logoUrl = `https://img.logo.dev/${url}?token=${logoDevToken}&size=64&greyscale=true&format=png`;
   
   return (
     <div className="flex flex-col items-center space-y-2">
       {/* <Link href={`/${famousArticle}`} target='_blank'> */}
-          <div className="w-16 h-16 flex justify-center items-center"> {/* Adjust width and height as needed */}
+          <div className="flex size-16 items-center justify-center"> {/* Adjust width and height as needed */}
             <Image
               alt={name}
               src={logoUrl}
               width={64}
               height={64}
-              className="rounded-full w-12 h-12"
+              className="size-12 rounded-full"
               unoptimized
             />
           </div>

@@ -22,7 +22,7 @@ export const BookmarkletLink = () => {
   return (
     <a
       ref={linkRef}
-      className="border-b-2 border-stone-400 hover:border-stone-700 transition-colors cursor-move"
+      className="cursor-move border-b-2 border-stone-400 transition-colors hover:border-stone-700"
       title="Drag to bookmarks bar"
       onClick={handleClick}
     >

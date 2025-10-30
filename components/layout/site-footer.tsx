@@ -47,7 +47,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
           </p>
         </div>
         <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
-          <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 leading-loose md:text-left">
+          <p className="text-center text-xs leading-loose text-zinc-400 dark:text-zinc-600 md:text-left">
             <a
               href="https://logo.dev"
               target="_blank"

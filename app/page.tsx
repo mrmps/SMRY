@@ -49,15 +49,15 @@ export default function Home() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center p-4 md:p-24 text-black pt-20 sm:pt-24 bg-[#FAFAFA]">
-        <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
+      <main className="flex min-h-screen flex-col items-center bg-[#FAFAFA] p-4 pt-20 text-black sm:pt-24 md:p-24">
+        <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
           <GitHubStarsButton
             username="mrmps"
             repo="SMRY"
             formatted={true}
             className="mb-10 mr-4"
           />
-          <h1 className="text-4xl font-semibold text-center text-black md:text-5xl">
+          <h1 className="text-center text-4xl font-semibold text-black md:text-5xl">
             <Image
               src="/logo.svg"
               width={280}
@@ -72,10 +72,10 @@ export default function Home() {
             <div
               className={`${
                 urlError ? "border-red-500" : ""
-              } flex rounded-lg overflow-hidden bg-white shadow-sm border border-[#E5E5E5] focus-within:ring-offset-0 focus-within:ring-4 focus-within:ring-purple-200 focus-within:border-purple-500`}
+              } flex overflow-hidden rounded-lg border border-[#E5E5E5] bg-white shadow-sm focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-200 focus-within:ring-offset-0`}
             >
               <input
-                className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none shadow-lg p-4"
+                className="w-full rounded-l-lg bg-transparent p-4 py-3 shadow-lg focus:outline-none"
                 autoFocus
                 autoComplete="off"
                 placeholder="https://example.com/page"
@@ -87,7 +87,7 @@ export default function Home() {
                 }}
               />
               <button
-                className="px-4 py-2 font-mono transition-all duration-300 ease-in-out rounded-r-lg cursor-pointer"
+                className="cursor-pointer rounded-r-lg px-4 py-2 font-mono transition-all duration-300 ease-in-out"
                 type="submit"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
@@ -97,9 +97,9 @@ export default function Home() {
                 <div className="hidden sm:block">
                   <CornerDownLeft
                     className={clsx(
-                      "w-4 h-4 transition-transform duration-300 ease-in-out",
+                      "size-4 transition-transform duration-300 ease-in-out",
                       {
-                        "text-black transform scale-110": isHovered,
+                        "text-black scale-110": isHovered,
                         "text-gray-800": isValidUrl(url),
                         "text-gray-400": !isValidUrl(url),
                       }
@@ -109,9 +109,9 @@ export default function Home() {
                 <div className="sm:hidden">
                   <PaperAirplaneIcon
                     className={clsx(
-                      "w-5 h-5 transition-transform duration-300 ease-in-out",
+                      "size-5 transition-transform duration-300 ease-in-out",
                       {
-                        "text-black transform scale-110": isHovered,
+                        "text-black scale-110": isHovered,
                         "text-purple-500": isValidUrl(url),
                         "text-gray-400": !isValidUrl(url),
                       }
@@ -121,22 +121,22 @@ export default function Home() {
               </button>
             </div>
           </form>
-          <h2 className="w-full text-center text-stone-700 mt-4">
+          <h2 className="mt-4 w-full text-center text-stone-700">
             Bypass paywalls and get instant{" "}
             <Link href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091">
-              <span className="border-b border-gray-400 transition-border duration-300 hover:border-black">
+              <span className="transition-border border-b border-gray-400 duration-300 hover:border-black">
                 summaries
               </span>
             </Link>
             .
           </h2>
-          <p className="text-center text-sm text-stone-500 mt-2">
+          <p className="mt-2 text-center text-sm text-stone-500">
             by{" "}
             <a
               href="https://x.com/michael_chomsky"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-stone-700 transition-colors border-b border-stone-300"
+              className="border-b border-stone-300 transition-colors hover:text-stone-700"
             >
               @michael_chomsky
             </a>
@@ -144,25 +144,25 @@ export default function Home() {
 
           {urlError && (
             <p
-              className="text-red-500 mt-2 flex items-center animate-fade-in"
+              className="animate-fade-in mt-2 flex items-center text-red-500"
               role="alert"
             >
-              <ExclamationCircleIcon className="h-5 w-5 mr-2 text-red-500" />
+              <ExclamationCircleIcon className="mr-2 size-5 text-red-500" />
               Please enter a valid URL (e.g., https://example.com).
             </p>
           )}
 
-          <div className="mt-12 text-center max-w-2xl mx-auto space-y-4">
-            <p className="text-stone-600 text-[15px] leading-relaxed">
+          <div className="mx-auto mt-12 max-w-2xl space-y-4 text-center">
+            <p className="text-[15px] leading-relaxed text-stone-600">
               You can also use smry by prepending{" "}
-              <code className="bg-yellow-200 px-2 py-0.5 rounded text-stone-700 font-mono text-xs">
+              <code className="rounded bg-yellow-200 px-2 py-0.5 font-mono text-xs text-stone-700">
                 https://smry.ai/
               </code>{" "}
               to any URL.
             </p>
             
-            <div className="hidden sm:block pt-2 border-t border-stone-200">
-              <p className="text-stone-600 text-sm leading-relaxed">
+            <div className="hidden border-t border-stone-200 pt-2 sm:block">
+              <p className="text-sm leading-relaxed text-stone-600">
                 For quick access, bookmark this <BookmarkletLink />. Drag it to your bookmarks bar, 
                 then click it on any page to open in SMRY.
               </p>

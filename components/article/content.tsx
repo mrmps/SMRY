@@ -68,7 +68,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         {viewMode === "iframe" && cacheURL ? (
           <iframe
             src={cacheURL}
-            className="w-full h-[600px] border border-zinc-200 rounded-lg"
+            className="h-[600px] w-full rounded-lg border border-zinc-200"
             title={`${source} view of ${url}`}
             sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
             loading="lazy"
@@ -76,11 +76,11 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         ) : (
           <>
             <Skeleton
-              className="h-10 rounded-lg animate-pulse bg-zinc-200 mb-4"
+              className="mb-4 h-10 animate-pulse rounded-lg bg-zinc-200"
               style={{ width: "60%" }}
             />
             <Skeleton
-              className="h-32 rounded-lg animate-pulse bg-zinc-200"
+              className="h-32 animate-pulse rounded-lg bg-zinc-200"
               style={{ width: "100%" }}
             />
           </>
@@ -121,7 +121,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             <div className="mt-10 w-full">
               <iframe
                 src={cacheURL}
-                className="w-full h-[600px] border border-zinc-200 rounded-lg"
+                className="h-[600px] w-full rounded-lg border border-zinc-200"
                 title={`${source} view of ${url}`}
                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                 loading="lazy"
@@ -143,7 +143,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         {viewMode === "iframe" && cacheURL ? (
           <iframe
             src={cacheURL}
-            className="w-full h-[600px] border border-zinc-200 rounded-lg"
+            className="h-[600px] w-full rounded-lg border border-zinc-200"
             title={`${source} view of ${url}`}
             sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
             loading="lazy"
@@ -166,30 +166,30 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             <p className="text-gray-600">Article could not be retrieved.</p>
           </div>
         )}
-        <div className="leading-3 text-gray-600 flex space-x-4 items-center -ml-4 -mt-4 flex-wrap">
-          <div className="flex items-center mt-4 ml-4 space-x-1.5">
+        <div className="-ml-4 -mt-4 flex flex-wrap items-center space-x-4 leading-3 text-gray-600">
+          <div className="ml-4 mt-4 flex items-center space-x-1.5">
             <ShareButton url={`https://smry.ai/${url}`} />
           </div>
-          <div className="flex items-center mt-4 ml-4 space-x-1.5">
-            <GlobeAltIcon className="w-4 h-4 text-gray-600" />
+          <div className="ml-4 mt-4 flex items-center space-x-1.5">
+            <GlobeAltIcon className="size-4 text-gray-600" />
             <a
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="text-gray-600 hover:text-gray-400 transition"
+              className="text-gray-600 transition hover:text-gray-400"
             >
               {new URL(url).hostname}
             </a>
           </div>
           {/* Only show cache URL link for wayback and jina.ai sources */}
           {(content.source === "wayback" || content.source === "jina.ai") && (
-            <div className="flex items-center mt-4 ml-4 space-x-1.5">
-              <LinkIcon className="w-4 h-4 text-gray-600" />
+            <div className="ml-4 mt-4 flex items-center space-x-1.5">
+              <LinkIcon className="size-4 text-gray-600" />
               <a
                 href={decodeURIComponent(content.cacheURL) ?? ""}
                 target="_blank"
                 rel="noreferrer"
-                className="text-gray-600 hover:text-gray-400 transition"
+                className="text-gray-600 transition hover:text-gray-400"
               >
                 {content.source === "wayback" ? "Wayback Machine" : "jina.ai reader"}
               </a>
@@ -203,7 +203,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               {cacheURL ? (
                 <iframe
                   src={cacheURL}
-                  className="w-full h-[600px] border border-zinc-200 rounded-lg"
+                  className="h-[600px] w-full rounded-lg border border-zinc-200"
                   title={`${source} view of ${url}`}
                   sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                   loading="lazy"
@@ -216,7 +216,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                       <Tooltip>
                         <TooltipTrigger>
                           <QuestionMarkCircleIcon
-                            className="inline-block mb-3 -ml-2 rounded-full cursor-help"
+                            className="-ml-2 mb-3 inline-block cursor-help rounded-full"
                             height={18}
                             width={18}
                           />
@@ -234,7 +234,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           );
         })() : content.article?.content ? (
           <div
-            className="max-w-full overflow-wrap break-words mt-10"
+            className="overflow-wrap mt-10 max-w-full break-words"
             dangerouslySetInnerHTML={{ __html: content.article.content }}
           />
         ) : (
@@ -244,7 +244,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               <Tooltip>
                 <TooltipTrigger>
                   <QuestionMarkCircleIcon
-                    className="inline-block mb-3 -ml-2 rounded-full cursor-help"
+                    className="-ml-2 mb-3 inline-block cursor-help rounded-full"
                     height={18}
                     width={18}
                   />

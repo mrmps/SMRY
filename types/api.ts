@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { AppError, DebugContext } from "@/lib/errors/types";
 
 // Source type
 export const SourceSchema = z.enum(["smry-fast", "smry-slow", "wayback", "jina.ai"]);

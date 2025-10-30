@@ -1,4 +1,3 @@
-import { LockClosedIcon } from "@radix-ui/react-icons";
 import { ReactNode, useRef, useState } from "react";
 
 interface CardSpotlightProps {
@@ -48,7 +47,7 @@ export const CardSpotlight = ({ heading, body, icon }: CardSpotlightProps) => {
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative max-w-xs rounded-lg border-[.5px] shadow-sm border-zinc-200 bg-stone-100 p-8"
+      className="relative max-w-xs rounded-lg border-[.5px] border-zinc-200 bg-stone-100 p-8 shadow-sm"
     >
       <div
         className="pointer-events-none absolute -inset-px rounded-lg transition duration-500"
@@ -59,7 +58,7 @@ export const CardSpotlight = ({ heading, body, icon }: CardSpotlightProps) => {
       />
       <div className="flex flex-row gap-3">
       <div className="mb-4">
-      <div className="p-2 bg-stone-200 rounded-md border-stone-300 border">
+      <div className="rounded-md border border-stone-300 bg-stone-200 p-2">
         {icon} {/* Render the passed icon here */}
         </div>
       </div>

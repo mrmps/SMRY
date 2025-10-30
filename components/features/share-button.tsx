@@ -19,7 +19,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
 
 interface ShareButtonProps {
     url: string;    
@@ -66,14 +65,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
   const shareContent = (
     <div className="space-y-1.5">
       <button
-        className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-lg hover:bg-slate-50 transition-colors group"
+        className="group flex w-full items-center gap-3.5 rounded-lg px-3.5 py-3 transition-colors hover:bg-slate-50"
         onClick={handleCopy}
       >
-        <div className={`flex items-center justify-center w-9 h-9 rounded-md ${copied ? 'bg-green-50' : 'bg-slate-100'} transition-colors`}>
+        <div className={`flex size-9 items-center justify-center rounded-md ${copied ? 'bg-green-50' : 'bg-slate-100'} transition-colors`}>
           {copied ? (
-            <CheckIcon className="h-4 w-4 text-green-600" />
+            <CheckIcon className="size-4 text-green-600" />
           ) : (
-            <LinkIcon className="h-4 w-4 text-slate-600" />
+            <LinkIcon className="size-4 text-slate-600" />
           )}
         </div>
         <div className="flex flex-col text-left">
@@ -90,11 +89,11 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
       
       {hasNativeShare && (
         <button
-          className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-lg hover:bg-slate-50 transition-colors group"
+          className="group flex w-full items-center gap-3.5 rounded-lg px-3.5 py-3 transition-colors hover:bg-slate-50"
           onClick={handleNativeShare}
         >
-          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-slate-100">
-            <ExternalLink className="h-4 w-4 text-slate-600" />
+          <div className="flex size-9 items-center justify-center rounded-md bg-slate-100">
+            <ExternalLink className="size-4 text-slate-600" />
           </div>
           <div className="flex flex-col text-left">
             <span className="text-sm font-medium text-slate-900">More options</span>
@@ -111,13 +110,13 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <button className="flex items-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 px-4 py-2 transition-all">
-            <ShareIcon className="h-3 w-3 text-slate-600" />
+          <button className="flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 transition-all hover:border-slate-300 hover:bg-slate-50">
+            <ShareIcon className="size-3 text-slate-600" />
             <span className="ml-2 text-sm font-medium text-slate-700">Share</span>
           </button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[400px] p-0 gap-0">
-          <DialogHeader className="px-5 pt-5 pb-4 border-b border-slate-100">
+        <DialogContent className="gap-0 p-0 sm:max-w-[400px]">
+          <DialogHeader className="border-b border-slate-100 px-5 pb-4 pt-5">
             <DialogTitle className="text-base font-semibold text-slate-900">Share article</DialogTitle>
             <DialogDescription className="text-sm text-slate-500">
               Share this article with others
@@ -134,19 +133,19 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <button className="flex items-center rounded-full border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 px-4 py-2 transition-all">
-          <ShareIcon className="h-3 w-3 text-slate-600" />
+        <button className="flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 transition-all hover:border-slate-300 hover:bg-slate-50">
+          <ShareIcon className="size-3 text-slate-600" />
           <span className="ml-2 text-sm font-medium text-slate-700">Share</span>
         </button>
       </DrawerTrigger>
       <DrawerContent className="border-t border-slate-200">
-        <DrawerHeader className="text-left px-5 pt-5 pb-4 border-b border-slate-100">
+        <DrawerHeader className="border-b border-slate-100 px-5 pb-4 pt-5 text-left">
           <DrawerTitle className="text-base font-semibold text-slate-900">Share article</DrawerTitle>
           <DrawerDescription className="text-sm text-slate-500">
             Share this article with others
           </DrawerDescription>
         </DrawerHeader>
-        <div className="px-5 py-4 pb-safe">
+        <div className="pb-safe px-5 py-4">
           {shareContent}
         </div>
       </DrawerContent>

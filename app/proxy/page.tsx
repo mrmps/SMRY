@@ -118,7 +118,7 @@ async function fetchArticleForMetadata(url: string): Promise<Article | null> {
             return data.article;
           }
         }
-      } catch (error) {
+      } catch {
         // Try next source
         continue;
       }
@@ -211,7 +211,7 @@ export async function generateMetadata({
 }
 
 export default async function Page({
-  params,
+  params: _params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
@@ -271,8 +271,8 @@ export default async function Page({
         adEnd={adCopies[adSelection].adEnd}
       />
 
-      <div className="px-4 py-8 md:py-12 mt-20">
-        <div className="mx-auto space-y-10 max-w-prose">
+      <div className="mt-20 px-4 py-8 md:py-12">
+        <div className="mx-auto max-w-prose space-y-10">
           <main className="prose">
             {url ? (
               <ProxyContent url={url} ip={ip} />

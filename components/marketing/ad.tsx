@@ -11,18 +11,18 @@ interface AdProps {
   adEnd: string;
 }
 
-const Ad: React.FC<AdProps> = ({ link, onClickTrack, adStart, adEnd }) => {
+const Ad: React.FC<AdProps> = ({ link, onClickTrack: _onClickTrack, adStart, adEnd }) => {
   const [showAd, setShowAd] = React.useState(true);
   return (
     showAd ? (
       <div className="fixed bottom-0 right-0 z-50" id="ad">
-        <div className="mr-4 md:mr-12 px-4 py-2 md:pr-8 bg-stone-100 rounded-lg rounded-b-none border border-stone-300 text-stone-600 text-sm relative">
+        <div className="relative mr-4 rounded-lg rounded-b-none border border-stone-300 bg-stone-100 px-4 py-2 text-sm text-stone-600 md:mr-12 md:pr-8">
           <button 
             onClick={() => {
               // track('close banner');
               setShowAd(false);
             }} 
-            className="absolute top-[8px] right-1"
+            className="absolute right-1 top-[8px]"
           >
             <XIcon size={16} />
           </button>

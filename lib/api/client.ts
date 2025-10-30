@@ -1,4 +1,4 @@
-import { ArticleResponse, ArticleRequest, Source, ErrorResponse } from "@/types/api";
+import { ArticleResponse, Source, ErrorResponse } from "@/types/api";
 import { DebugContext } from "@/lib/errors/types";
 
 /**

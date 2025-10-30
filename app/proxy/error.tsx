@@ -5,7 +5,7 @@ import UnderlineLink from "@/components/shared/underline-link";
 import { useRouter } from "next/navigation";
 
 export default function Error({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -21,7 +21,7 @@ export default function Error({
   return (
     <div className="bg-zinc-50">
       <TopBar />
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="flex h-screen flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-800">
           <div className="mx-auto max-w-md rounded-lg border bg-white p-8 text-center dark:bg-zinc-900">
             <h2
@@ -44,7 +44,7 @@ export default function Error({
               to try again, or{" "}
               <UnderlineLink href="/" text="read something else" />.
             </p>
-            <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-300 mt-3">
+            <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-300">
               Some providers still do not work with smry.ai. We are improving
               every day, but if the site you are trying to read is protected by
               a{" "}

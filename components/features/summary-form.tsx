@@ -122,7 +122,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
       <form onSubmit={handleRegenerate} className="space-y-5">
         <div className="space-y-5">
           <div>
-            <label htmlFor="source" className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="source" className="mb-1.5 block text-xs font-medium text-gray-500">
               Source
             </label>
             <select
@@ -130,7 +130,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
               value={selectedSource}
               onChange={(e) => setManualSource(e.target.value as Source)}
               disabled={shouldDisableSource}
-              className="w-full px-3 py-2.5 text-sm border border-zinc-200 rounded-lg bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500 transition-colors"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm transition-colors hover:border-zinc-300 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
             >
               {SUMMARY_SOURCES.map((source) => {
                 const status = getSourceStatus(source);
@@ -161,14 +161,14 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
           </div>
 
           <div>
-            <label htmlFor="language" className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="language" className="mb-1.5 block text-xs font-medium text-gray-500">
               Language
             </label>
             <select
               id="language"
               value={preferredLanguage}
               onChange={(e) => setPreferredLanguage(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-zinc-200 rounded-lg bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 transition-colors"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm transition-colors hover:border-zinc-300 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -181,7 +181,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
           <Button 
             type="submit" 
             disabled={isLoading || shouldDisableSource || !selectedArticle?.article?.textContent}
-            className="w-full h-10 text-sm font-medium"
+            className="h-10 w-full text-sm font-medium"
           >
             {isLoading ? "Generating..." : isSuccess ? "Regenerate" : "Generate Summary"}
           </Button>
@@ -189,23 +189,23 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
       </form>
 
       {error && (
-        <div className="mt-5 p-4 bg-red-50 border border-red-100 rounded-lg">
-          <h3 className="text-xs font-medium text-red-900 mb-1">Error</h3>
-          <p className="text-sm text-red-700 leading-relaxed">
+        <div className="mt-5 rounded-lg border border-red-100 bg-red-50 p-4">
+          <h3 className="mb-1 text-xs font-medium text-red-900">Error</h3>
+          <p className="text-sm leading-relaxed text-red-700">
             {error instanceof Error ? error.message : "An unexpected error occurred"}
           </p>
         </div>
       )}
 
       {summary && (
-        <div className="mt-6 bg-gray-50 rounded-lg p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+        <div className="mt-6 rounded-lg bg-gray-50 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <svg className="size-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
               <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
             </svg>
             <h3 className="text-sm font-semibold text-gray-900">AI Summary</h3>
           </div>
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{summary}</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{summary}</p>
         </div>
       )}
     </div>

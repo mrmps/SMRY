@@ -1,5 +1,4 @@
-import { Diffbot, DiffbotArticleResponse } from "diffbot";
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { ResultAsync, errAsync } from "neverthrow";
 import {
   AppError,
   createDiffbotError,

@@ -21,11 +21,11 @@ const EnhancedTabsList: React.FC<{
   const getSourceLength = (source: Source): React.ReactNode => lengths[source] ?? null;
 
   return (
-    <div className="border border-zinc-200 rounded-lg p-1 bg-white">
-      <div className="md:-mx-1 md:overflow-x-auto md:px-1 md:[&::-webkit-scrollbar]:h-1 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-zinc-300/70 md:[&::-webkit-scrollbar-track]:bg-transparent" style={{ scrollbarWidth: "thin" }}>
-        <TabsList className="flex-col md:flex-row md:flex-nowrap w-full md:w-max h-auto md:h-10 gap-1 justify-start md:justify-start md:whitespace-nowrap">
+    <div className="rounded-lg border border-zinc-200 bg-white p-1">
+      <div className="md:-mx-1 md:overflow-x-auto md:px-1 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-zinc-300/70 md:[&::-webkit-scrollbar-track]:bg-transparent md:[&::-webkit-scrollbar]:h-1" style={{ scrollbarWidth: "thin" }}>
+        <TabsList className="h-auto w-full flex-col justify-start gap-1 md:h-10 md:w-max md:flex-row md:flex-nowrap md:justify-start md:whitespace-nowrap">
           {sources.map((source, index) => (
-            <TabsTrigger key={index} value={source} className="w-full md:w-auto md:flex-shrink-0">
+            <TabsTrigger key={index} value={source} className="w-full md:w-auto md:shrink-0">
               <span>
                 {SOURCE_LABELS[source]}
                 {getSourceLength(source)}

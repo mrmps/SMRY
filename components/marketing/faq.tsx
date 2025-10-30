@@ -79,14 +79,14 @@ const faqData = [
 
 export function FAQ() {
   return (
-    <div className="w-full max-w-3xl mx-auto mt-12">
-      <h2 className="text-2xl font-semibold text-center text-neutral-800 mb-8">
+    <div className="mx-auto mt-12 w-full max-w-3xl">
+      <h2 className="mb-8 text-center text-2xl font-semibold text-neutral-800">
         Frequently Asked Questions
       </h2>
       <Accordion type="single" collapsible className="w-full">
         {faqData.map((item, index) => (
           <AccordionItem key={index} value={`item-${index}`}>
-            <AccordionTrigger className="text-left text-neutral-800 font-medium">
+            <AccordionTrigger className="text-left font-medium text-neutral-800">
               {item.question}
             </AccordionTrigger>
             <AccordionContent className="text-neutral-600">
@@ -95,23 +95,23 @@ export function FAQ() {
           </AccordionItem>
         ))}
       </Accordion>
-      <div className="mt-12 text-center space-y-2">
+      <div className="mt-12 space-y-2 text-center">
         <p className="text-neutral-600">
           Have feedback or questions?{" "}
           <Link
             href="https://smryai.userjot.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-purple-600 hover:underline font-medium"
+            className="font-medium text-purple-600 hover:underline"
           >
             Share your thoughts
           </Link>
         </p>
-        <p className="text-neutral-600 text-sm">
+        <p className="text-sm text-neutral-600">
           For sponsorships and inquiries:{" "}
           <a
             href="mailto:contact@smry.ai"
-            className="text-purple-600 hover:underline font-medium"
+            className="font-medium text-purple-600 hover:underline"
           >
             contact@smry.ai
           </a>

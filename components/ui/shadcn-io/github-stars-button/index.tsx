@@ -110,7 +110,7 @@ function GitHubStarsButton({
         aria-hidden="true"
       />
       {isLoading ? (
-        <span className="inline-block h-4 w-[1.8rem] bg-gray-200 rounded animate-pulse" />
+        <span className="inline-block h-4 w-[1.8rem] animate-pulse rounded bg-gray-200" />
       ) : (
         <span className="tabular-nums text-gray-700">
           {formattedStars}

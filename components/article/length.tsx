@@ -11,7 +11,7 @@ interface ArticleLengthProps {
   source: Source;
 }
 
-export const ArticleLength = ({ query, source }: ArticleLengthProps) => {
+export const ArticleLength = ({ query, source: _source }: ArticleLengthProps) => {
   const { data, isLoading, isError, error } = query;
 
   // Loading state

@@ -28,9 +28,9 @@ const TopBar = () => {
     <div>
       <div
         style={{ top: isVisible ? "0" : "-100px", transition: "top 0.3s" }}
-        className="fixed top-0 z-10 w-full transition-transform bg-opacity-50 border-b border-gray-300 bg-white backdrop-filter backdrop-blur-md border-opacity-10"
+        className="fixed top-0 z-10 w-full border-b border-gray-300/10 bg-white/50 backdrop-blur-md transition-transform"
       >
-        <div className="flex items-center py-5 mx-auto max-w-prose">
+        <div className="mx-auto flex max-w-prose items-center py-5">
           <h2 className="text-xl font-bold text-gray-800">
             <Link href="/">
               <Image
@@ -51,7 +51,7 @@ const TopBar = () => {
         <ScrollProgress progress={progress} />
       </div>
       <div
-        className={`fixed top-[1px] z-[60] w-full ${isVisible ? "hidden" : ""}`}
+        className={`fixed top-px z-[60] w-full ${isVisible ? "hidden" : ""}`}
       >
         <ScrollProgress progress={progress} />
       </div>
