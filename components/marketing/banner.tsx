@@ -104,9 +104,10 @@ const Outlet = ({ name, url, famousArticle }: OutletType) => {
             <Image
               alt={name}
               src={logoUrl}
-              width={32}
-              height={32}
-              className="rounded-full"
+              width={64}
+              height={64}
+              className="rounded-full w-12 h-12"
+              unoptimized
             />
           </div>
       {/* </Link> */}

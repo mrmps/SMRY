@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -8,9 +8,7 @@ import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { z } from "zod";
-import Github from "@/components/marketing/github";
-import { Fira_Code } from "next/font/google";
-import { cn } from "@/lib/utils";
+import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button";
 import Link from "next/link";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -19,10 +17,6 @@ import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
 
-const fira = Fira_Code({
-  subsets: ["latin"],
-});
-
 const urlSchema = z.object({
   url: z.string().url().min(1),
 });
@@ -30,13 +24,6 @@ const urlSchema = z.object({
 export default function Home() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, []);
 
   const router = useRouter();
 
@@ -62,17 +49,14 @@ export default function Home() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 text-black mt-28 sm:mt-0 bg-[#FAFAFA]">
+      <main className="flex min-h-screen flex-col items-center p-4 md:p-24 text-black pt-20 sm:pt-24 bg-[#FAFAFA]">
         <div className="flex flex-col items-center justify-center w-full max-w-lg mx-auto z-10 sm:mt-16">
-          <a
-            className="flex max-w-fit items-center justify-center space-x-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-100 mb-10 mr-4"
-            href="https://github.com/mrmps/SMRY"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Github />
-            <p>Star on GitHub</p>
-          </a>
+          <GitHubStarsButton
+            username="mrmps"
+            repo="SMRY"
+            formatted={true}
+            className="mb-10 mr-4"
+          />
           <h1 className="text-4xl font-semibold text-center text-black md:text-5xl">
             <Image
               src="/logo.svg"
@@ -80,6 +64,7 @@ export default function Home() {
               height={280}
               alt={"smry logo"}
               className="-ml-4"
+              priority
             />
           </h1>
 
@@ -91,7 +76,7 @@ export default function Home() {
             >
               <input
                 className="w-full px-4 py-3 bg-transparent rounded-l-lg focus:outline-none shadow-lg p-4"
-                ref={inputRef}
+                autoFocus
                 autoComplete="off"
                 placeholder="https://example.com/page"
                 name="url"
