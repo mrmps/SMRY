@@ -106,5 +106,11 @@ export const LANGUAGES = [
   { code: "ja", name: "日本語" },
   { code: "pt", name: "Português" },
   { code: "ru", name: "Русский" },
+  { code: "hi", name: "हिन्दी" },
+  { code: "it", name: "Italiano" },
+  { code: "ko", name: "한국어" },
+  { code: "ar", name: "العربية" },
+  { code: "nl", name: "Nederlands" },
+  { code: "tr", name: "Türkçe" },
 ] as const;
 

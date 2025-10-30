@@ -76,6 +76,12 @@ const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
   ja: "Summarize in Japanese.",
   pt: "Summarize in Portuguese.",
   ru: "Summarize in Russian.",
+  hi: "Summarize in Hindi.",
+  it: "Summarize in Italian.",
+  ko: "Summarize in Korean.",
+  ar: "Summarize in Arabic.",
+  nl: "Summarize in Dutch.",
+  tr: "Summarize in Turkish.",
 };
 
 /**

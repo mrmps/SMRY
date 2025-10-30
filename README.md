@@ -119,7 +119,7 @@ Each article fetch now includes detailed debug context that tracks:
 Debug context is preserved through errors and displayed in the UI for debugging.
 
 ### Multilingual Summaries
-Language-specific prompts for 8 languages (en, es, fr, de, zh, ja, pt, ru). Each language gets its own cache key:
+Language-specific prompts for 14 languages (en, es, fr, de, zh, ja, pt, ru, hi, it, ko, ar, nl, tr). Each language gets its own cache key:
 
 ```
 summary:en:https://example.com
