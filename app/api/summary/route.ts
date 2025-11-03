@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
-import OpenAI from "openai";
+import { openai } from '@ai-sdk/openai';
+import { streamText } from "ai";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 
@@ -10,15 +11,11 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const logger = createLogger('api:summary');
 
-// Request schema
+// Request schema for useCompletion
 const SummaryRequestSchema = z.object({
-  content: z.string().min(2000, "Content must be at least 2000 characters"),
+  prompt: z.string().min(2000, "Content must be at least 2000 characters"),
   title: z.string().optional(),
   url: z.string().optional(),
   ip: z.string().optional(),
@@ -93,7 +90,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     logger.info({ 
-      contentLength: body.content?.length, 
+      contentLength: body.prompt?.length, 
       title: body.title,
       language: body.language 
     }, 'Summary Request');
@@ -108,7 +105,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { content, title, url, ip, language } = validationResult.data;
+    const { prompt: content, title, url, ip, language } = validationResult.data;
     const clientIp = ip || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "unknown";
 
     logger.debug({ clientIp, language, contentLength: content.length }, 'Request details');
@@ -164,7 +161,13 @@ export async function POST(request: NextRequest) {
 
     if (cached && typeof cached === "string") {
       logger.debug('Cache hit');
-      return NextResponse.json({ summary: cached, cached: true });
+      // Return cached response as plain text for useCompletion
+      return new Response(cached, {
+        headers: { 
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Cache-Hit": "true"
+        },
+      });
     }
 
     // Content length is already validated by schema (minimum 2000 characters)
@@ -177,37 +180,23 @@ export async function POST(request: NextRequest) {
     // Combine base prompt with language instruction
     const userPrompt = `${BASE_SUMMARY_PROMPT}\n\n${languageInstruction}`;
 
-    // Generate summary with OpenAI
-    const openaiResponse = await openai.chat.completions.create({
-      model: "gpt-5-nano",
-      messages: [
-        {
-          role: "system",
-          content: "You are an intelligent summary assistant.",
-        },
-        {
-          role: "user",
-          content: userPrompt.replace("{text}", content.substring(0, 6000)),
-        },
-      ],
+    const result = streamText({
+      model: openai("gpt-5-nano"),
+      system: "You are an intelligent summary assistant.",
+      prompt: userPrompt.replace("{text}", content.substring(0, 6000)),
+      onFinish: async ({ text, usage }) => {
+        // Cache the complete summary after streaming finishes
+        logger.info({ 
+          length: text.length,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens
+        }, 'Summary generated and cached');
+        await redis.set(cacheKey, text);
+      },
     });
 
-    const summary = openaiResponse.choices[0].message.content;
-
-    if (!summary) {
-      logger.error('No summary generated');
-      return NextResponse.json(
-        { error: "Failed to generate summary" },
-        { status: 500 }
-      );
-    }
-
-    logger.info({ length: summary.length }, 'Summary generated');
-
-    // Cache the summary
-    await redis.set(cacheKey, summary);
-
-    return NextResponse.json({ summary, cached: false });
+    return result.toTextStreamResponse();
   } catch (error) {
     logger.error({ error }, 'Unexpected error');
     return NextResponse.json(
@@ -219,4 +208,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
