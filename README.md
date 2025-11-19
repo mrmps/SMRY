@@ -9,7 +9,7 @@ A Next.js application that bypasses paywalls and generates AI-powered summaries 
    - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages (server-side)
    - **Jina.ai**: Fetches and parses markdown directly in the browser (client-side)
    
-2. **AI Summaries**: Generates concise summaries in 8 languages using OpenAI's gpt-5-nano
+2. **AI Summaries**: Generates concise summaries in 8 languages using OpenRouter (openai/gpt-oss-20b:free)
 
 3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with client-side markdown parsing for Jina.ai to reduce server load
 
@@ -135,7 +135,7 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **Zod** for runtime type validation
 - **neverthrow** for Result-based error handling
 - **Upstash Redis** for caching
-- **OpenAI gpt-5-nano** for summaries
+- **OpenRouter** for AI summaries (unified access to 300+ models)
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
 - **Mozilla Readability** for fallback content extraction
 - **Showdown** for markdown to HTML conversion (Jina.ai source)
@@ -206,7 +206,7 @@ POST /api/summary with content + language
     ↓
 Check cache by language:url key
     ↓
-If miss: OpenAI gpt-5-nano with language-specific prompt
+If miss: OpenRouter openai/gpt-oss-20b:free with language-specific prompt
     ↓
 Cache result
     ↓
@@ -217,16 +217,17 @@ Return summary
 
 Required:
 ```bash
+# OpenRouter API (for AI summaries)
+# Get your API key from https://openrouter.ai/settings/keys
+OPENROUTER_API_KEY=
+
 # Upstash Redis (for caching)
 # Get these from https://console.upstash.com
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 
-# OpenAI (for summaries)
-OPENAI_API_KEY=
-
-# Base URL
-NEXT_PUBLIC_URL=https://your-domain.com
+# Base URL (used for OpenRouter attribution)
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
 
 # Logo.dev (for company logos - get your publishable key from dashboard)
 NEXT_PUBLIC_LOGODEV_TOKEN=
@@ -246,7 +247,7 @@ pnpm install
 
 2. **Set up environment variables**:
    - Create an Upstash Redis database at https://console.upstash.com
-   - Get an OpenAI API key at platform.openai.com
+   - Get an OpenRouter API key at https://openrouter.ai/settings/keys
    - Get your Logo.dev publishable key (pk_) from https://www.logo.dev/dashboard
    - Copy `.env.example` to `.env.local` and fill in values
 
@@ -391,4 +392,4 @@ Issues and feature requests: [GitHub Issues](https://github.com/mrmps/SMRY/issue
 
 ---
 
-Built with Next.js 16, TanStack Query, and OpenAI.
+Built with Next.js 16, TanStack Query, and OpenRouter.

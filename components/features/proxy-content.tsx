@@ -23,7 +23,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
     <div className="flex items-center justify-between gap-2">
       {/* AI Summary */}
       <ResponsiveDrawer>
-        <div className="remove-all">
+        <div className="remove-all h-full">
           <SummaryForm 
             urlProp={url} 
             ipProp={ip}

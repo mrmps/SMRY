@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from "ai";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
@@ -9,6 +9,20 @@ import { createLogger } from "@/lib/logger";
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+// Configure OpenRouter provider
+// OpenRouter provides unified access to 300+ AI models with automatic provider fallback
+// Documentation: https://openrouter.ai/docs
+const openrouter = createOpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY!,
+  headers: {
+    // Optional headers for app attribution and rankings
+    // See: https://openrouter.ai/docs/features/app-attribution
+    'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://13ft.com',
+    'X-Title': '13ft - Paywall Bypass & AI Summaries',
+  },
 });
 
 const logger = createLogger('api:summary');
@@ -195,7 +209,13 @@ export async function POST(request: NextRequest) {
     const userPrompt = `${BASE_SUMMARY_PROMPT}\n\n${languageInstruction}`;
 
     const result = streamText({
-      model: openai("gpt-5-nano"),
+      // Using OpenRouter's free tier model: openai/gpt-oss-20b:free
+      // - 20B parameters, high quality summaries
+      // - Free tier with rate limits (100-200 requests/day)
+      // - OpenRouter automatically handles provider fallback for high uptime
+      // Alternative free models: meta-llama/llama-3.2-3b-instruct:free, google/gemma-2-9b-it:free
+      // Browse models: https://openrouter.ai/models?max_price=0
+      model: openrouter("openai/gpt-oss-20b:free"),
       system: "You are an intelligent summary assistant.",
       prompt: userPrompt.replace("{text}", content.substring(0, 6000)),
       onFinish: async ({ text, usage }) => {

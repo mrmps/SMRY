@@ -58,7 +58,7 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
             <SheetTitle className="text-base font-medium tracking-tight">Generate Summary</SheetTitle>
             <SheetDescription className="text-xs text-zinc-500">AI-powered key points and insights</SheetDescription>
           </SheetHeader>
-          <div className="mt-0 min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div className="mt-0 flex min-h-0 flex-1 flex-col">{children}</div>
         </SheetContent>
       </Sheet>
     );
@@ -77,12 +77,12 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
             </div>
           </div>
       </DrawerTrigger>
-      <DrawerContent className="flex max-h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900">
+      <DrawerContent className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900">
         <DrawerHeader className="shrink-0 border-b border-zinc-100 bg-white px-6 py-4 text-left dark:border-zinc-800 dark:bg-zinc-950">
           <DrawerTitle className="text-base font-medium tracking-tight">Generate Summary</DrawerTitle>
           <DrawerDescription className="text-xs text-zinc-500">AI-powered key points and insights</DrawerDescription>
         </DrawerHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col">
           {children}
         </div>
         <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">

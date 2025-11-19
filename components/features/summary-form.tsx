@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { UseQueryResult } from "@tanstack/react-query";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { Response } from "../ai/response";
@@ -160,8 +161,9 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
   }, [error]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <div className="flex-1 p-6 space-y-4">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="space-y-4 p-6">
         {error && errorContent && (
           <div className={`rounded-[14px] p-0.5 ${errorContent.bgClass}`}>
             <div className="rounded-xl bg-white/50 p-4 dark:bg-zinc-950/50">
@@ -175,7 +177,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
           </div>
         )}
 
-        {completion && (
+        {(completion || isLoading) && (
           <div className="rounded-[14px] bg-zinc-100 p-0.5 dark:bg-zinc-800">
             <div className="rounded-xl bg-white p-5 dark:bg-zinc-950">
               <div className="mb-4 flex items-center gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-900">
@@ -188,18 +190,28 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
                   Executive Summary
                   {isLoading && (
                     <span className="ml-2 text-xs font-normal text-zinc-400">
-                      Streaming...
+                      {completion ? "Streaming..." : "Generating..."}
                     </span>
                   )}
                 </h3>
               </div>
               <div className="text-zinc-600 dark:text-zinc-300">
-                <Response>
-                  {completion}
-                </Response>
-                {isLoading && completion && (
-                  <div className="mt-2">
-                    <span className="inline-block h-4 w-0.5 animate-pulse bg-purple-500"></span>
+                {completion ? (
+                  <>
+                    <Response>
+                      {completion}
+                    </Response>
+                    {isLoading && (
+                      <div className="mt-2">
+                        <span className="inline-block h-4 w-0.5 animate-pulse bg-purple-500"></span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-[90%]" />
+                    <Skeleton className="h-4 w-4/5" />
                   </div>
                 )}
               </div>
@@ -207,11 +219,12 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
           </div>
         )}
       </div>
+      </div>
 
-      <div className="mt-auto pt-4 sticky bottom-0 z-10 bg-zinc-50 dark:bg-zinc-900 px-6 pb-6 border-t border-zinc-200/50 dark:border-zinc-800/50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
+      <div className="z-10 border-t border-zinc-200/50 bg-zinc-50 px-6 pb-6 pt-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] dark:border-zinc-800/50 dark:bg-zinc-900">
         <form onSubmit={handleRegenerate} className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <Select
                 value={selectedSource}
                 onValueChange={(value) => setManualSource(value as Source)}
@@ -276,7 +289,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
           </div>
           
           {!manualSource && hasArticleData && (
-            <p className="text-[10px] text-zinc-400 text-center truncate px-2">
+            <p className="truncate px-2 text-center text-[10px] text-zinc-400">
               Auto-selected best source ({contentLengths[selectedSource].toLocaleString()} chars)
             </p>
           )}
