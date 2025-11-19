@@ -21,7 +21,7 @@ export function CodeBlock({ className, code, language, children, ...props }: Cod
         </div>
         <div className="overflow-x-auto p-4">
           <pre className="font-mono text-sm">
-            {/* eslint-disable-next-line tailwindcss/no-custom-classname */}
+if            {/* eslint-disable-next-line tailwindcss/no-custom-classname */}
             <code className={`language-${language}`}>{code}</code>
           </pre>
         </div>
