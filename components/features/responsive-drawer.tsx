@@ -58,7 +58,7 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
             <SheetTitle className="text-base font-medium tracking-tight">Generate Summary</SheetTitle>
             <SheetDescription className="text-xs text-zinc-500">AI-powered key points and insights</SheetDescription>
           </SheetHeader>
-          <div className="mt-0 min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
+          <div className="mt-0 min-h-0 flex-1 overflow-y-auto">{children}</div>
         </SheetContent>
       </Sheet>
     );
@@ -82,7 +82,7 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
           <DrawerTitle className="text-base font-medium tracking-tight">Generate Summary</DrawerTitle>
           <DrawerDescription className="text-xs text-zinc-500">AI-powered key points and insights</DrawerDescription>
         </DrawerHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {children}
         </div>
         <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">

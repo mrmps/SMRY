@@ -9,7 +9,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { UseQueryResult } from "@tanstack/react-query";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
@@ -161,28 +160,70 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
   }, [error]);
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={handleRegenerate} className="space-y-4">
-        {/* Content Source Selection - Nested Card */}
-        <div className="rounded-xl bg-zinc-100 p-px dark:bg-zinc-800">
-          <div className="rounded-[11px] bg-white p-3 dark:bg-zinc-950">
-            <div className="mb-2 flex items-center justify-between">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                Content Source
-              </label>
-              {allArticlesLoading && (
-                <span className="text-[10px] text-zinc-400">Loading...</span>
-              )}
+    <div className="flex min-h-full flex-col">
+      <div className="flex-1 p-6 space-y-4">
+        {error && errorContent && (
+          <div className={`rounded-[14px] p-0.5 ${errorContent.bgClass}`}>
+            <div className="rounded-xl bg-white/50 p-4 dark:bg-zinc-950/50">
+              <h3 className={`mb-1 text-xs font-medium uppercase tracking-wide ${errorContent.titleClass}`}>
+                {errorContent.title}
+              </h3>
+              <p className={`text-sm ${errorContent.textClass}`}>
+                {errorContent.message}
+              </p>
             </div>
-            
-            <div className="space-y-2">
+          </div>
+        )}
+
+        {completion && (
+          <div className="rounded-[14px] bg-zinc-100 p-0.5 dark:bg-zinc-800">
+            <div className="rounded-xl bg-white p-5 dark:bg-zinc-950">
+              <div className="mb-4 flex items-center gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-900">
+                <div className="flex size-6 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                  <svg className="size-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  Executive Summary
+                  {isLoading && (
+                    <span className="ml-2 text-xs font-normal text-zinc-400">
+                      Streaming...
+                    </span>
+                  )}
+                </h3>
+              </div>
+              <div className="text-zinc-600 dark:text-zinc-300">
+                <Response>
+                  {completion}
+                </Response>
+                {isLoading && completion && (
+                  <div className="mt-2">
+                    <span className="inline-block h-4 w-0.5 animate-pulse bg-purple-500"></span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-auto pt-4 sticky bottom-0 z-10 bg-zinc-50 dark:bg-zinc-900 px-6 pb-6 border-t border-zinc-200/50 dark:border-zinc-800/50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
+        <form onSubmit={handleRegenerate} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
               <Select
                 value={selectedSource}
                 onValueChange={(value) => setManualSource(value as Source)}
                 disabled={shouldDisableSource || isLoading}
               >
-                <SelectTrigger className="h-9 w-full border-zinc-200 bg-transparent text-sm font-medium focus:ring-zinc-100 dark:border-zinc-800 dark:focus:ring-zinc-800">
-                  <SelectValue placeholder="Select source" />
+                <SelectTrigger className="h-9 w-full border-zinc-200 bg-white text-sm font-medium focus:ring-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:focus:ring-zinc-800">
+                  <span className="truncate text-left">
+                    {SOURCE_LABELS[selectedSource]}
+                    {longestAvailableSource === selectedSource && (
+                      <span className="ml-2 text-xs font-normal text-purple-500">Best</span>
+                    )}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {SUMMARY_SOURCES.map((source) => {
@@ -201,100 +242,46 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
                   })}
                 </SelectContent>
               </Select>
-              
-              {!manualSource && hasArticleData && (
-                <p className="text-[10px] text-zinc-400">
-                  Auto-selected best source ({contentLengths[selectedSource].toLocaleString()} chars)
-                </p>
-              )}
             </div>
-          </div>
-        </div>
 
-        {/* Output Language Selection - Nested Card */}
-        <div className="rounded-xl bg-zinc-100 p-px dark:bg-zinc-800">
-          <div className="rounded-[11px] bg-white p-3 dark:bg-zinc-950">
-            <div className="mb-2">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                Output Language
-              </label>
+            <div className="w-[110px] shrink-0">
+              <Select
+                value={preferredLanguage}
+                onValueChange={handleLanguageChange}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="h-9 w-full border-zinc-200 bg-white text-sm font-medium focus:ring-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:focus:ring-zinc-800">
+                   <span className="truncate text-left">
+                    {LANGUAGES.find(l => l.code === preferredLanguage)?.name || "Language"}
+                   </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <Select
-              value={preferredLanguage}
-              onValueChange={handleLanguageChange}
-              disabled={isLoading}
+
+            <Button 
+              type="submit" 
+              variant={completion ? "outline" : "default"}
+              disabled={isLoading || shouldDisableSource || !selectedArticle?.article?.textContent}
+              className="h-9 shrink-0 px-4 text-sm font-medium transition-all active:scale-95"
             >
-              <SelectTrigger className="h-9 w-full border-zinc-200 bg-transparent text-sm font-medium focus:ring-zinc-100 dark:border-zinc-800 dark:focus:ring-zinc-800">
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {isLoading ? "Generating..." : completion ? "Update" : "Generate"}
+            </Button>
           </div>
-        </div>
-
-        <div>
-          <Button 
-            type="submit" 
-            variant={completion ? "outline" : "default"}
-            disabled={isLoading || shouldDisableSource || !selectedArticle?.article?.textContent}
-            className="h-10 w-full rounded-lg text-sm font-medium transition-all active:scale-95"
-          >
-            {isLoading ? "Generating..." : completion ? "Regenerate Summary" : "Generate Summary"}
-          </Button>
-        </div>
-      </form>
-
-      {error && errorContent && (
-        <div className={`rounded-[14px] p-0.5 ${errorContent.bgClass}`}>
-          <div className="rounded-xl bg-white/50 p-4 dark:bg-zinc-950/50">
-            <h3 className={`mb-1 text-xs font-medium uppercase tracking-wide ${errorContent.titleClass}`}>
-              {errorContent.title}
-            </h3>
-            <p className={`text-sm ${errorContent.textClass}`}>
-              {errorContent.message}
+          
+          {!manualSource && hasArticleData && (
+            <p className="text-[10px] text-zinc-400 text-center truncate px-2">
+              Auto-selected best source ({contentLengths[selectedSource].toLocaleString()} chars)
             </p>
-          </div>
-        </div>
-      )}
-
-      {completion && (
-        <div className="rounded-[14px] bg-zinc-100 p-0.5 dark:bg-zinc-800">
-          <div className="rounded-xl bg-white p-5 dark:bg-zinc-950">
-            <div className="mb-4 flex items-center gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-900">
-              <div className="flex size-6 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                <svg className="size-3.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                Executive Summary
-                {isLoading && (
-                  <span className="ml-2 text-xs font-normal text-zinc-400">
-                    Streaming...
-                  </span>
-                )}
-              </h3>
-            </div>
-            <div className="text-zinc-600 dark:text-zinc-300">
-              <Response>
-                {completion}
-              </Response>
-              {isLoading && completion && (
-                <div className="mt-2">
-                  <span className="inline-block h-4 w-0.5 animate-pulse bg-purple-500"></span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </form>
+      </div>
     </div>
   );
 }

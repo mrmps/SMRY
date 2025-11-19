@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GlobeAltIcon, LinkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, LinkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "../ui/skeleton";
 import ShareButton from "../features/share-button";
@@ -100,6 +100,17 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                   </a>
                 </div>
               )}
+              <div className="ml-4 mt-4 flex items-center space-x-1.5">
+                <ExclamationCircleIcon className="size-4 text-gray-600" />
+                <a
+                  href="https://smryai.userjot.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-600 transition hover:text-gray-400"
+                >
+                  Report Bug
+                </a>
+              </div>
             </div>
           </>
         )}
