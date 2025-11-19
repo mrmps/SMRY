@@ -271,8 +271,8 @@ export default async function Page({
         adEnd={adCopies[adSelection].adEnd}
       />
 
-      <div className="mt-20 px-4 py-8 md:py-12">
-        <div className="mx-auto max-w-prose space-y-10">
+      <div className="mt-0 p-4 md:py-6">
+        <div className="mx-auto max-w-prose space-y-6">
           <main className="prose">
             {url ? (
               <ProxyContent url={url} ip={ip} />

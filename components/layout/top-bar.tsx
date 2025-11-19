@@ -3,12 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import useScroll from "@/lib/hooks/use-scroll";
 import ScrollProgress from "./scroll-progress";
 
 const TopBar = () => {
   const [progress, setProgress] = useState(0);
-  const isVisible = useScroll();
 
   const onScroll = () => {
     const scrollTop = document.documentElement.scrollTop;
@@ -25,35 +23,27 @@ const TopBar = () => {
   }, []);
 
   return (
-    <div>
-      <div
-        style={{ top: isVisible ? "0" : "-100px", transition: "top 0.3s" }}
-        className="fixed top-0 z-10 w-full border-b border-gray-300/10 bg-white/50 backdrop-blur-md transition-transform"
-      >
-        <div className="mx-auto flex max-w-prose items-center py-5">
-          <h2 className="text-xl font-bold text-gray-800">
-            <Link href="/">
-              <Image
-                src="/logo.svg"
-                width={150}
-                height={150}
-                alt="smry logo"
-                className="sm:-ml-4"
-              />
-            </Link>
-          </h2>
+    <div
+      className="absolute inset-x-0 top-0 z-50"
+    >
+      <div className="w-full border-b border-gray-200/50 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-prose items-center justify-between p-4 sm:px-0">
+          <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+            <Image
+              src="/logo.svg"
+              width={120}
+              height={40}
+              alt="smry logo"
+              className="h-8 w-auto sm:-ml-4"
+              priority
+            />
+          </Link>
         </div>
-        <div
-          className="absolute inset-x-0 h-px origin-left bg-gray-300"
-          style={{ transform: "scaleX(1)" }}
-        ></div>
-        {/* Render the Scroll Progress component */}
-        <ScrollProgress progress={progress} />
-      </div>
-      <div
-        className={`fixed top-px z-[60] w-full ${isVisible ? "hidden" : ""}`}
-      >
-        <ScrollProgress progress={progress} />
+        
+        {/* Scroll Progress - absolute positioned at bottom */}
+        <div className="absolute inset-x-0 bottom-0">
+          <ScrollProgress progress={progress} />
+        </div>
       </div>
     </div>
   );

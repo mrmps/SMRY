@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { UseQueryResult } from "@tanstack/react-query";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
+import { Response } from "../ai/response";
 
 type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
@@ -135,6 +136,30 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
     return { disabled: false, label: null };
   };
 
+  const errorContent = useMemo(() => {
+    if (!error) return null;
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+    const isLengthError = errorMessage.toLowerCase().includes("content must be at least");
+    
+    if (isLengthError) {
+      return {
+        title: "Content Too Short",
+        message: "This article doesn't have enough content to generate a high-quality summary. Please try a different source tab above, or view the original article.",
+        bgClass: "bg-amber-500/10",
+        textClass: "text-amber-600 dark:text-amber-400",
+        titleClass: "text-amber-700 dark:text-amber-300"
+      };
+    }
+
+    return {
+      title: "Error",
+      message: errorMessage,
+      bgClass: "bg-red-500/10",
+      textClass: "text-red-600 dark:text-red-400",
+      titleClass: "text-red-700 dark:text-red-300"
+    };
+  }, [error]);
+
   return (
     <div className="space-y-4">
       <form onSubmit={handleRegenerate} className="space-y-4">
@@ -226,12 +251,14 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
         </div>
       </form>
 
-      {error && (
-        <div className="rounded-[14px] bg-red-500/10 p-0.5">
+      {error && errorContent && (
+        <div className={`rounded-[14px] p-0.5 ${errorContent.bgClass}`}>
           <div className="rounded-xl bg-white/50 p-4 dark:bg-zinc-950/50">
-            <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400">Error</h3>
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {error instanceof Error ? error.message : "An unexpected error occurred"}
+            <h3 className={`mb-1 text-xs font-medium uppercase tracking-wide ${errorContent.titleClass}`}>
+              {errorContent.title}
+            </h3>
+            <p className={`text-sm ${errorContent.textClass}`}>
+              {errorContent.message}
             </p>
           </div>
         </div>
@@ -255,13 +282,15 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
                 )}
               </h3>
             </div>
-            <div className="prose prose-sm prose-zinc max-w-none dark:prose-invert">
-              <p className="whitespace-pre-wrap leading-relaxed text-zinc-600 dark:text-zinc-300">
+            <div className="text-zinc-600 dark:text-zinc-300">
+              <Response>
                 {completion}
-                {isLoading && completion && (
-                  <span className="ml-1 inline-block h-4 w-0.5 animate-pulse bg-purple-500"></span>
-                )}
-              </p>
+              </Response>
+              {isLoading && completion && (
+                <div className="mt-2">
+                  <span className="inline-block h-4 w-0.5 animate-pulse bg-purple-500"></span>
+                </div>
+              )}
             </div>
           </div>
         </div>

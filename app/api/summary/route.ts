@@ -98,9 +98,10 @@ export async function POST(request: NextRequest) {
     const validationResult = SummaryRequestSchema.safeParse(body);
 
     if (!validationResult.success) {
+      const error = validationResult.error.errors[0]?.message || "Invalid request parameters";
       logger.error({ error: validationResult.error }, 'Validation error');
       return NextResponse.json(
-        { error: "Invalid request parameters" },
+        { error },
         { status: 400 }
       );
     }

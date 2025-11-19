@@ -1,13 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GlobeAltIcon, LinkIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, LinkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "../ui/skeleton";
 import ShareButton from "../features/share-button";
@@ -32,6 +33,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   url,
   viewMode = "markdown",
 }) => {
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const { data, isLoading, isError, error } = query;
   
   // Extract debug context from error if available
@@ -62,7 +64,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   const cacheURL = getCacheURL();
 
   return (
-    <div className="mt-10">
+    <div className="mt-6">
       <article>
         {/* Header - Title and Links (Only if data available) */}
         {data && !isError && (
@@ -104,10 +106,35 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
         {/* Iframe - Always rendered but hidden if not in iframe mode */}
         {cacheURL && (
-          <div className={viewMode === "iframe" ? "mt-10 w-full" : "hidden"}>
+          <div
+            className={
+              viewMode === "iframe"
+                ? isFullScreen
+                  ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background p-2 sm:p-4"
+                  : "relative mt-6 w-full"
+                : "hidden"
+            }
+          >
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
+            >
+              {isFullScreen ? (
+                <ArrowsPointingInIcon className="size-4" />
+              ) : (
+                <ArrowsPointingOutIcon className="size-4" />
+              )}
+            </Button>
             <iframe
               src={cacheURL}
-              className="h-[600px] w-full rounded-lg border border-zinc-200"
+              className={
+                isFullScreen
+                  ? "size-full rounded-lg border border-zinc-200 bg-white"
+                  : "h-[85vh] w-full rounded-lg border border-zinc-200 bg-white"
+              }
               title={`${source} view of ${url}`}
               sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
               loading="lazy"
@@ -117,7 +144,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
         {/* Iframe Error State - only if visible and no cacheURL */}
         {viewMode === "iframe" && !cacheURL && (
-            <div className="mt-10 flex items-center space-x-2">
+            <div className="mt-6 flex items-center space-x-2">
               <p className="text-gray-600">Iframe URL not available.</p>
               {data?.error && (
                 <TooltipProvider>
@@ -142,13 +169,13 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         {/* Main Content / Loading / Error - Hidden if in iframe mode */}
         <div className={viewMode !== "iframe" ? "block" : "hidden"}>
           {isLoading && (
-            <div className="mt-10">
+            <div className="mt-6">
               <Skeleton
-                className="mb-4 h-10 animate-pulse rounded-lg bg-zinc-200"
+                className="mb-4 h-10 rounded-lg bg-zinc-200"
                 style={{ width: "60%" }}
               />
               <Skeleton
-                className="h-32 animate-pulse rounded-lg bg-zinc-200"
+                className="h-32 rounded-lg bg-zinc-200"
                 style={{ width: "100%" }}
               />
             </div>
@@ -170,7 +197,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                   url: data?.cacheURL || url,
                 };
             return (
-               <div className="mt-10">
+               <div className="mt-6">
                  <ErrorDisplay 
                    error={appError} 
                    source={source}
@@ -181,7 +208,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           })()}
 
           {!isLoading && !isError && !data && (
-            <div className="mt-10">
+            <div className="mt-6">
                <p className="text-gray-600">No data available.</p>
             </div>
           )}
@@ -189,24 +216,47 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           {!isLoading && !isError && data && (
              <>
                 {!data.article?.content && viewMode === "markdown" && (
-                  <div className="mt-10 flex items-center space-x-2">
+                  <div className="mt-6 flex items-center space-x-2">
                     <p className="text-gray-600">Article could not be retrieved.</p>
                   </div>
                 )}
 
                 {viewMode === "html" ? (
                   data.article?.htmlContent ? (
-                    <div className="mt-10 w-full">
+                    <div
+                      className={
+                        isFullScreen
+                          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background p-2 sm:p-4"
+                          : "relative mt-6 w-full"
+                      }
+                    >
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
+                        onClick={() => setIsFullScreen(!isFullScreen)}
+                        title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
+                      >
+                        {isFullScreen ? (
+                          <ArrowsPointingInIcon className="size-4" />
+                        ) : (
+                          <ArrowsPointingOutIcon className="size-4" />
+                        )}
+                      </Button>
                       <iframe
                         srcDoc={data.article.htmlContent}
-                        className="h-[600px] w-full rounded-lg border border-zinc-200"
+                        className={
+                          isFullScreen
+                            ? "size-full rounded-lg border border-zinc-200 bg-white"
+                            : "h-[85vh] w-full rounded-lg border border-zinc-200 bg-white"
+                        }
                         title={`${source} html content of ${url}`}
                         sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                         loading="lazy"
                       />
                     </div>
                   ) : (
-                    <div className="mt-10 flex items-center space-x-2">
+                    <div className="mt-6 flex items-center space-x-2">
                       <p className="text-gray-600">Original HTML not available for this source.</p>
                       <TooltipProvider>
                         <Tooltip>
@@ -227,11 +277,11 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                   )
                 ) : data.article?.content ? (
                   <div
-                    className="overflow-wrap mt-10 max-w-full break-words"
+                    className="overflow-wrap mt-6 max-w-full break-words"
                     dangerouslySetInnerHTML={{ __html: data.article.content }}
                   />
                 ) : (
-                  <div className="mt-10 flex items-center space-x-2">
+                  <div className="mt-6 flex items-center space-x-2">
                     <p className="text-gray-600">Content not available.</p>
                     <TooltipProvider>
                       <Tooltip>

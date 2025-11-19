@@ -1,7 +1,7 @@
 "use client";
 
 import { AppError, getErrorMessage, getErrorTitle, isRetryableError } from "@/lib/errors";
-import { AlertCircle, RefreshCw, XCircle, ExternalLink } from "lucide-react";
+import { AlertCircle, RefreshCw, XCircle, ExternalLink, FileQuestion, Clock, Ban, FileWarning } from "lucide-react";
 import { useState } from "react";
 
 interface ErrorDisplayProps {
@@ -34,6 +34,29 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
   const message = getErrorMessage(error);
   const canRetry = isRetryableError(error) && onRetry;
   
+  // Determine appropriate icon and heading
+  let Icon = AlertCircle;
+  let heading = _title;
+  let iconColor = "text-rose-500";
+
+  if (_title === "Not Found") {
+    Icon = FileQuestion;
+    heading = "Page Not Found";
+    iconColor = "text-zinc-400";
+  } else if (_title === "Timed Out") {
+    Icon = Clock;
+    heading = "Request Timed Out";
+    iconColor = "text-amber-500";
+  } else if (_title === "Rate Limited") {
+    Icon = Ban;
+    heading = "Rate Limit Exceeded";
+    iconColor = "text-amber-500";
+  } else if (_title === "Unavailable") {
+    Icon = FileWarning;
+    heading = "Content Unavailable";
+    iconColor = "text-rose-500";
+  }
+
   // Determine the actual URL to display (prefer originalUrl prop, fallback to error.url if it exists)
   const errorUrl = 'url' in error ? error.url : undefined;
   const displayUrl = originalUrl || errorUrl;
@@ -86,13 +109,18 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
 
   // Full display mode - subtle Attio-style
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 p-5">
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 shrink-0">
-          <AlertCircle className="size-5 text-blue-600" />
+          <Icon className={`size-5 ${iconColor}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm leading-relaxed text-gray-700">{message}</p>
+          <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            {heading}
+          </h3>
+          <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            {message}
+          </p>
 
           {/* Links section */}
           {displayUrl && (
@@ -102,7 +130,7 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
                 href={displayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline"
+                className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Open original page directly
                 <ExternalLink className="size-3.5" />
@@ -114,7 +142,7 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
                   href={getExternalUrl(source, displayUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline"
+                  className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   {getSourceLabel(source)}
                   <ExternalLink className="size-3.5" />
@@ -129,7 +157,7 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
               <button
                 onClick={handleRetry}
                 disabled={isRetrying}
-                className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:bg-gray-100 disabled:text-gray-400"
+                className="inline-flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:bg-zinc-50 disabled:text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 <RefreshCw
                   className={`size-3.5 ${isRetrying ? "animate-spin" : ""}`}
@@ -140,7 +168,8 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
           )}
 
           {/* Technical details (collapsible) - minimized */}
-          {error.originalError && (
+          {/* Don't show for "Not Found" errors as they are expected/normal */}
+          {error.originalError && _title !== "Not Found" && (
             <details className="mt-3 text-xs text-gray-600">
               <summary className="cursor-pointer font-medium text-gray-500 hover:text-gray-700">
                 Technical details
@@ -172,10 +201,31 @@ export function ErrorMessage({ error }: { error: AppError }) {
  * An error badge component for compact spaces
  */
 export function ErrorBadge({ error }: { error: AppError }) {
+  const title = getErrorTitle(error);
+  const isNotFound = title === "Not Found";
+
+  if (isNotFound) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+        <FileQuestion className="size-3" />
+        {title}
+      </span>
+    );
+  }
+
+  if (title === "Timed Out" || title === "Rate Limited") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-400">
+        <AlertCircle className="size-3" />
+        {title}
+      </span>
+    );
+  }
+
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+    <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 dark:border-rose-900/30 dark:bg-rose-900/20 dark:text-rose-400">
       <XCircle className="size-3" />
-      {getErrorTitle(error)}
+      {title}
     </span>
   );
 }

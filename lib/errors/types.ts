@@ -253,7 +253,7 @@ export const getErrorMessage = (error: AppError): string => {
 
     case "DIFFBOT_ERROR":
       if (error.message.includes("404") || error.message.includes("not found") || error.message.includes("could not download page")) {
-        return "This page couldn't be accessed. The article may no longer be available at this URL, or the site may be blocking access.";
+        return "We couldn't retrieve the content from this page. Try viewing it directly or using a different source tab.";
       }
       if (error.message.includes("403") || error.message.includes("forbidden")) {
         return "Access to this content is restricted. The site appears to be blocking access to this page.";
@@ -279,7 +279,7 @@ export const getErrorMessage = (error: AppError): string => {
       return "Failed to parse the article content. The page format may not be supported.";
 
     case "TIMEOUT_ERROR":
-      return `Request timed out after ${error.timeoutMs / 1000} seconds. The source may be slow or unavailable.`;
+      return "The source took too long to respond. This might be a temporary issue—try refreshing or using a different source.";
 
     case "RATE_LIMIT_ERROR":
       return error.retryAfter
@@ -304,17 +304,25 @@ export const getErrorMessage = (error: AppError): string => {
 
 // Get a short error title for display
 export const getErrorTitle = (error: AppError): string => {
+  // specific check for 404s across types
+  if (
+    (error.type === "DIFFBOT_ERROR" || error.type === "NETWORK_ERROR") && 
+    (error.message.includes("404") || error.message.toLowerCase().includes("not found"))
+  ) {
+    return "Not Found";
+  }
+
   switch (error.type) {
     case "NETWORK_ERROR":
       return "Network Error";
     case "PROXY_ERROR":
       return "Proxy Error";
     case "DIFFBOT_ERROR":
-      return "Extraction Error";
+      return "Unavailable";
     case "PARSE_ERROR":
       return "Parsing Error";
     case "TIMEOUT_ERROR":
-      return "Timeout Error";
+      return "Timed Out";
     case "RATE_LIMIT_ERROR":
       return "Rate Limited";
     case "CACHE_ERROR":
