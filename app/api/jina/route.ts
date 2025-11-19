@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(response);
       } else {
-        logger.debug({ hostname: new URL(validatedUrl).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
+        logger.debug({ hostname: new URL(url).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
         
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",

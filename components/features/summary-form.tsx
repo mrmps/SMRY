@@ -255,7 +255,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
                 )}
               </h3>
             </div>
-            <div className="max-w-none prose prose-sm prose-zinc dark:prose-invert">
+            <div className="prose prose-sm prose-zinc max-w-none dark:prose-invert">
               <p className="whitespace-pre-wrap leading-relaxed text-zinc-600 dark:text-zinc-300">
                 {completion}
                 {isLoading && completion && (

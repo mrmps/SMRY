@@ -53,12 +53,12 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
             </div>
           </div>
         </SheetTrigger>
-        <SheetContent className="flex flex-col overflow-hidden border-l border-zinc-100 bg-zinc-50/50 p-0 backdrop-blur-xl sm:max-w-[480px] dark:border-zinc-800 dark:bg-zinc-950/50">
+        <SheetContent className="flex flex-col overflow-hidden border-l border-zinc-100 bg-zinc-50/50 p-0 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/50 sm:max-w-[480px]">
           <SheetHeader className="shrink-0 border-b border-zinc-100 bg-white/80 px-6 py-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
             <SheetTitle className="text-base font-medium tracking-tight">Generate Summary</SheetTitle>
             <SheetDescription className="text-xs text-zinc-500">AI-powered key points and insights</SheetDescription>
           </SheetHeader>
-          <div className="mt-0 min-h-0 flex-1 overflow-y-auto px-6 py-6">{children}</div>
+          <div className="mt-0 min-h-0 flex-1 overflow-y-auto p-6">{children}</div>
         </SheetContent>
       </Sheet>
     );
@@ -82,10 +82,10 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
           <DrawerTitle className="text-base font-medium tracking-tight">Generate Summary</DrawerTitle>
           <DrawerDescription className="text-xs text-zinc-500">AI-powered key points and insights</DrawerDescription>
         </DrawerHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {children}
         </div>
-        <DrawerFooter className="shrink-0 border-t border-zinc-100 bg-white pb-safe pt-3 dark:border-zinc-800 dark:bg-zinc-950">
+        <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">
           <DrawerClose asChild>
             <Button variant="ghost" className="h-9 w-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50">Close</Button>
           </DrawerClose>

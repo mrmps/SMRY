@@ -50,7 +50,7 @@ export function RedisStatus({
       setStatus(data.status);
       setStatusData(data);
       setLastChecked(new Date());
-    } catch (error) {
+    } catch {
       setStatus('down');
       setStatusData(null);
       setLastChecked(new Date());
@@ -117,7 +117,7 @@ export function RedisStatus({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="inline-flex items-center gap-2 cursor-help">
+          <div className="inline-flex cursor-help items-center gap-2">
             <span className={`${sizeClasses[size]} ${config.color} rounded-full`} />
             {showLabel && (
               <span className="text-xs font-medium text-gray-600">
@@ -155,7 +155,7 @@ export function RedisStatus({
             )}
             
             {lastChecked && (
-              <div className="text-xs text-gray-500 pt-1 border-t border-gray-200">
+              <div className="border-t border-gray-200 pt-1 text-xs text-gray-500">
                 Last updated: {lastChecked.toLocaleTimeString()}
               </div>
             )}

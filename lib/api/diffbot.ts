@@ -421,7 +421,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
               html: obj.html,
               text: obj.text,
               siteName: obj.siteName || new URL(url).hostname,
-              htmlContent: obj.dom || domForFallback, // Original page HTML (full DOM)
+              htmlContent: obj.dom || domForFallback || undefined, // Original page HTML (full DOM)
             };
             
             // Validate the extracted article
