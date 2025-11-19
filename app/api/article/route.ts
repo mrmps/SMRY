@@ -22,6 +22,7 @@ const DiffbotArticleSchema = z.object({
   html: z.string().min(1, "Article HTML content cannot be empty"),
   text: z.string().min(1, "Article text content cannot be empty"),
   siteName: z.string().min(1, "Site name cannot be empty"),
+  htmlContent: z.string().optional(),
 });
 
 // Article schema for caching
@@ -31,6 +32,7 @@ const CachedArticleSchema = z.object({
   textContent: z.string(),
   length: z.number().int().positive(),
   siteName: z.string(),
+  htmlContent: z.string().optional(),
 });
 
 type CachedArticle = z.infer<typeof CachedArticleSchema>;
@@ -105,6 +107,13 @@ async function saveOrReturnLongerArticle(
       
       const existingArticle = existingValidation.data;
 
+      // Prioritize HTML content: if existing is missing HTML but new one has it, update cache
+      if (!existingArticle.htmlContent && validatedNewArticle.htmlContent) {
+        await redis.set(key, validatedNewArticle);
+        logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (replaced missing HTML)');
+        return validatedNewArticle;
+      }
+
       if (validatedNewArticle.length > existingArticle.length) {
         await redis.set(key, validatedNewArticle);
         logger.debug({ key, newLength: validatedNewArticle.length, oldLength: existingArticle.length }, 'Cached longer article');
@@ -163,6 +172,9 @@ async function fetchArticleWithSmryFast(
       };
     }
 
+    // Store original HTML before Readability parsing
+    const originalHtml = html;
+
     const dom = new JSDOM(html, { url });
     const reader = new Readability(dom.window.document);
     const parsed = reader.parse();
@@ -186,6 +198,7 @@ async function fetchArticleWithSmryFast(
           return parsed.siteName || 'unknown';
         }
       })(),
+      htmlContent: originalHtml, // Original page HTML
     };
 
     const validationResult = CachedArticleSchema.safeParse(articleCandidate);
@@ -274,6 +287,7 @@ async function fetchArticleWithDiffbotWrapper(
       textContent: validatedArticle.text,
       length: validatedArticle.text.length,
       siteName: validatedArticle.siteName,
+      htmlContent: validatedArticle.htmlContent,
     };
 
     logger.debug({ source, title: article.title, length: article.length }, 'Diffbot article parsed and validated');
@@ -371,7 +385,7 @@ export async function GET(request: NextRequest) {
         } else {
           const article = cacheValidation.data;
 
-          if (article.length > 4000) {
+          if (article.length > 4000 && article.htmlContent) {
             logger.debug({ source: validatedSource, hostname: new URL(validatedUrl).hostname, length: article.length }, 'Cache hit');
             
             // Validate final response structure
@@ -387,11 +401,14 @@ export async function GET(request: NextRequest) {
                 textContent: article.textContent,
                 length: article.length,
                 siteName: article.siteName,
+                htmlContent: article.htmlContent,
               },
               status: "success",
             });
 
             return NextResponse.json(response);
+          } else if (article.length > 4000 && !article.htmlContent) {
+             logger.info({ source: validatedSource, hostname: new URL(validatedUrl).hostname }, 'Cache hit but missing HTML content - fetching fresh');
           }
         }
       }
@@ -466,6 +483,7 @@ export async function GET(request: NextRequest) {
             textContent: article.textContent,
             length: article.length,
             siteName: article.siteName,
+            htmlContent: article.htmlContent,
           },
           status: "success",
         });
@@ -487,6 +505,7 @@ export async function GET(request: NextRequest) {
           textContent: validatedSavedArticle.textContent,
           length: validatedSavedArticle.length,
           siteName: validatedSavedArticle.siteName,
+          htmlContent: validatedSavedArticle.htmlContent,
         },
         status: "success",
       });
@@ -533,6 +552,7 @@ export async function GET(request: NextRequest) {
           textContent: validatedArticle.textContent,
           length: validatedArticle.length,
           siteName: validatedArticle.siteName,
+          htmlContent: validatedArticle.htmlContent,
         },
         status: "success",
       });

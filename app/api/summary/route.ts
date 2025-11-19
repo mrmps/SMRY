@@ -112,43 +112,49 @@ export async function POST(request: NextRequest) {
 
     // Rate limiting
     if (process.env.NODE_ENV !== "development") {
-      const dailyRatelimit = new Ratelimit({
-        redis: redis,
-        limiter: Ratelimit.slidingWindow(20, "1 d"),
-      });
+      try {
+        const dailyRatelimit = new Ratelimit({
+          redis: redis,
+          limiter: Ratelimit.slidingWindow(20, "1 d"),
+        });
 
-      const minuteRatelimit = new Ratelimit({
-        redis: redis,
-        limiter: Ratelimit.slidingWindow(6, "1 m"),
-      });
+        const minuteRatelimit = new Ratelimit({
+          redis: redis,
+          limiter: Ratelimit.slidingWindow(6, "1 m"),
+        });
 
-      const { success: dailySuccess } = await dailyRatelimit.limit(
-        `ratelimit_daily_${clientIp}`
-      );
-      const { success: minuteSuccess } = await minuteRatelimit.limit(
-        `ratelimit_minute_${clientIp}`
-      );
-
-      if (!dailySuccess) {
-        logger.warn({ clientIp }, 'Daily rate limit exceeded');
-        return NextResponse.json(
-          {
-            error:
-              "Your daily limit of 20 summaries has been reached. Please return tomorrow for more summaries.",
-          },
-          { status: 429 }
+        const { success: dailySuccess } = await dailyRatelimit.limit(
+          `ratelimit_daily_${clientIp}`
         );
-      }
-
-      if (!minuteSuccess) {
-        logger.warn({ clientIp }, 'Minute rate limit exceeded');
-        return NextResponse.json(
-          {
-            error:
-              "Your limit of 6 summaries per minute has been reached. Please slow down.",
-          },
-          { status: 429 }
+        const { success: minuteSuccess } = await minuteRatelimit.limit(
+          `ratelimit_minute_${clientIp}`
         );
+
+        if (!dailySuccess) {
+          logger.warn({ clientIp }, 'Daily rate limit exceeded');
+          return NextResponse.json(
+            {
+              error:
+                "Your daily limit of 20 summaries has been reached. Please return tomorrow for more summaries.",
+            },
+            { status: 429 }
+          );
+        }
+
+        if (!minuteSuccess) {
+          logger.warn({ clientIp }, 'Minute rate limit exceeded');
+          return NextResponse.json(
+            {
+              error:
+                "Your limit of 6 summaries per minute has been reached. Please slow down.",
+            },
+            { status: 429 }
+          );
+        }
+      } catch (redisError) {
+        // If Redis fails, log the error but allow the request to proceed
+        // This ensures that Redis outages don't break the summary feature
+        logger.warn({ error: redisError, clientIp }, 'Redis rate limiting failed, allowing request');
       }
     }
 
@@ -157,17 +163,24 @@ export async function POST(request: NextRequest) {
       ? `summary:${language}:${url}`
       : `summary:${language}:${Buffer.from(content.substring(0, 500)).toString('base64').substring(0, 50)}`;
     
-    const cached = await redis.get<string>(cacheKey);
-
-    if (cached && typeof cached === "string") {
-      logger.debug('Cache hit');
-      // Return cached response as plain text for useCompletion
-      return new Response(cached, {
-        headers: { 
-          "Content-Type": "text/plain; charset=utf-8",
-          "X-Cache-Hit": "true"
-        },
-      });
+    // Try to get cached summary, but don't fail if Redis is down
+    let cached: string | null = null;
+    try {
+      cached = await redis.get<string>(cacheKey);
+      
+      if (cached && typeof cached === "string") {
+        logger.debug('Cache hit');
+        // Return cached response as plain text for useCompletion
+        return new Response(cached, {
+          headers: { 
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Cache-Hit": "true"
+          },
+        });
+      }
+    } catch (redisError) {
+      // If Redis cache retrieval fails, log it but proceed to generate the summary
+      logger.warn({ error: redisError }, 'Redis cache retrieval failed, will generate fresh summary');
     }
 
     // Content length is already validated by schema (minimum 2000 characters)
@@ -191,8 +204,16 @@ export async function POST(request: NextRequest) {
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           totalTokens: usage.totalTokens
-        }, 'Summary generated and cached');
-        await redis.set(cacheKey, text);
+        }, 'Summary generated');
+        
+        // Try to cache, but don't fail if Redis is down
+        try {
+          await redis.set(cacheKey, text);
+          logger.debug('Summary cached successfully');
+        } catch (redisError) {
+          // Log the error but don't break the streaming response
+          logger.warn({ error: redisError }, 'Failed to cache summary in Redis');
+        }
       },
     });
 

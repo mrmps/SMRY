@@ -30,6 +30,7 @@ export const ArticleSchema = z.object({
   textContent: z.string(),
   length: z.number().int().nonnegative(),
   siteName: z.string().nullable(),
+  htmlContent: z.string().optional(), // Original page HTML (full DOM)
 });
 export type Article = z.infer<typeof ArticleSchema>;
 
@@ -92,6 +93,7 @@ export const JinaCacheUpdateSchema = z.object({
     textContent: z.string(),
     length: z.number().int().positive(),
     siteName: z.string(),
+    htmlContent: z.string().optional(),
   }),
 });
 export type JinaCacheUpdate = z.infer<typeof JinaCacheUpdateSchema>;

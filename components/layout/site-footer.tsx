@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/app/config/site";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
   return (
@@ -47,6 +48,15 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
           </p>
         </div>
         <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
+          <a
+            href="https://smryai.userjot.com/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Button variant="outline" size="sm">
+              Report Bug / Feedback
+            </Button>
+          </a>
           <p className="text-center text-xs leading-loose text-zinc-400 dark:text-zinc-600 md:text-left">
             <a
               href="https://logo.dev"

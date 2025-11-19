@@ -73,6 +73,7 @@ const DiffbotArticleSchema = z.object({
   html: z.string().min(1, "Article HTML content cannot be empty"),
   text: z.string().min(100, "Article text must be at least 100 characters"),
   siteName: z.string().min(1, "Site name cannot be empty"),
+  htmlContent: z.string().optional(), // Original page HTML (full DOM)
 });
 
 // Schema for Readability parsed article
@@ -123,6 +124,7 @@ export interface DiffbotArticle {
   html: string;
   text: string;
   siteName: string;
+  htmlContent?: string; // Original page HTML (full DOM)
 }
 
 /**
@@ -214,6 +216,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
             html: validatedArticle.content,
             text: validatedArticle.textContent,
             siteName: validatedArticle.siteName || new URL(url).hostname,
+            htmlContent: html, // Store the original DOM HTML used for extraction
           };
           
           // Final validation before returning
@@ -269,6 +272,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         html: validatedArticle.content,
         text: validatedArticle.textContent,
         siteName: validatedArticle.siteName || new URL(url).hostname,
+        htmlContent: html, // Store the original DOM HTML used for extraction
       };
       
       // Final validation before returning
@@ -417,6 +421,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
               html: obj.html,
               text: obj.text,
               siteName: obj.siteName || new URL(url).hostname,
+              htmlContent: obj.dom || domForFallback, // Original page HTML (full DOM)
             };
             
             // Validate the extracted article
@@ -478,6 +483,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             html: data.html,
             text: data.text,
             siteName: new URL(url).hostname,
+            htmlContent: (data as any).dom || domForFallback, // Original page HTML (full DOM)
           };
           
           // Validate the extracted article

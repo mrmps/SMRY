@@ -43,7 +43,7 @@ type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 interface TabProps {
   url: string;
   articleResults: ArticleResults;
-  viewMode: "markdown" | "iframe";
+  viewMode: "markdown" | "html" | "iframe";
 }
 
 const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
@@ -84,7 +84,7 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
           sources={sources}
           lengths={lengths}
         />
-        <TabsContent value={"smry-fast"}>
+        <TabsContent value={"smry-fast"} forceMount={true}>
           <ArticleContent 
             query={results["smry-fast"]} 
             source="smry-fast"
@@ -92,7 +92,7 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
             viewMode={viewMode}
           />
         </TabsContent>
-        <TabsContent value={"smry-slow"}>
+        <TabsContent value={"smry-slow"} forceMount={true}>
           <ArticleContent 
             query={results["smry-slow"]} 
             source="smry-slow"
@@ -100,7 +100,7 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
             viewMode={viewMode}
           />
         </TabsContent>
-        <TabsContent value={"wayback"}>
+        <TabsContent value={"wayback"} forceMount={true}>
           <ArticleContent 
             query={results.wayback} 
             source="wayback"
@@ -108,7 +108,7 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
             viewMode={viewMode}
           />
         </TabsContent>
-        <TabsContent value={"jina.ai"}>
+        <TabsContent value={"jina.ai"} forceMount={true}>
           <ArticleContent 
             query={results["jina.ai"]} 
             source="jina.ai"

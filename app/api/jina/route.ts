@@ -19,6 +19,7 @@ const CachedArticleSchema = z.object({
   textContent: z.string(),
   length: z.number().int().positive(),
   siteName: z.string(),
+  htmlContent: z.string().optional(), // Not available for jina.ai source
 });
 
 /**
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
               byline: "",
               dir: "",
               lang: "",
+              htmlContent: article.content, // Use markdown-converted HTML as htmlContent
             },
             status: "success",
           });
@@ -151,13 +153,14 @@ export async function POST(request: NextRequest) {
             byline: "",
             dir: "",
             lang: "",
+            htmlContent: article.content, // Use markdown-converted HTML as htmlContent
           },
           status: "success",
         });
 
         return NextResponse.json(response);
       } else {
-        logger.debug({ hostname: new URL(url).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
+        logger.debug({ hostname: new URL(validatedUrl).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
         
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
@@ -167,6 +170,7 @@ export async function POST(request: NextRequest) {
             byline: "",
             dir: "",
             lang: "",
+            htmlContent: validatedExisting.content, // Use markdown-converted HTML as htmlContent
           },
           status: "success",
         });
@@ -185,6 +189,7 @@ export async function POST(request: NextRequest) {
           byline: "",
           dir: "",
           lang: "",
+          htmlContent: article.content, // Use markdown-converted HTML as htmlContent
         },
         status: "success",
       });

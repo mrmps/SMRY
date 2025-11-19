@@ -16,6 +16,7 @@ import { BookmarkletLink } from "@/components/marketing/bookmarklet";
 import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
+import { Button } from "@/components/ui/button";
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
@@ -49,6 +50,17 @@ export default function Home() {
 
   return (
     <>
+      <div className="absolute right-4 top-4 z-50 md:right-8 md:top-8">
+        <a
+          href="https://smryai.userjot.com/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Button variant="ghost" size="sm" className="text-stone-500 hover:text-stone-900">
+            Report Bug
+          </Button>
+        </a>
+      </div>
       <main className="flex min-h-screen flex-col items-center bg-[#FAFAFA] p-4 pt-20 text-black sm:pt-24 md:p-24">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
           <GitHubStarsButton
