@@ -239,15 +239,6 @@ export default async function Page({
   const resolvedSearchParams = await searchParams;
   const url = resolvedSearchParams?.url as string;
 
-  const sourceParam = resolvedSearchParams?.source as string | undefined;
-  const initialSource = (SOURCES.includes(sourceParam as Source) ? sourceParam : undefined) as Source | undefined;
-
-  const viewParam = resolvedSearchParams?.view as string | undefined;
-  const initialViewMode = (["markdown", "html", "iframe"].includes(viewParam || "") ? viewParam : undefined) as "markdown" | "html" | "iframe" | undefined;
-
-  const sidebarParam = resolvedSearchParams?.sidebar as string | undefined;
-  const initialSidebarOpen = sidebarParam === "true" ? true : sidebarParam === "false" ? false : undefined;
-
   if (!url) {
     // Handle the case where URL is not provided or not a string
     console.error(
@@ -277,8 +268,5 @@ export default async function Page({
   return <ProxyContent 
     url={url} 
     ip={ip} 
-    initialSource={initialSource}
-    initialViewMode={initialViewMode}
-    initialSidebarOpen={initialSidebarOpen}
   />;
 }

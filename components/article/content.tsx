@@ -78,29 +78,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               >
                 {new URL(url).hostname.replace('www.', '')}
               </a>
-              <span>•</span>
-              <span>{new Date().toLocaleDateString()}</span>
-              {source === "wayback" && (
-                <>
-                  <span>•</span>
-                  <a 
-                    href={data?.cacheURL || `https://web.archive.org/web/0/${url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-amber-600 underline decoration-amber-600/50 underline-offset-2 hover:decoration-amber-600 dark:text-amber-400 dark:decoration-amber-400/50 dark:hover:decoration-amber-400"
-                  >
-                    Wayback Archive
-                  </a>
-                </>
-              )}
+              {/* <span>•</span> */}
+              {/* <span>{data.article?.date}</span> */}
             </div>
-
-            {/* Title */}
-            {data.article?.title && (
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-tight">
-                {data.article.title}
-              </h1>
-            )}
           </div>
         )}
 

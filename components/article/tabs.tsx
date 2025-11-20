@@ -7,7 +7,6 @@ import { ArticleContent } from "./content";
 import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { useQueryState, parseAsStringLiteral } from "nuqs";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
@@ -82,24 +81,18 @@ interface TabProps {
   url: string;
   articleResults: ArticleResults;
   viewMode: "markdown" | "html" | "iframe";
-  initialSource?: Source;
-  controls?: React.ReactNode; // Kept for compatibility
+  activeSource: Source;
+  onSourceChange: (source: Source) => void;
 }
 
-const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode, initialSource }) => {
+const ArrowTabs: React.FC<TabProps> = ({
+  url,
+  articleResults,
+  viewMode,
+  activeSource,
+  onSourceChange,
+}) => {
   const results = articleResults;
-  
-  // Handle hydration mismatch
-  const [isMounted, setIsMounted] = React.useState(false);
-  React.useEffect(() => setIsMounted(true), []);
-
-  const [activeTabQuery, setActiveTabQuery] = useQueryState<Source>(
-    "source",
-    parseAsStringLiteral(SOURCES).withDefault(initialSource || "smry-fast")
-  );
-
-  const activeTab = isMounted ? activeTabQuery : (initialSource || "smry-fast");
-  const setActiveTab = setActiveTabQuery;
 
   const counts: Record<Source, number | undefined> = {
     "smry-fast": results["smry-fast"].data?.article?.length,
@@ -110,7 +103,7 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode, initialS
 
   return (
     <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as Source)}>
+      <Tabs value={activeSource} onValueChange={(value) => onSourceChange(value as Source)}>
         {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div
           className={cn(

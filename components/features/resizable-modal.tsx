@@ -41,32 +41,8 @@ export function ResizableModal({
 }: ResizableModalProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
-
-  React.useEffect(() => {
-    const panel = summaryPanelRef.current;
-    if (panel) {
-      if (sidebarOpen) {
-        panel.expand();
-      } else {
-        panel.collapse();
-      }
-    }
-  }, [sidebarOpen]);
-
-  // If we don't know the device type yet (SSR or first client render), 
-  // we can render the desktop layout structure but maybe collapsed, 
-  // OR we can render a safe default.
-  // But the user wants "rendering of this dependant on the dimensions".
   
-  // However, to avoid hydration mismatch, we need to render the SAME thing on server and client first.
-  // The useMediaQuery hook returns false initially.
-  // If we strictly follow "only make the sidebar/modal dependent on the actual isDesktop hook",
-  // we can render the main content always, and wrap it conditionally.
-
-  // Actually, the "blank screen" issue came from `if (!isMounted) return null`.
-  // We should render the MAIN content always.
-  
-  if (isDesktop) {
+  if (isDesktop && sidebarOpen) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-background">
         {/* Desktop Wrapper Structure */}
@@ -86,7 +62,7 @@ export function ResizableModal({
             
             <ResizablePanel 
               ref={summaryPanelRef}
-              defaultSize={sidebarOpen ? 25 : 0} 
+              defaultSize={sidebarOpen ? 30 : 0} 
               minSize={20} 
               maxSize={40} 
               collapsible={true} 
@@ -110,7 +86,8 @@ export function ResizableModal({
     );
   }
 
-  return (
+  if (!isDesktop && sidebarOpen) {
+    return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <div className="flex-1">
           {children}
@@ -140,6 +117,15 @@ export function ResizableModal({
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+    </div>
+    );
+  }
+
+  return (
+    <div className="relative flex min-h-screen flex-col bg-background">
+      <div className="flex-1">
+        {children}
+      </div>
     </div>
   );
 }
