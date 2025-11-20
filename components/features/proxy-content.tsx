@@ -5,19 +5,27 @@ import ArrowTabs from "@/components/article/tabs";
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 import SummaryForm from "@/components/features/summary-form";
 import { useArticles } from "@/lib/hooks/use-articles";
-import { DocumentTextIcon, Squares2X2Icon, CodeBracketIcon } from "@heroicons/react/24/outline";
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { Bug as BugIcon, Sparkles as SparklesIcon } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import ShareButton from "@/components/features/share-button";
+import ShareButton, { ShareContent } from "@/components/features/share-button";
 import { buttonVariants, Button } from "@/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import { Source, SOURCES } from "@/types/api";
@@ -44,6 +52,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
+  const [menuOpen, setMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
     const panel = summaryPanelRef.current;
@@ -74,46 +83,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
           </Link>
 
           <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
-            <div className="flex h-8 items-center rounded-lg border border-border/50 bg-background p-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode("markdown")}
-                className={cn(
-                  "h-full rounded-none rounded-l-lg border-r border-border/50 px-2.5 hover:bg-accent",
-                  viewMode === "markdown" && "bg-accent text-foreground"
-                )}
-                title="Reader View"
-              >
-                <DocumentTextIcon className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode("html")}
-                className={cn(
-                  "h-full rounded-none border-r border-border/50 px-2.5 hover:bg-accent",
-                  viewMode === "html" && "bg-accent text-foreground"
-                )}
-                title="Original View"
-              >
-                <CodeBracketIcon className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setViewMode("iframe")}
-                className={cn(
-                  "h-full rounded-none rounded-r-lg px-2.5 hover:bg-accent",
-                  viewMode === "iframe" && "bg-accent text-foreground"
-                )}
-                title="Iframe View"
-              >
-                <Squares2X2Icon className="size-4" />
-              </Button>
-            </div>
-
             {/* Summary Trigger */}
             <ResponsiveDrawer 
               open={sidebarOpen} 
@@ -121,10 +90,11 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
               trigger={
                 <Button 
                   variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg hover:bg-accent"
+                  size="sm" 
+                  className="h-8 gap-1.5 rounded-lg text-xs font-medium hover:bg-accent"
                 >
-                  <SparklesIcon className="size-4" />
+                  <SparklesIcon className="size-3.5" />
+                  Summary
                 </Button>
               }
             >
@@ -137,6 +107,95 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 />
               </div>
             </ResponsiveDrawer>
+
+            {/* Mobile Menu */}
+            <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
+              <DrawerTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-lg hover:bg-accent"
+                >
+                  <EllipsisHorizontalIcon className="size-5 text-muted-foreground" />
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader className="text-left border-b border-border pb-4">
+                  <DrawerTitle>Options</DrawerTitle>
+                  <DrawerDescription>
+                    Customize view and share article
+                  </DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4 space-y-6 pb-8">
+                  {/* View Mode Section */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-muted-foreground">View Mode</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        variant={viewMode === "markdown" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setViewMode("markdown");
+                          setMenuOpen(false);
+                        }}
+                        className="w-full"
+                      >
+                        Reader
+                      </Button>
+                      <Button
+                        variant={viewMode === "html" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setViewMode("html");
+                          setMenuOpen(false);
+                        }}
+                        className="w-full"
+                      >
+                        Original
+                      </Button>
+                      <Button
+                        variant={viewMode === "iframe" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setViewMode("iframe");
+                          setMenuOpen(false);
+                        }}
+                        className="w-full"
+                      >
+                        Iframe
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Share Section */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-muted-foreground">Share</label>
+                    <ShareContent 
+                      url={`https://smry.ai/${url}`} 
+                      source={source || "smry-fast"}
+                      viewMode={viewMode || "markdown"}
+                      sidebarOpen={sidebarOpen !== null ? sidebarOpen : true}
+                      onActionComplete={() => setMenuOpen(false)}
+                    />
+                  </div>
+
+                  {/* Support Section */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-muted-foreground">Support</label>
+                    <a
+                      href="https://smryai.userjot.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full justify-start gap-2")}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <BugIcon className="size-4" />
+                      Report Bug / Feedback
+                    </a>
+                  </div>
+                </div>
+              </DrawerContent>
+            </Drawer>
           </div>
         </header>
 

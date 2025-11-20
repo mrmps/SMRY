@@ -31,11 +31,19 @@ interface ShareButtonProps {
     sidebarOpen?: boolean;
 }
 
-const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", viewMode = "markdown", sidebarOpen = true }) => {
-  const [open, setOpen] = useState(false);
+interface ShareContentProps extends ShareButtonProps {
+  onActionComplete?: () => void;
+}
+
+export const ShareContent: React.FC<ShareContentProps> = ({ 
+  url, 
+  source = "smry-fast", 
+  viewMode = "markdown", 
+  sidebarOpen = true,
+  onActionComplete 
+}) => {
   const [copied, setCopied] = useState(false);
   const [hasNativeShare, setHasNativeShare] = useState(false);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   React.useEffect(() => {
     setHasNativeShare(typeof navigator !== 'undefined' && 'share' in navigator);
@@ -57,7 +65,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", vi
       setCopied(true);
       setTimeout(() => {
         setCopied(false);
-        setOpen(false);
+        if (onActionComplete) onActionComplete();
       }, 1500);
     } catch (error) {
       console.error('Failed to copy link:', error);
@@ -72,14 +80,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", vi
           text: 'Check out this article',
           url: url,
         });
-        setOpen(false);
+        if (onActionComplete) onActionComplete();
       } catch (error) {
         console.log('Share cancelled or error:', error);
       }
     }
   };
 
-  const shareContent = (
+  return (
     <div className="p-0.5 bg-accent rounded-[14px]">
       <div className="bg-card rounded-xl p-2 flex flex-col gap-1">
         <Button
@@ -126,6 +134,11 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", vi
       </div>
     </div>
   );
+};
+
+const ShareButton: React.FC<ShareButtonProps> = (props) => {
+  const [open, setOpen] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   if (isDesktop) {
     return (
@@ -142,7 +155,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", vi
             </DialogDescription>
           </DialogHeader>
           <div className="px-5 py-4">
-            {shareContent}
+            <ShareContent {...props} onActionComplete={() => setOpen(false)} />
           </div>
         </DialogContent>
       </Dialog>
@@ -163,7 +176,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", vi
           </DrawerDescription>
         </DrawerHeader>
         <div className="pb-safe px-5 py-4">
-          {shareContent}
+          <ShareContent {...props} onActionComplete={() => setOpen(false)} />
         </div>
       </DrawerContent>
     </Drawer>
@@ -171,4 +184,3 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url, source = "smry-fast", vi
 };
 
 export default ShareButton;
-

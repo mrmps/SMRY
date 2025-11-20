@@ -16,6 +16,13 @@ const SOURCE_LABELS: Record<Source, string> = {
   "jina.ai": "Jina.ai",
 };
 
+const MOBILE_SOURCE_LABELS: Record<Source, string> = {
+  "smry-fast": "Fast",
+  "smry-slow": "Slow",
+  wayback: "Wayback",
+  "jina.ai": "Jina",
+};
+
 const EnhancedTabsList: React.FC<{
   sources: readonly Source[];
   counts: Record<Source, number | undefined>;
@@ -31,8 +38,8 @@ const EnhancedTabsList: React.FC<{
   };
 
   return (
-    <div className="w-full overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <TabsPrimitive.List className="inline-flex h-auto w-max items-center justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
+    <div className="w-full overflow-x-auto sm:overflow-visible pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <TabsPrimitive.List className="flex h-auto w-full sm:w-max items-center justify-between sm:justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
         {sources.map((source, index) => {
           const wordCount = formatWordCount(counts[source]);
           
@@ -41,17 +48,20 @@ const EnhancedTabsList: React.FC<{
               key={index} 
               value={source} 
               className={cn(
-                "group flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors outline-none",
-                "text-muted-foreground hover:text-foreground",
-                "data-selected:bg-card data-selected:text-foreground data-selected:shadow-sm",
+                "group flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 rounded-xl px-1 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors outline-none",
+                // Inactive state
+                "not-data-selected:text-muted-foreground not-data-selected:hover:text-foreground",
+                // Active state
+                "data-selected:bg-card data-selected:text-black dark:data-selected:text-white data-selected:shadow-sm",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               )}
             >
-              {SOURCE_LABELS[source]}
+              <span className="hidden sm:inline">{SOURCE_LABELS[source]}</span>
+              <span className="inline sm:hidden">{MOBILE_SOURCE_LABELS[source]}</span>
               {wordCount && (
                 <span
                   className={cn(
-                    "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                    "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
                     "bg-muted text-muted-foreground group-data-selected:bg-primary/10 group-data-selected:text-primary",
                   )}
                 >

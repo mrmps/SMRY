@@ -70,13 +70,27 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           <div className="mb-8 space-y-4 border-b border-border pb-6">
             {/* Metadata Row */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
-              <span className="uppercase tracking-wide">{new URL(url).hostname.replace('www.', '')}</span>
+              <a 
+                href={url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="uppercase tracking-wide underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground"
+              >
+                {new URL(url).hostname.replace('www.', '')}
+              </a>
               <span>•</span>
               <span>{new Date().toLocaleDateString()}</span>
               {source === "wayback" && (
                 <>
                   <span>•</span>
-                  <span className="text-amber-600 dark:text-amber-400">Wayback Archive</span>
+                  <a 
+                    href={data?.cacheURL || `https://web.archive.org/web/0/${url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-amber-600 underline decoration-amber-600/50 underline-offset-2 hover:decoration-amber-600 dark:text-amber-400 dark:decoration-amber-400/50 dark:hover:decoration-amber-400"
+                  >
+                    Wayback Archive
+                  </a>
                 </>
               )}
             </div>
