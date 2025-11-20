@@ -27,9 +27,16 @@ interface ProxyContentProps {
   ip: string;
   initialSource?: Source;
   initialViewMode?: "markdown" | "html" | "iframe";
+  initialSidebarOpen?: boolean;
 }
 
-export function ProxyContent({ url, ip, initialSource, initialViewMode }: ProxyContentProps) {
+export function ProxyContent({
+  url,
+  ip,
+  initialSource,
+  initialViewMode,
+  initialSidebarOpen = false,
+}: ProxyContentProps) {
   const { results } = useArticles(url);
   
   // Handle hydration mismatch by forcing initial render to match server props
@@ -46,13 +53,13 @@ export function ProxyContent({ url, ip, initialSource, initialViewMode }: ProxyC
   );
   const [sidebarOpenQuery, setSidebarOpenQuery] = useQueryState(
     "sidebar",
-    parseAsBoolean.withDefault(false)
+    parseAsBoolean.withDefault(initialSidebarOpen)
   );
 
   // Derived state that matches server on first render, then syncs with client query state
   const source = isMounted ? sourceQuery : (initialSource || "smry-fast");
   const viewMode = isMounted ? viewModeQuery : (initialViewMode || "markdown");
-  const sidebarOpen = isMounted ? sidebarOpenQuery : false;
+  const sidebarOpen = isMounted ? sidebarOpenQuery : initialSidebarOpen;
   
   const setViewMode = setViewModeQuery;
   const setSidebarOpen = setSidebarOpenQuery;
@@ -261,7 +268,9 @@ export function ProxyContent({ url, ip, initialSource, initialViewMode }: ProxyC
     </div>
   );
 
-  if (!sidebarOpen) {
+  const shouldRenderSidebar = sidebarOpen || (!isMounted && initialSidebarOpen);
+
+  if (!shouldRenderSidebar) {
     return content;
   }
 

@@ -67,8 +67,29 @@ const faqData = [
   },
   {
     question: "How do I use SMRY?",
-    answer:
-      "You can use SMRY in three ways: 1) Paste a URL directly on our homepage, 2) Prepend &apos;https://smry.ai/&apos; to any article URL, or 3) Use our bookmarklet by dragging it to your bookmarks bar and clicking it on any page.",
+    answer: (
+      <>
+        You have three options:
+        <ol className="mt-3 list-decimal space-y-2 pl-5">
+          <li>
+            Prepend{" "}
+            <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs text-neutral-800">
+              http://smry.ai/
+            </code>{" "}
+            to the article you&apos;re reading (for example:{" "}
+            <code className="font-mono text-xs text-neutral-800">
+              http://smry.ai/https://www.wsj.com/...
+            </code>
+            ). This instantly opens the cleaned article and the summary builder.
+          </li>
+          <li>Paste a URL directly on smry.ai and we&apos;ll fetch it for you.</li>
+          <li>
+            Drag the bookmarklet on our homepage to your bookmarks bar; tapping it wraps whatever
+            page you&apos;re on in SMRY.
+          </li>
+        </ol>
+      </>
+    ),
   },
   {
     question: "Does this work with all websites?",

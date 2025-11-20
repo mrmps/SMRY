@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { animate } from "motion/react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -42,48 +41,12 @@ export function ResizableModal({
 }: ResizableModalProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const [isAnimating, setIsAnimating] = React.useState(false);
-  const lastSizeRef = React.useRef(25);
 
   React.useEffect(() => {
     const panel = summaryPanelRef.current;
-    if (!panel) return;
-
-    const safeResize = (size: number) => {
-      try {
-        panel.resize(size);
-      } catch (_) {
-        // Ignore resize errors
-      }
-    };
-
-    if (sidebarOpen) {
-      const currentSize = panel.getSize();
-      if (currentSize < 1) {
-        setIsAnimating(true);
-        animate(0, lastSizeRef.current, {
-          duration: 0.2,
-          ease: "easeInOut",
-          onUpdate: (value) => safeResize(value),
-          onComplete: () => setIsAnimating(false),
-        });
-      } else {
-        // Fallback
+    if (panel) {
+      if (sidebarOpen) {
         panel.expand();
-      }
-    } else {
-      const currentSize = panel.getSize();
-      if (currentSize > 1) {
-        setIsAnimating(true);
-        animate(currentSize, 0, {
-          duration: 0.2,
-          ease: "easeInOut",
-          onUpdate: (value) => safeResize(value),
-          onComplete: () => {
-            setIsAnimating(false);
-            panel.collapse();
-          },
-        });
       } else {
         panel.collapse();
       }
@@ -124,18 +87,13 @@ export function ResizableModal({
             <ResizablePanel 
               ref={summaryPanelRef}
               defaultSize={sidebarOpen ? 25 : 0} 
-              minSize={isAnimating ? 0 : 20} 
+              minSize={20} 
               maxSize={40} 
               collapsible={true} 
               collapsedSize={0} 
               className="bg-accent/5"
               onCollapse={() => setSidebarOpen(false)}
               onExpand={() => setSidebarOpen(true)}
-              onResize={(size) => {
-                if (!isAnimating && size > 0) {
-                  lastSizeRef.current = size;
-                }
-              }}
             >
                <div className="h-full overflow-y-auto flex flex-col">
                     <SummaryForm 

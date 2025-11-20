@@ -1,6 +1,27 @@
 # 13ft / SMRY.ai
 
-A Next.js application that bypasses paywalls and generates AI-powered summaries by fetching content from multiple sources simultaneously.
+SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered summaries by fetching content from multiple sources simultaneously. It is the spiritual successor to 12ft: type `http://smry.ai/` in front of any article URL and you’ll land on a distraction-free reader with the summary builder already loaded.
+
+## Why SMRY Exists
+
+- Paywalls make it hard to reference reporting, even when articles are already public on social media.
+- Researchers, journalists, and readers still need the original article, not just an LLM hallucination.
+- Summaries should live next to the cleaned article, not in a separate chat window.
+- A single extraction service often fails, so we hit multiple sources at once and cache whatever works.
+
+## Quick Start
+
+1. **Prepend the prefix**: Add `http://smry.ai/` before any article URL (e.g. `http://smry.ai/https://www.wsj.com/...`) to jump straight into SMRY.
+2. **Paste a link on the homepage**: smry.ai will fetch it, clean it, and let you generate summaries.
+3. **Use the bookmarklet**: Drag the provided bookmarklet to your bookmarks bar; click it on any page to wrap it in SMRY.
+4. **Call the proxy route directly**: `https://your-domain.com/proxy?url=https://example.com/article` works for deep linking and integrations.
+
+## What You Get
+
+- **Clean reader** that strips overlays, ads, and archive UI.
+- **Multi-source fetching** (direct, wayback, Jina.ai) so at least one source usually succeeds.
+- **Built-in AI summaries** in 14 languages with caching and rate limiting.
+- **Rich debug context** for every fetch so you can see what worked and why.
 
 ## What This Does
 
@@ -264,21 +285,30 @@ pnpm start
 
 ## Usage
 
-### Basic URL
+### Direct prepend (fastest)
 ```
-https://your-domain.com/proxy?url=https://example.com/article
+http://smry.ai/https://example.com/article
 ```
+Type that directly into the address bar (or edit the existing URL) and SMRY will load the cleaned article plus summary controls immediately. This works on smry.ai or any self-hosted deployment.
+
+### Paste a URL on the homepage
+```
+https://your-domain.com
+```
+Open the homepage, paste the article URL into the input, and we’ll route you to the proxy page with all sources firing in parallel.
 
 ### Bookmarklet
 Create a browser bookmark with this URL:
 ```javascript
 javascript:(function(){window.location='https://your-domain.com/'+window.location.href})()
 ```
+Drag it to your bookmarks bar. Clicking it on any page reloads the article inside SMRY with summaries ready.
 
-### Direct prepend
+### Proxy route (manual deep-link)
 ```
-https://your-domain.com/https://example.com/article
+https://your-domain.com/proxy?url=https://example.com/article
 ```
+Use this when you want to share or embed a direct link to the cleaned reader.
 
 ## Interesting Implementation Details
 
