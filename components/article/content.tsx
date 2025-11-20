@@ -263,7 +263,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                   )
                 ) : data.article?.content ? (
                   <div
-                    className="mt-6 max-w-full wrap-break-word"
+                    className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
                     dangerouslySetInnerHTML={{ __html: data.article.content }}
                   />
                 ) : (

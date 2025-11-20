@@ -258,20 +258,11 @@ export default async function Page({
     );
   }
 
-  // Move random number generation to client-side or use a deterministic value
-  const _adSelection = 5; // Using a fixed value to avoid Math.random() during render
+  if (!url) {
+    return (
+      <div className="p-4 text-gray-600">No URL provided</div>
+    );
+  }
 
-  return (
-    <div className="h-screen overflow-hidden">
-      <div className="h-full">
-        <main className="h-full prose max-w-none">
-          {url ? (
-            <ProxyContent url={url} ip={ip} />
-          ) : (
-            <div className="p-4 text-gray-600">No URL provided</div>
-          )}
-        </main>
-      </div>
-    </div>
-  );
+  return <ProxyContent url={url} ip={ip} />;
 }

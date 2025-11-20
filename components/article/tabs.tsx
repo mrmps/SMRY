@@ -6,8 +6,6 @@ import React from "react";
 import { ArticleContent } from "./content";
 import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
-import { MenuDock, MenuDockItem } from "@/components/ui/menu-dock";
-import { Zap, Clock, Archive, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
 
@@ -91,76 +89,20 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
     "jina.ai": results["jina.ai"].data?.article?.length,
   };
 
-  // Helper to format badge content intelligently
-  const formatBadge = (count: number | undefined): string | undefined => {
-    if (count === undefined || count === null) return undefined;
-    
-    if (count >= 1000) {
-      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-    }
-    return Math.round(count).toString();
-  };
-
-  // Menu dock items for mobile
-  const menuDockItems: MenuDockItem[] = [
-    {
-      label: "fast",
-      icon: Zap,
-      value: "smry-fast",
-      badge: formatBadge(counts["smry-fast"]),
-      badgeVariant: counts["smry-fast"] ? 'count' : undefined,
-      onClick: () => setActiveTab("smry-fast"),
-    },
-    {
-      label: "slow",
-      icon: Clock,
-      value: "smry-slow",
-      badge: formatBadge(counts["smry-slow"]),
-      badgeVariant: counts["smry-slow"] ? 'count' : undefined,
-      onClick: () => setActiveTab("smry-slow"),
-    },
-    {
-      label: "wayback",
-      icon: Archive,
-      value: "wayback",
-      badge: formatBadge(counts.wayback),
-      badgeVariant: counts.wayback ? 'count' : undefined,
-      onClick: () => setActiveTab("wayback"),
-    },
-    {
-      label: "jina",
-      icon: Globe,
-      value: "jina.ai",
-      badge: formatBadge(counts["jina.ai"]),
-      badgeVariant: counts["jina.ai"] ? 'count' : undefined,
-      onClick: () => setActiveTab("jina.ai"),
-    },
-  ];
-
   return (
-    <div className="relative min-h-screen pb-24 md:pb-0">
+    <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as Source)}>
-        {/* Desktop tabs - shown on medium screens and up */}
+        {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div
           className={cn(
-            "sticky top-0 z-10 mb-4 -mx-4 hidden px-4 py-2 sm:mx-0 sm:rounded-xl sm:px-2 md:block",
+            "sticky top-14 z-20 mb-4 -mx-4 px-4 py-2 sm:mx-0 sm:top-0 sm:z-10 sm:rounded-xl sm:px-2",
             "bg-background/80 backdrop-blur-xl transition-all supports-backdrop-filter:bg-background/60",
+            "border-b border-border/40 sm:border-0"
           )}
         >
           <EnhancedTabsList
             sources={SOURCES}
             counts={counts}
-          />
-        </div>
-
-        {/* Mobile menu dock - floating at bottom */}
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 md:hidden">
-          <MenuDock
-            items={menuDockItems}
-            variant="compact"
-            orientation="horizontal"
-            showLabels={true}
-            activeValue={activeTab}
           />
         </div>
         

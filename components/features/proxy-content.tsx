@@ -59,78 +59,97 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   // Mobile Layout
   if (isMobile) {
     return (
-      <div className="relative flex min-h-screen justify-center">
-          <div className="mx-auto max-w-prose px-4">
-            <div className="flex items-center justify-between gap-2 py-4">
-                 <Link href="/" className="mr-2 transition-opacity hover:opacity-80">
-                   <Image
-                     src="/logo.svg"
-                     width={100}
-                     height={100}
-                     alt="smry logo"
-                     className="h-7 w-auto transition-all hover:opacity-80"
-                     priority
-                   />
-                 </Link>
-          
-                {/* AI Summary */}
-                  <ResponsiveDrawer open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                    <div className="remove-all h-full">
-                      <SummaryForm 
-                        urlProp={url} 
-                        ipProp={ip}
-                        articleResults={results}
-                        isOpen={sidebarOpen || false}
-                      />
-                    </div>
-                  </ResponsiveDrawer>
-          
-                {/* View Mode Toggle - IOS Segmented Control Style */}
-                <div className="inline-flex h-8 items-center rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
-                  <button
-                    onClick={() => setViewMode("markdown")}
-                    className={cn(
-                      "flex h-full items-center justify-center rounded-md px-2.5 text-xs font-medium transition-all",
-                      viewMode === "markdown" 
-                        ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-50" 
-                        : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-                    )}
-                    title="Markdown"
-                  >
-                    <DocumentTextIcon className="size-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode("html")}
-                    className={cn(
-                      "flex h-full items-center justify-center rounded-md px-2.5 text-xs font-medium transition-all",
-                      viewMode === "html" 
-                        ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-50" 
-                        : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-                    )}
-                    title="HTML"
-                  >
-                    <CodeBracketIcon className="size-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode("iframe")}
-                    className={cn(
-                      "flex h-full items-center justify-center rounded-md px-2.5 text-xs font-medium transition-all",
-                      viewMode === "iframe" 
-                        ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-50" 
-                        : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-                    )}
-                    title="Iframe"
-                  >
-                    <Squares2X2Icon className="size-4" />
-                  </button>
-                </div>
+      <div className="relative flex min-h-screen flex-col bg-background">
+        {/* Sticky Mobile Header */}
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
+          <Link href="/" className="transition-opacity hover:opacity-80">
+            <Image
+              src="/logo.svg"
+              width={80}
+              height={80}
+              alt="smry logo"
+              className="h-6 w-auto"
+              priority
+            />
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex h-8 items-center rounded-lg border border-border/50 bg-background p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("markdown")}
+                className={cn(
+                  "h-full rounded-none rounded-l-lg border-r border-border/50 px-2.5 hover:bg-accent",
+                  viewMode === "markdown" && "bg-accent text-foreground"
+                )}
+                title="Reader View"
+              >
+                <DocumentTextIcon className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("html")}
+                className={cn(
+                  "h-full rounded-none border-r border-border/50 px-2.5 hover:bg-accent",
+                  viewMode === "html" && "bg-accent text-foreground"
+                )}
+                title="Original View"
+              >
+                <CodeBracketIcon className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("iframe")}
+                className={cn(
+                  "h-full rounded-none rounded-r-lg px-2.5 hover:bg-accent",
+                  viewMode === "iframe" && "bg-accent text-foreground"
+                )}
+                title="Iframe View"
+              >
+                <Squares2X2Icon className="size-4" />
+              </Button>
+            </div>
+
+            {/* Summary Trigger */}
+            <ResponsiveDrawer 
+              open={sidebarOpen} 
+              onOpenChange={setSidebarOpen}
+              trigger={
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-lg hover:bg-accent"
+                >
+                  <SparklesIcon className="size-4" />
+                </Button>
+              }
+            >
+              <div className="remove-all h-full">
+                <SummaryForm
+                  urlProp={url}
+                  ipProp={ip}
+                  articleResults={results}
+                  isOpen={sidebarOpen || false}
+                />
               </div>
-            <ArrowTabs 
-              url={url} 
-              articleResults={results} 
-              viewMode={viewMode} 
+            </ResponsiveDrawer>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-1">
+          <div className="min-h-[calc(100vh-3.5rem)]">
+            <ArrowTabs
+              url={url}
+              articleResults={results}
+              viewMode={viewMode}
             />
           </div>
+        </main>
       </div>
     );
   }
