@@ -263,24 +263,15 @@ export default async function Page({
   const adSelection = 5; // Using a fixed value to avoid Math.random() during render
 
   return (
-    <div className="mt-20">
-      <Ad
-        link={adCopies[adSelection].link}
-        onClickTrack={adCopies[adSelection].onClickTrack}
-        adStart={adCopies[adSelection].adStart}
-        adEnd={adCopies[adSelection].adEnd}
-      />
-
-      <div className="mt-0 p-4 md:py-6">
-        <div className="mx-auto max-w-prose space-y-6">
-          <main className="prose">
-            {url ? (
-              <ProxyContent url={url} ip={ip} />
-            ) : (
-              <div className="text-gray-600">No URL provided</div>
-            )}
-          </main>
-        </div>
+    <div className="h-screen overflow-hidden">
+      <div className="h-full">
+        <main className="h-full prose max-w-none">
+          {url ? (
+            <ProxyContent url={url} ip={ip} />
+          ) : (
+            <div className="p-4 text-gray-600">No URL provided</div>
+          )}
+        </main>
       </div>
     </div>
   );

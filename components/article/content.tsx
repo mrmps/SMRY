@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GlobeAltIcon, LinkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "../ui/skeleton";
 import ShareButton from "../features/share-button";
@@ -64,55 +64,31 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   const cacheURL = getCacheURL();
 
   return (
-    <div className="mt-6">
+    <div className="mt-2">
       <article>
         {/* Header - Title and Links (Only if data available) */}
         {data && !isError && (
-          <>
-            {data.article?.title && <h1>{data.article.title}</h1>}
-            {/* Links */}
-            <div className="-ml-4 -mt-4 flex flex-wrap items-center space-x-4 leading-3 text-gray-600">
-              <div className="ml-4 mt-4 flex items-center space-x-1.5">
-                <ShareButton url={`https://smry.ai/${url}`} />
-              </div>
-              <div className="ml-4 mt-4 flex items-center space-x-1.5">
-                <GlobeAltIcon className="size-4 text-gray-600" />
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-gray-600 transition hover:text-gray-400"
-                >
-                  {new URL(url).hostname}
-                </a>
-              </div>
-              {/* Only show cache URL link for wayback and jina.ai sources */}
-              {(source === "wayback" || source === "jina.ai") && (
-                <div className="ml-4 mt-4 flex items-center space-x-1.5">
-                  <LinkIcon className="size-4 text-gray-600" />
-                  <a
-                    href={data.cacheURL ? decodeURIComponent(data.cacheURL) : ""}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-gray-600 transition hover:text-gray-400"
-                  >
-                    {source === "wayback" ? "Wayback Machine" : "jina.ai reader"}
-                  </a>
-                </div>
+          <div className="mb-8 space-y-4 border-b border-border pb-6">
+            {/* Metadata Row */}
+            <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
+              <span className="uppercase tracking-wide">{new URL(url).hostname.replace('www.', '')}</span>
+              <span>•</span>
+              <span>{new Date().toLocaleDateString()}</span>
+              {source === "wayback" && (
+                <>
+                  <span>•</span>
+                  <span className="text-amber-600 dark:text-amber-400">Wayback Archive</span>
+                </>
               )}
-              <div className="ml-4 mt-4 flex items-center space-x-1.5">
-                <ExclamationCircleIcon className="size-4 text-gray-600" />
-                <a
-                  href="https://smryai.userjot.com/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-gray-600 transition hover:text-gray-400"
-                >
-                  Report Bug
-                </a>
-              </div>
             </div>
-          </>
+
+            {/* Title */}
+            {data.article?.title && (
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-tight">
+                {data.article.title}
+              </h1>
+            )}
+          </div>
         )}
 
         {/* Iframe - Always rendered but hidden if not in iframe mode */}
@@ -288,7 +264,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                   )
                 ) : data.article?.content ? (
                   <div
-                    className="overflow-wrap mt-6 max-w-full break-words"
+                    className="mt-6 max-w-full wrap-break-word"
                     dangerouslySetInnerHTML={{ __html: data.article.content }}
                   />
                 ) : (

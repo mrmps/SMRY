@@ -163,10 +163,11 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-4 p-6">
+        <div className="space-y-4 p-4">
+          
         {error && errorContent && (
           <div className={`rounded-[14px] p-0.5 ${errorContent.bgClass}`}>
-            <div className="rounded-xl bg-white/50 p-4 dark:bg-zinc-950/50">
+            <div className="rounded-xl bg-card p-4 dark:bg-card">
               <h3 className={`mb-1 text-xs font-medium uppercase tracking-wide ${errorContent.titleClass}`}>
                 {errorContent.title}
               </h3>
@@ -178,24 +179,26 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
         )}
 
         {(completion || isLoading) && (
-          <div className="rounded-[14px] bg-zinc-100 p-0.5 dark:bg-zinc-800">
-            <div className="rounded-xl bg-white p-5 dark:bg-zinc-950">
-              <div className="mb-4 flex items-center gap-2 border-b border-zinc-100 pb-4 dark:border-zinc-900">
+          <div className="rounded-[14px] bg-accent p-0.5 dark:bg-accent">
+            <div className="rounded-xl bg-card p-4 dark:bg-card">
+              <div className="mb-4 flex items-center gap-3 border-b border-border pb-4 dark:border-border">
                 <div className="flex size-6 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
                   <svg className="size-3.5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
                   </svg>
                 </div>
-                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  Executive Summary
+                <div className="flex flex-1 items-center justify-between">
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Executive Summary
+                  </h3>
                   {isLoading && (
-                    <span className="ml-2 text-xs font-normal text-zinc-400">
+                    <span className="text-xs text-purple-500 animate-pulse">
                       {completion ? "Streaming..." : "Generating..."}
                     </span>
                   )}
-                </h3>
+                </div>
               </div>
-              <div className="text-zinc-600 dark:text-zinc-300">
+              <div className="text-sm text-foreground">
                 {completion ? (
                   <>
                     <Response>
@@ -208,10 +211,12 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
                     )}
                   </>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 pt-2">
                     <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-[95%]" />
                     <Skeleton className="h-4 w-[90%]" />
-                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-4 w-[85%]" />
                   </div>
                 )}
               </div>
@@ -221,75 +226,80 @@ export default function SummaryForm({ urlProp, ipProp, articleResults }: Summary
       </div>
       </div>
 
-      <div className="z-10 border-t border-zinc-200/50 bg-zinc-50 px-6 pb-6 pt-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] dark:border-zinc-800/50 dark:bg-zinc-900">
+      <div className="z-10 border-t border-border bg-card p-4 dark:border-border dark:bg-card">
         <form onSubmit={handleRegenerate} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <Select
-                value={selectedSource}
-                onValueChange={(value) => setManualSource(value as Source)}
-                disabled={shouldDisableSource || isLoading}
-              >
-                <SelectTrigger className="h-9 w-full border-zinc-200 bg-white text-sm font-medium focus:ring-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:focus:ring-zinc-800">
-                  <span className="truncate text-left">
-                    {SOURCE_LABELS[selectedSource]}
-                    {longestAvailableSource === selectedSource && (
-                      <span className="ml-2 text-xs font-normal text-purple-500">Best</span>
-                    )}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {SUMMARY_SOURCES.map((source) => {
-                    const status = getSourceStatus(source);
-                    const length = contentLengths[source];
-                    return (
-                      <SelectItem key={source} value={source} disabled={status.disabled}>
-                        <span className="flex items-center gap-2">
-                          <span>{SOURCE_LABELS[source]}</span>
-                          {length > 0 && <span className="text-zinc-400">• {length.toLocaleString()} chars</span>}
-                          {status.label && <span className="text-zinc-400">• {status.label}</span>}
-                          {longestAvailableSource === source && !status.disabled && <span className="text-purple-500">• Best</span>}
-                        </span>
+          <div className="rounded-[14px] bg-accent p-0.5">
+            <div className="flex flex-col gap-2 rounded-xl bg-card p-2 md:flex-row md:items-center">
+              <div className="min-w-0 flex-1">
+                <Select
+                  value={selectedSource}
+                  onValueChange={(value) => setManualSource(value as Source)}
+                  disabled={shouldDisableSource || isLoading}
+                >
+                  <SelectTrigger className="h-9 w-full min-w-0 border-0 bg-transparent text-sm font-medium shadow-none focus:ring-0 focus:ring-offset-0">
+                    <div className="flex w-full items-center gap-2 truncate text-left">
+                      <span>{SOURCE_LABELS[selectedSource]}</span>
+                      {longestAvailableSource === selectedSource && (
+                        <span className="text-xs font-normal text-purple-500">Best</span>
+                      )}
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUMMARY_SOURCES.map((source) => {
+                      const status = getSourceStatus(source);
+                      const length = contentLengths[source];
+                      return (
+                        <SelectItem key={source} value={source} disabled={status.disabled}>
+                          <span className="flex flex-wrap items-center gap-2 whitespace-normal leading-snug">
+                            <span>{SOURCE_LABELS[source]}</span>
+                            {length > 0 && <span className="text-muted-foreground">• {length.toLocaleString()} chars</span>}
+                            {status.label && <span className="text-muted-foreground">• {status.label}</span>}
+                            {longestAvailableSource === source && !status.disabled && <span className="text-purple-500">• Best</span>}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+  
+              <div className="hidden h-4 w-px bg-border md:block" />
+  
+              <div className="w-full shrink-0 md:w-[110px]">
+                <Select
+                  value={preferredLanguage}
+                  onValueChange={handleLanguageChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="h-9 w-full min-w-0 border-0 bg-transparent text-sm font-medium shadow-none focus:ring-0 focus:ring-offset-0">
+                     <span className="truncate text-left">
+                      {LANGUAGES.find(l => l.code === preferredLanguage)?.name || "Language"}
+                     </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        {lang.name}
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-[110px] shrink-0">
-              <Select
-                value={preferredLanguage}
-                onValueChange={handleLanguageChange}
-                disabled={isLoading}
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+  
+              <Button 
+                type="submit" 
+                variant={completion ? "ghost" : "default"}
+                size="sm"
+                disabled={isLoading || shouldDisableSource || !selectedArticle?.article?.textContent}
+                className="h-9 shrink-0 px-4 text-sm font-medium transition-all active:scale-95"
               >
-                <SelectTrigger className="h-9 w-full border-zinc-200 bg-white text-sm font-medium focus:ring-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:focus:ring-zinc-800">
-                   <span className="truncate text-left">
-                    {LANGUAGES.find(l => l.code === preferredLanguage)?.name || "Language"}
-                   </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {isLoading ? "Generating..." : completion ? "Update" : "Generate"}
+              </Button>
             </div>
-
-            <Button 
-              type="submit" 
-              variant={completion ? "outline" : "default"}
-              disabled={isLoading || shouldDisableSource || !selectedArticle?.article?.textContent}
-              className="h-9 shrink-0 px-4 text-sm font-medium transition-all active:scale-95"
-            >
-              {isLoading ? "Generating..." : completion ? "Update" : "Generate"}
-            </Button>
           </div>
           
           {!manualSource && hasArticleData && (
-            <p className="truncate px-2 text-center text-[10px] text-zinc-400">
+            <p className="truncate px-2 text-center text-[10px] text-muted-foreground">
               Auto-selected best source ({contentLengths[selectedSource].toLocaleString()} chars)
             </p>
           )}

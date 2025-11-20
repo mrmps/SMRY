@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Share2 as ShareIcon, Link as LinkIcon, ExternalLink, Check as CheckIcon } from 'lucide-react';
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 interface ShareButtonProps {
     url: string;    
@@ -64,44 +66,46 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
 
   const shareContent = (
     <div className="space-y-1.5">
-      <button
-        className="group flex w-full items-center gap-3.5 rounded-lg px-3.5 py-3 transition-colors hover:bg-slate-50"
+      <Button
+        variant="ghost"
+        className="group flex h-auto w-full items-center justify-start gap-3.5 rounded-lg px-3.5 py-3 transition-colors hover:bg-accent"
         onClick={handleCopy}
       >
-        <div className={`flex size-9 items-center justify-center rounded-md ${copied ? 'bg-green-50' : 'bg-slate-100'} transition-colors`}>
+        <div className={`flex size-9 items-center justify-center rounded-md ${copied ? 'bg-green-500/10' : 'bg-accent'} transition-colors`}>
           {copied ? (
             <CheckIcon className="size-4 text-green-600" />
           ) : (
-            <LinkIcon className="size-4 text-slate-600" />
+            <LinkIcon className="size-4 text-muted-foreground" />
           )}
         </div>
         <div className="flex flex-col text-left">
-          <span className="text-sm font-medium text-slate-900">
+          <span className="text-sm font-medium text-foreground">
             {copied ? 'Copied!' : 'Copy link'}
           </span>
           {!copied && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-muted-foreground">
               Copy URL to clipboard
             </span>
           )}
         </div>
-      </button>
+      </Button>
       
       {hasNativeShare && (
-        <button
-          className="group flex w-full items-center gap-3.5 rounded-lg px-3.5 py-3 transition-colors hover:bg-slate-50"
+        <Button
+          variant="ghost"
+          className="group flex h-auto w-full items-center justify-start gap-3.5 rounded-lg px-3.5 py-3 transition-colors hover:bg-accent"
           onClick={handleNativeShare}
         >
-          <div className="flex size-9 items-center justify-center rounded-md bg-slate-100">
-            <ExternalLink className="size-4 text-slate-600" />
+          <div className="flex size-9 items-center justify-center rounded-md bg-accent">
+            <ExternalLink className="size-4 text-muted-foreground" />
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-sm font-medium text-slate-900">More options</span>
-            <span className="text-xs text-slate-500">
+            <span className="text-sm font-medium text-foreground">More options</span>
+            <span className="text-xs text-muted-foreground">
               Share via apps and services
             </span>
           </div>
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -109,16 +113,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <button className="flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 transition-all hover:border-slate-300 hover:bg-slate-50">
-            <ShareIcon className="size-3 text-slate-600" />
-            <span className="ml-2 text-sm font-medium text-slate-700">Share</span>
-          </button>
+        <DialogTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}>
+            <ShareIcon className="mr-1.5 size-3.5" />
+            Share
         </DialogTrigger>
         <DialogContent className="gap-0 p-0 sm:max-w-[400px]">
-          <DialogHeader className="border-b border-slate-100 px-5 pb-4 pt-5">
-            <DialogTitle className="text-base font-semibold text-slate-900">Share article</DialogTitle>
-            <DialogDescription className="text-sm text-slate-500">
+          <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
+            <DialogTitle className="text-base font-semibold text-foreground">Share article</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
               Share this article with others
             </DialogDescription>
           </DialogHeader>
@@ -132,16 +134,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({ url }) => {
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <button className="flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 transition-all hover:border-slate-300 hover:bg-slate-50">
-          <ShareIcon className="size-3 text-slate-600" />
-          <span className="ml-2 text-sm font-medium text-slate-700">Share</span>
-        </button>
+      <DrawerTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}>
+          <ShareIcon className="mr-1.5 size-3.5" />
+          Share
       </DrawerTrigger>
-      <DrawerContent className="border-t border-slate-200">
-        <DrawerHeader className="border-b border-slate-100 px-5 pb-4 pt-5 text-left">
-          <DrawerTitle className="text-base font-semibold text-slate-900">Share article</DrawerTitle>
-          <DrawerDescription className="text-sm text-slate-500">
+      <DrawerContent className="border-t border-border">
+        <DrawerHeader className="border-b border-border px-5 pb-4 pt-5 text-left">
+          <DrawerTitle className="text-base font-semibold text-foreground">Share article</DrawerTitle>
+          <DrawerDescription className="text-sm text-muted-foreground">
             Share this article with others
           </DrawerDescription>
         </DrawerHeader>

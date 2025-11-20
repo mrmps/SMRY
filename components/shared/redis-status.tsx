@@ -116,15 +116,15 @@ export function RedisStatus({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="inline-flex cursor-help items-center gap-2">
+        <TooltipTrigger>
+          <span className="inline-flex cursor-help items-center gap-2">
             <span className={`${sizeClasses[size]} ${config.color} rounded-full`} />
             {showLabel && (
               <span className="text-xs font-medium text-gray-600">
                 {config.label}
               </span>
             )}
-          </div>
+          </span>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
           <div className="space-y-2 p-1">

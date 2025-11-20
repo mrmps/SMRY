@@ -208,16 +208,29 @@ export async function POST(request: NextRequest) {
     // Combine base prompt with language instruction
     const userPrompt = `${BASE_SUMMARY_PROMPT}\n\n${languageInstruction}`;
 
+    // Using OpenRouter's free tier model with automatic provider fallback
+    // Primary model: openai/gpt-oss-20b:free (20B parameters)
+    // - Free tier with rate limits (100-200 requests/day depending on account credits)
+    // - OpenRouter automatically handles provider failover for high uptime
+    // 
+    // To add model-level fallback, you can:
+    // 1. Use OpenRouter's native 'models' array parameter (requires custom fetch)
+    // 2. Implement try-catch with fallback models (see OPENROUTER_MIGRATION.md)
+    // 3. Use different models for different use cases
+    //
+    // Alternative free models: 
+    // - meta-llama/llama-3.2-3b-instruct:free (faster, smaller)
+    // - google/gemma-2-9b-it:free (better instruction following)
+    // - qwen/qwen-2.5-7b-instruct:free (strong reasoning)
+    // Browse all: https://openrouter.ai/models?max_price=0
     const result = streamText({
-      // Using OpenRouter's free tier model: openai/gpt-oss-20b:free
-      // - 20B parameters, high quality summaries
-      // - Free tier with rate limits (100-200 requests/day)
-      // - OpenRouter automatically handles provider fallback for high uptime
-      // Alternative free models: meta-llama/llama-3.2-3b-instruct:free, google/gemma-2-9b-it:free
-      // Browse models: https://openrouter.ai/models?max_price=0
       model: openrouter("openai/gpt-oss-20b:free"),
-      system: "You are an intelligent summary assistant.",
-      prompt: userPrompt.replace("{text}", content.substring(0, 6000)),
+      messages: [
+        {
+          role: "user",
+          content: userPrompt.replace("{text}", content.substring(0, 6000)),
+        },
+      ],
       onFinish: async ({ text, usage }) => {
         // Cache the complete summary after streaming finishes
         logger.info({ 
@@ -225,7 +238,7 @@ export async function POST(request: NextRequest) {
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           totalTokens: usage.totalTokens
-        }, 'Summary generated');
+        }, 'Summary generated with OpenRouter');
         
         // Try to cache, but don't fail if Redis is down
         try {

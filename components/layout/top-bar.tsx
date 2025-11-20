@@ -1,26 +1,25 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import ScrollProgress from "./scroll-progress";
+import { motion, useScroll, useSpring, MotionProps } from "framer-motion";
+import useLocalStorage from "@/lib/hooks/use-local-storage";
 
 const TopBar = () => {
-  const [progress, setProgress] = useState(0);
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
+  
+  // Get view mode to conditionally show scroll progress
+  const [viewMode] = useLocalStorage<"markdown" | "html" | "iframe">("article-view-mode", "markdown");
+  const isReaderView = viewMode === "markdown";
 
-  const onScroll = () => {
-    const scrollTop = document.documentElement.scrollTop;
-    const scrollHeight =
-      document.documentElement.scrollHeight -
-      document.documentElement.clientHeight;
-    const scrollProgress = (scrollTop / scrollHeight) * 100;
-    setProgress(scrollProgress);
-  };
-
-  useEffect(() => {
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  // Fix for framer-motion type issue with className
+  const ProgressDiv = motion.div as React.FC<MotionProps & React.HTMLAttributes<HTMLDivElement>>;
 
   return (
     <div
@@ -40,10 +39,13 @@ const TopBar = () => {
           </Link>
         </div>
         
-        {/* Scroll Progress - absolute positioned at bottom */}
-        <div className="absolute inset-x-0 bottom-0">
-          <ScrollProgress progress={progress} />
-        </div>
+        {/* Scroll Progress - fixed at the top of the screen for reader view */}
+        {isReaderView && (
+          <ProgressDiv 
+            className="fixed left-0 top-0 z-[100] h-[2px] w-full origin-left bg-[#595959]"
+            style={{ scaleX } as any}
+          />
+        )}
       </div>
     </div>
   );

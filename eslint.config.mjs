@@ -1,11 +1,14 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
-import tailwindcss from "eslint-plugin-tailwindcss";
+// import tailwindcss from "eslint-plugin-tailwindcss";
 import reactHooks from "eslint-plugin-react-hooks";
 import unusedImports from "eslint-plugin-unused-imports";
 
 const eslintConfig = [
+  {
+    ignores: [".cursor/**/*"],
+  },
   ...nextCoreWebVitals,
-  ...tailwindcss.configs["flat/recommended"],
+  // ...tailwindcss.configs["flat/recommended"],
   {
     plugins: {
       "react-hooks": reactHooks,
