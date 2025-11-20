@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { Share2 as ShareIcon, Link as LinkIcon, ExternalLink, Check as CheckIcon } from 'lucide-react';
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -12,14 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 import { Source } from "@/types/api";
@@ -138,48 +129,25 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 
 const ShareButton: React.FC<ShareButtonProps> = (props) => {
   const [open, setOpen] = useState(false);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
-
-  if (isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}>
-            <ShareIcon className="mr-1.5 size-3.5" />
-            Share
-        </DialogTrigger>
-        <DialogContent className="gap-0 p-0 sm:max-w-[400px]">
-          <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
-            <DialogTitle className="text-base font-semibold text-foreground">Share article</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Share this article with others
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-5 py-4">
-            <ShareContent {...props} onActionComplete={() => setOpen(false)} />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}>
           <ShareIcon className="mr-1.5 size-3.5" />
           Share
-      </DrawerTrigger>
-      <DrawerContent className="border-t border-border">
-        <DrawerHeader className="border-b border-border px-5 pb-4 pt-5 text-left">
-          <DrawerTitle className="text-base font-semibold text-foreground">Share article</DrawerTitle>
-          <DrawerDescription className="text-sm text-muted-foreground">
+      </DialogTrigger>
+      <DialogContent className="gap-0 p-0 sm:max-w-[400px]">
+        <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
+          <DialogTitle className="text-base font-semibold text-foreground">Share article</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
             Share this article with others
-          </DrawerDescription>
-        </DrawerHeader>
-        <div className="pb-safe px-5 py-4">
+          </DialogDescription>
+        </DialogHeader>
+        <div className="px-5 py-4">
           <ShareContent {...props} onActionComplete={() => setOpen(false)} />
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 };
 

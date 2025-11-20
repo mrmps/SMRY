@@ -50,9 +50,9 @@ const EnhancedTabsList: React.FC<{
               className={cn(
                 "group flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 rounded-xl px-1 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors outline-none",
                 // Inactive state
-                "not-data-selected:text-muted-foreground not-data-selected:hover:text-foreground",
+                "aria-[selected=false]:text-muted-foreground aria-[selected=false]:hover:text-foreground",
                 // Active state
-                "data-selected:bg-card data-selected:text-black dark:data-selected:text-white data-selected:shadow-sm",
+                "aria-selected:bg-card aria-selected:text-black dark:aria-selected:text-white aria-selected:shadow-sm",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               )}
             >
@@ -62,7 +62,7 @@ const EnhancedTabsList: React.FC<{
                 <span
                   className={cn(
                     "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
-                    "bg-muted text-muted-foreground group-data-selected:bg-primary/10 group-data-selected:text-primary",
+                    "bg-muted text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary",
                   )}
                 >
                   {wordCount}
@@ -82,15 +82,24 @@ interface TabProps {
   url: string;
   articleResults: ArticleResults;
   viewMode: "markdown" | "html" | "iframe";
+  initialSource?: Source;
   controls?: React.ReactNode; // Kept for compatibility
 }
 
-const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
+const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode, initialSource }) => {
   const results = articleResults;
-  const [activeTab, setActiveTab] = useQueryState<Source>(
+  
+  // Handle hydration mismatch
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => setIsMounted(true), []);
+
+  const [activeTabQuery, setActiveTabQuery] = useQueryState<Source>(
     "source",
-    parseAsStringLiteral(SOURCES).withDefault("smry-fast")
+    parseAsStringLiteral(SOURCES).withDefault(initialSource || "smry-fast")
   );
+
+  const activeTab = isMounted ? activeTabQuery : (initialSource || "smry-fast");
+  const setActiveTab = setActiveTabQuery;
 
   const counts: Record<Source, number | undefined> = {
     "smry-fast": results["smry-fast"].data?.article?.length,

@@ -2,22 +2,14 @@
 
 import React from "react";
 import ArrowTabs from "@/components/article/tabs";
-import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
-import SummaryForm from "@/components/features/summary-form";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { Bug as BugIcon, Sparkles as SparklesIcon } from "lucide-react";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import ShareButton, { ShareContent } from "@/components/features/share-button";
 import { buttonVariants, Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import {
   Drawer,
   DrawerContent,
@@ -27,211 +19,62 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs";
-import { ImperativePanelHandle } from "react-resizable-panels";
 import { Source, SOURCES } from "@/types/api";
+import { ResizableModal } from "./resizable-modal";
 
 interface ProxyContentProps {
   url: string;
   ip: string;
+  initialSource?: Source;
+  initialViewMode?: "markdown" | "html" | "iframe";
 }
 
-export function ProxyContent({ url, ip }: ProxyContentProps) {
+export function ProxyContent({ url, ip, initialSource, initialViewMode }: ProxyContentProps) {
   const { results } = useArticles(url);
-  const [source] = useQueryState<Source>(
+  
+  // Handle hydration mismatch by forcing initial render to match server props
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => setIsMounted(true), []);
+
+  const [sourceQuery] = useQueryState<Source>(
     "source",
-    parseAsStringLiteral(SOURCES).withDefault("smry-fast")
+    parseAsStringLiteral(SOURCES).withDefault(initialSource || "smry-fast")
   );
-  const [viewMode, setViewMode] = useQueryState(
+  const [viewModeQuery, setViewModeQuery] = useQueryState(
     "view",
-    parseAsStringLiteral(["markdown", "html", "iframe"] as const).withDefault("markdown")
+    parseAsStringLiteral(["markdown", "html", "iframe"] as const).withDefault(initialViewMode || "markdown")
   );
-  const [sidebarOpen, setSidebarOpen] = useQueryState(
+  const [sidebarOpenQuery, setSidebarOpenQuery] = useQueryState(
     "sidebar",
     parseAsBoolean.withDefault(false)
   );
-  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  // Derived state that matches server on first render, then syncs with client query state
+  const source = isMounted ? sourceQuery : (initialSource || "smry-fast");
+  const viewMode = isMounted ? viewModeQuery : (initialViewMode || "markdown");
+  const sidebarOpen = isMounted ? sidebarOpenQuery : false;
   
-  const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
+  const setViewMode = setViewModeQuery;
+  const setSidebarOpen = setSidebarOpenQuery;
+  
   const [menuOpen, setMenuOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    const panel = summaryPanelRef.current;
-    if (panel) {
-      if (sidebarOpen) {
-        panel.expand();
-      } else {
-        panel.collapse();
-      }
-    }
-  }, [sidebarOpen]);
-
-  // Mobile Layout
-  if (isMobile) {
-    return (
-      <div className="relative flex min-h-screen flex-col bg-background">
-        {/* Sticky Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
-          <Link href="/" className="transition-opacity hover:opacity-80">
-            <Image
-              src="/logo.svg"
-              width={80}
-              height={80}
-              alt="smry logo"
-              className="h-6 w-auto"
-              priority
-            />
-          </Link>
-
-          <div className="flex items-center gap-2">
-            {/* Summary Trigger */}
-            <ResponsiveDrawer 
-              open={sidebarOpen} 
-              onOpenChange={setSidebarOpen}
-              trigger={
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 gap-1.5 rounded-lg text-xs font-medium hover:bg-accent"
-                >
-                  <SparklesIcon className="size-3.5" />
-                  Summary
-                </Button>
-              }
-            >
-              <div className="remove-all h-full">
-                <SummaryForm
-                  urlProp={url}
-                  ipProp={ip}
-                  articleResults={results}
-                  isOpen={sidebarOpen || false}
-                />
-              </div>
-            </ResponsiveDrawer>
-
-            {/* Mobile Menu */}
-            <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
-              <DrawerTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg hover:bg-accent"
-                >
-                  <EllipsisHorizontalIcon className="size-5 text-muted-foreground" />
-                </Button>
-              </DrawerTrigger>
-              <DrawerContent>
-                <DrawerHeader className="text-left border-b border-border pb-4">
-                  <DrawerTitle>Options</DrawerTitle>
-                  <DrawerDescription>
-                    Customize view and share article
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className="p-4 space-y-6 pb-8">
-                  {/* View Mode Section */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-muted-foreground">View Mode</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        variant={viewMode === "markdown" ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setViewMode("markdown");
-                          setMenuOpen(false);
-                        }}
-                        className="w-full"
-                      >
-                        Reader
-                      </Button>
-                      <Button
-                        variant={viewMode === "html" ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setViewMode("html");
-                          setMenuOpen(false);
-                        }}
-                        className="w-full"
-                      >
-                        Original
-                      </Button>
-                      <Button
-                        variant={viewMode === "iframe" ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setViewMode("iframe");
-                          setMenuOpen(false);
-                        }}
-                        className="w-full"
-                      >
-                        Iframe
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Share Section */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-muted-foreground">Share</label>
-                    <ShareContent 
-                      url={`https://smry.ai/${url}`} 
-                      source={source || "smry-fast"}
-                      viewMode={viewMode || "markdown"}
-                      sidebarOpen={sidebarOpen !== null ? sidebarOpen : true}
-                      onActionComplete={() => setMenuOpen(false)}
-                    />
-                  </div>
-
-                  {/* Support Section */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium text-muted-foreground">Support</label>
-                    <a
-                      href="https://smryai.userjot.com/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full justify-start gap-2")}
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      <BugIcon className="size-4" />
-                      Report Bug / Feedback
-                    </a>
-                  </div>
-                </div>
-              </DrawerContent>
-            </Drawer>
-          </div>
-        </header>
-
-        {/* Content Area */}
-        <main className="flex-1">
-          <div className="min-h-[calc(100vh-3.5rem)]">
-            <ArrowTabs
-              url={url}
-              articleResults={results}
-              viewMode={viewMode}
-            />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Desktop Layout - Dashboard Style
-  return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      {/* Unified Top Bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4 z-20 relative">
-        {/* Left: Brand */}
+  const content = (
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-           <Image
-             src="/logo.svg"
-             width={100}
-             height={100}
-             alt="smry logo"
-             className="h-6 w-auto"
-             priority
-           />
+          <Image
+            src="/logo.svg"
+            width={80}
+            height={80}
+            alt="smry logo"
+            className="h-6 w-auto"
+            priority
+          />
         </Link>
 
-        {/* Center: The Control Pills */}
-        <div className="flex items-center p-0.5 bg-accent rounded-lg absolute left-1/2 -translate-x-1/2">
+        {/* Desktop Control Pills - Hidden on Mobile */}
+        <div className="hidden md:flex items-center p-0.5 bg-accent rounded-lg absolute left-1/2 -translate-x-1/2">
           <button 
             onClick={() => setViewMode("markdown")}
             className={cn(
@@ -254,7 +97,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
           >
             original
           </button>
-           <button 
+            <button 
             onClick={() => setViewMode("iframe")}
             className={cn(
               "px-3 py-1 text-xs font-medium rounded-[6px] transition-all",
@@ -267,76 +110,170 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
           </button>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-1">
-          <Button
-             variant={sidebarOpen ? "secondary" : "outline"}
-             size="sm"
-             className="h-8 text-xs font-medium"
-             onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <SparklesIcon className="mr-1.5 size-3.5" />
-            Summary
-          </Button>
-          <ShareButton 
-            url={`https://smry.ai/${url}`} 
-            source={source || "smry-fast"}
-            viewMode={viewMode || "markdown"}
-            sidebarOpen={sidebarOpen !== null ? sidebarOpen : true}
-          />
-          <a
-            href="https://smryai.userjot.com/"
-            target="_blank"
-            rel="noreferrer"
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}
-          >
-            <BugIcon className="mr-1.5 size-3.5" />
-            Report Bug
-          </a>
+        <div className="flex items-center gap-2">
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-1">
+            <Button
+                variant={sidebarOpen ? "secondary" : "outline"}
+                size="sm"
+                className="h-8 text-xs font-medium"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <SparklesIcon className="mr-1.5 size-3.5" />
+              Summary
+            </Button>
+            <ShareButton 
+              url={`https://smry.ai/${url}`} 
+              source={source || "smry-fast"}
+              viewMode={viewMode || "markdown"}
+              sidebarOpen={sidebarOpen !== null ? sidebarOpen : true}
+            />
+            <a
+              href="https://smryai.userjot.com/"
+              target="_blank"
+              rel="noreferrer"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}
+            >
+              <BugIcon className="mr-1.5 size-3.5" />
+              Report Bug
+            </a>
+          </div>
+
+          {/* Mobile Summary Trigger */}
+          <div className="md:hidden">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 gap-1.5 rounded-lg text-xs font-medium hover:bg-accent"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                <SparklesIcon className="size-3.5" />
+                Summary
+              </Button>
+          </div>
+
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+          <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
+            <DrawerTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 rounded-lg hover:bg-accent"
+              >
+                <EllipsisHorizontalIcon className="size-5 text-muted-foreground" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader className="text-left border-b border-border pb-4">
+                <DrawerTitle>Options</DrawerTitle>
+                <DrawerDescription>
+                  Customize view and share article
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="p-4 space-y-6 pb-8">
+                {/* View Mode Section */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-muted-foreground">View Mode</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant={viewMode === "markdown" ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setViewMode("markdown");
+                        setMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Reader
+                    </Button>
+                    <Button
+                      variant={viewMode === "html" ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setViewMode("html");
+                        setMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Original
+                    </Button>
+                    <Button
+                      variant={viewMode === "iframe" ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setViewMode("iframe");
+                        setMenuOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Iframe
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Share Section */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-muted-foreground">Share</label>
+                  <ShareContent 
+                    url={`https://smry.ai/${url}`} 
+                    source={source || "smry-fast"}
+                    viewMode={viewMode || "markdown"}
+                    sidebarOpen={sidebarOpen !== null ? sidebarOpen : true}
+                    onActionComplete={() => setMenuOpen(false)}
+                  />
+                </div>
+
+                {/* Support Section */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-muted-foreground">Support</label>
+                  <a
+                    href="https://smryai.userjot.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full justify-start gap-2")}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <BugIcon className="size-4" />
+                    Report Bug / Feedback
+                  </a>
+                </div>
+              </div>
+            </DrawerContent>
+          </Drawer>
+          </div>
         </div>
       </header>
 
-      {/* Resizable Content Area */}
-      <div className="flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-none border-0">
-          {/* Left Panel: Page Content with Tabs */}
-          <ResizablePanel defaultSize={75} minSize={30}>
-            <div className="h-full w-full overflow-y-auto bg-card">
-              <div className="mx-auto max-w-3xl p-6">
-                <ArrowTabs 
-                  url={url} 
-                  articleResults={results} 
-                  viewMode={viewMode} 
-                />
-              </div>
-            </div>
-          </ResizablePanel>
-          
-          <ResizableHandle withHandle />
-          
-          {/* Right Panel: Summary */}
-          <ResizablePanel 
-            ref={summaryPanelRef}
-            defaultSize={25} 
-            minSize={20} 
-            maxSize={40} 
-            collapsible={true} 
-            collapsedSize={0} 
-            className="bg-accent/5"
-            onCollapse={() => setSidebarOpen(false)}
-            onExpand={() => setSidebarOpen(true)}
-          >
-             <div className="h-full overflow-y-auto flex flex-col">
-                  <SummaryForm 
-                    urlProp={url} 
-                    ipProp={ip}
-                    articleResults={results}
-                    isOpen={sidebarOpen || false}
-                  />
-             </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
+      {/* Content Area */}
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto bg-card">
+          <div className="mx-auto max-w-3xl p-6 min-h-[calc(100vh-3.5rem)]">
+            <ArrowTabs
+              url={url}
+              articleResults={results}
+              viewMode={viewMode}
+              initialSource={initialSource}
+            />
+          </div>
+        </div>
+      </main>
     </div>
+  );
+
+  if (!sidebarOpen) {
+    return content;
+  }
+
+  return (
+    <ResizableModal
+      url={url}
+      ip={ip}
+      articleResults={results}
+      sidebarOpen={sidebarOpen}
+      setSidebarOpen={setSidebarOpen}
+    >
+      {content}
+    </ResizableModal>
   );
 }
