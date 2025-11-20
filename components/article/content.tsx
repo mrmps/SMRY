@@ -11,7 +11,6 @@ import {
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "../ui/skeleton";
-import ShareButton from "../features/share-button";
 import { UseQueryResult } from "@tanstack/react-query";
 import { ArticleResponse, Source } from "@/types/api";
 import { ErrorDisplay } from "../shared/error-display";

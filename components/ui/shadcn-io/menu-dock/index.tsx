@@ -55,7 +55,8 @@ export const MenuDock: React.FC<MenuDockProps> = ({
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
-      if (activeIndex >= finalItems.length) {
+      if (activeIndex >= finalItems.length && activeIndex !== 0) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setActiveIndex(0);
       }
   }, [finalItems, activeIndex]);

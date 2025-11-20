@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 // Source type
-export const SourceSchema = z.enum(["smry-fast", "smry-slow", "wayback", "jina.ai"]);
+export const SOURCES = ["smry-fast", "smry-slow", "wayback", "jina.ai"] as const;
+export const SourceSchema = z.enum(SOURCES);
 export type Source = z.infer<typeof SourceSchema>;
 
 // Debug context schema

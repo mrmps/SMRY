@@ -9,6 +9,7 @@ import {
   DrawerClose,
   DrawerContent,
   DrawerFooter,
+  DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
@@ -21,15 +22,21 @@ import { RedisStatus } from "@/components/shared/redis-status";
 
 interface ResponsiveDrawerProps {
   children: React.ReactNode;
+  open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerProps) {
-  const [open, setOpen] = React.useState(false);
+export function ResponsiveDrawer({ children, open: controlledOpen, onOpenChange }: ResponsiveDrawerProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
+    if (!isControlled) {
+      setInternalOpen(newOpen);
+    }
     onOpenChange?.(newOpen);
   };
 
@@ -68,6 +75,7 @@ export function ResponsiveDrawer({ children, onOpenChange }: ResponsiveDrawerPro
         </div>
       </div>
       <DrawerContent className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900">
+        <DrawerTitle className="sr-only">Generate Summary</DrawerTitle>
         <div className="flex min-h-0 flex-1 flex-col">
           {children}
         </div>

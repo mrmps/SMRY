@@ -5,7 +5,7 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-function Accordion({ collapsible, ...props }: AccordionPrimitive.Root.Props & { collapsible?: boolean; type?: string }) {
+function Accordion({ collapsible: _collapsible, ...props }: AccordionPrimitive.Root.Props & { collapsible?: boolean; type?: string }) {
   return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
 }
 

@@ -6,19 +6,21 @@ import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 import SummaryForm from "@/components/features/summary-form";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { DocumentTextIcon, Squares2X2Icon, CodeBracketIcon } from "@heroicons/react/24/outline";
-import { Bug as BugIcon } from "lucide-react";
-import useLocalStorage from "@/lib/hooks/use-local-storage";
+import { Bug as BugIcon, Sparkles as SparklesIcon } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import ShareButton from "@/components/features/share-button";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants, Button } from "@/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { useQueryState, parseAsStringLiteral, parseAsBoolean } from "nuqs";
+import { ImperativePanelHandle } from "react-resizable-panels";
+import { Source, SOURCES } from "@/types/api";
 
 interface ProxyContentProps {
   url: string;
@@ -27,8 +29,32 @@ interface ProxyContentProps {
 
 export function ProxyContent({ url, ip }: ProxyContentProps) {
   const { results } = useArticles(url);
-  const [viewMode, setViewMode] = useLocalStorage<"markdown" | "html" | "iframe">("article-view-mode", "markdown");
+  const [source] = useQueryState<Source>(
+    "source",
+    parseAsStringLiteral(SOURCES).withDefault("smry-fast")
+  );
+  const [viewMode, setViewMode] = useQueryState(
+    "view",
+    parseAsStringLiteral(["markdown", "html", "iframe"] as const).withDefault("markdown")
+  );
+  const [sidebarOpen, setSidebarOpen] = useQueryState(
+    "sidebar",
+    parseAsBoolean.withDefault(false)
+  );
   const isMobile = useMediaQuery("(max-width: 768px)");
+  
+  const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
+
+  React.useEffect(() => {
+    const panel = summaryPanelRef.current;
+    if (panel) {
+      if (sidebarOpen) {
+        panel.expand();
+      } else {
+        panel.collapse();
+      }
+    }
+  }, [sidebarOpen]);
 
   // Mobile Layout
   if (isMobile) {
@@ -48,12 +74,13 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                  </Link>
           
                 {/* AI Summary */}
-                  <ResponsiveDrawer>
+                  <ResponsiveDrawer open={sidebarOpen} onOpenChange={setSidebarOpen}>
                     <div className="remove-all h-full">
                       <SummaryForm 
                         urlProp={url} 
                         ipProp={ip}
                         articleResults={results}
+                        isOpen={sidebarOpen || false}
                       />
                     </div>
                   </ResponsiveDrawer>
@@ -164,7 +191,21 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1">
-          <ShareButton url={`https://smry.ai/${url}`} />
+          <Button
+             variant={sidebarOpen ? "secondary" : "outline"}
+             size="sm"
+             className="h-8 text-xs font-medium"
+             onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <SparklesIcon className="mr-1.5 size-3.5" />
+            Summary
+          </Button>
+          <ShareButton 
+            url={`https://smry.ai/${url}`} 
+            source={source || "smry-fast"}
+            viewMode={viewMode || "markdown"}
+            sidebarOpen={sidebarOpen !== null ? sidebarOpen : true}
+          />
           <a
             href="https://smryai.userjot.com/"
             target="_blank"
@@ -196,12 +237,23 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
           <ResizableHandle withHandle />
           
           {/* Right Panel: Summary */}
-          <ResizablePanel defaultSize={25} minSize={20} maxSize={40} collapsible={true} collapsedSize={0} className="bg-accent/5">
+          <ResizablePanel 
+            ref={summaryPanelRef}
+            defaultSize={25} 
+            minSize={20} 
+            maxSize={40} 
+            collapsible={true} 
+            collapsedSize={0} 
+            className="bg-accent/5"
+            onCollapse={() => setSidebarOpen(false)}
+            onExpand={() => setSidebarOpen(true)}
+          >
              <div className="h-full overflow-y-auto flex flex-col">
                   <SummaryForm 
                     urlProp={url} 
                     ipProp={ip}
                     articleResults={results}
+                    isOpen={sidebarOpen || false}
                   />
              </div>
           </ResizablePanel>

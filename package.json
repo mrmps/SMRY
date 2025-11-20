@@ -53,6 +53,7 @@
     "next": "16.0.0",
     "node-html-markdown": "^1.3.0",
     "node-html-parser": "^6.1.12",
+    "nuqs": "^2.8.0",
     "openai": "^4.29.2",
     "pino": "^8.19.0",
     "puppeteer-core": "^21.11.0",

@@ -1,9 +1,8 @@
 import { headers } from "next/headers";
-import Ad from "@/components/marketing/ad";
 import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
 
-const adCopies = [
+const _adCopies = [
   {
     onClickTrack:
       "Enjoy the freedom of reading without barriers, buy me a coffee! click",
@@ -260,7 +259,7 @@ export default async function Page({
   }
 
   // Move random number generation to client-side or use a deterministic value
-  const adSelection = 5; // Using a fixed value to avoid Math.random() during render
+  const _adSelection = 5; // Using a fixed value to avoid Math.random() during render
 
   return (
     <div className="h-screen overflow-hidden">

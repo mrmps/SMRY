@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { QueryProvider } from "@/components/shared/query-provider";
 
@@ -52,9 +53,11 @@ export default function RootLayout({
         // }}
       >
         <GoogleAnalytics gaId="G-RFC55FX414" />
-        <QueryProvider>
-          {children}
-        </QueryProvider>
+        <NuqsAdapter>
+          <QueryProvider>
+            {children}
+          </QueryProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

@@ -61,14 +61,16 @@ export const MenuDock: React.FC<MenuDockProps> = ({
   useEffect(() => {
     if (activeValue) {
       const index = finalItems.findIndex((item) => item.value === activeValue);
-      if (index !== -1) {
+      if (index !== -1 && index !== activeIndex) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveIndex(index);
       }
     }
-  }, [activeValue, finalItems]);
+  }, [activeValue, finalItems, activeIndex]);
 
   useEffect(() => {
-    if (activeIndex >= finalItems.length) {
+    if (activeIndex >= finalItems.length && activeIndex !== 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveIndex(0);
     }
   }, [finalItems, activeIndex]);

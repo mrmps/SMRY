@@ -4,11 +4,12 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tabs as TabsPrimitive } from "@base-ui-components/react/tabs";
 import React from "react";
 import { ArticleContent } from "./content";
-import { Source, ArticleResponse } from "@/types/api";
+import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { MenuDock, MenuDockItem } from "@/components/ui/menu-dock";
 import { Zap, Clock, Archive, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQueryState, parseAsStringLiteral } from "nuqs";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
@@ -18,7 +19,7 @@ const SOURCE_LABELS: Record<Source, string> = {
 };
 
 const EnhancedTabsList: React.FC<{
-  sources: Source[];
+  sources: readonly Source[];
   counts: Record<Source, number | undefined>;
 }> = ({ sources, counts }) => {
   // Helper to format word count minimally
@@ -77,9 +78,11 @@ interface TabProps {
 }
 
 const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
-  const sources: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
   const results = articleResults;
-  const [activeTab, setActiveTab] = React.useState<Source>("smry-fast");
+  const [activeTab, setActiveTab] = useQueryState<Source>(
+    "source",
+    parseAsStringLiteral(SOURCES).withDefault("smry-fast")
+  );
 
   const counts: Record<Source, number | undefined> = {
     "smry-fast": results["smry-fast"].data?.article?.length,
@@ -141,12 +144,11 @@ const ArrowTabs: React.FC<TabProps> = ({ url, articleResults, viewMode }) => {
         <div
           className={cn(
             "sticky top-0 z-10 mb-4 -mx-4 hidden px-4 py-2 sm:mx-0 sm:rounded-xl sm:px-2 md:block",
-            "bg-white/90 backdrop-blur-md transition-all supports-backdrop-filter:bg-white/60",
-            "dark:bg-zinc-950/90 dark:supports-backdrop-filter:bg-zinc-950/60",
+            "bg-background/80 backdrop-blur-xl transition-all supports-backdrop-filter:bg-background/60",
           )}
         >
           <EnhancedTabsList
-            sources={sources}
+            sources={SOURCES}
             counts={counts}
           />
         </div>

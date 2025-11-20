@@ -18,8 +18,8 @@ const ComboboxContext = React.createContext<{
 
 function Combobox<
   ItemValue,
-  SelectedValue = ItemValue,
-  Multiple extends boolean | undefined = false,
+  _SelectedValue = ItemValue,
+  _Multiple extends boolean | undefined = false,
 >(props: any) {
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   return (

@@ -1,7 +1,7 @@
-export default function RootLayout({
+export default function ProxyLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <div>{children}</div>
+  return <>{children}</>;
 }
