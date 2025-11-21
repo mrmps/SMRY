@@ -64,7 +64,7 @@ export function ResizableModal({
       
       rafRef.current = requestAnimationFrame(() => {
         if (sidebarOpen) {
-          panel.expand();
+          panel.expand(30);
         } else {
           panel.collapse();
         }
