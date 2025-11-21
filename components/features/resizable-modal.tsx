@@ -19,6 +19,7 @@ import { ImperativePanelHandle } from "react-resizable-panels";
 import SummaryForm from "@/components/features/summary-form";
 import { ArticleResponse, Source } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
@@ -41,30 +42,65 @@ export function ResizableModal({
 }: ResizableModalProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
+  const [isAnimating, setIsAnimating] = React.useState(false);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const rafRef = React.useRef<number | null>(null);
   
   React.useEffect(() => {
     if (!isDesktop) return;
     
     const panel = summaryPanelRef.current;
     if (panel) {
-      if (sidebarOpen) {
-        panel.expand();
-      } else {
-        panel.collapse();
-      }
+      // Guard to prevent unnecessary animations during resize/drag
+      // We only animate if the open state mismatches the panel's actual state
+      const isExpanded = panel.getSize() > 0;
+      if (sidebarOpen === isExpanded) return;
+
+      // Clear any existing timeouts
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+      setIsAnimating(true);
+      
+      rafRef.current = requestAnimationFrame(() => {
+        if (sidebarOpen) {
+          panel.expand();
+        } else {
+          panel.collapse();
+        }
+      });
+
+      timeoutRef.current = setTimeout(() => {
+        setIsAnimating(false);
+        timeoutRef.current = null;
+      }, 500); // Matches duration-500
     }
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, [sidebarOpen, isDesktop]);
 
   if (isDesktop) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-background">
         <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-none border-0">
-            <ResizablePanel defaultSize={75} minSize={30}>
+          <ResizablePanelGroup 
+            direction="horizontal" 
+            className="h-full w-full rounded-none border-0 group/panels"
+          >
+            <ResizablePanel defaultSize={70} minSize={30}>
               {children}
             </ResizablePanel>
             
-            <ResizableHandle withHandle />
+            <ResizableHandle 
+              withHandle 
+              className={cn(
+                "transition-opacity duration-300 group-active/panels:pointer-events-none!",
+                !sidebarOpen && "opacity-0 pointer-events-none w-0"
+              )} 
+            />
             
             <ResizablePanel 
               ref={summaryPanelRef}
@@ -73,11 +109,26 @@ export function ResizableModal({
               maxSize={40} 
               collapsible={true} 
               collapsedSize={0} 
-              className="bg-accent/5"
-              onCollapse={() => setSidebarOpen(false)}
-              onExpand={() => setSidebarOpen(true)}
+              className={cn(
+                "bg-accent/5 overflow-hidden",
+                "transition-[flex-grow,flex-basis] duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+                "group-active/panels:transition-none"
+              )}
+              onCollapse={() => {
+                 if (sidebarOpen) setSidebarOpen(false);
+              }}
+              onExpand={() => {
+                 if (!sidebarOpen) setSidebarOpen(true);
+              }}
             >
-               <div className="h-full overflow-y-auto flex flex-col">
+               <div 
+                 className="h-full overflow-y-auto flex flex-col"
+                 style={{
+                   // During animation or when closed, fix width to prevents text reflow.
+                   // When open and static, allow full fluid width (100%) to avoid clipping.
+                   minWidth: !sidebarOpen || isAnimating ? "30vw" : "100%"
+                 }}
+               >
                     <SummaryForm 
                       urlProp={url} 
                       ipProp={ip}
@@ -92,14 +143,13 @@ export function ResizableModal({
     );
   }
 
-  if (!isDesktop && sidebarOpen) {
-    return (
+  // Mobile Layout
+  return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <div className="flex-1">
           {children}
       </div>
 
-      {/* Mobile Drawer Logic */}
       <Drawer open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <DrawerContent 
           className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900 md:hidden"
@@ -124,14 +174,8 @@ export function ResizableModal({
         </DrawerContent>
       </Drawer>
     </div>
-    );
-  }
-
-  return (
-    <div className="relative flex min-h-screen flex-col bg-background">
-      <div className="flex-1">
-        {children}
-      </div>
-    </div>
   );
 }
+
+
+
