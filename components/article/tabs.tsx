@@ -107,7 +107,7 @@ const ArrowTabs: React.FC<TabProps> = ({
         {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div
           className={cn(
-            "sticky top-14 z-20 mb-4 -mx-4 px-4 py-2 sm:mx-0 sm:top-0 sm:z-10 sm:rounded-xl sm:px-2",
+            "sticky top-0 z-20 mb-4 -mx-4 px-4 py-2 sm:mx-0 sm:z-10 sm:rounded-xl sm:px-2",
             "bg-background/80 backdrop-blur-xl transition-all supports-backdrop-filter:bg-background/60",
             "border-b border-border/40 sm:border-0"
           )}

@@ -81,7 +81,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
 
   const content = (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-[100dvh] flex-col bg-background">
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
         <Link
           href="/"

@@ -42,16 +42,22 @@ export function ResizableModal({
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
   
-  if (isDesktop && sidebarOpen) {
+  React.useEffect(() => {
+    if (!isDesktop) return;
+    
+    const panel = summaryPanelRef.current;
+    if (panel) {
+      if (sidebarOpen) {
+        panel.expand();
+      } else {
+        panel.collapse();
+      }
+    }
+  }, [sidebarOpen, isDesktop]);
+
+  if (isDesktop) {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-background">
-        {/* Desktop Wrapper Structure */}
-         {/* We need to pass the header and content here somehow or restructure. 
-             The user asked to create a ResizableModal component. 
-             Let's assume this component wraps the main content and handles the sidebar logic.
-         */}
-         
-         {/* This component seems to need to take ownership of the layout splitting. */}
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-none border-0">
             <ResizablePanel defaultSize={75} minSize={30}>
@@ -129,4 +135,3 @@ export function ResizableModal({
     </div>
   );
 }
-
