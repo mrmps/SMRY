@@ -62,42 +62,42 @@ function SelectPopup({
   portal?: boolean;
 }) {
   const content = (
-    <SelectPrimitive.Positioner
-      alignItemWithTrigger={alignItemWithTrigger}
+      <SelectPrimitive.Positioner
+        alignItemWithTrigger={alignItemWithTrigger}
       className="z-9999 select-none"
-      data-slot="select-positioner"
-      sideOffset={sideOffset}
-    >
-      <SelectPrimitive.Popup
-        className="origin-(--transform-origin) transition-[scale,opacity] has-data-[side=none]:scale-100 has-data-starting-style:scale-98 has-data-starting-style:opacity-0 has-data-[side=none]:transition-none"
-        data-slot="select-popup"
-        {...props}
+        data-slot="select-positioner"
+        sideOffset={sideOffset}
       >
-        <SelectPrimitive.ScrollUpArrow
+        <SelectPrimitive.Popup
+          className="origin-(--transform-origin) transition-[scale,opacity] has-data-[side=none]:scale-100 has-data-starting-style:scale-98 has-data-starting-style:opacity-0 has-data-[side=none]:transition-none"
+          data-slot="select-popup"
+          {...props}
+        >
+          <SelectPrimitive.ScrollUpArrow
           className="top-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:top-px before:h-[200%] before:rounded-t-[calc(var(--radius-lg)-1px)] before:bg-linear-to-b before:from-50% before:from-popover"
-          data-slot="select-scroll-up-arrow"
-        >
-          <ChevronUpIcon className="relative size-4" />
-        </SelectPrimitive.ScrollUpArrow>
-        <span className="relative block h-full rounded-lg border bg-popover bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-lg dark:not-in-data-[slot=group]:bg-clip-border">
-          <SelectPrimitive.List
-            className={cn(
-              "max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto p-1",
-              className,
-            )}
-            data-slot="select-list"
+            data-slot="select-scroll-up-arrow"
           >
-            {children}
-          </SelectPrimitive.List>
-        </span>
-        <SelectPrimitive.ScrollDownArrow
+            <ChevronUpIcon className="relative size-4" />
+          </SelectPrimitive.ScrollUpArrow>
+          <span className="relative block h-full rounded-lg border bg-popover bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-lg dark:not-in-data-[slot=group]:bg-clip-border">
+            <SelectPrimitive.List
+              className={cn(
+                "max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto p-1",
+                className,
+              )}
+              data-slot="select-list"
+            >
+              {children}
+            </SelectPrimitive.List>
+          </span>
+          <SelectPrimitive.ScrollDownArrow
           className="bottom-0 z-50 flex h-6 w-full cursor-default items-center justify-center before:pointer-events-none before:absolute before:inset-x-px before:bottom-px before:h-[200%] before:rounded-b-[calc(var(--radius-lg)-1px)] before:bg-linear-to-t before:from-50% before:from-popover"
-          data-slot="select-scroll-down-arrow"
-        >
-          <ChevronDownIcon className="relative size-4" />
-        </SelectPrimitive.ScrollDownArrow>
-      </SelectPrimitive.Popup>
-    </SelectPrimitive.Positioner>
+            data-slot="select-scroll-down-arrow"
+          >
+            <ChevronDownIcon className="relative size-4" />
+          </SelectPrimitive.ScrollDownArrow>
+        </SelectPrimitive.Popup>
+      </SelectPrimitive.Positioner>
   );
 
   return portal ? <SelectPrimitive.Portal>{content}</SelectPrimitive.Portal> : content;

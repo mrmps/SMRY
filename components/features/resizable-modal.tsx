@@ -163,6 +163,7 @@ export function ResizableModal({
                 ipProp={ip}
                 articleResults={articleResults}
                 isOpen={sidebarOpen || false}
+                usePortal={false}
               />
             </div>
           </div>
