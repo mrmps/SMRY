@@ -31,15 +31,13 @@ const CachedArticleSchema = z.object({
   htmlContent: z.string().optional(),
 });
 
-// Metadata schema for lightweight caching
-const ArticleMetadataSchema = z.object({
-  title: z.string(),
-  siteName: z.string(),
-  length: z.number().int().positive(),
-});
-
 type CachedArticle = z.infer<typeof CachedArticleSchema>;
-type ArticleMetadata = z.infer<typeof ArticleMetadataSchema>;
+
+type ArticleMetadata = {
+  title: string;
+  siteName: string;
+  length: number;
+};
 
 /**
  * Get URL with source prefix

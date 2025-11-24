@@ -18,13 +18,6 @@ const CachedArticleSchema = z.object({
   htmlContent: z.string().optional(), // Not available for jina.ai source
 });
 
-// Metadata schema for lightweight caching
-const ArticleMetadataSchema = z.object({
-  title: z.string(),
-  siteName: z.string(),
-  length: z.number().int().positive(),
-});
-
 /**
  * GET /api/jina?url=...
  * Check cache for Jina article
