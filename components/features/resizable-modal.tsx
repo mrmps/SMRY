@@ -14,7 +14,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { useIsClient, useMediaQuery } from "usehooks-ts";
+import { useMediaQuery } from "usehooks-ts";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import SummaryForm from "@/components/features/summary-form";
 import { ArticleResponse, Source } from "@/types/api";
@@ -40,11 +40,11 @@ export function ResizableModal({
   setSidebarOpen,
   children,
 }: ResizableModalProps) {
-  const isClient = useIsClient();
   const isDesktop = useMediaQuery("(min-width: 768px)", {
     defaultValue: false,
     initializeWithValue: false,
   });
+  const drawerContentId = React.useId();
   
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
   const [isAnimating, setIsAnimating] = React.useState(false);
@@ -86,18 +86,6 @@ export function ResizableModal({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [sidebarOpen, isDesktop]);
-
-  // During SSR/hydration, render a consistent layout (mobile-like structure but without the interactive drawer)
-  // to avoid hydration mismatches with Base UI IDs
-  if (!isClient) {
-    return (
-      <div className="relative flex min-h-screen flex-col bg-background">
-        <div className="flex-1">
-            {children}
-        </div>
-      </div>
-    );
-  }
 
   if (isDesktop) {
     return (
@@ -168,7 +156,8 @@ export function ResizableModal({
       </div>
 
       <Drawer open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <DrawerContent 
+        <DrawerContent
+          id={drawerContentId}
           className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900 md:hidden"
           overlayClassName="md:hidden"
         >

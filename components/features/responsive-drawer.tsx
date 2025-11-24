@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useMediaQuery, useIsClient } from "usehooks-ts";
+import { useMediaQuery } from "usehooks-ts";
 import { Button } from "@/components/ui/button";
 import { Sparkles as SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,35 +26,28 @@ interface ResponsiveDrawerProps {
   trigger?: React.ReactElement<Record<string, unknown>>;
 }
 
-export function ResponsiveDrawer({ children, open: controlledOpen, onOpenChange, trigger }: ResponsiveDrawerProps) {
+export function ResponsiveDrawer({
+  children,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
+}: ResponsiveDrawerProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
-  const isClient = useIsClient();
-  const [pendingOpen, setPendingOpen] = React.useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)", {
     defaultValue: false,
     initializeWithValue: false,
   });
+  const contentId = React.useId();
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!isClient) {
-        if (newOpen) setPendingOpen(true);
-        return;
-    }
     if (!isControlled) {
       setInternalOpen(newOpen);
     }
     onOpenChange?.(newOpen);
   };
-
-  React.useEffect(() => {
-    if (isClient && pendingOpen) {
-      setInternalOpen(true);
-      setPendingOpen(false);
-    }
-  }, [isClient, pendingOpen]);
 
   const defaultTrigger = (
     <Button variant="outline" size="sm" className="h-9 shrink-0 pl-4 pr-8 text-sm font-medium transition-all">
@@ -63,46 +56,16 @@ export function ResponsiveDrawer({ children, open: controlledOpen, onOpenChange,
     </Button>
   );
 
-  // Render only the trigger during SSR/hydration to prevent mismatches
-  if (!isClient) {
-    // Clone the trigger to add onClick handler if it's a custom trigger
-    // This allows capturing the click before hydration completes (if React attaches listeners fast enough)
-    // or just renders the button so it looks correct.
-    // For now, we just render the visual part.
-    return (
-        <div className="relative inline-block">
-          {trigger ? React.cloneElement(trigger as React.ReactElement<any>, {
-              onClick: (e: React.MouseEvent) => {
-                  // Preserve existing onClick
-                  if ((trigger as any).props?.onClick) (trigger as any).props.onClick(e);
-                  handleOpenChange(true);
-              }
-          }) : (
-             <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-9 shrink-0 pl-4 pr-8 text-sm font-medium transition-all"
-                onClick={() => handleOpenChange(true)}
-             >
-                <SparklesIcon className="size-4" />
-                Generate Summary
-             </Button>
-          )}
-        </div>
-    );
-  }
-
   if (!isMobile) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <div className="relative inline-block">
-          {trigger ? (
-            <DialogTrigger render={trigger} />
-          ) : (
-            <DialogTrigger render={defaultTrigger} />
-          )}
+          <DialogTrigger render={trigger ?? defaultTrigger} />
         </div>
-        <DialogContent className="flex flex-col overflow-hidden border-l border-zinc-100 bg-zinc-50 p-0 dark:border-zinc-800 dark:bg-zinc-950 sm:max-w-[480px] sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl">
+        <DialogContent
+          id={contentId}
+          className="flex flex-col overflow-hidden border-l border-zinc-100 bg-zinc-50 p-0 dark:border-zinc-800 dark:bg-zinc-950 sm:max-w-[480px] sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl"
+        >
           <div className="mt-0 flex min-h-0 flex-1 flex-col">{children}</div>
         </DialogContent>
       </Dialog>
@@ -138,7 +101,10 @@ export function ResponsiveDrawer({ children, open: controlledOpen, onOpenChange,
           />
         )}
       </div>
-      <DrawerContent className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900">
+      <DrawerContent
+        id={contentId}
+        className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900"
+      >
         <DrawerTitle className="sr-only">Generate Summary</DrawerTitle>
         <div className="flex min-h-0 flex-1 flex-col">
           {children}

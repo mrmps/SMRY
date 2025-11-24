@@ -99,6 +99,7 @@ const ArrowTabs: React.FC<TabProps> = ({
   onSourceChange,
 }) => {
   const results = articleResults;
+  const tabsId = React.useId();
 
   const counts: Record<Source, number | undefined> = {
     "smry-fast": results["smry-fast"].data?.article?.length,
@@ -116,7 +117,11 @@ const ArrowTabs: React.FC<TabProps> = ({
 
   return (
     <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
-      <Tabs value={activeSource} onValueChange={(value) => onSourceChange(value as Source)}>
+      <Tabs
+        id={tabsId}
+        value={activeSource}
+        onValueChange={(value) => onSourceChange(value as Source)}
+      >
         {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div
           className={cn(
