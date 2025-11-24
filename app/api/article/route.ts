@@ -45,7 +45,7 @@ type ArticleMetadata = {
 function getUrlWithSource(source: string, url: string): string {
   switch (source) {
     case "wayback":
-      return `https://web.archive.org/web/0/${url}`;
+      return `https://web.archive.org/web/2/${url}`;
     case "smry-fast":
     case "smry-slow":
     default:

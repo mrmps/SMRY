@@ -68,7 +68,7 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
   const getExternalUrl = (src: string, url: string) => {
     switch (src) {
       case "wayback": 
-        return `https://archive.org/web/2/${encodeURIComponent(url)}`;
+        return `https://web.archive.org/web/2/${encodeURIComponent(url)}`;
       case "jina.ai": 
         return `https://r.jina.ai/${url}`;
       default: 

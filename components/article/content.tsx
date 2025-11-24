@@ -50,7 +50,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     // If not available, construct based on source
     switch (source) {
       case "wayback":
-        return `https://web.archive.org/web/0/${url}`;
+        return `https://web.archive.org/web/2/${url}`;
       case "jina.ai":
         return `https://r.jina.ai/${url}`;
       case "smry-fast":
