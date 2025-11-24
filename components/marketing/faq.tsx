@@ -13,7 +13,7 @@ const faqData = [
     question: "How does paywall bypass work?",
     answer: (
       <>
-        There are two types of paywalls: hard paywalls and soft paywalls. Hard paywalls don&apos;t expose content to the client until you subscribe, so they can&apos;t be bypassed with traditional methods. Most sites use soft paywalls, where content is accessible but blocked by popups or only exposed to certain user agents like Googlebot. SMRY tries multiple methods: fetching from Wayback Machine archives, Google Cache, direct access with Googlebot user agent emulation, and other content sources. We display whichever source responds first, maximizing your chances of accessing content behind paywalls.
+        There are two types of paywalls: hard paywalls and soft paywalls. Hard paywalls don&apos;t expose content to the client until you subscribe, so they can&apos;t be bypassed with traditional methods. Most sites use soft paywalls, where content is accessible but blocked by popups or only exposed to certain user agents like Googlebot. SMRY tries multiple methods: directly fetching from the original URL (smry-fast), a proxy (smry-slow), fetching from Wayback Machine archives, and a Jina.ai reader. We make all requests in parallel to save you time.
       </>
     ),
   },
@@ -29,7 +29,7 @@ const faqData = [
     question: "What sources does SMRY use?",
     answer: (
       <>
-        SMRY tries multiple sources in parallel: Wayback Machine (archive.org) archives, Google Cache, direct fetches with Googlebot user agent emulation, and other content sources. We also show you which source successfully provided the content, so you can try different options if one fails.
+        SMRY tries multiple sources in parallel: directly fetching from the original URL (smry-fast), a proxy (smry-slow), fetching from Wayback Machine archives, and a Jina.ai reader. We make all requests in parallel to save you time. We also show you which source successfully provided the content, so you can try different options if one fails.
       </>
     ),
   },

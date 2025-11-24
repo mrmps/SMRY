@@ -134,6 +134,58 @@ export interface DiffbotArticle {
 }
 
 /**
+ * Manually extract date from DOM if Readability fails
+ */
+function extractDateFromDom(doc: Document): string | null {
+  // Try common meta tags
+  const dateSelectors = [
+    'meta[property="article:published_time"]',
+    'meta[name="article:published_time"]',
+    'meta[property="og:published_time"]',
+    'meta[name="og:published_time"]',
+    'meta[name="date"]',
+    'meta[name="pubdate"]',
+    'meta[name="sailthru.date"]',
+    'meta[name="dc.date"]',
+    'meta[name="dc.date.issued"]',
+    'meta[name="citation_date"]',
+    'meta[name="citation_publication_date"]',
+    'time[datetime]',
+    'time[pubdate]',
+  ];
+
+  for (const selector of dateSelectors) {
+    const element = doc.querySelector(selector);
+    if (element) {
+      const date = element.getAttribute('content') || element.getAttribute('datetime') || element.getAttribute('value');
+      if (date) return date;
+    }
+  }
+
+  // Try LD-JSON
+  const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+  for (const script of scripts) {
+    try {
+      const json = JSON.parse(script.textContent || '{}');
+      if (json.datePublished) return json.datePublished;
+      if (json.dateCreated) return json.dateCreated;
+      
+      // Handle graph format
+      if (json['@graph'] && Array.isArray(json['@graph'])) {
+        for (const item of json['@graph']) {
+          if (item.datePublished) return item.datePublished;
+          if (item.dateCreated) return item.dateCreated;
+        }
+      }
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
+  }
+
+  return null;
+}
+
+/**
  * Extract article from HTML/DOM using Mozilla Readability
  */
 function extractWithReadability(html: string, url: string, debugContext: DebugContext): DiffbotArticle | null {
@@ -223,7 +275,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
             text: validatedArticle.textContent,
             siteName: validatedArticle.siteName || new URL(url).hostname,
             byline: validatedArticle.byline,
-            publishedTime: validatedArticle.publishedTime,
+            publishedTime: validatedArticle.publishedTime || extractDateFromDom(doc),
             htmlContent: html, // Store the original DOM HTML used for extraction
           };
           
@@ -281,7 +333,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         text: validatedArticle.textContent,
         siteName: validatedArticle.siteName || new URL(url).hostname,
         byline: validatedArticle.byline,
-        publishedTime: validatedArticle.publishedTime,
+        publishedTime: validatedArticle.publishedTime || extractDateFromDom(doc),
         htmlContent: html, // Store the original DOM HTML used for extraction
       };
       
@@ -426,13 +478,29 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           // Check if we have complete article data with substantial content
           // Diffbot should return html when it recognizes the article structure
           if (obj.html && obj.text && obj.title && obj.text.length > 100) {
+            let extractedDate = obj.date;
+            
+            // If no date from Diffbot, try to extract from DOM if available
+            if (!extractedDate && (obj.dom || domForFallback)) {
+               try {
+                 const domToUse = obj.dom || domForFallback;
+                 const { VirtualConsole } = require('jsdom');
+                 const virtualConsole = new VirtualConsole();
+                 virtualConsole.on("error", () => {}); 
+                 const doc = new JSDOM(domToUse, { virtualConsole }).window.document;
+                 extractedDate = extractDateFromDom(doc);
+               } catch (e) {
+                 // Ignore errors
+               }
+            }
+
             const completeArticle: DiffbotArticle = {
               title: obj.title,
               html: obj.html,
               text: obj.text,
               siteName: obj.siteName || new URL(url).hostname,
               byline: obj.author || (obj.authors && obj.authors.length > 0 ? obj.authors.map((a: any) => a.name).join(', ') : null),
-              publishedTime: obj.date,
+              publishedTime: extractedDate,
               htmlContent: obj.dom || domForFallback || undefined, // Original page HTML (full DOM)
             };
             
@@ -490,14 +558,30 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         }
         // Try old API format
         else if (data?.html && data?.text && data?.title) {
+          const dom = (data as any).dom || domForFallback;
+          let extractedDate = data.date;
+          
+          // If no date from Diffbot, try to extract from DOM
+          if (!extractedDate && dom) {
+             try {
+               const { VirtualConsole } = require('jsdom');
+               const virtualConsole = new VirtualConsole();
+               virtualConsole.on("error", () => {}); 
+               const doc = new JSDOM(dom, { virtualConsole }).window.document;
+               extractedDate = extractDateFromDom(doc);
+             } catch (e) {
+               // Ignore errors during extra DOM parsing
+             }
+          }
+
           articleData = {
             title: data.title,
             html: data.html,
             text: data.text,
             siteName: new URL(url).hostname,
             byline: data.author,
-            publishedTime: data.date,
-            htmlContent: (data as any).dom || domForFallback, // Original page HTML (full DOM)
+            publishedTime: extractedDate,
+            htmlContent: dom, // Original page HTML (full DOM)
           };
           
           // Validate the extracted article

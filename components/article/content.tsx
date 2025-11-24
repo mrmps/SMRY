@@ -74,7 +74,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               <img
                 src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`}
                 alt=""
-                className="size-5 rounded-sm"
+                className="size-5 rounded-sm dark:bg-white dark:p-0.5"
               />
               <a 
                 href={url}
@@ -110,7 +110,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               </div>
               
               {data.article.publishedTime && (
-                <span>{new Date(data.article.publishedTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <span className="font-medium">
+                  {new Date(data.article.publishedTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               )}
             </div>
           </div>
