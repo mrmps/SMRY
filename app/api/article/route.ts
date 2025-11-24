@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ArticleRequestSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
 import { fetchArticleWithDiffbot } from "@/lib/api/diffbot";
-import { Redis } from "@upstash/redis";
+import { redis } from "@/lib/redis";
+import { compress, decompress } from "@/lib/redis-compression";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { AppError, createNetworkError, createParseError } from "@/lib/errors";
@@ -10,11 +11,6 @@ import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 
 const logger = createLogger('api:article');
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
 
 // Diffbot Article schema - validates the response from fetchArticleWithDiffbot
 const DiffbotArticleSchema = z.object({
@@ -35,7 +31,15 @@ const CachedArticleSchema = z.object({
   htmlContent: z.string().optional(),
 });
 
+// Metadata schema for lightweight caching
+const ArticleMetadataSchema = z.object({
+  title: z.string(),
+  siteName: z.string(),
+  length: z.number().int().positive(),
+});
+
 type CachedArticle = z.infer<typeof CachedArticleSchema>;
+type ArticleMetadata = z.infer<typeof ArticleMetadataSchema>;
 
 /**
  * Get URL with source prefix
@@ -87,7 +91,23 @@ async function saveOrReturnLongerArticle(
     
     const validatedNewArticle = incomingValidation.data;
     
-    const cachedData = await redis.get<CachedArticle>(key);
+    // Helper to save both compressed article and metadata
+    const saveToCache = async (article: CachedArticle) => {
+      const metaKey = `meta:${key}`;
+      const metadata: ArticleMetadata = {
+        title: article.title,
+        siteName: article.siteName,
+        length: article.length,
+      };
+
+      await Promise.all([
+        redis.set(key, compress(article)),
+        redis.set(metaKey, metadata)
+      ]);
+    };
+
+    const rawCachedData = await redis.get(key);
+    const cachedData = decompress(rawCachedData);
 
     if (cachedData) {
       const existingValidation = CachedArticleSchema.safeParse(cachedData);
@@ -100,7 +120,7 @@ async function saveOrReturnLongerArticle(
         }, 'Existing cache validation failed - replacing with new article');
         
         // Save new article since existing is invalid
-        await redis.set(key, validatedNewArticle);
+        await saveToCache(validatedNewArticle);
         logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (replaced invalid)');
         return validatedNewArticle;
       }
@@ -109,13 +129,13 @@ async function saveOrReturnLongerArticle(
 
       // Prioritize HTML content: if existing is missing HTML but new one has it, update cache
       if (!existingArticle.htmlContent && validatedNewArticle.htmlContent) {
-        await redis.set(key, validatedNewArticle);
+        await saveToCache(validatedNewArticle);
         logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (replaced missing HTML)');
         return validatedNewArticle;
       }
 
       if (validatedNewArticle.length > existingArticle.length) {
-        await redis.set(key, validatedNewArticle);
+        await saveToCache(validatedNewArticle);
         logger.debug({ key, newLength: validatedNewArticle.length, oldLength: existingArticle.length }, 'Cached longer article');
         return validatedNewArticle;
       } else {
@@ -124,7 +144,7 @@ async function saveOrReturnLongerArticle(
       }
     } else {
       // No existing article, save the new one
-      await redis.set(key, validatedNewArticle);
+      await saveToCache(validatedNewArticle);
       logger.debug({ key, length: validatedNewArticle.length }, 'Cached article (new)');
       return validatedNewArticle;
     }
@@ -367,7 +387,8 @@ export async function GET(request: NextRequest) {
 
     // Try to get from cache
     try {
-      const cachedArticle = await redis.get<CachedArticle>(cacheKey);
+      const rawCachedArticle = await redis.get(cacheKey);
+      const cachedArticle = decompress(rawCachedArticle);
 
       if (cachedArticle) {
         // Validate cached data
@@ -583,4 +604,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

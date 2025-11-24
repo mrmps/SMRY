@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
+import { redis } from "@/lib/redis";
 
 const _adCopies = [
   {
@@ -94,6 +95,40 @@ async function fetchArticleForMetadata(url: string): Promise<Article | null> {
     // Try sources in order: smry-fast, smry-slow, jina.ai, wayback
     const sources = ["smry-fast", "smry-slow", "jina.ai", "wayback"];
     
+    // 1. Try to check lightweight metadata cache first
+    for (const source of sources) {
+      try {
+        let cacheKey;
+        if (source === 'jina.ai') {
+          cacheKey = `jina.ai:${url}`;
+        } else {
+          cacheKey = `${source}:${url}`;
+        }
+        
+        const metaKey = `meta:${cacheKey}`;
+        const meta = await redis.get<{ title: string; siteName: string; length: number }>(metaKey);
+        
+        if (meta && meta.title) {
+          // Return minimal article object for metadata
+          // We return empty strings for content to satisfy the type but save bandwidth
+          return {
+            title: meta.title,
+            siteName: meta.siteName || null,
+            length: meta.length || 0,
+            byline: null,
+            dir: null,
+            lang: null,
+            content: "",
+            textContent: "",
+          } as Article;
+        }
+      } catch (error) {
+        // Continue to next source/fallback if redis check fails
+        console.warn(`Metadata cache check failed for ${source}`, error);
+      }
+    }
+
+    // 2. Fallback to full fetch if not found in metadata cache
     for (const source of sources) {
       try {
         // Add timeout to prevent hanging

@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import { redis } from "@/lib/redis";
 
 // Cache the response for 60 seconds to minimize Redis hits
 // This means even if 1000 users check status, we only read from Redis once per minute
 export const revalidate = 60;
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
 
 export async function GET() {
   try {

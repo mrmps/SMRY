@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from "ai";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+import { redis } from "@/lib/redis";
 
 // Configure OpenRouter provider
 // OpenRouter provides unified access to 300+ AI models with automatic provider fallback

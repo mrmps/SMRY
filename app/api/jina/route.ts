@@ -3,14 +3,10 @@ import { JinaCacheRequestSchema, JinaCacheUpdateSchema, ArticleResponseSchema, E
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { createLogger } from "@/lib/logger";
-import { Redis } from "@upstash/redis";
+import { redis } from "@/lib/redis";
+import { compress, decompress } from "@/lib/redis-compression";
 
 const logger = createLogger('api:jina');
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
 
 // Cached article schema
 const CachedArticleSchema = z.object({
@@ -20,6 +16,13 @@ const CachedArticleSchema = z.object({
   length: z.number().int().positive(),
   siteName: z.string(),
   htmlContent: z.string().optional(), // Not available for jina.ai source
+});
+
+// Metadata schema for lightweight caching
+const ArticleMetadataSchema = z.object({
+  title: z.string(),
+  siteName: z.string(),
+  length: z.number().int().positive(),
 });
 
 /**
@@ -51,7 +54,8 @@ export async function GET(request: NextRequest) {
     logger.debug({ hostname: new URL(validatedUrl).hostname }, 'Checking Jina cache');
 
     try {
-      const cachedArticle = await redis.get<z.infer<typeof CachedArticleSchema>>(cacheKey);
+      const rawCachedArticle = await redis.get(cacheKey);
+      const cachedArticle = decompress(rawCachedArticle);
 
       if (cachedArticle) {
         const article = CachedArticleSchema.parse(cachedArticle);
@@ -134,15 +138,31 @@ export async function POST(request: NextRequest) {
     logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Updating Jina cache');
 
     try {
-      const existingArticle = await redis.get<z.infer<typeof CachedArticleSchema>>(cacheKey);
+      const rawExistingArticle = await redis.get(cacheKey);
+      const existingArticle = decompress(rawExistingArticle);
 
       const validatedExisting = existingArticle
         ? CachedArticleSchema.parse(existingArticle)
         : null;
 
+      // Helper to save both compressed article and metadata
+      const saveToCache = async (newArticle: z.infer<typeof CachedArticleSchema>) => {
+        const metaKey = `meta:${cacheKey}`;
+        const metadata = {
+          title: newArticle.title,
+          siteName: newArticle.siteName,
+          length: newArticle.length,
+        };
+
+        await Promise.all([
+          redis.set(cacheKey, compress(newArticle)),
+          redis.set(metaKey, metadata)
+        ]);
+      };
+
       // Only update if new article is longer or doesn't exist
       if (!validatedExisting || article.length > validatedExisting.length) {
-        await redis.set(cacheKey, article);
+        await saveToCache(article);
         logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Jina cache updated');
         
         const response = ArticleResponseSchema.parse({
@@ -209,4 +229,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
