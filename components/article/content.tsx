@@ -66,20 +66,52 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     <div className="mt-2">
       <article>
         {/* Header - Title and Links (Only if data available) */}
-        {data && !isError && (
-          <div className="mb-8 space-y-4 border-b border-border pb-6">
-            {/* Metadata Row */}
-            <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
+        {data && !isError && data.article && (
+          <div className="mb-8 space-y-6 border-b border-border pb-6">
+            {/* Top Row: Favicon + Site Name */}
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`}
+                alt=""
+                className="size-5 rounded-sm"
+              />
               <a 
-                href={url} 
-                target="_blank" 
+                href={url}
+                target="_blank"
                 rel="noopener noreferrer"
-                className="uppercase tracking-wide underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground"
+                className="text-sm font-medium tracking-wider text-muted-foreground uppercase hover:text-foreground transition-colors"
               >
-                {new URL(url).hostname.replace('www.', '')}
+                {data.article.siteName || new URL(url).hostname.replace('www.', '')}
               </a>
-              {/* <span>•</span> */}
-              {/* <span>{data.article?.date}</span> */}
+            </div>
+
+            {/* Title */}
+            {data.article.title && (
+              <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl font-serif">
+                {data.article.title}
+              </h1>
+            )}
+
+            {/* Metadata Row */}
+            <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                {data.article.byline && (
+                  <>
+                    <span className="font-medium text-foreground">
+                      {data.article.byline}
+                    </span>
+                    <span>•</span>
+                  </>
+                )}
+                <span>
+                  {Math.ceil((data.article.length || 0) / 5 / 200)} min read
+                </span>
+              </div>
+              
+              {data.article.publishedTime && (
+                <span>{new Date(data.article.publishedTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              )}
             </div>
           </div>
         )}
@@ -151,11 +183,11 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           {isLoading && (
             <div className="mt-6">
               <Skeleton
-                className="mb-4 h-10 rounded-lg bg-zinc-200"
+                className="mb-4 h-10 rounded-lg"
                 style={{ width: "60%" }}
               />
               <Skeleton
-                className="h-32 rounded-lg bg-zinc-200"
+                className="h-32 rounded-lg"
                 style={{ width: "100%" }}
               />
             </div>

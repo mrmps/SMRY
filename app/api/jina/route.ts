@@ -15,6 +15,8 @@ const CachedArticleSchema = z.object({
   textContent: z.string(),
   length: z.number().int().positive(),
   siteName: z.string(),
+  byline: z.string().optional().nullable(),
+  publishedTime: z.string().optional().nullable(),
   htmlContent: z.string().optional(), // Not available for jina.ai source
 });
 
@@ -62,9 +64,10 @@ export async function GET(request: NextRequest) {
             cacheURL: `https://r.jina.ai/${validatedUrl}`,
             article: {
               ...article,
-              byline: "",
+              byline: article.byline || "",
               dir: "",
               lang: "",
+              publishedTime: article.publishedTime || null,
               htmlContent: article.content, // Use markdown-converted HTML as htmlContent
             },
             status: "success",
@@ -145,6 +148,8 @@ export async function POST(request: NextRequest) {
           title: newArticle.title,
           siteName: newArticle.siteName,
           length: newArticle.length,
+          byline: newArticle.byline,
+          publishedTime: newArticle.publishedTime,
         };
 
         await Promise.all([
@@ -163,9 +168,10 @@ export async function POST(request: NextRequest) {
           cacheURL: `https://r.jina.ai/${url}`,
           article: {
             ...article,
-            byline: "",
+            byline: article.byline || "",
             dir: "",
             lang: "",
+            publishedTime: article.publishedTime || null,
             htmlContent: article.content, // Use markdown-converted HTML as htmlContent
           },
           status: "success",
@@ -180,9 +186,10 @@ export async function POST(request: NextRequest) {
           cacheURL: `https://r.jina.ai/${url}`,
           article: {
             ...validatedExisting,
-            byline: "",
+            byline: validatedExisting.byline || "",
             dir: "",
             lang: "",
+            publishedTime: validatedExisting.publishedTime || null,
             htmlContent: validatedExisting.content, // Use markdown-converted HTML as htmlContent
           },
           status: "success",
@@ -199,9 +206,10 @@ export async function POST(request: NextRequest) {
         cacheURL: `https://r.jina.ai/${url}`,
         article: {
           ...article,
-          byline: "",
+          byline: article.byline || "",
           dir: "",
           lang: "",
+          publishedTime: article.publishedTime || null,
           htmlContent: article.content, // Use markdown-converted HTML as htmlContent
         },
         status: "success",

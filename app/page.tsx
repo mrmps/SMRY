@@ -13,10 +13,11 @@ import Link from "next/link";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
-import {PaperAirplaneIcon} from "@heroicons/react/24/solid"
+import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
@@ -56,12 +57,12 @@ export default function Home() {
           target="_blank"
           rel="noreferrer"
         >
-          <Button variant="ghost" size="sm" className="text-stone-500 hover:text-stone-900">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
             Report Bug
           </Button>
         </a>
       </div>
-      <main className="flex min-h-screen flex-col items-center bg-[#FAFAFA] p-4 pt-20 text-black sm:pt-24 md:p-24">
+      <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
           <GitHubStarsButton
             username="mrmps"
@@ -69,86 +70,87 @@ export default function Home() {
             formatted={true}
             className="mb-10 mr-4"
           />
-          <h1 className="text-center text-4xl font-semibold text-black md:text-5xl">
+          <h1 className="text-center text-4xl font-semibold text-foreground md:text-5xl">
             <Image
               src="/logo.svg"
               width={280}
               height={280}
               alt={"smry logo"}
-              className="-ml-4"
+              className="-ml-4 dark:invert"
               priority
             />
           </h1>
 
           <form onSubmit={handleSubmit} className="mt-6 w-full">
-            <div
-              className={`${
-                urlError ? "border-red-500" : ""
-              } flex overflow-hidden rounded-lg border border-[#E5E5E5] bg-white shadow-sm focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-200 focus-within:ring-offset-0`}
-            >
-              <input
-                className="w-full rounded-l-lg bg-transparent p-4 py-3 shadow-lg focus:outline-none"
-                autoFocus
-                autoComplete="off"
-                placeholder="https://example.com/page"
+            <InputGroup className={clsx(
+              "shadow-sm focus-within:ring-4 focus-within:ring-purple-200 dark:focus-within:ring-purple-900",
+              urlError && "border-red-500 ring-red-200"
+            )}>
+              <InputGroupInput
                 name="url"
+                placeholder="https://example.com/page"
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
                   if (urlError) setUrlError(false);
                 }}
+                autoFocus
+                autoComplete="off"
+                aria-invalid={urlError}
+                className="h-14 border-0 bg-transparent text-lg shadow-none focus-visible:ring-0"
               />
-              <button
-                className="cursor-pointer rounded-r-lg px-4 py-2 font-mono transition-all duration-300 ease-in-out"
-                type="submit"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-              >
-                {/* Icon here */}
-
-                <div className="hidden sm:block">
-                  <CornerDownLeft
-                    className={clsx(
-                      "size-4 transition-transform duration-300 ease-in-out",
-                      {
-                        "text-black scale-110": isHovered,
-                        "text-gray-800": isValidUrl(url),
-                        "text-gray-400": !isValidUrl(url),
-                      }
-                    )}
-                  />
-                </div>
-                <div className="sm:hidden">
-                  <PaperAirplaneIcon
-                    className={clsx(
-                      "size-5 transition-transform duration-300 ease-in-out",
-                      {
-                        "text-black scale-110": isHovered,
-                        "text-purple-500": isValidUrl(url),
-                        "text-gray-400": !isValidUrl(url),
-                      }
-                    )}
-                  />
-                </div>
-              </button>
-            </div>
+              <InputGroupAddon align="inline-end" className="pr-1">
+                <Button
+                  className="h-12 rounded-md px-4 font-mono transition-all duration-300 ease-in-out"
+                  type="submit"
+                  variant="ghost"
+                  onMouseEnter={() => setIsHovered(true)}
+                  onMouseLeave={() => setIsHovered(false)}
+                >
+                  <div className="hidden sm:block">
+                    <CornerDownLeft
+                      className={clsx(
+                        "size-5 transition-transform duration-300 ease-in-out",
+                        {
+                          "text-foreground scale-110": isHovered,
+                          "text-foreground/80": isValidUrl(url),
+                          "text-muted-foreground": !isValidUrl(url),
+                        }
+                      )}
+                    />
+                  </div>
+                  <div className="sm:hidden">
+                    <PaperAirplaneIcon
+                      className={clsx(
+                        "size-6 transition-transform duration-300 ease-in-out",
+                        {
+                          "text-foreground scale-110": isHovered,
+                          "text-purple-500": isValidUrl(url),
+                          "text-muted-foreground": !isValidUrl(url),
+                        }
+                      )}
+                    />
+                  </div>
+                </Button>
+              </InputGroupAddon>
+            </InputGroup>
           </form>
-          <h2 className="mt-4 w-full text-center text-stone-700">
+          <h2 className="mt-4 w-full text-center text-muted-foreground">
             Bypass paywalls and get instant{" "}
             <Link href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091">
-              <span className="transition-border border-b border-gray-400 duration-300 hover:border-black">
+              <span className="transition-border border-b border-muted-foreground duration-300 hover:border-foreground">
                 summaries
               </span>
             </Link>
             .
           </h2>
-          <p className="mt-2 text-center text-sm text-stone-500">
+          <p className="mt-2 text-center text-sm text-muted-foreground">
             by{" "}
             <a
               href="https://x.com/michael_chomsky"
               target="_blank"
               rel="noopener noreferrer"
-              className="border-b border-stone-300 transition-colors hover:text-stone-700"
+              className="border-b border-muted-foreground transition-colors hover:text-foreground"
             >
               @michael_chomsky
             </a>
@@ -165,16 +167,16 @@ export default function Home() {
           )}
 
           <div className="mx-auto mt-12 max-w-2xl space-y-4 text-center">
-            <p className="text-[15px] leading-relaxed text-stone-600">
+            <p className="text-[15px] leading-relaxed text-muted-foreground">
               You can also use smry by prepending{" "}
-              <code className="rounded bg-yellow-200 px-2 py-0.5 font-mono text-xs text-stone-700">
+              <code className="rounded bg-yellow-200 px-2 py-0.5 font-mono text-xs text-stone-700 dark:bg-yellow-900 dark:text-stone-200">
                 https://smry.ai/
               </code>{" "}
               to any URL.
             </p>
             
-            <div className="hidden border-t border-stone-200 pt-2 sm:block">
-              <p className="text-sm leading-relaxed text-stone-600">
+            <div className="hidden border-t border-border pt-2 sm:block">
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 For quick access, bookmark this <BookmarkletLink />. Drag it to your bookmarks bar, 
                 then click it on any page to open in SMRY.
               </p>
@@ -186,8 +188,8 @@ export default function Home() {
         <FAQ />
       </main>
 
-      <div className="container flex-1 bg-[#FAFAFA]">
-        <SiteFooter className="border-t" />
+      <div className="container flex-1 bg-background">
+        <SiteFooter className="border-t border-border" />
       </div>
     </>
   );

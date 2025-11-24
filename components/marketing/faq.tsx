@@ -73,11 +73,11 @@ const faqData = [
         <ol className="mt-3 list-decimal space-y-2 pl-5">
           <li>
             Prepend{" "}
-            <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs text-neutral-800">
+            <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs text-neutral-800 dark:bg-yellow-900 dark:text-neutral-200">
               http://smry.ai/
             </code>{" "}
             to the article you&apos;re reading (for example:{" "}
-            <code className="font-mono text-xs text-neutral-800">
+            <code className="font-mono text-xs text-neutral-800 dark:text-neutral-200">
               http://smry.ai/https://www.wsj.com/...
             </code>
             ). This instantly opens the cleaned article and the summary builder.
@@ -101,38 +101,38 @@ const faqData = [
 export function FAQ() {
   return (
     <div className="mx-auto mt-12 w-full max-w-3xl">
-      <h2 className="mb-8 text-center text-2xl font-semibold text-neutral-800">
+      <h2 className="mb-8 text-center text-2xl font-semibold text-foreground">
         Frequently Asked Questions
       </h2>
       <Accordion type="single" collapsible className="w-full">
         {faqData.map((item, index) => (
           <AccordionItem key={index} value={`item-${index}`}>
-            <AccordionTrigger className="text-left font-medium text-neutral-800">
+            <AccordionTrigger className="text-left font-medium text-foreground">
               {item.question}
             </AccordionTrigger>
-            <AccordionContent className="text-neutral-600">
+            <AccordionContent className="text-muted-foreground">
               {item.answer}
             </AccordionContent>
           </AccordionItem>
         ))}
       </Accordion>
       <div className="mt-12 space-y-2 text-center">
-        <p className="text-neutral-600">
+        <p className="text-muted-foreground">
           Have feedback or questions?{" "}
           <Link
             href="https://smryai.userjot.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-purple-600 hover:underline"
+            className="font-medium text-purple-600 hover:underline dark:text-purple-400"
           >
             Share your thoughts
           </Link>
         </p>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           For sponsorships and inquiries:{" "}
           <a
             href="mailto:contact@smry.ai"
-            className="font-medium text-purple-600 hover:underline"
+            className="font-medium text-purple-600 hover:underline dark:text-purple-400"
           >
             contact@smry.ai
           </a>

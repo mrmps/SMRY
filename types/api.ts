@@ -24,13 +24,14 @@ export const DebugContextSchema = z.object({
 // Article schema
 export const ArticleSchema = z.object({
   title: z.string(),
-  byline: z.string().nullable(),
-  dir: z.string().nullable(),
-  lang: z.string().nullable(),
+  byline: z.string().nullable().optional(),
+  dir: z.string().nullable().optional(),
+  lang: z.string().nullable().optional(),
   content: z.string(),
   textContent: z.string(),
   length: z.number().int().nonnegative(),
-  siteName: z.string().nullable(),
+  siteName: z.string().nullable().optional(),
+  publishedTime: z.string().nullable().optional(),
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
 });
 export type Article = z.infer<typeof ArticleSchema>;
@@ -94,6 +95,8 @@ export const JinaCacheUpdateSchema = z.object({
     textContent: z.string(),
     length: z.number().int().positive(),
     siteName: z.string(),
+    byline: z.string().optional().nullable(),
+    publishedTime: z.string().optional().nullable(),
     htmlContent: z.string().optional(),
   }),
 });

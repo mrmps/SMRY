@@ -73,6 +73,8 @@ const DiffbotArticleSchema = z.object({
   html: z.string().min(1, "Article HTML content cannot be empty"),
   text: z.string().min(100, "Article text must be at least 100 characters"),
   siteName: z.string().min(1, "Site name cannot be empty"),
+  byline: z.string().optional().nullable(),
+  publishedTime: z.string().optional().nullable(),
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
 });
 
@@ -82,6 +84,8 @@ const ReadabilityArticleSchema = z.object({
   content: z.string(),
   textContent: z.string(),
   siteName: z.string().optional().nullable(),
+  byline: z.string().optional().nullable(),
+  publishedTime: z.string().optional().nullable(),
 }).passthrough();
 
 /**
@@ -124,6 +128,8 @@ export interface DiffbotArticle {
   html: string;
   text: string;
   siteName: string;
+  byline?: string | null;
+  publishedTime?: string | null;
   htmlContent?: string; // Original page HTML (full DOM)
 }
 
@@ -216,6 +222,8 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
             html: validatedArticle.content,
             text: validatedArticle.textContent,
             siteName: validatedArticle.siteName || new URL(url).hostname,
+            byline: validatedArticle.byline,
+            publishedTime: validatedArticle.publishedTime,
             htmlContent: html, // Store the original DOM HTML used for extraction
           };
           
@@ -272,6 +280,8 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         html: validatedArticle.content,
         text: validatedArticle.textContent,
         siteName: validatedArticle.siteName || new URL(url).hostname,
+        byline: validatedArticle.byline,
+        publishedTime: validatedArticle.publishedTime,
         htmlContent: html, // Store the original DOM HTML used for extraction
       };
       
@@ -421,6 +431,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
               html: obj.html,
               text: obj.text,
               siteName: obj.siteName || new URL(url).hostname,
+              byline: obj.author || (obj.authors && obj.authors.length > 0 ? obj.authors.map((a: any) => a.name).join(', ') : null),
+              publishedTime: obj.date,
               htmlContent: obj.dom || domForFallback || undefined, // Original page HTML (full DOM)
             };
             
@@ -483,6 +495,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             html: data.html,
             text: data.text,
             siteName: new URL(url).hostname,
+            byline: data.author,
+            publishedTime: data.date,
             htmlContent: (data as any).dom || domForFallback, // Original page HTML (full DOM)
           };
           

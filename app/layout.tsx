@@ -4,6 +4,7 @@ import "./globals.css";
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { QueryProvider } from "@/components/shared/query-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Smry | AI Summarizer and Free Paywall Remover",
@@ -40,24 +41,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-[#FAFAFA]">
+    <html lang="en" className="bg-background dark:bg-background" suppressHydrationWarning>
       {/* <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head> */}
       <body
-        className={`${GeistSans.className} bg-[#FAFAFA]`}
+        className={`${GeistSans.className} bg-background text-foreground`}
         // style={{background: "#E5EDF0"}}
         // style={{
         //   background:
         //     "radial-gradient(circle at 18.7% 37.8%, rgb(250, 250, 250) 0%, rgb(225, 234, 238) 90%);",
         // }}
       >
-        <GoogleAnalytics gaId="G-RFC55FX414" />
-        <NuqsAdapter>
-          <QueryProvider>
-            {children}
-          </QueryProvider>
-        </NuqsAdapter>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <GoogleAnalytics gaId="G-RFC55FX414" />
+          <NuqsAdapter>
+            <QueryProvider>
+              {children}
+            </QueryProvider>
+          </NuqsAdapter>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -4,12 +4,13 @@ import React from "react";
 import ArrowTabs from "@/components/article/tabs";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import { Bug as BugIcon, Sparkles as SparklesIcon } from "lucide-react";
+import { Bug as BugIcon, Sparkles as SparklesIcon, Sun, Moon, Laptop } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import ShareButton, { ShareContent } from "@/components/features/share-button";
 import { buttonVariants, Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 import {
   Drawer,
   DrawerContent,
@@ -26,6 +27,7 @@ import {
 } from "nuqs";
 import { Source, SOURCES } from "@/types/api";
 import { ResizableModal } from "./resizable-modal";
+import { ModeToggle } from "@/components/shared/mode-toggle";
 
 interface ProxyContentProps {
   url: string;
@@ -37,6 +39,7 @@ interface ProxyContentProps {
 
 export function ProxyContent({ url, ip }: ProxyContentProps) {
   const { results } = useArticles(url);
+  const { theme, setTheme } = useTheme();
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
@@ -81,21 +84,21 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
 
   const content = (
-    <div className="flex h-[100dvh] flex-col bg-background">
+    <div className="flex h-dvh flex-col bg-background">
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
-        <Link
-          href="/"
-          className="flex items-center gap-2 transition-opacity hover:opacity-80"
-        >
-          <Image
-            src="/logo.svg"
-            width={80}
-            height={80}
-            alt="smry logo"
-            className="h-6 w-auto"
-            priority
-          />
-        </Link>
+          <Link
+            href="/"
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
+            <Image
+              src="/logo.svg"
+              width={80}
+              height={80}
+              alt="smry logo"
+              className="h-6 w-auto dark:invert"
+              priority
+            />
+          </Link>
 
         {/* Desktop Control Pills - Hidden on Mobile */}
         <div className="hidden md:flex items-center p-0.5 bg-accent rounded-lg absolute left-1/2 -translate-x-1/2">
@@ -137,6 +140,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
         <div className="flex items-center gap-2">
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-1">
+            <ModeToggle />
             <Button
               variant={sidebarOpen ? "secondary" : "outline"}
               size="sm"
@@ -241,6 +245,42 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                         className="w-full"
                       >
                         Iframe
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Appearance Section */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Appearance
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        variant={theme === "light" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setTheme("light")}
+                        className="w-full"
+                      >
+                        <Sun className="mr-2 size-4" />
+                        Light
+                      </Button>
+                      <Button
+                        variant={theme === "dark" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setTheme("dark")}
+                        className="w-full"
+                      >
+                        <Moon className="mr-2 size-4" />
+                        Dark
+                      </Button>
+                      <Button
+                        variant={theme === "system" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setTheme("system")}
+                        className="w-full"
+                      >
+                        <Laptop className="mr-2 size-4" />
+                        System
                       </Button>
                     </div>
                   </div>

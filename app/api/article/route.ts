@@ -18,6 +18,8 @@ const DiffbotArticleSchema = z.object({
   html: z.string().min(1, "Article HTML content cannot be empty"),
   text: z.string().min(1, "Article text content cannot be empty"),
   siteName: z.string().min(1, "Site name cannot be empty"),
+  byline: z.string().optional().nullable(),
+  publishedTime: z.string().optional().nullable(),
   htmlContent: z.string().optional(),
 });
 
@@ -28,6 +30,8 @@ const CachedArticleSchema = z.object({
   textContent: z.string(),
   length: z.number().int().positive(),
   siteName: z.string(),
+  byline: z.string().optional().nullable(),
+  publishedTime: z.string().optional().nullable(),
   htmlContent: z.string().optional(),
 });
 
@@ -37,6 +41,8 @@ type ArticleMetadata = {
   title: string;
   siteName: string;
   length: number;
+  byline?: string | null;
+  publishedTime?: string | null;
 };
 
 /**
@@ -96,6 +102,8 @@ async function saveOrReturnLongerArticle(
         title: article.title,
         siteName: article.siteName,
         length: article.length,
+        byline: article.byline,
+        publishedTime: article.publishedTime,
       };
 
       await Promise.all([
@@ -216,6 +224,8 @@ async function fetchArticleWithSmryFast(
           return parsed.siteName || 'unknown';
         }
       })(),
+      byline: parsed.byline,
+      publishedTime: parsed.publishedTime,
       htmlContent: originalHtml, // Original page HTML
     };
 
@@ -305,6 +315,8 @@ async function fetchArticleWithDiffbotWrapper(
       textContent: validatedArticle.text,
       length: validatedArticle.text.length,
       siteName: validatedArticle.siteName,
+      byline: validatedArticle.byline,
+      publishedTime: validatedArticle.publishedTime,
       htmlContent: validatedArticle.htmlContent,
     };
 
@@ -413,13 +425,14 @@ export async function GET(request: NextRequest) {
               cacheURL: urlWithSource,
               article: {
                 title: article.title,
-                byline: "",
+                byline: article.byline || null,
                 dir: "",
                 lang: "",
                 content: article.content,
                 textContent: article.textContent,
                 length: article.length,
                 siteName: article.siteName,
+                publishedTime: article.publishedTime || null,
                 htmlContent: article.htmlContent,
               },
               status: "success",
@@ -495,13 +508,14 @@ export async function GET(request: NextRequest) {
           cacheURL,
           article: {
             title: article.title,
-            byline: "",
+            byline: article.byline || null,
             dir: "",
             lang: "",
             content: article.content,
             textContent: article.textContent,
             length: article.length,
             siteName: article.siteName,
+            publishedTime: article.publishedTime || null,
             htmlContent: article.htmlContent,
           },
           status: "success",
@@ -517,13 +531,14 @@ export async function GET(request: NextRequest) {
         cacheURL,
         article: {
           title: validatedSavedArticle.title,
-          byline: "",
+          byline: validatedSavedArticle.byline || null,
           dir: "",
           lang: "",
           content: validatedSavedArticle.content,
           textContent: validatedSavedArticle.textContent,
           length: validatedSavedArticle.length,
           siteName: validatedSavedArticle.siteName,
+          publishedTime: validatedSavedArticle.publishedTime || null,
           htmlContent: validatedSavedArticle.htmlContent,
         },
         status: "success",
@@ -564,13 +579,14 @@ export async function GET(request: NextRequest) {
         cacheURL,
         article: {
           title: validatedArticle.title,
-          byline: "",
+          byline: validatedArticle.byline || null,
           dir: "",
           lang: "",
           content: validatedArticle.content,
           textContent: validatedArticle.textContent,
           length: validatedArticle.length,
           siteName: validatedArticle.siteName,
+          publishedTime: validatedArticle.publishedTime || null,
           htmlContent: validatedArticle.htmlContent,
         },
         status: "success",

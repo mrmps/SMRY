@@ -10,6 +10,7 @@ export interface JinaArticle {
   textContent: string;
   length: number;
   siteName: string;
+  publishedTime?: string | null;
 }
 
 export interface JinaError {
@@ -55,6 +56,7 @@ export async function fetchJinaArticle(
     
     // Find the URL Source line
     let urlSourceLine = "";
+    let publishedTime = null;
     let contentStartIndex = 4; // Default
     
     for (let i = 0; i < Math.min(10, lines.length); i++) {
@@ -65,6 +67,7 @@ export async function fetchJinaArticle(
         
         // Check if there's a Published Time line
         if (lines[i + 2]?.startsWith("Published Time:")) {
+          publishedTime = lines[i + 2].replace("Published Time: ", "").trim();
           contentStartIndex = i + 4;
         }
         
@@ -89,6 +92,7 @@ export async function fetchJinaArticle(
       textContent: mainContent,
       length: mainContent.length,
       siteName: extractHostname(urlSource),
+      publishedTime: publishedTime,
     };
 
     return { article };
