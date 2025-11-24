@@ -1,16 +1,17 @@
 "use client";
 
 import React from "react";
-import ArrowTabs from "@/components/article/tabs";
+import dynamic from "next/dynamic";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { Bug as BugIcon, Sparkles as SparklesIcon, Sun, Moon, Laptop, Share2 as ShareIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import ShareButton, { ShareContent } from "@/components/features/share-button";
+import { ShareContent } from "@/components/features/share-button";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Drawer,
   DrawerContent,
@@ -27,7 +28,42 @@ import {
 } from "nuqs";
 import { Source, SOURCES } from "@/types/api";
 import { ResizableModal } from "./resizable-modal";
-import { ModeToggle } from "@/components/shared/mode-toggle";
+
+// Dynamically import Base UI consuming components to prevent SSR hydration mismatch
+const ModeToggle = dynamic(() => import("@/components/shared/mode-toggle").then(mod => mod.ModeToggle), { 
+  ssr: false,
+  loading: () => <div className="size-9" /> 
+});
+
+const ShareButton = dynamic(() => import("@/components/features/share-button"), { 
+  ssr: false,
+  loading: () => <div className="h-8 w-16" /> 
+});
+
+const ArrowTabs = dynamic(() => import("@/components/article/tabs"), {
+  ssr: false,
+  loading: () => (
+    <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
+      <div className="w-full overflow-x-auto sm:overflow-visible pb-2 pt-1">
+         <div className="flex h-auto w-full sm:w-max items-center justify-between sm:justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
+            <Skeleton className="h-9 w-24 rounded-xl" />
+            <Skeleton className="h-9 w-24 rounded-xl" />
+            <Skeleton className="h-9 w-24 rounded-xl" />
+            <Skeleton className="h-9 w-24 rounded-xl" />
+         </div>
+      </div>
+      <div className="mt-6 space-y-6">
+        <Skeleton className="h-12 w-3/4" />
+        <Skeleton className="h-96 w-full" />
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-[90%]" />
+        </div>
+      </div>
+    </div>
+  )
+});
 
 interface ProxyContentProps {
   url: string;

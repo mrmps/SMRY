@@ -7,6 +7,7 @@ import { ArticleContent } from "./content";
 import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
@@ -25,7 +26,8 @@ const MOBILE_SOURCE_LABELS: Record<Source, string> = {
 const EnhancedTabsList: React.FC<{
   sources: readonly Source[];
   counts: Record<Source, number | undefined>;
-}> = ({ sources, counts }) => {
+  loadingStates: Record<Source, boolean>;
+}> = ({ sources, counts, loadingStates }) => {
   // Helper to format word count minimally
   const formatWordCount = (count: number | undefined): string | null => {
     if (count === undefined || count === null) return null;
@@ -41,6 +43,7 @@ const EnhancedTabsList: React.FC<{
       <TabsPrimitive.List className="flex h-auto w-full sm:w-max items-center justify-between sm:justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
         {sources.map((source, index) => {
           const wordCount = formatWordCount(counts[source]);
+          const isLoading = loadingStates[source];
           
           return (
             <TabsPrimitive.Tab 
@@ -57,7 +60,10 @@ const EnhancedTabsList: React.FC<{
             >
               <span className="hidden sm:inline">{SOURCE_LABELS[source]}</span>
               <span className="inline sm:hidden">{MOBILE_SOURCE_LABELS[source]}</span>
-              {wordCount && (
+              
+              {isLoading ? (
+                <Skeleton className="h-4 w-8 sm:h-5 sm:w-10 rounded-md sm:rounded-lg" />
+              ) : wordCount && (
                 <span
                   className={cn(
                     "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
@@ -101,6 +107,13 @@ const ArrowTabs: React.FC<TabProps> = ({
     "jina.ai": results["jina.ai"].data?.article?.length,
   };
 
+  const loadingStates: Record<Source, boolean> = {
+    "smry-fast": results["smry-fast"].isLoading,
+    "smry-slow": results["smry-slow"].isLoading,
+    "wayback": results.wayback.isLoading,
+    "jina.ai": results["jina.ai"].isLoading,
+  };
+
   return (
     <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
       <Tabs value={activeSource} onValueChange={(value) => onSourceChange(value as Source)}>
@@ -115,6 +128,7 @@ const ArrowTabs: React.FC<TabProps> = ({
           <EnhancedTabsList
             sources={SOURCES}
             counts={counts}
+            loadingStates={loadingStates}
           />
         </div>
         

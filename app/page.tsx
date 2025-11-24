@@ -180,7 +180,7 @@ export default function Home() {
         <FAQ />
       </main>
 
-      <div className="container flex-1 bg-background">
+      <div className="bg-background">
         <SiteFooter className="border-t border-border" />
       </div>
     </>

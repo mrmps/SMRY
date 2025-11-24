@@ -7,16 +7,16 @@ import { Button } from "@/components/ui/button";
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
   return (
     <footer className={cn(className)}>
-      <div className="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
-        <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <Image
+      <div className="container flex flex-col items-center gap-6 py-10 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8 md:py-6">
+        <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:gap-4 md:text-left">
+          <Image
             src="/logo.svg"
             width={100}
-            height={100}
+            height={30}
             alt={"smry logo"}
-            className="-mb-1 dark:invert"
+            className="-mb-1 dark:invert md:ml-10"
           />
-          <p className="text-center text-sm leading-loose md:text-left">
+          <p className="text-center text-sm md:text-left">
             Built by{" "}
             <a
               href={siteConfig.links.twitter}
@@ -47,7 +47,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             .
           </p>
         </div>
-        <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
+        <div className="flex flex-col items-center gap-2 text-center md:flex-row md:justify-end md:gap-4 md:text-right">
           <a
             href="https://smryai.userjot.com/"
             target="_blank"
@@ -57,7 +57,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
               Report Bug / Feedback
             </Button>
           </a>
-          <p className="text-center text-xs leading-loose text-zinc-400 dark:text-zinc-600 md:text-left">
+          <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 md:text-right">
             <a
               href="https://logo.dev"
               target="_blank"

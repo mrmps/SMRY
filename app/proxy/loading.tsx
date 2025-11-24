@@ -2,63 +2,68 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <div className="mt-20">
-      <div className="px-4 py-8 md:py-12">
-        <div className="mx-auto max-w-prose space-y-10">
-          <main className="prose">
-            {/* Logo and Header Skeleton */}
-            <div className="tokens visible my-10 flex border-collapse list-none overflow-auto rounded-lg border border-zinc-100 bg-[#f9f9fb] text-left text-base font-normal text-[#111111] shadow-sm">
-              <div className="grid w-full p-6">
-                <Skeleton className="size-24 rounded-full" />
-                <Skeleton className="my-2 h-8 w-3/4" /> {/* Title */}
-                <Skeleton className="my-1 h-6 w-2/3" /> {/* Subtitle */}
-              </div>
-            </div>
-
-            {/* Navbar Skeleton */}
-            <div className="justify-left my-4 flex gap-1 rounded-md border border-zinc-100 p-2">
-              <Skeleton className="h-12 w-full" />
-            </div>
-
-            <div className="article-skeleton">
-              {/* Article Title */}
-              <Skeleton className="my-4 h-16 w-2/3" />
-
-              <div className="ml-4 mt-8 flex flex-row space-x-4">
-                {/* Skeleton for the first icon-text pair */}
-                <div className="flex items-center space-x-1.5">
-                  <Skeleton className="size-4 rounded-full" />{" "}
-                  {/* Globe Icon Placeholder */}
-                  <Skeleton className="h-4 w-24 rounded" />{" "}
-                  {/* URL Text Placeholder */}
-                </div>
-
-                {/* Skeleton for the second icon-text pair */}
-                <div className="flex items-center space-x-1.5">
-                  <Skeleton className="size-4 rounded-full" />{" "}
-                  {/* Link Icon Placeholder */}
-                  <Skeleton className="h-4 w-24 rounded" />{" "}
-                  {/* Source Text Placeholder */}
-                </div>
-              </div>
-
-              {/* Hero Image */}
-              <Skeleton className=" my-8 h-96 w-full" />
-
-              {/* Article Content */}
-              <div className="article-content">
-                {/* Introduction Section */}
-                <Skeleton className="my-4 h-6 w-2/3" />
-                <Skeleton className="my-4 h-6 w-full" />
-
-                {/* Main Content Section */}
-                <Skeleton className="my-4 h-6 w-full" />
-                <Skeleton className="my-4 h-6 w-full" />
-              </div>
-            </div>
-          </main>
+    <div className="flex h-dvh flex-col bg-background">
+      {/* Header Skeleton */}
+      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
+        {/* Logo Placeholder */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-6 w-20" />
         </div>
-      </div>
+
+        {/* Desktop Pills Placeholder */}
+        <div className="hidden md:flex items-center p-0.5 bg-accent rounded-lg absolute left-1/2 -translate-x-1/2">
+          <Skeleton className="h-7 w-[200px]" />
+        </div>
+
+        {/* Actions Placeholder */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-8 rounded-md" />
+          <Skeleton className="hidden md:block h-8 w-24 rounded-md" />
+        </div>
+      </header>
+
+      {/* Main Content Skeleton */}
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto bg-card">
+          <div className="mx-auto max-w-3xl p-6 min-h-[calc(100vh-3.5rem)]">
+            {/* Tabs/Source Selector Skeleton */}
+            <div className="sticky top-0 z-20 mb-8">
+               <Skeleton className="h-10 w-full sm:w-[400px] rounded-xl" />
+            </div>
+
+            {/* Article Content Skeleton */}
+            <div className="space-y-8 animate-pulse">
+              {/* Title Area */}
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-3/4 sm:w-2/3" />
+                <div className="flex gap-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+
+              {/* Hero Image Placeholder */}
+              <Skeleton className="w-full aspect-video rounded-lg" />
+
+              {/* Text Content */}
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-[90%]" />
+                <Skeleton className="h-4 w-[95%]" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+              
+              <div className="space-y-4 pt-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-[92%]" />
+                <Skeleton className="h-4 w-[98%]" />
+                <Skeleton className="h-4 w-[85%]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
