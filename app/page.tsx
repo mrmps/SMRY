@@ -17,7 +17,7 @@ import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ModeToggle } from "@/components/shared/mode-toggle";
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
@@ -52,15 +52,7 @@ export default function Home() {
   return (
     <>
       <div className="absolute right-4 top-4 z-50 md:right-8 md:top-8">
-        <a
-          href="https://smryai.userjot.com/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-            Report Bug
-          </Button>
-        </a>
+        <ModeToggle />
       </div>
       <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
@@ -82,10 +74,14 @@ export default function Home() {
           </h1>
 
           <form onSubmit={handleSubmit} className="mt-6 w-full">
-            <InputGroup className={clsx(
-              "shadow-sm focus-within:ring-4 focus-within:ring-purple-200 dark:focus-within:ring-purple-900"
+            <div className={clsx(
+              "flex overflow-hidden rounded-lg border shadow-sm transition-all duration-300",
+              "bg-background",
+              "focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-200 focus-within:ring-offset-0",
+              urlError ? "border-red-500 ring-red-200" : "border-input"
             )}>
-              <InputGroupInput
+              <input
+                className="w-full bg-transparent p-4 py-3 text-lg placeholder:text-muted-foreground focus:outline-none"
                 name="url"
                 placeholder="https://example.com/page"
                 value={url}
@@ -96,43 +92,40 @@ export default function Home() {
                 autoFocus
                 autoComplete="off"
                 aria-invalid={urlError}
-                className="h-14 border-0 bg-transparent text-lg shadow-none focus-visible:ring-0"
               />
-              <InputGroupAddon align="inline-end" className="pr-1">
-                <Button
-                  className="h-12 rounded-md px-4 font-mono transition-all duration-300 ease-in-out"
-                  type="submit"
-                  variant="ghost"
-                  onMouseEnter={() => setIsHovered(true)}
-                  onMouseLeave={() => setIsHovered(false)}
-                >
-                  <div className="hidden sm:block">
-                    <CornerDownLeft
-                      className={clsx(
-                        "size-5 transition-transform duration-300 ease-in-out",
-                        {
-                          "text-foreground scale-110": isHovered,
-                          "text-foreground/80": isValidUrl(url),
-                          "text-muted-foreground": !isValidUrl(url),
-                        }
-                      )}
-                    />
-                  </div>
-                  <div className="sm:hidden">
-                    <PaperAirplaneIcon
-                      className={clsx(
-                        "size-6 transition-transform duration-300 ease-in-out",
-                        {
-                          "text-foreground scale-110": isHovered,
-                          "text-purple-500": isValidUrl(url),
-                          "text-muted-foreground": !isValidUrl(url),
-                        }
-                      )}
-                    />
-                  </div>
-                </Button>
-              </InputGroupAddon>
-            </InputGroup>
+              <Button
+                className="rounded-none border-0 px-4 font-mono transition-all duration-300 ease-in-out hover:bg-transparent"
+                type="submit"
+                variant="ghost"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+              >
+                <div className="hidden sm:block">
+                  <CornerDownLeft
+                    className={clsx(
+                      "size-5 transition-transform duration-300 ease-in-out",
+                      {
+                        "text-foreground scale-110": isHovered,
+                        "text-foreground/80": isValidUrl(url),
+                        "text-muted-foreground": !isValidUrl(url),
+                      }
+                    )}
+                  />
+                </div>
+                <div className="sm:hidden">
+                  <PaperAirplaneIcon
+                    className={clsx(
+                      "size-6 transition-transform duration-300 ease-in-out",
+                      {
+                        "text-foreground scale-110": isHovered,
+                        "text-purple-500": isValidUrl(url),
+                        "text-muted-foreground": !isValidUrl(url),
+                      }
+                    )}
+                  />
+                </div>
+              </Button>
+            </div>
           </form>
           <h2 className="mt-4 w-full text-center text-muted-foreground">
             Bypass paywalls and get instant{" "}
