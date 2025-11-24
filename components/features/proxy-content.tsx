@@ -226,14 +226,21 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
             </Button>
 
             <Drawer open={shareOpen} onOpenChange={setShareOpen}>
-              <DrawerTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg hover:bg-accent"
-                >
-                  <ShareIcon className="size-5 text-muted-foreground" />
-                </Button>
+              <DrawerTrigger
+                render={({ className, ...triggerProps }) => (
+                  <Button
+                    {...triggerProps}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-8 w-8 rounded-lg hover:bg-accent",
+                      className
+                    )}
+                  />
+                )}
+              >
+                <ShareIcon className="size-5 text-muted-foreground" />
+                <span className="sr-only">Share</span>
               </DrawerTrigger>
               <DrawerContent>
                 <DrawerHeader className="text-left border-b border-border pb-4">
@@ -257,14 +264,21 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
             </Drawer>
             
             <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DrawerTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg hover:bg-accent"
-                >
-                  <EllipsisHorizontalIcon className="size-6 text-muted-foreground" />
-                </Button>
+              <DrawerTrigger
+                render={({ className, ...triggerProps }) => (
+                  <Button
+                    {...triggerProps}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-8 w-8 rounded-lg hover:bg-accent",
+                      className
+                    )}
+                  />
+                )}
+              >
+                <EllipsisHorizontalIcon className="size-6 text-muted-foreground" />
+                <span className="sr-only">Settings</span>
               </DrawerTrigger>
               <DrawerContent>
                 <DrawerHeader className="text-left border-b border-border pb-4">

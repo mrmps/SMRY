@@ -168,9 +168,20 @@ export function ResizableModal({
             </div>
           </div>
           <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">
-            <DrawerClose asChild>
-              <Button variant="ghost" className="h-9 w-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50">Close</Button>
-            </DrawerClose>
+            <DrawerClose
+              render={({ className, ...closeProps }) => (
+                <Button
+                  {...closeProps}
+                  variant="ghost"
+                  className={cn(
+                    "h-9 w-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50",
+                    className
+                  )}
+                >
+                  Close
+                </Button>
+              )}
+            />
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
