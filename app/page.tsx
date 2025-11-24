@@ -83,8 +83,7 @@ export default function Home() {
 
           <form onSubmit={handleSubmit} className="mt-6 w-full">
             <InputGroup className={clsx(
-              "shadow-sm focus-within:ring-4 focus-within:ring-purple-200 dark:focus-within:ring-purple-900",
-              urlError && "border-red-500 ring-red-200"
+              "shadow-sm focus-within:ring-4 focus-within:ring-purple-200 dark:focus-within:ring-purple-900"
             )}>
               <InputGroupInput
                 name="url"
@@ -158,10 +157,10 @@ export default function Home() {
 
           {urlError && (
             <p
-              className="animate-fade-in mt-2 flex items-center text-red-500"
+              className="animate-fade-in mt-2 flex items-center text-muted-foreground"
               role="alert"
             >
-              <ExclamationCircleIcon className="mr-2 size-5 text-red-500" />
+              <ExclamationCircleIcon className="mr-2 size-5 text-muted-foreground" />
               Please enter a valid URL (e.g., https://example.com).
             </p>
           )}

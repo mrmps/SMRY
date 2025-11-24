@@ -32,6 +32,7 @@ export const ArticleSchema = z.object({
   length: z.number().int().nonnegative(),
   siteName: z.string().nullable().optional(),
   publishedTime: z.string().nullable().optional(),
+  image: z.string().nullable().optional(), // Preview image URL
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
 });
 export type Article = z.infer<typeof ArticleSchema>;

@@ -75,6 +75,7 @@ const DiffbotArticleSchema = z.object({
   siteName: z.string().min(1, "Site name cannot be empty"),
   byline: z.string().optional().nullable(),
   publishedTime: z.string().optional().nullable(),
+  image: z.string().nullable().optional(),
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
 });
 
@@ -86,6 +87,7 @@ const ReadabilityArticleSchema = z.object({
   siteName: z.string().optional().nullable(),
   byline: z.string().optional().nullable(),
   publishedTime: z.string().optional().nullable(),
+  excerpt: z.string().optional().nullable(),
 }).passthrough();
 
 /**
@@ -130,7 +132,30 @@ export interface DiffbotArticle {
   siteName: string;
   byline?: string | null;
   publishedTime?: string | null;
+  image?: string | null;
   htmlContent?: string; // Original page HTML (full DOM)
+}
+
+/**
+ * Manually extract image from DOM
+ */
+export function extractImageFromDom(doc: Document): string | undefined {
+  const imageSelectors = [
+    'meta[property="og:image"]',
+    'meta[name="og:image"]',
+    'meta[name="twitter:image"]',
+    'meta[property="twitter:image"]',
+    'link[rel="image_src"]',
+  ];
+
+  for (const selector of imageSelectors) {
+    const element = doc.querySelector(selector);
+    if (element) {
+      const image = element.getAttribute('content') || element.getAttribute('href');
+      if (image) return image;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -277,6 +302,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
             byline: validatedArticle.byline,
             publishedTime: validatedArticle.publishedTime || extractDateFromDom(doc),
             htmlContent: html, // Store the original DOM HTML used for extraction
+            image: extractImageFromDom(doc),
           };
           
           // Final validation before returning
@@ -334,8 +360,9 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         siteName: validatedArticle.siteName || new URL(url).hostname,
         byline: validatedArticle.byline,
         publishedTime: validatedArticle.publishedTime || extractDateFromDom(doc),
-        htmlContent: html, // Store the original DOM HTML used for extraction
-      };
+            htmlContent: html, // Store the original DOM HTML used for extraction
+            image: extractImageFromDom(doc),
+          };
       
       // Final validation before returning
       const finalValidation = DiffbotArticleSchema.safeParse(result);
@@ -479,16 +506,23 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           // Diffbot should return html when it recognizes the article structure
           if (obj.html && obj.text && obj.title && obj.text.length > 100) {
             let extractedDate = obj.date;
+            let extractedImage = null;
+
+            if (obj.images && obj.images.length > 0) {
+                 const img = obj.images.find((i: any) => i.url && i.primary) || obj.images.find((i: any) => i.url);
+                 if (img) extractedImage = img.url;
+            }
             
-            // If no date from Diffbot, try to extract from DOM if available
-            if (!extractedDate && (obj.dom || domForFallback)) {
+            // If no date/image from Diffbot, try to extract from DOM if available
+            if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback)) {
                try {
                  const domToUse = (obj.dom || domForFallback) as string;
                  const { VirtualConsole } = require('jsdom');
                  const virtualConsole = new VirtualConsole();
                  virtualConsole.on("error", () => {}); 
                  const doc = new JSDOM(domToUse, { virtualConsole }).window.document;
-                 extractedDate = extractDateFromDom(doc);
+                 if (!extractedDate) extractedDate = extractDateFromDom(doc);
+                 if (!extractedImage) extractedImage = extractImageFromDom(doc);
                } catch {
                  // Ignore errors
                }
@@ -501,6 +535,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
               siteName: obj.siteName || new URL(url).hostname,
               byline: obj.author || (obj.authors && obj.authors.length > 0 ? obj.authors.map((a: any) => a.name).join(', ') : null),
               publishedTime: extractedDate,
+              image: extractedImage,
               htmlContent: obj.dom || domForFallback || undefined, // Original page HTML (full DOM)
             };
             
@@ -560,15 +595,21 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         else if (data?.html && data?.text && data?.title) {
           const dom = (data as any).dom || domForFallback;
           let extractedDate = data.date;
+          let extractedImage = null;
+          if (data.media && data.media.length > 0) {
+              const img = data.media.find((m: any) => m.type === 'image' && m.link);
+              if (img) extractedImage = img.link;
+          }
           
-          // If no date from Diffbot, try to extract from DOM
-          if (!extractedDate && dom) {
+          // If no date/image from Diffbot, try to extract from DOM
+          if ((!extractedDate || !extractedImage) && dom) {
              try {
                const { VirtualConsole } = require('jsdom');
                const virtualConsole = new VirtualConsole();
                virtualConsole.on("error", () => {}); 
                const doc = new JSDOM(dom, { virtualConsole }).window.document;
-               extractedDate = extractDateFromDom(doc);
+               if (!extractedDate) extractedDate = extractDateFromDom(doc);
+               if (!extractedImage) extractedImage = extractImageFromDom(doc);
              } catch {
                // Ignore errors during extra DOM parsing
              }
@@ -581,6 +622,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             siteName: new URL(url).hostname,
             byline: data.author,
             publishedTime: extractedDate,
+            image: extractedImage,
             htmlContent: dom, // Original page HTML (full DOM)
           };
           

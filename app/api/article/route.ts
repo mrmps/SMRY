@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ArticleRequestSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
-import { fetchArticleWithDiffbot, extractDateFromDom } from "@/lib/api/diffbot";
+import { fetchArticleWithDiffbot, extractDateFromDom, extractImageFromDom } from "@/lib/api/diffbot";
 import { redis } from "@/lib/redis";
 import { compress, decompress } from "@/lib/redis-compression";
 import { z } from "zod";
@@ -20,6 +20,7 @@ const DiffbotArticleSchema = z.object({
   siteName: z.string().min(1, "Site name cannot be empty"),
   byline: z.string().optional().nullable(),
   publishedTime: z.string().optional().nullable(),
+  image: z.string().nullable().optional(),
   htmlContent: z.string().optional(),
 });
 
@@ -32,6 +33,7 @@ const CachedArticleSchema = z.object({
   siteName: z.string(),
   byline: z.string().optional().nullable(),
   publishedTime: z.string().optional().nullable(),
+  image: z.string().nullable().optional(),
   htmlContent: z.string().optional(),
 });
 
@@ -43,6 +45,7 @@ type ArticleMetadata = {
   length: number;
   byline?: string | null;
   publishedTime?: string | null;
+  image?: string | null;
 };
 
 /**
@@ -104,6 +107,7 @@ async function saveOrReturnLongerArticle(
         length: article.length,
         byline: article.byline,
         publishedTime: article.publishedTime,
+        image: article.image,
       };
 
       await Promise.all([
@@ -226,6 +230,7 @@ async function fetchArticleWithSmryFast(
       })(),
       byline: parsed.byline,
       publishedTime: extractDateFromDom(dom.window.document) || null,
+      image: extractImageFromDom(dom.window.document) || null,
       htmlContent: originalHtml, // Original page HTML
     };
 
@@ -317,6 +322,7 @@ async function fetchArticleWithDiffbotWrapper(
       siteName: validatedArticle.siteName,
       byline: validatedArticle.byline,
       publishedTime: validatedArticle.publishedTime,
+      image: validatedArticle.image,
       htmlContent: validatedArticle.htmlContent,
     };
 
@@ -433,6 +439,7 @@ export async function GET(request: NextRequest) {
                 length: article.length,
                 siteName: article.siteName,
                 publishedTime: article.publishedTime || null,
+                image: article.image || null,
                 htmlContent: article.htmlContent,
               },
               status: "success",
