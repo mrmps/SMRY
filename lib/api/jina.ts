@@ -1,8 +1,11 @@
 "use client";
 
-import showdown from "showdown";
+import { marked } from "marked";
 
-const converter = new showdown.Converter();
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 export interface JinaArticle {
   title: string;
@@ -83,8 +86,7 @@ export async function fetchJinaArticle(
     const urlSource = urlSourceLine || url;
     const mainContent = lines.slice(contentStartIndex).join("\n").trim();
 
-    // Convert markdown to HTML
-    const contentHtml = converter.makeHtml(mainContent);
+    const contentHtml = await convertMarkdownToHtml(mainContent);
 
     const article: JinaArticle = {
       title: title,
@@ -114,5 +116,32 @@ function extractHostname(url: string): string {
   } catch {
     return "unknown";
   }
+}
+
+async function convertMarkdownToHtml(markdown: string): Promise<string> {
+  try {
+    const html = marked.parse(markdown);
+    return typeof html === "string" ? html : "";
+  } catch (error) {
+    console.warn("Failed to convert markdown via marked, falling back to plain text.", error);
+    return fallbackHtmlFromPlainText(markdown);
+  }
+}
+
+function fallbackHtmlFromPlainText(text: string): string {
+  const escaped = escapeHtml(text);
+  return escaped
+    .split(/\n{2,}/)
+    .map((chunk) => `<p>${chunk.replace(/\n/g, "<br />")}</p>`)
+    .join("");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 

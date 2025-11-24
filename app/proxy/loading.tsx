@@ -8,12 +8,12 @@ export default function Loading() {
         {/* Logo Placeholder */}
         <div className="flex items-center gap-2">
           <Skeleton className="h-6 w-20" />
-        </div>
+              </div>
 
         {/* Desktop Pills Placeholder */}
         <div className="hidden md:flex items-center p-0.5 bg-accent rounded-lg absolute left-1/2 -translate-x-1/2">
           <Skeleton className="h-7 w-[200px]" />
-        </div>
+            </div>
 
         {/* Actions Placeholder */}
         <div className="flex items-center gap-2">

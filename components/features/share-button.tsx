@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Share2 as ShareIcon, Link as LinkIcon, Check as CheckIcon, Linkedin } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import React, { useState } from "react";
+import Image from "next/image";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { buttonVariants } from "@/components/ui/button";
+  Share2 as ShareIcon,
+  Link as LinkIcon,
+  Check as CheckIcon,
+  Linkedin,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 
 import { Source } from "@/types/api";
 
@@ -27,20 +27,25 @@ const XIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-interface ShareButtonProps {
-    url: string;
-    articleTitle?: string;
-    articleImage?: string | null;
-    source?: Source;
-    viewMode?: string;
-    sidebarOpen?: boolean;
+interface ShareButtonDataProps {
+  url: string;
+  articleTitle?: string;
+  articleImage?: string | null;
+  source?: Source;
+  viewMode?: string;
+  sidebarOpen?: boolean;
 }
 
-interface ShareContentProps extends ShareButtonProps {
+interface ShareContentProps extends ShareButtonDataProps {
   onActionComplete?: () => void;
 }
 
-export const ShareContent: React.FC<ShareContentProps> = ({ 
+interface ShareButtonProps extends ShareButtonDataProps {
+  triggerVariant?: "text" | "icon";
+  triggerClassName?: string;
+}
+
+export const ShareContent: React.FC<ShareContentProps> = ({
   url, 
   articleTitle = "Article",
   articleImage,
@@ -125,10 +130,13 @@ export const ShareContent: React.FC<ShareContentProps> = ({
             <div className="space-y-3">
                 {articleImage ? (
                     <div className="relative w-full h-32 sm:h-48 rounded-lg overflow-hidden bg-muted">
-                        <img 
-                          src={articleImage} 
-                          alt={articleTitle} 
-                          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" 
+                        <Image
+                          src={articleImage}
+                          alt={articleTitle}
+                          fill
+                          sizes="(max-width: 640px) 100vw, 480px"
+                          unoptimized
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                     </div>
                 ) : null}
@@ -191,26 +199,57 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   );
 };
 
-const ShareButton: React.FC<ShareButtonProps> = (props) => {
+const ShareButton: React.FC<ShareButtonProps> = ({
+  triggerVariant = "text",
+  triggerClassName,
+  ...shareProps
+}) => {
   const [open, setOpen] = useState(false);
 
+  const trigger = (
+    <Button
+      variant="ghost"
+      size={triggerVariant === "icon" ? "icon" : "sm"}
+      className={cn(
+        triggerVariant === "icon"
+          ? "h-8 w-8 rounded-lg text-muted-foreground hover:bg-accent"
+          : "h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground",
+        triggerClassName
+      )}
+      aria-label="Share article"
+    >
+      <ShareIcon
+        className={cn(
+          triggerVariant === "icon" ? "size-5" : "mr-1.5 size-3.5"
+        )}
+      />
+      {triggerVariant === "icon" ? (
+        <span className="sr-only">Share</span>
+      ) : (
+        "Share"
+      )}
+    </Button>
+  );
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs font-medium text-muted-foreground hover:text-foreground")}>
-          <ShareIcon className="mr-1.5 size-3.5" />
-          Share
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[420px] p-0 gap-0 overflow-hidden bg-card">
-        <DialogHeader className="px-6 py-4 flex flex-row items-center justify-between border-b border-border">
-          <DialogTitle className="text-base font-semibold text-foreground truncate pr-8">
-            {props.articleTitle || "Share article"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="p-6">
-          <ShareContent {...props} onActionComplete={() => setOpen(false)} />
+    <ResponsiveDrawer open={open} onOpenChange={setOpen} trigger={trigger}>
+      <div className="flex h-full flex-col bg-card">
+        <div className="border-b border-border px-6 py-4">
+          <h2 className="text-base font-semibold text-foreground">
+            {shareProps.articleTitle || "Share article"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Share this summary with others
+          </p>
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="flex-1 overflow-y-auto p-6">
+          <ShareContent
+            {...shareProps}
+            onActionComplete={() => setOpen(false)}
+          />
+        </div>
+      </div>
+    </ResponsiveDrawer>
   );
 };
 

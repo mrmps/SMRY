@@ -4,14 +4,20 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import { Bug as BugIcon, Sparkles as SparklesIcon, Sun, Moon, Laptop, Share2 as ShareIcon } from "lucide-react";
+import {
+  Bug as BugIcon,
+  Sparkles as SparklesIcon,
+  Sun,
+  Moon,
+  Laptop,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { ShareContent } from "@/components/features/share-button";
+import ShareButton from "@/components/features/share-button";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-import { Skeleton } from "@/components/ui/skeleton";
+import ArrowTabs from "@/components/article/tabs";
 import {
   Drawer,
   DrawerContent,
@@ -29,41 +35,11 @@ import {
 import { Source, SOURCES } from "@/types/api";
 import { ResizableModal } from "./resizable-modal";
 
-// Dynamically import Base UI consuming components to prevent SSR hydration mismatch
-const ModeToggle = dynamic(() => import("@/components/shared/mode-toggle").then(mod => mod.ModeToggle), { 
-  ssr: false,
-  loading: () => <div className="size-9" /> 
-});
+const ModeToggle = dynamic(
+  () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
+  { ssr: false, loading: () => <div className="size-9" /> }
+);
 
-const ShareButton = dynamic(() => import("@/components/features/share-button"), { 
-  ssr: false,
-  loading: () => <div className="h-8 w-16" /> 
-});
-
-const ArrowTabs = dynamic(() => import("@/components/article/tabs"), {
-  ssr: false,
-  loading: () => (
-    <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
-      <div className="w-full overflow-x-auto sm:overflow-visible pb-2 pt-1">
-         <div className="flex h-auto w-full sm:w-max items-center justify-between sm:justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
-            <Skeleton className="h-9 w-24 rounded-xl" />
-            <Skeleton className="h-9 w-24 rounded-xl" />
-            <Skeleton className="h-9 w-24 rounded-xl" />
-            <Skeleton className="h-9 w-24 rounded-xl" />
-         </div>
-      </div>
-      <div className="mt-6 space-y-6">
-        <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-96 w-full" />
-        <div className="space-y-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-[90%]" />
-        </div>
-      </div>
-    </div>
-  )
-});
 
 interface ProxyContentProps {
   url: string;
@@ -122,7 +98,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   );
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [shareOpen, setShareOpen] = React.useState(false);
 
   const content = (
     <div className="flex h-dvh flex-col bg-background">
@@ -225,61 +200,40 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
               <span className="sr-only">Summary</span>
             </Button>
 
-            <Drawer open={shareOpen} onOpenChange={setShareOpen}>
-              <DrawerTrigger
-                render={({ className, ...triggerProps }) => (
-                  <Button
-                    {...triggerProps}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-8 w-8 rounded-lg hover:bg-accent",
-                      className
-                    )}
-                  />
-                )}
-              >
-                <ShareIcon className="size-5 text-muted-foreground" />
-                <span className="sr-only">Share</span>
-              </DrawerTrigger>
-              <DrawerContent>
-                <DrawerHeader className="text-left border-b border-border pb-4">
-                  <DrawerTitle>Share Article</DrawerTitle>
-                  <DrawerDescription>
-                    Share this summary with others
-                  </DrawerDescription>
-                </DrawerHeader>
-                <div className="p-4 pb-8">
-                   <ShareContent
-                      url={`https://smry.ai/${url}`}
-                      source={source || "smry-fast"}
-                      viewMode={viewMode || "markdown"}
-                      sidebarOpen={sidebarOpen}
-                      onActionComplete={() => setShareOpen(false)}
-                      articleTitle={articleTitle}
-                      articleImage={articleImage}
-                    />
-                </div>
-              </DrawerContent>
-            </Drawer>
+            <ShareButton
+              url={`https://smry.ai/${url}`}
+              source={source || "smry-fast"}
+              viewMode={viewMode || "markdown"}
+              sidebarOpen={sidebarOpen}
+              articleTitle={articleTitle}
+              articleImage={articleImage}
+              triggerVariant="icon"
+            />
             
             <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
               <DrawerTrigger
-                render={({ className, ...triggerProps }) => (
-                  <Button
-                    {...triggerProps}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-8 w-8 rounded-lg hover:bg-accent",
-                      className
-                    )}
-                  />
-                )}
-              >
-                <EllipsisHorizontalIcon className="size-6 text-muted-foreground" />
-                <span className="sr-only">Settings</span>
-              </DrawerTrigger>
+                render={(renderProps) => {
+                  const { className, ...triggerProps } = renderProps;
+                  const { key, ...restProps } = triggerProps as typeof triggerProps & {
+                    key?: React.Key;
+                  };
+                  return (
+                    <Button
+                      {...restProps}
+                      key={key}
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8 rounded-lg hover:bg-accent",
+                        className
+                      )}
+                    >
+                      <EllipsisHorizontalIcon key={"settings-icon"} className="size-6 text-muted-foreground" />
+                      <span key={"settings-text"} className="sr-only">Settings</span>
+                    </Button>
+                  );
+                }}
+              />
               <DrawerContent>
                 <DrawerHeader className="text-left border-b border-border pb-4">
                   <DrawerTitle>Settings</DrawerTitle>

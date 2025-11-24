@@ -17,11 +17,16 @@ import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
-import { ModeToggle } from "@/components/shared/mode-toggle";
+import dynamic from "next/dynamic";
 
 const urlSchema = z.object({
   url: z.string().url().min(1),
 });
+
+const ModeToggle = dynamic(
+  () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
+  { ssr: false, loading: () => <div className="size-9" /> }
+);
 
 export default function Home() {
   const [url, setUrl] = useState("");

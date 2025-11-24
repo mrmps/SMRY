@@ -14,7 +14,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { useMediaQuery } from "usehooks-ts";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import SummaryForm from "@/components/features/summary-form";
 import { ArticleResponse, Source } from "@/types/api";
@@ -40,7 +40,10 @@ export function ResizableModal({
   setSidebarOpen,
   children,
 }: ResizableModalProps) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery("(min-width: 768px)", {
+    defaultValue: false,
+    initializeWithValue: false,
+  });
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
   const [isAnimating, setIsAnimating] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -169,18 +172,25 @@ export function ResizableModal({
           </div>
           <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">
             <DrawerClose
-              render={({ className, ...closeProps }) => (
-                <Button
-                  {...closeProps}
-                  variant="ghost"
-                  className={cn(
-                    "h-9 w-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50",
-                    className
-                  )}
-                >
-                  Close
-                </Button>
-              )}
+              render={(renderProps) => {
+                const { className, ...closeProps } = renderProps;
+                const { key, ...restProps } = closeProps as typeof closeProps & {
+                  key?: React.Key;
+                };
+                return (
+                  <Button
+                    {...restProps}
+                    key={key}
+                    variant="ghost"
+                    className={cn(
+                      "h-9 w-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50",
+                      className
+                    )}
+                  >
+                    Close
+                  </Button>
+                );
+              }}
             />
           </DrawerFooter>
         </DrawerContent>

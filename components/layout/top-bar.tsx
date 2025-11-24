@@ -5,8 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, useScroll, useSpring, MotionProps } from "framer-motion";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
+import dynamic from "next/dynamic";
 
-import { ModeToggle } from "@/components/shared/mode-toggle";
+const ModeToggle = dynamic(
+  () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
+  { ssr: false, loading: () => <div className="size-9" /> }
+);
 
 const TopBar = () => {
   const { scrollYProgress } = useScroll();
