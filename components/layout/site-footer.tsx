@@ -14,7 +14,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             width={100}
             height={100}
             alt={"smry logo"}
-            className="-mb-1"
+            className="-mb-1 dark:invert"
           />
           <p className="text-center text-sm leading-loose md:text-left">
             Built by{" "}
