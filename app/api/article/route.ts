@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ArticleRequestSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
-import { fetchArticleWithDiffbot } from "@/lib/api/diffbot";
+import { fetchArticleWithDiffbot, extractDateFromDom } from "@/lib/api/diffbot";
 import { redis } from "@/lib/redis";
 import { compress, decompress } from "@/lib/redis-compression";
 import { z } from "zod";
@@ -225,7 +225,7 @@ async function fetchArticleWithSmryFast(
         }
       })(),
       byline: parsed.byline,
-      publishedTime: parsed.publishedTime,
+      publishedTime: extractDateFromDom(dom.window.document) || null,
       htmlContent: originalHtml, // Original page HTML
     };
 

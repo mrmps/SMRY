@@ -136,7 +136,7 @@ export interface DiffbotArticle {
 /**
  * Manually extract date from DOM if Readability fails
  */
-function extractDateFromDom(doc: Document): string | null {
+export function extractDateFromDom(doc: Document): string | undefined {
   // Try common meta tags
   const dateSelectors = [
     'meta[property="article:published_time"]',
@@ -164,7 +164,7 @@ function extractDateFromDom(doc: Document): string | null {
 
   // Try LD-JSON
   const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
-  for (const script of scripts) {
+  for (const script of Array.from(scripts)) {
     try {
       const json = JSON.parse(script.textContent || '{}');
       if (json.datePublished) return json.datePublished;
@@ -177,12 +177,12 @@ function extractDateFromDom(doc: Document): string | null {
           if (item.dateCreated) return item.dateCreated;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore JSON parse errors
     }
   }
 
-  return null;
+  return undefined;
 }
 
 /**
@@ -483,13 +483,13 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             // If no date from Diffbot, try to extract from DOM if available
             if (!extractedDate && (obj.dom || domForFallback)) {
                try {
-                 const domToUse = obj.dom || domForFallback;
+                 const domToUse = (obj.dom || domForFallback) as string;
                  const { VirtualConsole } = require('jsdom');
                  const virtualConsole = new VirtualConsole();
                  virtualConsole.on("error", () => {}); 
                  const doc = new JSDOM(domToUse, { virtualConsole }).window.document;
                  extractedDate = extractDateFromDom(doc);
-               } catch (e) {
+               } catch {
                  // Ignore errors
                }
             }
@@ -569,7 +569,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
                virtualConsole.on("error", () => {}); 
                const doc = new JSDOM(dom, { virtualConsole }).window.document;
                extractedDate = extractDateFromDom(doc);
-             } catch (e) {
+             } catch {
                // Ignore errors during extra DOM parsing
              }
           }
