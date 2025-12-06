@@ -13,14 +13,16 @@ import Link from "next/link";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
+import { AdSpot } from "@/components/marketing/ad-spot";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
+import { NormalizedUrlSchema } from "@/lib/validation/url";
 
 const urlSchema = z.object({
-  url: z.string().url().min(1),
+  url: NormalizedUrlSchema,
 });
 
 const ModeToggle = dynamic(
@@ -30,7 +32,7 @@ const ModeToggle = dynamic(
 
 export default function Home() {
   const [url, setUrl] = useState("");
-  const [urlError, setUrlError] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -38,16 +40,20 @@ export default function Home() {
     e.preventDefault();
 
     try {
-      urlSchema.parse({ url });
-      setUrlError(false);
-      router.push(`/proxy?url=${encodeURIComponent(url)}`);
+      const parsed = urlSchema.parse({ url });
+      setUrlError(null);
+      router.push(`/proxy?url=${encodeURIComponent(parsed.url)}`);
     } catch (error) {
-      setUrlError(true);
+      const message =
+        error instanceof z.ZodError
+          ? error.issues[0]?.message ?? "Please enter a valid URL."
+          : "Please enter a valid URL.";
+      setUrlError(message);
       console.error(error);
     }
   };
 
-  const isValidUrl = (url: string) => {
+  const isValidUrlInput = (url: string) => {
     const { success } = urlSchema.safeParse({ url });
     return success;
   };
@@ -59,7 +65,18 @@ export default function Home() {
       <div className="absolute right-4 top-4 z-50 md:right-8 md:top-8">
         <ModeToggle />
       </div>
-      <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24">
+      
+      {/* Desktop Ad Spot - Left sidebar */}
+      <div className="hidden lg:block fixed left-6 top-6 z-40">
+        <AdSpot />
+      </div>
+      
+      {/* Mobile Ad Spot - Bottom bar */}
+      <div className="lg:hidden">
+        <AdSpot />
+      </div>
+      
+      <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24 pb-24 lg:pb-4">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
           <GitHubStarsButton
             username="mrmps"
@@ -92,11 +109,11 @@ export default function Home() {
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
-                  if (urlError) setUrlError(false);
+                  if (urlError) setUrlError(null);
                 }}
                 autoFocus
                 autoComplete="off"
-                aria-invalid={urlError}
+                aria-invalid={Boolean(urlError)}
               />
               <Button
                 className="rounded-none border-0 px-4 font-mono transition-all duration-300 ease-in-out hover:bg-transparent"
@@ -111,8 +128,8 @@ export default function Home() {
                       "size-5 transition-transform duration-300 ease-in-out",
                       {
                         "text-foreground scale-110": isHovered,
-                        "text-foreground/80": isValidUrl(url),
-                        "text-muted-foreground": !isValidUrl(url),
+                        "text-foreground/80": isValidUrlInput(url),
+                        "text-muted-foreground": !isValidUrlInput(url),
                       }
                     )}
                   />
@@ -123,8 +140,8 @@ export default function Home() {
                       "size-6 transition-transform duration-300 ease-in-out",
                       {
                         "text-foreground scale-110": isHovered,
-                        "text-purple-500": isValidUrl(url),
-                        "text-muted-foreground": !isValidUrl(url),
+                        "text-purple-500": isValidUrlInput(url),
+                        "text-muted-foreground": !isValidUrlInput(url),
                       }
                     )}
                   />
@@ -159,7 +176,7 @@ export default function Home() {
               role="alert"
             >
               <ExclamationCircleIcon className="mr-2 size-5 text-muted-foreground" />
-              Please enter a valid URL (e.g., https://example.com).
+              {urlError}
             </p>
           )}
 

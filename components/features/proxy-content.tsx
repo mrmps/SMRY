@@ -4,6 +4,7 @@ import React from "react";
 import dynamic from "next/dynamic";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
+import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
 import {
   Bug as BugIcon,
   Sparkles as SparklesIcon,
@@ -101,6 +102,16 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
   const content = (
     <div className="flex h-dvh flex-col bg-background">
+      {/* Desktop Ad Spot - Left sidebar */}
+      <div className="hidden lg:block fixed left-4 top-20 z-40">
+        <AdSpotSidebar />
+      </div>
+      
+      {/* Mobile Ad Spot - Bottom bar */}
+      <div className="lg:hidden">
+        <AdSpotMobileBar />
+      </div>
+      
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
           <Link
             href="/"
@@ -352,7 +363,8 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
       {/* Content Area */}
       <main className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto bg-card">
+        {/* lg:pl-52 xl:pl-64 leaves room for the fixed ad spot on the left */}
+        <div className="h-full overflow-y-auto bg-card lg:pl-52 xl:pl-64">
           <div className="mx-auto max-w-3xl p-6 min-h-[calc(100vh-3.5rem)]">
             <ArrowTabs
               url={url}

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
 import { redis } from "@/lib/redis";
+import { normalizeUrl } from "@/lib/validation/url";
 
 const _adCopies = [
   {
@@ -174,24 +175,37 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const resolvedSearchParams = await searchParams;
-  const url = resolvedSearchParams?.url as string;
-  
-  if (!url) {
-    return {
-      title: "SMRY - Article Reader & Summarizer",
-      description: "Read articles without paywalls and get AI-powered summaries",
-    };
+  const rawUrlParam = resolvedSearchParams?.url;
+  const candidateUrl = Array.isArray(rawUrlParam)
+    ? rawUrlParam[0]
+    : rawUrlParam ?? "";
+
+  const fallbackMetadata: Metadata = {
+    title: "SMRY - Article Reader & Summarizer",
+    description: "Read articles without paywalls and get AI-powered summaries",
+  };
+
+  if (!candidateUrl) {
+    return fallbackMetadata;
+  }
+
+  let normalizedUrl: string;
+  try {
+    normalizedUrl = normalizeUrl(candidateUrl);
+  } catch (error) {
+    console.error("Invalid URL provided for metadata generation:", candidateUrl, error);
+    return fallbackMetadata;
   }
 
   // Fetch article data with timeout
-  const article = await fetchArticleForMetadata(url);
+  const article = await fetchArticleForMetadata(normalizedUrl);
   
   // Generate basic metadata from URL as fallback
   let title = "Article";
   let siteName = "Unknown";
   
   try {
-    const urlObj = new URL(url);
+    const urlObj = new URL(normalizedUrl);
     siteName = urlObj.hostname.replace('www.', '');
     // Extract a reasonable title from URL path
     const pathParts = urlObj.pathname.split('/').filter(Boolean);
@@ -223,7 +237,7 @@ export async function generateMetadata({
     openGraph: {
       title: title,
       description: description,
-      url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(url)}`,
+      url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(normalizedUrl)}`,
       siteName: "SMRY",
       type: "article",
       images: [
@@ -271,21 +285,41 @@ export default async function Page({
 
   // In Next.js 15+, searchParams and params are now Promises that need to be awaited
   const resolvedSearchParams = await searchParams;
-  const url = resolvedSearchParams?.url as string;
+  const rawUrlParam = resolvedSearchParams?.url;
+  const candidateUrl = Array.isArray(rawUrlParam)
+    ? rawUrlParam[0]
+    : rawUrlParam ?? "";
 
-  if (!url) {
-    // Handle the case where URL is not provided or not a string
+  if (!candidateUrl) {
+    return (
+      <div className="p-4 text-gray-600">Please provide a URL to load an article.</div>
+    );
+  }
+
+  let normalizedUrl: string;
+  try {
+    normalizedUrl = normalizeUrl(candidateUrl);
+  } catch (error) {
     console.error(
-      "URL parameter is missing or invalid",
-      url,
+      "URL parameter is invalid",
+      candidateUrl,
       resolvedSearchParams?.url,
-      resolvedSearchParams
+      error
+    );
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Please enter a valid URL (e.g. example.com or https://example.com).";
+    return (
+      <div className="mt-20 px-4 text-center text-gray-600">
+        {message}
+      </div>
     );
   }
 
   // if the url contains "orlandosentinel.com" then we should return nothing and let the user know that the orlando sentinel article is not available
 
-  if (url?.includes("orlandosentinel.com")) {
+  if (normalizedUrl.includes("orlandosentinel.com")) {
     return (
       <div className="mt-20">
         Sorry, articles from the orlando sentinel are not available
@@ -293,14 +327,10 @@ export default async function Page({
     );
   }
 
-  if (!url) {
-    return (
-      <div className="p-4 text-gray-600">No URL provided</div>
-    );
-  }
-
-  return <ProxyContent 
-    url={url} 
-    ip={ip} 
-  />;
+  return (
+    <ProxyContent
+      url={normalizedUrl}
+      ip={ip}
+    />
+  );
 }
