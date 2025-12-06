@@ -13,6 +13,7 @@ const nextConfig = {
         },
       ],
     },
+    serverExternalPackages: ['pino', 'pino-pretty', 'thread-stream'],
   }
 
 module.exports = nextConfig
