@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -53,10 +53,10 @@ export default function Home() {
     }
   };
 
-  const isValidUrlInput = (url: string) => {
+  const isUrlValid = useMemo(() => {
     const { success } = urlSchema.safeParse({ url });
     return success;
-  };
+  }, [url]);
 
   const [isHovered, setIsHovered] = useState(false);
 
@@ -66,15 +66,7 @@ export default function Home() {
         <ModeToggle />
       </div>
       
-      {/* Desktop Ad Spot - Left sidebar */}
-      <div className="hidden lg:block fixed left-6 top-6 z-40">
-        <AdSpot />
-      </div>
-      
-      {/* Mobile Ad Spot - Bottom bar */}
-      <div className="lg:hidden">
-        <AdSpot />
-      </div>
+      <AdSpot className="lg:fixed lg:left-6 lg:top-6 lg:z-40" />
       
       <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24 pb-24 lg:pb-4">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
@@ -128,8 +120,8 @@ export default function Home() {
                       "size-5 transition-transform duration-300 ease-in-out",
                       {
                         "text-foreground scale-110": isHovered,
-                        "text-foreground/80": isValidUrlInput(url),
-                        "text-muted-foreground": !isValidUrlInput(url),
+                        "text-foreground/80": isUrlValid,
+                        "text-muted-foreground": !isUrlValid,
                       }
                     )}
                   />
@@ -140,8 +132,8 @@ export default function Home() {
                       "size-6 transition-transform duration-300 ease-in-out",
                       {
                         "text-foreground scale-110": isHovered,
-                        "text-purple-500": isValidUrlInput(url),
-                        "text-muted-foreground": !isValidUrlInput(url),
+                        "text-purple-500": isUrlValid,
+                        "text-muted-foreground": !isUrlValid,
                       }
                     )}
                   />

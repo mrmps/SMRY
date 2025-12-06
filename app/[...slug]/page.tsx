@@ -26,7 +26,7 @@ export default function RedirectPage() {
       router.push(`/proxy?url=${encodeURIComponent(normalized)}`);
     } catch (error) {
       console.error("Failed to normalize path slug", slug, error);
-      const fallback = slug.startsWith("http") ? slug : `https://${slug}`;
+      const fallback = /^https?:\/\//i.test(slug) ? slug : `https://${slug}`;
       router.push(`/proxy?url=${encodeURIComponent(fallback)}`);
     }
   }, [router, pathname]);

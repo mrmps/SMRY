@@ -103,6 +103,9 @@ importers:
       geist:
         specifier: ^1.2.2
         version: 1.5.1(next@16.0.0(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))
+      google:
+        specifier: link:@next/third-parties/google
+        version: link:@next/third-parties/google
       gpt-tokenizer:
         specifier: ^2.1.2
         version: 2.9.0

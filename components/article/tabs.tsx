@@ -39,8 +39,8 @@ const EnhancedTabsList: React.FC<{
   };
 
   return (
-    <div className="w-full overflow-x-auto sm:overflow-visible pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <TabsPrimitive.List className="flex h-auto w-full sm:w-max items-center justify-between sm:justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
+    <div className="w-full overflow-x-auto pb-2 pt-1 pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <TabsPrimitive.List className="flex h-auto w-max min-w-full items-center justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
         {sources.map((source, index) => {
           const wordCount = formatWordCount(counts[source]);
           const isLoading = loadingStates[source];
@@ -125,7 +125,7 @@ const ArrowTabs: React.FC<TabProps> = ({
         {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div
           className={cn(
-            "sticky top-0 z-20 mb-4 -mx-4 px-4 py-2 sm:mx-0 sm:z-10 sm:rounded-xl sm:px-2",
+            "sticky top-0 z-20 mb-4 -mx-4 px-4 py-2 sm:mx-0 sm:rounded-xl sm:px-2",
             "bg-background/80 backdrop-blur-xl transition-all supports-backdrop-filter:bg-background/60",
             "border-b border-border/40 sm:border-0"
           )}

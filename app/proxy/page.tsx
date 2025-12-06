@@ -292,7 +292,7 @@ export default async function Page({
 
   if (!candidateUrl) {
     return (
-      <div className="p-4 text-gray-600">Please provide a URL to load an article.</div>
+      <div className="p-4 text-muted-foreground">Please provide a URL to load an article.</div>
     );
   }
 
@@ -311,7 +311,7 @@ export default async function Page({
         ? error.message
         : "Please enter a valid URL (e.g. example.com or https://example.com).";
     return (
-      <div className="mt-20 px-4 text-center text-gray-600">
+      <div className="mt-20 px-4 text-center text-muted-foreground">
         {message}
       </div>
     );
