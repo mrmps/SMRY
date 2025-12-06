@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
   return (
     <footer className={cn(className)}>
-      <div className="container flex flex-col items-center gap-6 py-10 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8 md:py-6">
+      <div className="container mb-10 flex flex-col items-center gap-6 py-10 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8 md:py-6">
         <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:gap-4 md:text-left">
           <Image
             src="/logo.svg"

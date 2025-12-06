@@ -161,6 +161,8 @@ const AdvertiseTrigger = React.forwardRef<
 AdvertiseTrigger.displayName = "AdvertiseTrigger";
 
 function AdDrawerContent() {
+  const [showStats, setShowStats] = React.useState(false);
+
   return (
     <div className="flex flex-col bg-background">
       {/* Hero Section */}
@@ -180,7 +182,34 @@ function AdDrawerContent() {
           icon={<Users className="size-4" />}
           title="Hundreds of thousands of readers"
           description="Reach engaged users actively reading paywalled content"
+          action={
+            !showStats ? (
+              <button
+                onClick={() => setShowStats(true)}
+                className="text-[10px] font-medium text-[#B46201] hover:text-[#B46201]/80 transition-colors whitespace-nowrap"
+              >
+                View stats →
+              </button>
+            ) : null
+          }
         />
+        {showStats && (
+          <div className="p-0.5 bg-accent rounded-[14px] animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="bg-card rounded-xl p-2 overflow-hidden">
+              <Image
+                src="/stats.png"
+                alt="SMRY Analytics - 1.4M views, 213K users"
+                width={800}
+                height={600}
+                className="w-full h-auto rounded-lg"
+                priority={false}
+              />
+              <p className="text-[10px] text-muted-foreground text-center mt-2">
+                Analytics from Google Analytics on 12/06/2025
+              </p>
+            </div>
+          </div>
+        )}
         <FeatureCard
           icon={<Eye className="size-4" />}
           title="Premium placement"
@@ -273,10 +302,12 @@ function FeatureCard({
   icon,
   title,
   description,
+  action,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="p-0.5 bg-accent rounded-[14px]">
@@ -284,8 +315,11 @@ function FeatureCard({
         <div className="shrink-0 size-9 rounded-lg bg-accent flex items-center justify-center text-muted-foreground">
           {icon}
         </div>
-        <div className="min-w-0">
-          <p className="font-medium text-sm">{title}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-sm">{title}</p>
+            {action}
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         </div>
       </div>
