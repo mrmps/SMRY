@@ -39,7 +39,6 @@
     "diffbot": "^1.0.3",
     "framer-motion": "^10.18.0",
     "geist": "^1.2.2",
-    "google": "link:@next/third-parties/google",
     "gpt-tokenizer": "^2.1.2",
     "harden-react-markdown": "^1.1.5",
     "html-react-parser": "^5.1.9",
