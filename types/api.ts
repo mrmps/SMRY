@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NormalizedUrlSchema } from "@/lib/validation/url";
 
 // Source type
 export const SOURCES = ["smry-fast", "smry-slow", "wayback", "jina.ai"] as const;
@@ -39,7 +40,7 @@ export type Article = z.infer<typeof ArticleSchema>;
 
 // API Request schema
 export const ArticleRequestSchema = z.object({
-  url: z.string().url("Invalid URL format"),
+  url: NormalizedUrlSchema,
   source: SourceSchema,
 });
 export type ArticleRequest = z.infer<typeof ArticleRequestSchema>;
@@ -83,13 +84,13 @@ export type SummaryResponse = z.infer<typeof SummaryResponseSchema>;
 
 // Jina cache GET request schema
 export const JinaCacheRequestSchema = z.object({
-  url: z.string().url("Invalid URL format"),
+  url: NormalizedUrlSchema,
 });
 export type JinaCacheRequest = z.infer<typeof JinaCacheRequestSchema>;
 
 // Jina cache POST/update schema
 export const JinaCacheUpdateSchema = z.object({
-  url: z.string().url("Invalid URL format"),
+  url: NormalizedUrlSchema,
   article: z.object({
     title: z.string(),
     content: z.string(),

@@ -16,6 +16,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
@@ -24,6 +25,16 @@ interface ResponsiveDrawerProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactElement<Record<string, unknown>>;
+  /** Title for accessibility (sr-only) */
+  title?: string;
+  /** Whether content should scroll */
+  scrollable?: boolean;
+  /** Show close button in dialog (desktop) */
+  showCloseButton?: boolean;
+  /** Custom className for the content container */
+  contentClassName?: string;
+  /** Whether the trigger is a native button element */
+  nativeButton?: boolean;
 }
 
 export function ResponsiveDrawer({
@@ -31,6 +42,11 @@ export function ResponsiveDrawer({
   open: controlledOpen,
   onOpenChange,
   trigger,
+  title = "Dialog",
+  scrollable = false,
+  showCloseButton = true,
+  contentClassName,
+  nativeButton = true,
 }: ResponsiveDrawerProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)", {
@@ -60,13 +76,19 @@ export function ResponsiveDrawer({
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <div className="relative inline-block">
-          <DialogTrigger render={trigger ?? defaultTrigger} />
+          <DialogTrigger nativeButton={nativeButton} render={trigger ?? defaultTrigger} />
         </div>
         <DialogContent
           id={contentId}
-          className="flex flex-col overflow-hidden border-l border-zinc-100 bg-zinc-50 p-0 dark:border-zinc-800 dark:bg-zinc-950 sm:max-w-[480px] sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl"
+          showCloseButton={showCloseButton}
+          className={cn(
+            "flex flex-col border-l border-zinc-100 bg-zinc-50 p-0 dark:border-zinc-800 dark:bg-zinc-950 sm:max-w-[480px] sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl",
+            scrollable ? "overflow-y-auto" : "overflow-hidden",
+            contentClassName
+          )}
         >
-          <div className="mt-0 flex min-h-0 flex-1 flex-col">{children}</div>
+          <DialogTitle className="sr-only">{title}</DialogTitle>
+          <div className={cn("mt-0 flex min-h-0 flex-1 flex-col", scrollable && "overflow-y-auto")}>{children}</div>
         </DialogContent>
       </Dialog>
     );
@@ -76,9 +98,10 @@ export function ResponsiveDrawer({
     <Drawer open={open} onOpenChange={handleOpenChange}>
       <div className="relative inline-block">
         {trigger ? (
-          <DrawerTrigger render={trigger} />
+          <DrawerTrigger nativeButton={nativeButton} render={trigger} />
         ) : (
           <DrawerTrigger
+            nativeButton
             render={(renderProps) => {
               const { className, ...triggerProps } = renderProps;
               const { key, ...restProps } = triggerProps as typeof triggerProps & {
@@ -103,10 +126,13 @@ export function ResponsiveDrawer({
       </div>
       <DrawerContent
         id={contentId}
-        className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900"
+        className={cn(
+          "flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900",
+          contentClassName
+        )}
       >
-        <DrawerTitle className="sr-only">Generate Summary</DrawerTitle>
-        <div className="flex min-h-0 flex-1 flex-col">
+        <DrawerTitle className="sr-only">{title}</DrawerTitle>
+        <div className={cn("flex min-h-0 flex-1 flex-col", scrollable && "overflow-y-auto")}>
           {children}
         </div>
         <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">

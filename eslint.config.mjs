@@ -32,6 +32,14 @@ const eslintConfig = [
           argsIgnorePattern: "^_",
         },
       ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='asChild']",
+          message:
+            "Radix's `asChild` prop is not allowed. We standardize on Base UI (@base-ui-components/react); use its parts + `render={...}` polymorphism (e.g. `<Dialog.Trigger render={<Button variant=\"primary\" />} />`) instead of wrapping children with Radix Slot. See `.cursor/rules` (Base UI quick start) and `DESIGN_PHILOSOPHY.md` for guidance.",
+        },
+      ],
     },
     settings: {
       tailwindcss: {

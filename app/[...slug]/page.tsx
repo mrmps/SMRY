@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { normalizeUrl } from "@/lib/validation/url";
 
 export default function RedirectPage() {
   const pathname = usePathname();
@@ -16,12 +17,18 @@ export default function RedirectPage() {
     // Extract the path after the initial '/'
     const slug = pathname.substring(1);
 
-    // Check if the slug starts with 'http:/' or 'https:/', if not, prepend 'https://'
-    console.log("slug is " , slug)
-    const formattedSlug = pathname.includes('http:/') || pathname.includes('https:/') ? pathname.slice(1) : `https://${slug}`;
+    if (!slug) {
+      return;
+    }
 
-    // Perform the redirection
-    router.push(`/proxy?url=${(encodeURIComponent(formattedSlug))}`);
+    try {
+      const normalized = normalizeUrl(slug);
+      router.push(`/proxy?url=${encodeURIComponent(normalized)}`);
+    } catch (error) {
+      console.error("Failed to normalize path slug", slug, error);
+      const fallback = /^https?:\/\//i.test(slug) ? slug : `https://${slug}`;
+      router.push(`/proxy?url=${encodeURIComponent(fallback)}`);
+    }
   }, [router, pathname]);
 
   // Render nothing or a loading indicator
