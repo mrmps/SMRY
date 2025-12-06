@@ -127,7 +127,7 @@ export function ResponsiveDrawer({
       <DrawerContent
         id={contentId}
         className={cn(
-          "flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900",
+          "flex h-[85vh] flex-col bg-background",
           contentClassName
         )}
       >
