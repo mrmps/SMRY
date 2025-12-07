@@ -5,6 +5,7 @@ import { streamText } from "ai";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
+import { auth } from "@clerk/nextjs/server";
 
 // Configure OpenRouter provider
 // OpenRouter provides unified access to 300+ AI models with automatic provider fallback
@@ -120,8 +121,12 @@ export async function POST(request: NextRequest) {
 
     logger.debug({ clientIp, language, contentLength: content.length }, 'Request details');
 
-    // Rate limiting
-    if (process.env.NODE_ENV !== "development") {
+    // Check if user is premium - premium users get unlimited summaries
+    const { has } = await auth();
+    const isPremium = has?.({ plan: "premium" }) ?? false;
+
+    // Rate limiting - skip for premium users
+    if (process.env.NODE_ENV !== "development" && !isPremium) {
       try {
         const dailyRatelimit = new Ratelimit({
           redis: redis,
@@ -166,6 +171,8 @@ export async function POST(request: NextRequest) {
         // This ensures that Redis outages don't break the summary feature
         logger.warn({ error: redisError, clientIp }, 'Redis rate limiting failed, allowing request');
       }
+    } else if (isPremium) {
+      logger.debug({ clientIp }, 'Premium user - skipping rate limits');
     }
 
     // Check cache (use content hash or URL for cache key)
