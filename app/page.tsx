@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { z } from "zod";
 import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button";
-import Link from "next/link";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
@@ -87,6 +86,10 @@ export default function Home() {
             />
           </h1>
 
+          <p className="mt-2 text-center text-lg text-muted-foreground">
+            Read paywalled articles for free + get an AI summary.
+          </p>
+
           <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div className={clsx(
               "flex overflow-hidden rounded-lg border shadow-sm transition-all duration-300",
@@ -97,7 +100,7 @@ export default function Home() {
               <input
                 className="w-full bg-transparent p-4 py-3 text-lg placeholder:text-muted-foreground focus:outline-none"
                 name="url"
-                placeholder="https://example.com/page"
+                placeholder="Paste article URL..."
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
@@ -141,16 +144,7 @@ export default function Home() {
               </Button>
             </div>
           </form>
-          <h2 className="mt-4 w-full text-center text-muted-foreground">
-            Bypass paywalls and get instant{" "}
-            <Link href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091">
-              <span className="transition-border border-b border-muted-foreground duration-300 hover:border-foreground">
-                summaries
-              </span>
-            </Link>
-            .
-          </h2>
-          <p className="mt-2 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             by{" "}
             <a
               href="https://x.com/michael_chomsky"

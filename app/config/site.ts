@@ -12,9 +12,9 @@ export type SiteConfig = {
 export const siteConfig: SiteConfig = {
   name: "smry.ai",
   description:
-    "An open source paywall bypass site with instant ai summaries, inspired by 12ft.io and 1ft.io",
+    "Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension.",
   url: "https://smry.ai",
-  ogImage: "https://tx.shadcn.com/og.jpg",
+  ogImage: "https://smry.ai/og-image.png",
   links: {
     twitter: "https://twitter.com/michael_chomsky",
     github: "https://github.com/mrmps/SMRY",

@@ -7,30 +7,31 @@ import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Smry | AI Summarizer and Free Paywall Remover",
+  title: "Bypass Paywalls & Read Full Articles Free – No Login | Smry",
   description:
-    "Remove paywalls and summarize articles for free. Instant access to content without login for faster insights.",
+    "Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension. Works on most major news sites.",
+  keywords: ["bypass paywall", "paywall remover", "read paywalled articles", "free paywall bypass", "article summarizer", "remove paywall"],
   openGraph: {
     type: "website",
-    title: "Smry | AI Summarizer and Free Paywall Remover",
+    title: "Bypass Paywalls & Read Full Articles Free | Smry",
     siteName: "smry.ai",
     url: "https://smry.ai",
     description:
-      "Remove paywalls and summarize articles for free. Instant access to content without login for faster insights.",
+      "Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension.",
     images: [
       {
         url: "https://smry.ai/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Smry - AI Summarizer and Free Paywall Remover",
+        alt: "Smry - Free Paywall Bypass Tool & Article Summarizer",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Smry | AI Summarizer and Free Paywall Remover",
+    title: "Bypass Paywalls & Read Full Articles Free | Smry",
     description:
-      "Remove paywalls and summarize articles for free. Instant access to content without login for faster insights.",
+      "Paste any paywalled article link and get the full text plus an AI summary. Free, no account, no extension.",
     images: ["https://smry.ai/og-image.png"],
   },
 };
