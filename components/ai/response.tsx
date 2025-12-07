@@ -200,6 +200,10 @@ export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
     ReturnType<typeof hardenReactMarkdown>
   >['defaultOrigin'];
   parseIncompleteMarkdown?: boolean;
+  /** Text direction for RTL language support */
+  dir?: 'rtl' | 'ltr';
+  /** Language code for the content */
+  lang?: string;
 };
 
 const components: Options['components'] = {
@@ -379,6 +383,8 @@ export const Response = memo(
     allowedLinkPrefixes,
     defaultOrigin,
     parseIncompleteMarkdown: shouldParseIncompleteMarkdown = true,
+    dir,
+    lang,
     ...props
   }: ResponseProps) => {
     // Parse the children to remove incomplete markdown tokens if enabled
@@ -392,6 +398,8 @@ export const Response = memo(
           'size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
           className
         )}
+        dir={dir}
+        lang={lang}
         {...props}
       >
         <HardenedMarkdown
@@ -408,7 +416,7 @@ export const Response = memo(
       </div>
     );
   },
-  (prevProps, nextProps) => prevProps.children === nextProps.children
+  (prevProps, nextProps) => prevProps.children === nextProps.children && prevProps.dir === nextProps.dir
 );
 
 Response.displayName = 'Response';
