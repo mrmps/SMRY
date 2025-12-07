@@ -9,12 +9,13 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { z } from "zod";
-import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
 import { AdSpot } from "@/components/marketing/ad-spot";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
@@ -33,12 +34,12 @@ const ModeToggle = dynamic(
 
 // Shows "Go Premium" link only for non-premium signed-in users
 function GoPremiumLink() {
-  const { has, isLoaded } = useAuth();
+  const { isPremium, isLoading } = useIsPremium();
   
-  if (!isLoaded) return null;
+  // Don't show while loading to prevent flash
+  if (isLoading) return null;
   
-  const isPremium = has?.({ plan: "premium" }) ?? false;
-  
+  // Don't show for premium users
   if (isPremium) return null;
   
   return (

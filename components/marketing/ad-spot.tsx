@@ -4,12 +4,12 @@ import * as React from "react";
 import Image from "next/image";
 import { Megaphone, ExternalLink, Users, Zap, Eye, Check, Crown } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
-import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 
 // Google Analytics event helper
 declare global {
@@ -391,20 +391,6 @@ function GoPremiumLink({ className }: { className?: string }) {
   );
 }
 
-// Hook to check if user has premium using Clerk Billing
-function useIsPremium() {
-  const { isLoaded, has } = useAuth();
-  
-  if (!isLoaded) {
-    return { isPremium: false, isLoading: true };
-  }
-  
-  // Use Clerk Billing's has() to check for premium plan
-  // This automatically checks the user's subscription status
-  const isPremium = has?.({ plan: "premium" }) ?? false;
-    
-  return { isPremium, isLoading: false };
-}
 
 // ============================================
 // EXPORTED COMPONENTS
@@ -417,28 +403,26 @@ export function AdSpot({ className }: AdSpotProps) {
     initializeWithValue: false,
   });
 
-  // Don't render ads for premium users
-  if (isPremium) {
-    return null;
-  }
-
-  // Show nothing while loading to prevent flash
-  if (isLoading) {
-    return null;
-  }
-
+  // Always render to prevent hydration mismatch, use hidden prop for visibility
   return isMobile ? (
-    <AdSpotMobileBar className={className} />
+    <AdSpotMobileBar className={className} hidden={isLoading || isPremium} />
   ) : (
-    <AdSpotSidebar className={className} />
+    <AdSpotSidebar className={className} hidden={isLoading || isPremium} />
   );
 }
 
-export function AdSpotSidebar({ className }: AdSpotProps) {
+export function AdSpotSidebar({ className, hidden = false }: AdSpotProps & { hidden?: boolean }) {
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div 
+      className={cn(
+        "flex flex-col gap-2 transition-opacity duration-200",
+        hidden ? "opacity-0 pointer-events-none" : "opacity-100",
+        className
+      )}
+      aria-hidden={hidden}
+    >
       <WisprAdCard />
       <GptHumanAdCard />
       <div className="flex items-center justify-center gap-3 text-center">
@@ -484,11 +468,18 @@ function MobileAdPill({ href, imageSrc, alt, eventLabel }: { href: string; image
   );
 }
 
-export function AdSpotMobileBar({ className }: AdSpotProps) {
+export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { hidden?: boolean }) {
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
-    <div className={cn("fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40", className)}>
+    <div 
+      className={cn(
+        "fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40 transition-all duration-200",
+        hidden ? "opacity-0 pointer-events-none translate-y-full" : "opacity-100 translate-y-0",
+        className
+      )}
+      aria-hidden={hidden}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <MobileAdPill

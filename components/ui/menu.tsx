@@ -44,7 +44,8 @@ function MenuPopup({
           )}
         >
           <MenuPrimitive.Popup
-            className="max-h-(--available-height) not-[class*='w-']:min-w-32 overflow-y-auto p-1"
+            className="max-h-(--available-height) not-[class*='w-']:min-w-32 overflow-y-auto p-1 [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:h-0"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             data-slot="menu-popup"
             {...props}
           />

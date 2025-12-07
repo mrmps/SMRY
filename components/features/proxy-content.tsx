@@ -7,6 +7,7 @@ import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
 import { useAuth, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import {
   Bug as BugIcon,
   Sparkles as SparklesIcon,
@@ -14,6 +15,9 @@ import {
   Moon,
   Laptop,
   History as HistoryIcon,
+  MoreHorizontal,
+  ExternalLink,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -31,6 +35,12 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
+  Menu,
+  MenuTrigger,
+  MenuPopup,
+  MenuItem,
+} from "@/components/ui/menu";
+import {
   useQueryStates,
   parseAsStringLiteral,
   parseAsBoolean,
@@ -44,36 +54,13 @@ const ModeToggle = dynamic(
   { ssr: false, loading: () => <div className="size-9" /> }
 );
 
-// Shows "Go Premium" link only for non-premium signed-in users
-function GoPremiumLink({ className }: { className?: string }) {
-  const { has, isLoaded } = useAuth();
-  
-  if (!isLoaded) return null;
-  
-  const isPremium = has?.({ plan: "premium" }) ?? false;
-  
-  if (isPremium) return null;
-  
-  return (
-    <Link
-      href="/pricing"
-      className={cn(
-        "text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 md:px-0",
-        className
-      )}
-    >
-      <span className="md:hidden">Premium</span>
-      <span className="hidden md:inline">Go Premium</span>
-    </Link>
-  );
-}
-
 // History button that links to /history for signed-in users, /pricing for signed-out
 function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
   const { isSignedIn, isLoaded } = useAuth();
   
   const isDesktop = variant === "desktop";
   const href = isSignedIn ? "/history" : "/pricing";
+  const showBadge = isLoaded && !isSignedIn;
   
   return (
     <Link
@@ -88,12 +75,18 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
     >
       <HistoryIcon className="size-4" />
       {!isDesktop && <span className="sr-only">History</span>}
-      {/* Premium badge for non-signed-in users */}
-      {isLoaded && !isSignedIn && (
-        <span className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-linear-to-r from-amber-400 to-orange-500 text-[8px] font-bold text-white shadow-sm">
-          ★
-        </span>
-      )}
+      {/* Premium badge for non-signed-in users - always reserve space to prevent shift */}
+      <span 
+        className={cn(
+          "absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm transition-opacity",
+          showBadge 
+            ? "bg-linear-to-r from-amber-400 to-orange-500 opacity-100" 
+            : "opacity-0 pointer-events-none"
+        )}
+        aria-hidden={!showBadge}
+      >
+        ★
+      </span>
     </Link>
   );
 }
@@ -110,10 +103,7 @@ interface ProxyContentProps {
 export function ProxyContent({ url, ip }: ProxyContentProps) {
   const { results } = useArticles(url);
   const { theme, setTheme } = useTheme();
-  const { isLoaded, has } = useAuth();
-  
-  // Check if user has premium plan
-  const isPremium = isLoaded && (has?.({ plan: "premium" }) ?? false);
+  const { isPremium, isLoading } = useIsPremium();
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
@@ -181,22 +171,22 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
   const content = (
     <div className="flex h-dvh flex-col bg-background">
-      {/* Desktop Ad Spot - Left sidebar (hidden for premium users) */}
-      {!isPremium && (
-        <div className="hidden lg:block fixed left-4 top-20 z-40">
-          <AdSpotSidebar />
-        </div>
-      )}
+      {/* Desktop Ad Spot - Left sidebar (hidden for premium users or while loading) */}
+      {/* Always rendered to prevent hydration mismatch, visibility controlled by hidden prop */}
+      <div className="hidden lg:block fixed left-4 top-20 z-40">
+        <AdSpotSidebar hidden={isLoading || isPremium} />
+      </div>
       
-      {/* Mobile Ad Spot - Bottom bar (hidden when summary sidebar is open or user is premium) */}
-      {!sidebarOpen && !isPremium && (
-        <div className="lg:hidden">
-          <AdSpotMobileBar />
-        </div>
-      )}
+      {/* Mobile Ad Spot - Bottom bar (hidden when summary sidebar is open, user is premium, or while loading) */}
+      {/* Always rendered to prevent hydration mismatch, visibility controlled by hidden prop */}
+      <div className="lg:hidden">
+        <AdSpotMobileBar hidden={isLoading || sidebarOpen || isPremium} />
+      </div>
       
       <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
+          {/* Left: Logo */}
+          <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/"
               className="flex items-center gap-2 transition-opacity hover:opacity-80"
@@ -211,77 +201,62 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
               />
             </Link>
 
-          {/* Desktop Control Pills - Hidden on Mobile */}
-          <div className="hidden md:flex items-center p-0.5 bg-accent rounded-lg absolute left-1/2 -translate-x-1/2">
-            <button
-              onClick={() => handleViewModeChange("markdown")}
-              className={cn(
-                "px-3 py-1 text-xs font-medium rounded-[6px] transition-all",
-                viewMode === "markdown"
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              reader
-            </button>
-            <button
-              onClick={() => handleViewModeChange("html")}
-              className={cn(
-                "px-3 py-1 text-xs font-medium rounded-[6px] transition-all",
-                viewMode === "html"
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              original
-            </button>
-            <button
-              onClick={() => handleViewModeChange("iframe")}
-              className={cn(
-                "px-3 py-1 text-xs font-medium rounded-[6px] transition-all",
-                viewMode === "iframe"
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              iframe
-            </button>
+            {/* View Mode Pills - Desktop: more visible with solid background */}
+            <div className="hidden md:flex items-center p-1 bg-muted rounded-xl">
+              <button
+                onClick={() => handleViewModeChange("markdown")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                  viewMode === "markdown"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                )}
+              >
+                reader
+              </button>
+              <button
+                onClick={() => handleViewModeChange("html")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                  viewMode === "html"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                )}
+              >
+                original
+              </button>
+              <button
+                onClick={() => handleViewModeChange("iframe")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                  viewMode === "iframe"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                )}
+              >
+                iframe
+              </button>
+            </div>
           </div>
 
+          {/* Center: Spacer */}
+          <div className="flex-1" />
+
+          {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <SignedIn>
-                  <GoPremiumLink />
-                  <UserButton 
-                    appearance={{
-                      elements: {
-                        avatarBox: "size-8"
-                      }
-                    }}
-                  />
-                </SignedIn>
-                <SignedOut>
-                  <Link
-                    href="/pricing"
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Go Premium
-                  </Link>
-                </SignedOut>
-              </div>
-              <HistoryButton variant="desktop" />
-              <ModeToggle />
+            {/* Desktop Actions - Reorganized with overflow menu */}
+            <div className="hidden md:flex items-center gap-1.5">
+              {/* Primary Actions Group */}
               <Button
-                variant={sidebarOpen ? "secondary" : "outline"}
+                variant={sidebarOpen ? "default" : "outline"}
                 size="sm"
-                className="h-8 text-xs font-medium"
+                className="h-8 text-xs font-medium gap-1.5"
                 onClick={() => handleSidebarChange(!sidebarOpen)}
               >
-                <SparklesIcon className="mr-1.5 size-3.5" />
+                <SparklesIcon className="size-3.5" />
                 Summary
               </Button>
+
               <ShareButton
                 url={`https://smry.ai/${url}`}
                 source={source || "smry-fast"}
@@ -290,48 +265,107 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 articleTitle={articleTitle}
                 articleImage={articleImage}
               />
-              <a
-                href="https://smryai.userjot.com/"
-                target="_blank"
-                rel="noreferrer"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  "h-8 text-xs font-medium text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <BugIcon className="mr-1.5 size-3.5" />
-                Report Bug
-              </a>
-            </div>
 
-            {/* Mobile Summary Trigger */}
-            <div className="md:hidden flex items-center gap-2">
-              <SignedIn>
-                <GoPremiumLink />
-                <UserButton 
-                  appearance={{
-                    elements: {
-                      avatarBox: "size-8"
-                    }
+              {/* Separator */}
+              <div className="w-px h-5 bg-border/60 mx-1" />
+
+              {/* Secondary Actions */}
+              <HistoryButton variant="desktop" />
+              <ModeToggle />
+
+              {/* User Section - Fixed width to prevent layout shift */}
+              <div className="flex items-center gap-1.5 ml-1 min-w-[28px]">
+                <SignedIn>
+                  <UserButton 
+                    appearance={{
+                      elements: {
+                        avatarBox: "size-7"
+                      }
+                    }}
+                  />
+                </SignedIn>
+                <SignedOut>
+                  <Link
+                    href="/pricing"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                  >
+                    Premium
+                  </Link>
+                </SignedOut>
+              </div>
+
+              {/* Overflow Menu for less common actions */}
+              <Menu>
+                <MenuTrigger
+                  render={(props) => {
+                    const { key, ...rest } = props as typeof props & { key?: React.Key };
+                    return (
+                      <Button
+                        key={key}
+                        {...rest}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    );
                   }}
                 />
-              </SignedIn>
-              <SignedOut>
-                <Link
-                  href="/pricing"
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-                >
-                  Premium
-                </Link>
-              </SignedOut>
-               <Button
-                variant="ghost"
+                <MenuPopup side="bottom" align="end">
+                  <MenuItem
+                    render={(props) => {
+                      const { key, ...rest } = props as typeof props & { key?: React.Key };
+                      return (
+                        <a
+                          key={key}
+                          {...rest}
+                          href="https://smryai.userjot.com/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 w-full"
+                        >
+                          <BugIcon className="size-4" />
+                          <span className="flex-1">Report Bug</span>
+                          <ExternalLink className="size-3 opacity-50 shrink-0" />
+                        </a>
+                      );
+                    }}
+                  />
+                  <MenuItem
+                    render={(props) => {
+                      const { key, ...rest } = props as typeof props & { key?: React.Key };
+                      return (
+                        <a
+                          key={key}
+                          {...rest}
+                          href="https://smryai.userjot.com/"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 w-full"
+                        >
+                          <MessageSquare className="size-4" />
+                          <span className="flex-1">Send Feedback</span>
+                          <ExternalLink className="size-3 opacity-50 shrink-0" />
+                        </a>
+                      );
+                    }}
+                  />
+                </MenuPopup>
+              </Menu>
+            </div>
+
+            {/* Mobile Actions */}
+            <div className="md:hidden flex items-center gap-1.5">
+              {/* Primary: Summary Button */}
+              <Button
+                variant={sidebarOpen ? "default" : "outline"}
                 size="sm"
-                className="h-8 gap-1.5 rounded-lg text-xs font-medium hover:bg-accent px-2.5"
+                className="h-8 gap-1 text-xs font-medium px-2.5"
                 onClick={() => handleSidebarChange(!sidebarOpen)}
               >
-                <SparklesIcon className="size-4" />
-                <span className="sr-only">Summary</span>
+                <SparklesIcon className="size-3.5" />
+                <span className="hidden xs:inline">AI</span>
               </Button>
 
               <ShareButton
@@ -345,6 +379,27 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
               />
 
               <HistoryButton variant="mobile" />
+
+              {/* User Section - Fixed width to prevent layout shift */}
+              <div className="flex items-center min-w-[28px]">
+                <SignedIn>
+                  <UserButton 
+                    appearance={{
+                      elements: {
+                        avatarBox: "size-7"
+                      }
+                    }}
+                  />
+                </SignedIn>
+                <SignedOut>
+                  <Link
+                    href="/pricing"
+                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                  >
+                    Pro
+                  </Link>
+                </SignedOut>
+              </div>
               
               <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <DrawerTrigger
