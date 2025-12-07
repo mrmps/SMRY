@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Megaphone, ExternalLink, Users, Zap, Eye, Check, Crown } from "lucide-react";
+import { Megaphone, ExternalLink, Users, Eye, Check, Crown } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
