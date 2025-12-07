@@ -1,28 +1,34 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
+
+// Empty subscribe function - we don't need to subscribe to anything,
+// we just use useSyncExternalStore for its hydration-safe behavior
+const emptySubscribe = () => () => {};
 
 /**
  * Hook to check if user has premium using Clerk Billing
  * Returns stable values to prevent hydration mismatches
  * 
+ * Uses useSyncExternalStore to safely handle the SSR/client boundary
+ * without causing cascading renders from useEffect + setState
+ * 
  * @returns { isPremium: boolean, isLoading: boolean }
  */
-export function useIsPremium() {
+export function useIsPremium(): { isPremium: boolean, isLoading: boolean } {
   const { isLoaded, has } = useAuth();
-  // Track if we've done the initial client-side check to avoid hydration mismatch
-  const [hasChecked, setHasChecked] = useState(false);
+  
+  // Returns true on client, false during SSR - prevents hydration mismatch
+  const isClient = useSyncExternalStore(
+    emptySubscribe,
+    () => true,  // Client snapshot
+    () => false  // Server snapshot
+  );
 
-  useEffect(() => {
-    if (isLoaded && !hasChecked) {
-      setHasChecked(true);
-    }
-  }, [isLoaded, hasChecked]);
-
-  // Only trust premium status after initial client check
-  const isPremium = hasChecked && (has?.({ plan: "premium" }) ?? false);
-  const isLoading = !hasChecked;
+  // Only trust premium status after client hydration and auth is loaded
+  const isPremium = isClient && isLoaded && (has?.({ plan: "premium" }) ?? false);
+  const isLoading = !isClient || !isLoaded;
 
   return { isPremium, isLoading };
 }
