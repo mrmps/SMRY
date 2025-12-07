@@ -110,10 +110,7 @@ export async function POST(request: NextRequest) {
     if (!validationResult.success) {
       const error = validationResult.error.errors[0]?.message || "Invalid request parameters";
       logger.error({ error: validationResult.error }, 'Validation error');
-      return NextResponse.json(
-        { error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error }, { status: 400 });
     }
 
     const { prompt: content, title, url, ip, language } = validationResult.data;
@@ -148,10 +145,7 @@ export async function POST(request: NextRequest) {
         if (!dailySuccess) {
           logger.warn({ clientIp }, 'Daily rate limit exceeded');
           return NextResponse.json(
-            {
-              error:
-                "Your daily limit of 20 summaries has been reached. Please return tomorrow for more summaries.",
-            },
+            { error: "Your daily limit of 20 summaries has been reached. Please return tomorrow." },
             { status: 429 }
           );
         }
@@ -159,10 +153,7 @@ export async function POST(request: NextRequest) {
         if (!minuteSuccess) {
           logger.warn({ clientIp }, 'Minute rate limit exceeded');
           return NextResponse.json(
-            {
-              error:
-                "Your limit of 6 summaries per minute has been reached. Please slow down.",
-            },
+            { error: "Your limit of 6 summaries per minute has been reached. Please slow down." },
             { status: 429 }
           );
         }
@@ -257,10 +248,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error({ error }, 'Unexpected error');
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "An unexpected error occurred",
-      },
+      { error: error instanceof Error ? error.message : "An unexpected error occurred" },
       { status: 500 }
     );
   }

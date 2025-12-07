@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useCompletion } from "@ai-sdk/react";
+import Link from "next/link";
 import { LANGUAGES, Source, ArticleResponse } from "@/types/api";
 import { Button } from "../ui/button";
 import {
@@ -142,25 +143,44 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
 
   const errorContent = useMemo(() => {
     if (!error) return null;
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-    const isLengthError = errorMessage.toLowerCase().includes("content must be at least");
     
-    if (isLengthError) {
+    const msg = error.message.toLowerCase();
+    
+    // Rate limit error
+    if (msg.includes("limit") && (msg.includes("summaries") || msg.includes("slow down"))) {
+      const isDaily = msg.includes("daily");
+      return {
+        title: "Rate Limit Reached",
+        message: isDaily 
+          ? "You've hit your daily limit of 20 summaries. Upgrade to Premium for unlimited access."
+          : "You've hit your limit of 6 summaries per minute. Wait a moment or upgrade to Premium.",
+        bgClass: "bg-purple-500/10",
+        textClass: "text-purple-600 dark:text-purple-400",
+        titleClass: "text-purple-700 dark:text-purple-300",
+        showUpgrade: true,
+      };
+    }
+    
+    // Content too short
+    if (msg.includes("content must be at least")) {
       return {
         title: "Content Too Short",
-        message: "This article doesn't have enough content to generate a high-quality summary. Please try a different source tab above, or view the original article.",
+        message: "This article doesn't have enough content to summarize. Try a different source tab.",
         bgClass: "bg-amber-500/10",
         textClass: "text-amber-600 dark:text-amber-400",
-        titleClass: "text-amber-700 dark:text-amber-300"
+        titleClass: "text-amber-700 dark:text-amber-300",
+        showUpgrade: false,
       };
     }
 
+    // Generic error
     return {
       title: "Error",
-      message: errorMessage,
+      message: error.message,
       bgClass: "bg-red-500/10",
       textClass: "text-red-600 dark:text-red-400",
-      titleClass: "text-red-700 dark:text-red-300"
+      titleClass: "text-red-700 dark:text-red-300",
+      showUpgrade: false,
     };
   }, [error]);
 
@@ -178,6 +198,16 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
               <p className={`text-sm ${errorContent.textClass}`}>
                 {errorContent.message}
               </p>
+              {errorContent.showUpgrade && (
+                <div className="mt-3">
+                  <Link 
+                    href="/pricing"
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    Upgrade to Premium
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
