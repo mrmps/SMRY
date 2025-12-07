@@ -225,11 +225,6 @@ function AdDrawerContent() {
           title="Premium placement"
           description="Sidebar on desktop, banner on mobile across all pages"
         />
-        <FeatureCard
-          icon={<Zap className="size-4" />}
-          title="Fair rotation"
-          description="Sponsors rotate every 10 seconds for equal visibility"
-        />
       </div>
 
       {/* Availability Section */}
