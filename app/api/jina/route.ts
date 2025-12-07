@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
       // Detect text direction for the incoming article
       const articleDir = getTextDirection(null, article.textContent);
-      const articleWithDir = { ...article, dir: articleDir, lang: article.lang || null };
+      const articleWithDir = { ...article, dir: articleDir, lang: null };
 
       // Only update if new article is longer or doesn't exist
       if (!validatedExisting || article.length > validatedExisting.length) {
