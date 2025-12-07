@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     const isPremium = has?.({ plan: "premium" }) ?? false;
 
     // Rate limiting - skip for premium users
-    if (process.env.NODE_ENV !== "development" && !isPremium) {
+    if (!isPremium) {
       try {
         const dailyRatelimit = new Ratelimit({
           redis: redis,
