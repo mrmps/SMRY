@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import ShareButton from "@/components/features/share-button";
+import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import ArrowTabs from "@/components/article/tabs";
@@ -127,6 +128,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   const activeArticle = results[source]?.data?.article;
   const articleTitle = activeArticle?.title;
   const articleImage = activeArticle?.image;
+  const articleTextContent = activeArticle?.textContent;
 
   // Track if we've already saved to history for this URL
   const savedToHistoryRef = useRef<string | null>(null);
@@ -266,6 +268,14 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 articleImage={articleImage}
               />
 
+              <CopyPageDropdown
+                url={url}
+                articleTitle={articleTitle}
+                textContent={articleTextContent}
+                source={source}
+                viewMode={viewMode}
+              />
+
               {/* Separator */}
               <div className="w-px h-5 bg-border/60 mx-1" />
 
@@ -376,6 +386,14 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 articleTitle={articleTitle}
                 articleImage={articleImage}
                 triggerVariant="icon"
+              />
+
+              <CopyPageDropdown
+                url={url}
+                articleTitle={articleTitle}
+                textContent={articleTextContent}
+                source={source}
+                viewMode={viewMode}
               />
 
               <HistoryButton variant="mobile" />
