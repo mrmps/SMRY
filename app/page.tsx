@@ -7,7 +7,9 @@ import {
 import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { z } from "zod";
+import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
 import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -28,6 +30,26 @@ const ModeToggle = dynamic(
   () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
   { ssr: false, loading: () => <div className="size-9" /> }
 );
+
+// Shows "Go Premium" link only for non-premium signed-in users
+function GoPremiumLink() {
+  const { has, isLoaded } = useAuth();
+  
+  if (!isLoaded) return null;
+  
+  const isPremium = has?.({ plan: "premium" }) ?? false;
+  
+  if (isPremium) return null;
+  
+  return (
+    <Link
+      href="/pricing"
+      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      Go Premium
+    </Link>
+  );
+}
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -61,7 +83,25 @@ export default function Home() {
 
   return (
     <>
-      <div className="absolute right-4 top-4 z-50 md:right-8 md:top-8">
+      <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
+        <SignedIn>
+          <GoPremiumLink />
+          <UserButton 
+            appearance={{
+              elements: {
+                avatarBox: "size-9"
+              }
+            }}
+          />
+        </SignedIn>
+        <SignedOut>
+          <Link
+            href="/pricing"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Go Premium
+          </Link>
+        </SignedOut>
         <ModeToggle />
       </div>
       
@@ -87,7 +127,14 @@ export default function Home() {
           </h1>
 
           <p className="mt-2 text-center text-lg text-muted-foreground">
-            Read paywalled articles for free + get an AI summary.
+            Read paywalled articles for free + get an AI summary.{" "}
+            <Link
+              href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
+              className="border-b border-muted-foreground transition-colors hover:text-foreground hover:border-foreground"
+            >
+              Try&nbsp;it
+            </Link>
+            .
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 w-full">
