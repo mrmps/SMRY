@@ -175,3 +175,47 @@
     display: none !important;
   }
 }
+
+/* RTL (Right-to-Left) language support */
+@layer base {
+  /* Ensure proper text alignment for RTL content */
+  [dir="rtl"] {
+    text-align: right;
+  }
+  
+  [dir="ltr"] {
+    text-align: left;
+  }
+  
+  /* RTL-aware prose styling */
+  [dir="rtl"].prose,
+  .prose[dir="rtl"] {
+    text-align: right;
+  }
+  
+  /* RTL blockquote border adjustment */
+  [dir="rtl"] blockquote,
+  [dir="rtl"].prose blockquote {
+    border-left: none;
+    border-right: 4px solid var(--border);
+    padding-left: 0;
+    padding-right: 1rem;
+  }
+  
+  /* RTL list markers */
+  [dir="rtl"] ol,
+  [dir="rtl"] ul {
+    padding-left: 0;
+    padding-right: 1.5rem;
+  }
+  
+  /* RTL code blocks */
+  [dir="rtl"] pre {
+    direction: ltr; /* Keep code LTR */
+    text-align: left;
+  }
+  
+  [dir="rtl"] code {
+    direction: ltr; /* Keep inline code LTR */
+  }
+}

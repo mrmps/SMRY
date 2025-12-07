@@ -67,7 +67,11 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       <article>
         {/* Header - Title and Links (Only if data available) */}
         {data && !isError && data.article && (
-          <div className="mb-8 space-y-6 border-b border-border pb-6">
+          <div 
+            className="mb-8 space-y-6 border-b border-border pb-6"
+            dir={data.article.dir || 'ltr'}
+            lang={data.article.lang || undefined}
+          >
             {/* Top Row: Favicon + Site Name */}
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -292,6 +296,8 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                 ) : data.article?.content ? (
                   <div
                     className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
+                    dir={data.article.dir || 'ltr'}
+                    lang={data.article.lang || undefined}
                     dangerouslySetInnerHTML={{ __html: data.article.content }}
                   />
                 ) : (
