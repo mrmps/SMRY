@@ -102,15 +102,14 @@ export function CopyPageDropdown({
   };
 
   const handleOpenInAI = (service: "chatgpt" | "claude") => {
-    // Build the smry.ai URL with query parameters
-    const smryUrlObj = new URL(`https://smry.ai/${url}`);
+    // Build the smry.ai proxy URL with query parameters
+    const proxyUrlObj = new URL("https://www.smry.ai/proxy");
+    proxyUrlObj.searchParams.set("url", url);
+    
     if (source) {
-      smryUrlObj.searchParams.set("source", source);
+      proxyUrlObj.searchParams.set("source", source);
     }
-    if (viewMode) {
-      smryUrlObj.searchParams.set("view", viewMode);
-    }
-    const smryUrl = smryUrlObj.toString();
+    const smryUrl = proxyUrlObj.toString();
     
     let aiUrl: string;
     switch (service) {
