@@ -47,7 +47,7 @@ function useJinaArticle(url: string): UseQueryResult<ArticleResponse, Error> {
         article: {
           ...result.article,
           byline: "",
-          dir: "",
+          dir: "ltr", // Will be detected properly when cached via API
           lang: "",
         },
         status: "success",

@@ -9,6 +9,7 @@ import { AppError, createNetworkError, createParseError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
+import { getTextDirection } from "@/lib/rtl";
 
 const logger = createLogger('api:article');
 
@@ -22,6 +23,7 @@ const DiffbotArticleSchema = z.object({
   publishedTime: z.string().optional().nullable(),
   image: z.string().nullable().optional(),
   htmlContent: z.string().optional(),
+  lang: z.string().optional().nullable(),
 });
 
 // Article schema for caching
@@ -35,6 +37,8 @@ const CachedArticleSchema = z.object({
   publishedTime: z.string().optional().nullable(),
   image: z.string().nullable().optional(),
   htmlContent: z.string().optional(),
+  lang: z.string().optional().nullable(),
+  dir: z.enum(['rtl', 'ltr']).optional().nullable(),
 });
 
 type CachedArticle = z.infer<typeof CachedArticleSchema>;
@@ -216,6 +220,15 @@ async function fetchArticleWithSmryFast(
       };
     }
 
+    // Extract language from HTML
+    const htmlLang = dom.window.document.documentElement.getAttribute('lang') || 
+                     dom.window.document.documentElement.getAttribute('xml:lang') ||
+                     parsed.lang || // Readability may extract this
+                     null;
+    
+    // Detect text direction based on language or content analysis
+    const textDir = getTextDirection(htmlLang, parsed.textContent);
+
     const articleCandidate: CachedArticle = {
       title: parsed.title || dom.window.document.title || 'Untitled',
       content: parsed.content,
@@ -232,6 +245,8 @@ async function fetchArticleWithSmryFast(
       publishedTime: extractDateFromDom(dom.window.document) || null,
       image: extractImageFromDom(dom.window.document) || null,
       htmlContent: originalHtml, // Original page HTML
+      lang: htmlLang,
+      dir: textDir,
     };
 
     const validationResult = CachedArticleSchema.safeParse(articleCandidate);
@@ -314,6 +329,9 @@ async function fetchArticleWithDiffbotWrapper(
 
     const validatedArticle = validationResult.data;
 
+    // Detect text direction based on language or content analysis
+    const textDir = getTextDirection(validatedArticle.lang, validatedArticle.text);
+
     const article: CachedArticle = {
       title: validatedArticle.title,
       content: validatedArticle.html,
@@ -324,9 +342,11 @@ async function fetchArticleWithDiffbotWrapper(
       publishedTime: validatedArticle.publishedTime,
       image: validatedArticle.image,
       htmlContent: validatedArticle.htmlContent,
+      lang: validatedArticle.lang,
+      dir: textDir,
     };
 
-    logger.debug({ source, title: article.title, length: article.length }, 'Diffbot article parsed and validated');
+    logger.debug({ source, title: article.title, length: article.length, lang: article.lang, dir: article.dir }, 'Diffbot article parsed and validated');
     return { article, cacheURL: urlWithSource };
   } catch (error) {
     logger.error({ source, error }, 'Article parsing exception');
@@ -432,8 +452,8 @@ export async function GET(request: NextRequest) {
               article: {
                 title: article.title,
                 byline: article.byline || null,
-                dir: "",
-                lang: "",
+                dir: article.dir || getTextDirection(article.lang, article.textContent),
+                lang: article.lang || "",
                 content: article.content,
                 textContent: article.textContent,
                 length: article.length,
@@ -516,8 +536,8 @@ export async function GET(request: NextRequest) {
           article: {
             title: article.title,
             byline: article.byline || null,
-            dir: "",
-            lang: "",
+            dir: article.dir || getTextDirection(article.lang, article.textContent),
+            lang: article.lang || "",
             content: article.content,
             textContent: article.textContent,
             length: article.length,
@@ -539,8 +559,8 @@ export async function GET(request: NextRequest) {
         article: {
           title: validatedSavedArticle.title,
           byline: validatedSavedArticle.byline || null,
-          dir: "",
-          lang: "",
+          dir: validatedSavedArticle.dir || getTextDirection(validatedSavedArticle.lang, validatedSavedArticle.textContent),
+          lang: validatedSavedArticle.lang || "",
           content: validatedSavedArticle.content,
           textContent: validatedSavedArticle.textContent,
           length: validatedSavedArticle.length,
@@ -587,13 +607,14 @@ export async function GET(request: NextRequest) {
         article: {
           title: validatedArticle.title,
           byline: validatedArticle.byline || null,
-          dir: "",
-          lang: "",
+          dir: validatedArticle.dir || getTextDirection(validatedArticle.lang, validatedArticle.textContent),
+          lang: validatedArticle.lang || "",
           content: validatedArticle.content,
           textContent: validatedArticle.textContent,
           length: validatedArticle.length,
           siteName: validatedArticle.siteName,
           publishedTime: validatedArticle.publishedTime || null,
+          image: validatedArticle.image || null,
           htmlContent: validatedArticle.htmlContent,
         },
         status: "success",

@@ -26,7 +26,7 @@ export const DebugContextSchema = z.object({
 export const ArticleSchema = z.object({
   title: z.string(),
   byline: z.string().nullable().optional(),
-  dir: z.string().nullable().optional(),
+  dir: z.enum(['rtl', 'ltr']).nullable().optional().default('ltr'),
   lang: z.string().nullable().optional(),
   content: z.string(),
   textContent: z.string(),
