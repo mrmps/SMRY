@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
@@ -546,18 +547,20 @@ function SignedOutContent() {
 }
 
 export default function HistoryPage() {
+  const router = useRouter();
+  
   return (
     <main className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-4" />
-            <span className="hidden sm:inline">Back to SMRY</span>
-          </Link>
+            <span className="hidden sm:inline">Back</span>
+          </button>
           <div className="flex items-center gap-4">
             <SignedIn>
               <UserButton 
