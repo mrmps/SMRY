@@ -42,6 +42,7 @@ const STRIPE_CHECKOUT_URL =
   "https://buy.stripe.com/dRm9AU5E9258f4EcaHfYY00";
 
 const WISPR_REFERRAL_URL = "https://ref.wisprflow.ai/michael-r";
+const GPT_HUMAN_URL = "https://gpthuman.ai/?via=michael-ryaboy";
 
 interface AdSpotProps {
   className?: string;
@@ -91,42 +92,49 @@ function WisprAdCard({ className }: { className?: string }) {
   );
 }
 
-function WisprMobileAd() {
+
+// ============================================
+// SPONSORED AD: GPT Human
+// ============================================
+
+function GptHumanAdCard({ className }: { className?: string }) {
   const handleClick = () => {
     trackGAEvent("ad_click", {
       event_category: "Ads",
-      event_label: "Wispr Flow Ad Mobile",
+      event_label: "GPT Human Ad",
       ad_type: "sponsored",
     });
   };
 
   return (
     <a
-      href={WISPR_REFERRAL_URL}
+      href={GPT_HUMAN_URL}
       target="_blank"
       rel="noreferrer"
       onClick={handleClick}
-      className="flex items-center gap-3 px-3 py-2 bg-card rounded-lg border border-border/50 transition-colors hover:bg-accent/50"
+      className={cn("block p-0.5 bg-accent rounded-[14px] group", className)}
     >
-      <Image
-        src="/whisper-flow-transparent.png"
-        alt="Wispr Flow"
-        width={80}
-        height={20}
-        className="h-4 w-auto dark:invert shrink-0"
-      />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">
-          Voice-to-text I use daily
-        </p>
-        <p className="text-[10px] text-muted-foreground/70 italic">
-          — michael, creator of smry
-        </p>
+      <div className="bg-card rounded-xl p-5 md:p-6 transition-colors group-hover:bg-accent/50">
+        <div className="flex flex-col items-center gap-3 md:gap-4 text-center">
+          <Image
+            src="/gpt-human-transparent.png"
+            alt="GPT Human"
+            width={120}
+            height={28}
+            className="h-6 md:h-7 w-auto dark:invert"
+          />
+          <div className="space-y-1">
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Bypass AI detectors <br />
+              and write like a human
+            </p>
+          </div>
+        </div>
       </div>
-      <ExternalLink className="size-3 text-muted-foreground shrink-0" />
     </a>
   );
 }
+
 
 // ============================================
 // ADVERTISE CTA (for potential sponsors)
@@ -229,16 +237,16 @@ function AdDrawerContent() {
         </p>
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-sm">
-            <Check className="size-4 text-[#039550]" />
+            <Check className="size-4 text-[#B46201]" />
             <span className="text-muted-foreground">5 spots total</span>
-            <span className="ml-auto font-medium text-[#039550]">
-              4 available
+            <span className="ml-auto font-medium text-[#B46201]">
+              Only 3 left
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Check className="size-4 text-[#039550]" />
             <span className="text-muted-foreground">Next available</span>
-            <span className="ml-auto font-medium">January</span>
+            <span className="ml-auto font-medium">December 15th</span>
           </div>
         </div>
       </div>
@@ -377,6 +385,7 @@ export function AdSpotSidebar({ className }: AdSpotProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <WisprAdCard />
+      <GptHumanAdCard />
       <AdvertiseModal
         open={open}
         onOpenChange={setOpen}
@@ -391,14 +400,54 @@ export function AdSpotSidebar({ className }: AdSpotProps) {
   );
 }
 
+function MobileAdPill({ href, imageSrc, alt, eventLabel }: { href: string; imageSrc: string; alt: string; eventLabel: string }) {
+  const handleClick = () => {
+    trackGAEvent("ad_click", {
+      event_category: "Ads",
+      event_label: eventLabel,
+      ad_type: "sponsored",
+    });
+  };
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={handleClick}
+      className="flex items-center gap-1.5 px-3 py-2 bg-card rounded-full border border-border/50 transition-colors hover:bg-accent/50"
+    >
+      <Image
+        src={imageSrc}
+        alt={alt}
+        width={80}
+        height={20}
+        className="h-4 w-auto dark:invert"
+      />
+      <ExternalLink className="size-3 text-muted-foreground" />
+    </a>
+  );
+}
+
 export function AdSpotMobileBar({ className }: AdSpotProps) {
   const [open, setOpen] = React.useState(false);
 
   return (
-    <div className={cn("fixed bottom-0 inset-x-0 z-40 p-3 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40", className)}>
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <WisprMobileAd />
+    <div className={cn("fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <MobileAdPill
+            href={WISPR_REFERRAL_URL}
+            imageSrc="/whisper-flow-transparent.png"
+            alt="Wispr Flow"
+            eventLabel="Wispr Flow Ad Mobile"
+          />
+          <MobileAdPill
+            href={GPT_HUMAN_URL}
+            imageSrc="/gpt-human-transparent.png"
+            alt="GPT Human"
+            eventLabel="GPT Human Ad Mobile"
+          />
         </div>
         <ResponsiveDrawer
           open={open}
