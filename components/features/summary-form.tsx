@@ -205,7 +205,10 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
               <div className="text-sm text-foreground">
                 {completion ? (
                   <>
-                    <Response>
+                    <Response
+                      dir={selectedArticle?.article?.dir || 'ltr'}
+                      lang={selectedArticle?.article?.lang || undefined}
+                    >
                       {completion}
                     </Response>
                     {isLoading && (

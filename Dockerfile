@@ -1,14 +1,12 @@
-FROM node:lts-alpine AS build
+FROM oven/bun:latest AS build
 
 WORKDIR /app/
 
 COPY . .
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile && \
+    bun run build
 
-RUN --mount=type=cache,target=/root/.local/share/pnpm \
-    pnpm install --prefer-offline && \
-    pnpm build
-
-CMD [ "pnpm", "start" ]
+CMD [ "bun", "run", "start" ]
 EXPOSE 3000

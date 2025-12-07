@@ -1,7 +1,8 @@
 import { z } from "zod";
 import isURL, { IsURLOptions } from "validator/lib/isURL";
 
-const PROTOCOL_REGEX = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//;
+// Valid protocol: http:// or https://
+const VALID_PROTOCOL_REGEX = /^https?:\/\//;
 
 const URL_VALIDATION_OPTIONS: IsURLOptions = {
   protocols: ["http", "https"],
@@ -16,8 +17,34 @@ const URL_VALIDATION_OPTIONS: IsURLOptions = {
 };
 
 /**
+ * Clean up malformed URL protocols.
+ * Handles cases like:
+ * - "https://https:/example.com" -> "https://example.com"
+ * - "https:/example.com" -> "https://example.com"
+ * - "http://http://example.com" -> "http://example.com"
+ */
+function cleanProtocol(url: string): string {
+  let result = url;
+
+  // Remove duplicate protocols (e.g., "https://https://" or "https://http://")
+  // Keep removing until no more duplicates
+  let previous: string;
+  do {
+    previous = result;
+    // Match: protocol://protocol: and keep just the second protocol
+    result = result.replace(/^https?:\/\/(https?:\/?\/?)/i, "$1");
+  } while (previous !== result);
+
+  // Fix malformed single-slash protocols: "https:/x" -> "https://x"
+  result = result.replace(/^(https?:\/)([^/])/i, "$1/$2");
+
+  return result;
+}
+
+/**
  * Normalize user-provided URLs by ensuring they include a protocol.
  * Accepts inputs with or without http(s) and validates using validator.js.
+ * Handles malformed protocols like "https:/" and duplicates like "https://https://".
  */
 export function normalizeUrl(input: string): string {
   const trimmed = input.trim();
@@ -26,9 +53,13 @@ export function normalizeUrl(input: string): string {
     throw new Error("Please enter a URL.");
   }
 
-  const candidate = PROTOCOL_REGEX.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
+  // Clean up any protocol issues first
+  let candidate = cleanProtocol(trimmed);
+
+  // Add protocol if missing
+  if (!VALID_PROTOCOL_REGEX.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
 
   if (!isURL(candidate, URL_VALIDATION_OPTIONS)) {
     throw new Error("Please enter a valid URL (e.g. example.com or https://example.com).");

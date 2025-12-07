@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Megaphone, ExternalLink, Users, Zap, Eye, Check, Crown } from "lucide-react";
+import { Megaphone, ExternalLink, Users, Eye, Check, Crown } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -224,11 +224,6 @@ function AdDrawerContent() {
           icon={<Eye className="size-4" />}
           title="Premium placement"
           description="Sidebar on desktop, banner on mobile across all pages"
-        />
-        <FeatureCard
-          icon={<Zap className="size-4" />}
-          title="Fair rotation"
-          description="Sponsors rotate every 10 seconds for equal visibility"
         />
       </div>
 

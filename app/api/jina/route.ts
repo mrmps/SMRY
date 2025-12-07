@@ -5,6 +5,7 @@ import { fromError } from "zod-validation-error";
 import { createLogger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
 import { compress, decompress } from "@/lib/redis-compression";
+import { getTextDirection } from "@/lib/rtl";
 
 const logger = createLogger('api:jina');
 
@@ -18,6 +19,8 @@ const CachedArticleSchema = z.object({
   byline: z.string().optional().nullable(),
   publishedTime: z.string().optional().nullable(),
   htmlContent: z.string().optional(), // Not available for jina.ai source
+  lang: z.string().optional().nullable(),
+  dir: z.enum(['rtl', 'ltr']).optional().nullable(),
 });
 
 /**
@@ -65,8 +68,8 @@ export async function GET(request: NextRequest) {
             article: {
               ...article,
               byline: article.byline || "",
-              dir: "",
-              lang: "",
+              dir: article.dir || getTextDirection(article.lang, article.textContent),
+              lang: article.lang || "",
               publishedTime: article.publishedTime || null,
               htmlContent: article.content, // Use markdown-converted HTML as htmlContent
             },
@@ -158,18 +161,22 @@ export async function POST(request: NextRequest) {
         ]);
       };
 
+      // Detect text direction for the incoming article
+      const articleDir = getTextDirection(null, article.textContent);
+      const articleWithDir = { ...article, dir: articleDir, lang: article.lang || null };
+
       // Only update if new article is longer or doesn't exist
       if (!validatedExisting || article.length > validatedExisting.length) {
-        await saveToCache(article);
-        logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Jina cache updated');
+        await saveToCache(articleWithDir);
+        logger.info({ hostname: new URL(url).hostname, length: article.length, dir: articleDir }, 'Jina cache updated');
         
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
           cacheURL: `https://r.jina.ai/${url}`,
           article: {
-            ...article,
+            ...articleWithDir,
             byline: article.byline || "",
-            dir: "",
+            dir: articleDir,
             lang: "",
             publishedTime: article.publishedTime || null,
             htmlContent: article.content, // Use markdown-converted HTML as htmlContent
@@ -187,8 +194,8 @@ export async function POST(request: NextRequest) {
           article: {
             ...validatedExisting,
             byline: validatedExisting.byline || "",
-            dir: "",
-            lang: "",
+            dir: validatedExisting.dir || getTextDirection(validatedExisting.lang, validatedExisting.textContent),
+            lang: validatedExisting.lang || "",
             publishedTime: validatedExisting.publishedTime || null,
             htmlContent: validatedExisting.content, // Use markdown-converted HTML as htmlContent
           },
@@ -200,6 +207,9 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Jina cache update error');
       
+      // Detect text direction for the article
+      const articleDir = getTextDirection(null, article.textContent);
+      
       // Return the article even if caching fails
       const response = ArticleResponseSchema.parse({
         source: "jina.ai",
@@ -207,7 +217,7 @@ export async function POST(request: NextRequest) {
         article: {
           ...article,
           byline: article.byline || "",
-          dir: "",
+          dir: articleDir,
           lang: "",
           publishedTime: article.publishedTime || null,
           htmlContent: article.content, // Use markdown-converted HTML as htmlContent
