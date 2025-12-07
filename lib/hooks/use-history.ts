@@ -34,7 +34,7 @@ function extractDomain(url: string): string {
  * Generate a unique ID for history items
  */
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -81,7 +81,11 @@ export function useHistory(isPremium: boolean = false) {
     // Listen to storage events (other tabs)
     const handleNativeStorage = (event: StorageEvent) => {
       if (event.key === HISTORY_KEY && event.newValue) {
-        setHistory(JSON.parse(event.newValue));
+        try {
+          setHistory(JSON.parse(event.newValue));
+        } catch (error) {
+          console.warn("Error parsing history from storage event:", error);
+        }
       }
     };
     window.addEventListener("storage", handleNativeStorage);
@@ -175,10 +179,21 @@ export function useHistory(isPremium: boolean = false) {
    */
   const removeFromHistory = useCallback(
     (id: string) => {
-      const newHistory = history.filter((item) => item.id !== id);
-      saveHistory(newHistory);
+      setHistory((prev) => {
+        const newHistory = prev.filter((item) => item.id !== id);
+        try {
+          window.localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+          const event = new CustomEvent<StorageEventDetail>(STORAGE_EVENT_NAME, {
+            detail: { key: HISTORY_KEY, value: newHistory },
+          });
+          window.dispatchEvent(event);
+        } catch (error) {
+          console.warn("Error saving history:", error);
+        }
+        return newHistory;
+      });
     },
-    [history, saveHistory]
+    []
   );
 
   /**
