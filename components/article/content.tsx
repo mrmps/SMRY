@@ -324,7 +324,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           )}
         </div>
       </article>
-      <DebugPanel debugContext={debugContext} />
+      {process.env.NODE_ENV === "development" && debugContext && (
+        <DebugPanel debugContext={debugContext} />
+      )}
     </div>
   );
 };
