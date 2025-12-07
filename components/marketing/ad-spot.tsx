@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Megaphone, ExternalLink, Users, Zap, Eye, Check } from "lucide-react";
+import { Megaphone, ExternalLink, Users, Zap, Eye, Check, Crown } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
+import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 import { Button } from "@/components/ui/button";
@@ -189,7 +191,7 @@ function AdDrawerContent() {
         <FeatureCard
           icon={<Users className="size-4" />}
           title="Hundreds of thousands of readers"
-          description="Reach engaged users actively reading paywalled content"
+          description="Reach engaged readers and grow your brand"
           action={
             !showStats ? (
               <button
@@ -363,14 +365,67 @@ function AdvertiseModal({
 }
 
 // ============================================
+// GO PREMIUM CTA
+// ============================================
+
+function GoPremiumLink({ className }: { className?: string }) {
+  const handleClick = () => {
+    trackGAEvent("premium_cta_click", {
+      event_category: "Premium",
+      event_label: "Go Premium CTA",
+    });
+  };
+
+  return (
+    <Link
+      href="/pricing"
+      onClick={handleClick}
+      className={cn(
+        "inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-500 transition-colors font-medium",
+        className
+      )}
+    >
+      <Crown className="size-3" />
+      Go Premium
+    </Link>
+  );
+}
+
+// Hook to check if user has premium using Clerk Billing
+function useIsPremium() {
+  const { isLoaded, has } = useAuth();
+  
+  if (!isLoaded) {
+    return { isPremium: false, isLoading: true };
+  }
+  
+  // Use Clerk Billing's has() to check for premium plan
+  // This automatically checks the user's subscription status
+  const isPremium = has?.({ plan: "premium" }) ?? false;
+    
+  return { isPremium, isLoading: false };
+}
+
+// ============================================
 // EXPORTED COMPONENTS
 // ============================================
 
 export function AdSpot({ className }: AdSpotProps) {
+  const { isPremium, isLoading } = useIsPremium();
   const isMobile = useMediaQuery("(max-width: 768px)", {
     defaultValue: false,
     initializeWithValue: false,
   });
+
+  // Don't render ads for premium users
+  if (isPremium) {
+    return null;
+  }
+
+  // Show nothing while loading to prevent flash
+  if (isLoading) {
+    return null;
+  }
 
   return isMobile ? (
     <AdSpotMobileBar className={className} />
@@ -380,22 +435,22 @@ export function AdSpot({ className }: AdSpotProps) {
 }
 
 export function AdSpotSidebar({ className }: AdSpotProps) {
-  const [open, setOpen] = React.useState(false);
+  const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <WisprAdCard />
       <GptHumanAdCard />
-      <AdvertiseModal
-        open={open}
-        onOpenChange={setOpen}
-        trigger={
-          <div className="text-center">
-            <AdvertiseTrigger />
-          </div>
-        }
-        nativeButton={false}
-      />
+      <div className="flex items-center justify-center gap-3 text-center">
+        <AdvertiseModal
+          open={advertiseOpen}
+          onOpenChange={setAdvertiseOpen}
+          trigger={<AdvertiseTrigger />}
+          nativeButton
+        />
+        <span className="text-muted-foreground/50">·</span>
+        <GoPremiumLink />
+      </div>
     </div>
   );
 }
@@ -430,7 +485,7 @@ function MobileAdPill({ href, imageSrc, alt, eventLabel }: { href: string; image
 }
 
 export function AdSpotMobileBar({ className }: AdSpotProps) {
-  const [open, setOpen] = React.useState(false);
+  const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
     <div className={cn("fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40", className)}>
@@ -449,16 +504,20 @@ export function AdSpotMobileBar({ className }: AdSpotProps) {
             eventLabel="GPT Human Ad Mobile"
           />
         </div>
-        <ResponsiveDrawer
-          open={open}
-          onOpenChange={setOpen}
-          trigger={<AdvertiseTrigger />}
-          title="Advertise on SMRY"
-          scrollable
-          showCloseButton
-        >
-          <AdDrawerContent />
-        </ResponsiveDrawer>
+        <div className="flex items-center gap-2">
+          <GoPremiumLink />
+          <span className="text-muted-foreground/30">·</span>
+          <ResponsiveDrawer
+            open={advertiseOpen}
+            onOpenChange={setAdvertiseOpen}
+            trigger={<AdvertiseTrigger />}
+            title="Advertise on SMRY"
+            scrollable
+            showCloseButton
+          >
+            <AdDrawerContent />
+          </ResponsiveDrawer>
+        </div>
       </div>
     </div>
   );

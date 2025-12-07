@@ -1,16 +1,19 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useArticles } from "@/lib/hooks/use-articles";
+import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
+import { useAuth, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import {
   Bug as BugIcon,
   Sparkles as SparklesIcon,
   Sun,
   Moon,
   Laptop,
+  History as HistoryIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -41,6 +44,60 @@ const ModeToggle = dynamic(
   { ssr: false, loading: () => <div className="size-9" /> }
 );
 
+// Shows "Go Premium" link only for non-premium signed-in users
+function GoPremiumLink({ className }: { className?: string }) {
+  const { has, isLoaded } = useAuth();
+  
+  if (!isLoaded) return null;
+  
+  const isPremium = has?.({ plan: "premium" }) ?? false;
+  
+  if (isPremium) return null;
+  
+  return (
+    <Link
+      href="/pricing"
+      className={cn(
+        "text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 md:px-0",
+        className
+      )}
+    >
+      <span className="md:hidden">Premium</span>
+      <span className="hidden md:inline">Go Premium</span>
+    </Link>
+  );
+}
+
+// History button that links to /history for signed-in users, /pricing for signed-out
+function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
+  const { isSignedIn, isLoaded } = useAuth();
+  
+  const isDesktop = variant === "desktop";
+  const href = isSignedIn ? "/history" : "/pricing";
+  
+  return (
+    <Link
+      href={href}
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "icon" }),
+        isDesktop
+          ? "h-9 w-9 text-muted-foreground hover:text-foreground relative"
+          : "h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground relative"
+      )}
+      title={isSignedIn ? "History" : "History (Premium)"}
+    >
+      <HistoryIcon className="size-4" />
+      {!isDesktop && <span className="sr-only">History</span>}
+      {/* Premium badge for non-signed-in users */}
+      {isLoaded && !isSignedIn && (
+        <span className="absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-linear-to-r from-amber-400 to-orange-500 text-[8px] font-bold text-white shadow-sm">
+          ★
+        </span>
+      )}
+    </Link>
+  );
+}
+
 
 interface ProxyContentProps {
   url: string;
@@ -53,6 +110,10 @@ interface ProxyContentProps {
 export function ProxyContent({ url, ip }: ProxyContentProps) {
   const { results } = useArticles(url);
   const { theme, setTheme } = useTheme();
+  const { isLoaded, has } = useAuth();
+  
+  // Check if user has premium plan
+  const isPremium = isLoaded && (has?.({ plan: "premium" }) ?? false);
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
@@ -76,6 +137,24 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
   const activeArticle = results[source]?.data?.article;
   const articleTitle = activeArticle?.title;
   const articleImage = activeArticle?.image;
+
+  // Track if we've already saved to history for this URL
+  const savedToHistoryRef = useRef<string | null>(null);
+
+  // Save to history when first article is successfully loaded
+  useEffect(() => {
+    // Find the first successful source
+    const firstSuccess = Object.entries(results).find(
+      ([, result]) => result.isSuccess && result.data?.article?.title
+    );
+
+    if (firstSuccess && savedToHistoryRef.current !== url) {
+      const [, result] = firstSuccess;
+      const title = result.data?.article?.title || "Untitled Article";
+      addArticleToHistory(url, title);
+      savedToHistoryRef.current = url;
+    }
+  }, [results, url]);
 
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
@@ -102,13 +181,15 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
   const content = (
     <div className="flex h-dvh flex-col bg-background">
-      {/* Desktop Ad Spot - Left sidebar */}
-      <div className="hidden lg:block fixed left-4 top-20 z-40">
-        <AdSpotSidebar />
-      </div>
+      {/* Desktop Ad Spot - Left sidebar (hidden for premium users) */}
+      {!isPremium && (
+        <div className="hidden lg:block fixed left-4 top-20 z-40">
+          <AdSpotSidebar />
+        </div>
+      )}
       
-      {/* Mobile Ad Spot - Bottom bar (hidden when summary sidebar is open) */}
-      {!sidebarOpen && (
+      {/* Mobile Ad Spot - Bottom bar (hidden when summary sidebar is open or user is premium) */}
+      {!sidebarOpen && !isPremium && (
         <div className="lg:hidden">
           <AdSpotMobileBar />
         </div>
@@ -169,7 +250,28 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
           <div className="flex items-center gap-2">
             {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <SignedIn>
+                  <GoPremiumLink />
+                  <UserButton 
+                    appearance={{
+                      elements: {
+                        avatarBox: "size-8"
+                      }
+                    }}
+                  />
+                </SignedIn>
+                <SignedOut>
+                  <Link
+                    href="/pricing"
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Go Premium
+                  </Link>
+                </SignedOut>
+              </div>
+              <HistoryButton variant="desktop" />
               <ModeToggle />
               <Button
                 variant={sidebarOpen ? "secondary" : "outline"}
@@ -204,6 +306,24 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
             {/* Mobile Summary Trigger */}
             <div className="md:hidden flex items-center gap-2">
+              <SignedIn>
+                <GoPremiumLink />
+                <UserButton 
+                  appearance={{
+                    elements: {
+                      avatarBox: "size-8"
+                    }
+                  }}
+                />
+              </SignedIn>
+              <SignedOut>
+                <Link
+                  href="/pricing"
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+                >
+                  Premium
+                </Link>
+              </SignedOut>
                <Button
                 variant="ghost"
                 size="sm"
@@ -223,6 +343,8 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 articleImage={articleImage}
                 triggerVariant="icon"
               />
+
+              <HistoryButton variant="mobile" />
               
               <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <DrawerTrigger
