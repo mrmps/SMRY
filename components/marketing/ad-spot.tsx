@@ -368,11 +368,11 @@ function AdvertiseModal({
 // GO PREMIUM CTA
 // ============================================
 
-function GoPremiumLink({ className }: { className?: string }) {
+function SupportLink({ className }: { className?: string }) {
   const handleClick = () => {
-    trackGAEvent("premium_cta_click", {
-      event_category: "Premium",
-      event_label: "Go Premium CTA",
+    trackGAEvent("support_cta_click", {
+      event_category: "Support",
+      event_label: "Support CTA",
     });
   };
 
@@ -381,12 +381,12 @@ function GoPremiumLink({ className }: { className?: string }) {
       href="/pricing"
       onClick={handleClick}
       className={cn(
-        "inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-500 transition-colors font-medium",
+        "inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-500 transition-colors font-medium",
         className
       )}
     >
       <Crown className="size-3" />
-      Go Premium
+      Support ♡
     </Link>
   );
 }
@@ -433,7 +433,7 @@ export function AdSpotSidebar({ className, hidden = false }: AdSpotProps & { hid
           nativeButton
         />
         <span className="text-muted-foreground/50">·</span>
-        <GoPremiumLink />
+        <SupportLink />
       </div>
     </div>
   );
@@ -496,7 +496,7 @@ export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { h
           />
         </div>
         <div className="flex items-center gap-2">
-          <GoPremiumLink />
+          <SupportLink />
           <span className="text-muted-foreground/30">·</span>
           <ResponsiveDrawer
             open={advertiseOpen}

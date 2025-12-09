@@ -50,11 +50,6 @@ export default function RootLayout({
         </head> */}
         <body
           className={`${GeistSans.className} bg-background text-foreground`}
-          // style={{background: "#E5EDF0"}}
-          // style={{
-          //   background:
-          //     "radial-gradient(circle at 18.7% 37.8%, rgb(250, 250, 250) 0%, rgb(225, 234, 238) 90%);",
-          // }}
         >
           <ThemeProvider
             attribute="class"
