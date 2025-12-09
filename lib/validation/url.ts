@@ -18,12 +18,21 @@ const URL_VALIDATION_OPTIONS: IsURLOptions = {
 /**
  * Best-effort URL decode; returns input as-is if decoding fails.
  */
-function safeDecodeUrl(value: string): string {
+export function safeDecodeUrl(value: string): string {
   try {
     return decodeURIComponent(value);
   } catch {
     return value;
   }
+}
+
+/**
+ * Repair collapsed protocols in URL paths.
+ * Browsers/servers can collapse "://" to ":/" in paths.
+ * e.g., "https:/www.nytimes.com" → "https://www.nytimes.com"
+ */
+export function repairProtocol(url: string): string {
+  return url.replace(/^([a-zA-Z][a-zA-Z\d+\-.]*):\/(?!\/)/, "$1://");
 }
 
 /**
@@ -43,11 +52,8 @@ export function normalizeUrl(input: string): string {
   // Decode first to handle already-encoded URLs
   const decoded = safeDecodeUrl(trimmed);
 
-  // Repair single-slash protocols (e.g. "https:/example.com" -> "https://example.com")
-  const repaired = decoded.replace(
-    /^([a-zA-Z][a-zA-Z\d+\-.]*):\/(?!\/)/,
-    "$1://"
-  );
+  // Repair single-slash protocols
+  const repaired = repairProtocol(decoded);
 
   const candidate = PROTOCOL_REGEX.test(repaired)
     ? repaired
@@ -94,7 +100,3 @@ export const NormalizedUrlSchema = z
       return z.NEVER;
     }
   });
-
-
-
-

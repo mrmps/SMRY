@@ -1,4 +1,4 @@
-import { normalizeUrl } from "@/lib/validation/url";
+import { normalizeUrl, repairProtocol } from "@/lib/validation/url";
 
 /**
  * App routes that should NOT be treated as URL slugs.
@@ -40,15 +40,6 @@ export function isAppRoute(pathname: string): boolean {
   }
 
   return false;
-}
-
-/**
- * Repair collapsed protocols in URL paths.
- * Browsers/servers can collapse "://" to ":/" in paths.
- * e.g., "https:/www.nytimes.com" → "https://www.nytimes.com"
- */
-export function repairProtocol(slug: string): string {
-  return slug.replace(/^(https?):\/(?!\/)/, "$1://");
 }
 
 /**

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import {
   isAppRoute,
-  repairProtocol,
   buildProxyRedirectUrl,
   SMRY_PARAMS,
 } from "./proxy-redirect";
+import { repairProtocol } from "./validation/url";
 
 const BASE_ORIGIN = "https://smry.ai";
 
