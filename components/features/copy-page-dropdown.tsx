@@ -52,17 +52,18 @@ interface CopyPageDropdownProps {
   source?: string;
   viewMode?: string;
   className?: string;
+  /** Use "icon" for mobile-friendly compact trigger */
+  triggerVariant?: "default" | "icon";
 }
 
 export function CopyPageDropdown({
   url,
   articleTitle = "Article",
-  articleContent,
   textContent,
   sources = [],
   source,
-  viewMode,
   className,
+  triggerVariant = "default",
 }: CopyPageDropdownProps) {
   const [copied, setCopied] = useState(false);
   const [selectedSources, setSelectedSources] = useState<Set<number>>(
@@ -118,8 +119,8 @@ export function CopyPageDropdown({
         aiUrl = `https://chatgpt.com/?hints=search&prompt=${encodeURIComponent(chatgptPrompt)}`;
         break;
       case "claude":
-        const markdown = generateMarkdown();
-        aiUrl = `https://claude.ai/new?q=${encodeURIComponent(markdown)}`;
+        const claudePrompt = `Read from '${smryUrl}' so I can ask questions about it.`;
+        aiUrl = `https://claude.ai/new?q=${encodeURIComponent(claudePrompt)}`;
         break;
     }
 
@@ -146,6 +147,135 @@ export function CopyPageDropdown({
     setSelectedSources(new Set());
   };
 
+  // Icon-only variant for mobile
+  if (triggerVariant === "icon") {
+    return (
+      <Menu>
+        <MenuTrigger
+          render={(props) => {
+            const { key, ...rest } = props as typeof props & { key?: React.Key };
+            return (
+              <Button
+                key={key}
+                {...rest}
+                variant="ghost"
+                size="icon"
+                className={cn("h-8 w-8 text-muted-foreground hover:text-foreground", className)}
+              >
+                {copied ? (
+                  <Check className="size-4 text-green-600" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+            );
+          }}
+        />
+        <MenuPopup side="bottom" align="end" className="w-64">
+          {/* Copy Option */}
+          <MenuItem
+            onClick={handleCopy}
+            className="flex items-center gap-3 p-2 cursor-pointer"
+          >
+            <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/50">
+              <Copy className="size-4" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Copy page</span>
+              <span className="text-xs text-muted-foreground">
+                Copy as Markdown for LLMs
+              </span>
+            </div>
+            {copied && <Check className="ml-auto size-4 text-green-600" />}
+          </MenuItem>
+
+          <MenuSeparator />
+
+          {/* AI Services */}
+          <MenuItem
+            onClick={() => handleOpenInAI("chatgpt")}
+            className="flex items-center gap-3 p-2 cursor-pointer"
+          >
+            <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/50">
+              <OpenAIIcon className="size-4" />
+            </div>
+            <div className="flex flex-1 flex-col">
+              <span className="flex items-center gap-1 text-sm font-medium">
+                Open in ChatGPT
+                <ArrowUpRight className="size-3 text-muted-foreground" />
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Ask questions about this page
+              </span>
+            </div>
+          </MenuItem>
+
+          <MenuItem
+            onClick={() => handleOpenInAI("claude")}
+            className="flex items-center gap-3 p-2 cursor-pointer"
+          >
+            <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/50">
+              <ClaudeIcon className="size-4" />
+            </div>
+            <div className="flex flex-1 flex-col">
+              <span className="flex items-center gap-1 text-sm font-medium">
+                Open in Claude
+                <ArrowUpRight className="size-3 text-muted-foreground" />
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Ask questions about this page
+              </span>
+            </div>
+          </MenuItem>
+
+          {/* Source Selection (if sources available) */}
+          {sources.length > 0 && (
+            <>
+              <MenuSeparator />
+              <MenuGroupLabel className="flex items-center justify-between">
+                <span>Include sources</span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      selectAllSources();
+                    }}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    All
+                  </button>
+                  <span className="text-muted-foreground">/</span>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      deselectAllSources();
+                    }}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    None
+                  </button>
+                </div>
+              </MenuGroupLabel>
+              <div className="max-h-32 overflow-y-auto px-1">
+                {sources.map((source, index) => (
+                  <MenuCheckboxItem
+                    key={index}
+                    checked={selectedSources.has(index)}
+                    onCheckedChange={() => toggleSource(index)}
+                    className="text-xs"
+                  >
+                    <span className="truncate">{source.title}</span>
+                  </MenuCheckboxItem>
+                ))}
+              </div>
+            </>
+          )}
+        </MenuPopup>
+      </Menu>
+    );
+  }
+
+  // Default split-button variant
   return (
     <div className={cn("flex items-center", className)}>
       {/* Split Button Container with shared border */}

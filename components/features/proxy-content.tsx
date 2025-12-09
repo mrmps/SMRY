@@ -366,16 +366,15 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
             </div>
 
             {/* Mobile Actions */}
-            <div className="md:hidden flex items-center gap-1.5">
-              {/* Primary: Summary Button */}
+            <div className="md:hidden flex items-center gap-1">
+              {/* Primary: Summary Button - icon only on smallest screens */}
               <Button
                 variant={sidebarOpen ? "default" : "outline"}
-                size="sm"
-                className="h-8 gap-1 text-xs font-medium px-2.5"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => handleSidebarChange(!sidebarOpen)}
               >
-                <SparklesIcon className="size-3.5" />
-                <span className="hidden xs:inline">AI</span>
+                <SparklesIcon className="size-4" />
               </Button>
 
               <ShareButton
@@ -394,6 +393,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 textContent={articleTextContent}
                 source={source}
                 viewMode={viewMode}
+                triggerVariant="icon"
               />
 
               <HistoryButton variant="mobile" />
