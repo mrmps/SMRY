@@ -6,6 +6,9 @@ import { buildProxyRedirectUrl } from "@/lib/proxy-redirect";
 /**
  * Static file extensions that should be excluded from proxy middleware.
  * Root-level files ending in these extensions won't go through the redirect logic.
+ * 
+ * Used to build STATIC_FILE_REGEX for testing.
+ * The same pattern is hardcoded in config.matcher (Next.js requires static strings).
  */
 export const STATIC_EXTENSIONS = [
   "html?",      // .html, .htm
@@ -30,38 +33,22 @@ export const STATIC_EXTENSIONS = [
 
 /**
  * Regex pattern to match root-level static files.
+ * Exported for testing in lib/proxy-matcher.test.ts
  * 
  * Pattern: [^/]+\.(?:ext1|ext2|...)(?:[?#]|$)
  * - [^/]+ = filename without slashes (root-level only)
  * - \.(?:...) = dot followed by extension
  * - (?:[?#]|$) = must end OR be followed by query/fragment
- * 
- * See lib/proxy-matcher.test.ts for comprehensive test coverage.
  */
 export const STATIC_FILE_REGEX = new RegExp(
   `^[^/]+\\.(?:${STATIC_EXTENSIONS.join("|")})(?:[?#]|$)`,
   "i"
 );
 
-/**
- * Check if a pathname is a root-level static file.
- */
-function isStaticFile(pathname: string): boolean {
-  // Remove leading slash and check against regex
-  const path = pathname.startsWith("/") ? pathname.substring(1) : pathname;
-  return STATIC_FILE_REGEX.test(path);
-}
-
 export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const { pathname, search, origin } = request.nextUrl;
 
-  // Skip static files - let Next.js serve them directly
-  if (isStaticFile(pathname)) {
-    return NextResponse.next();
-  }
-
-  // Build redirect URL for URL slugs
-  // Passes pathname, search params, and origin for proper URL reconstruction
+  // Build redirect URL for URL slugs (e.g., /nytimes.com → /proxy?url=...)
   const redirectUrl = buildProxyRedirectUrl(pathname, search, origin);
 
   if (redirectUrl) {
@@ -73,13 +60,27 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
 
 export default proxy;
 
-/*
- * Matcher config - only exclude Next.js internals.
- * Static file detection is handled by STATIC_FILE_REGEX in the middleware.
+/**
+ * Matcher config - static file detection happens here, not in middleware.
+ * 
+ * Excludes:
+ * - _next/* (Next.js internals)
+ * - Root-level static files: /favicon.ico, /og-image.png, /script.js?v=123, etc.
+ *
+ * Matches (goes to middleware):
+ * - /api/* and /trpc/* (for Clerk auth, won't redirect)
+ * - /example.com (.com isn't a static extension, will redirect)
+ * - /https://site.com/article.html (has slashes, will redirect)
+ * - /nytimes.com/2025/article.html (has slashes, will redirect)
+ *
+ * NOTE: Pattern must be hardcoded string (Next.js analyzes at build time).
+ * STATIC_FILE_REGEX above uses the same pattern for testing.
  */
 export const config = {
   matcher: [
-    // Match everything except _next
-    "/((?!_next).*)",
+    // Main matcher: exclude _next and root-level static files
+    "/((?!_next|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
+    // Always run for API routes (Clerk auth)
+    "/(api|trpc)(.*)",
   ],
 };
