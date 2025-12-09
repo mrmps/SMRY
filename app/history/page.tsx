@@ -517,12 +517,12 @@ function HistoryContent() {
                 {hiddenCount} more {hiddenCount === 1 ? "article" : "articles"} in your history
               </h4>
               <p className="mt-1 text-sm text-muted-foreground">
-                Upgrade to Premium for unlimited history & ad-free reading
+                Support to unlock unlimited history & ad-free reading
               </p>
               <Link href="/pricing">
                 <Button size="sm" className="mt-4">
                   <Crown className="mr-1.5 size-3.5" />
-                  Go Premium
+                  Support & Unlock
                 </Button>
               </Link>
             </div>

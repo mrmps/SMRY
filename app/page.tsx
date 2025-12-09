@@ -32,14 +32,14 @@ const ModeToggle = dynamic(
   { ssr: false, loading: () => <div className="size-9" /> }
 );
 
-// Shows "Go Premium" link only for non-premium signed-in users
-function GoPremiumLink() {
+// Shows "Support" link only for non-premium signed-in users
+function SupportLink() {
   const { isPremium, isLoading } = useIsPremium();
   
   // Don't show while loading to prevent flash
   if (isLoading) return null;
   
-  // Don't show for premium users
+  // Don't show for premium users (they're already supporters!)
   if (isPremium) return null;
   
   return (
@@ -47,7 +47,7 @@ function GoPremiumLink() {
       href="/pricing"
       className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
-      Go Premium
+      Support ♡
     </Link>
   );
 }
@@ -86,7 +86,7 @@ export default function Home() {
     <>
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
         <SignedIn>
-          <GoPremiumLink />
+          <SupportLink />
           <UserButton 
             appearance={{
               elements: {
@@ -100,7 +100,7 @@ export default function Home() {
             href="/pricing"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Go Premium
+            Support ♡
           </Link>
         </SignedOut>
         <ModeToggle />
