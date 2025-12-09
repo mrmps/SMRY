@@ -121,9 +121,9 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2Farticle"
         );
-      });
+    });
 
-      it("builds proxy URL for full https URL", () => {
+    it("builds proxy URL for full https URL", () => {
         const result = buildProxyRedirectUrl(
           "/https://www.nytimes.com/article",
           "",
@@ -132,9 +132,9 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
         );
-      });
+    });
 
-      it("builds proxy URL for collapsed protocol URL", () => {
+    it("builds proxy URL for collapsed protocol URL", () => {
         const result = buildProxyRedirectUrl(
           "/https:/www.nytimes.com/article",
           "",
@@ -143,7 +143,7 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
         );
-      });
+    });
 
       it("builds proxy URL for http URL", () => {
         const result = buildProxyRedirectUrl(
@@ -154,7 +154,7 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=http%3A%2F%2Fexample.com%2Fpage"
         );
-      });
+    });
 
       it("builds proxy URL for URL ending in .html", () => {
         const result = buildProxyRedirectUrl(
@@ -165,7 +165,7 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2F12%2F08%2Farticle.html"
         );
-      });
+    });
     });
 
     describe("URLs with external query params (belong to the target URL)", () => {
@@ -299,7 +299,7 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
         );
-      });
+    });
 
       it("handles domains that look like app routes", () => {
         // /proxy.com should redirect, not be treated as /proxy
@@ -318,7 +318,7 @@ describe("proxy redirect helpers", () => {
         expect(result).toBe(
           "https://smry.ai/proxy?url=https%3A%2F%2Fapi.example.com"
         );
-      });
+    });
 
       it("handles URLs with fragments", () => {
         // Note: Fragments typically don't reach the server, but if they do...
