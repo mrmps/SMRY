@@ -155,6 +155,17 @@ describe("proxy redirect helpers", () => {
           "https://smry.ai/proxy?url=http%3A%2F%2Fexample.com%2Fpage"
         );
       });
+
+      it("builds proxy URL for URL ending in .html", () => {
+        const result = buildProxyRedirectUrl(
+          "/https://www.nytimes.com/2025/12/08/article.html",
+          "",
+          BASE_ORIGIN
+        );
+        expect(result).toBe(
+          "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2F12%2F08%2Farticle.html"
+        );
+      });
     });
 
     describe("URLs with external query params (belong to the target URL)", () => {

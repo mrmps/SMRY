@@ -2,7 +2,7 @@ import { normalizeUrl } from "@/lib/validation/url";
 
 /**
  * App routes that should NOT be treated as URL slugs.
- * These are actual pages in the app.
+ * These are actual pages/API routes in the app.
  */
 export const APP_ROUTES = [
   "/",
@@ -21,7 +21,7 @@ export const SMRY_PARAMS = ["sidebar", "tab", "source"];
 
 /**
  * Check if a pathname is an app route (not a URL slug to proxy).
- * Only matches EXACT routes or routes followed by query params.
+ * Only matches EXACT routes or routes followed by sub-paths.
  * Does NOT match routes that continue with more path segments (e.g., /proxy.com).
  */
 export function isAppRoute(pathname: string): boolean {

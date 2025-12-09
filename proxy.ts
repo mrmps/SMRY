@@ -22,15 +22,18 @@ export default proxy;
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-     * - Static assets at root level only (not in URL slugs)
-     * 
-     * NOTE: We DO want to match paths like /https:/example.com/article.html
-     * because those are URL slugs that need to be redirected to /proxy
+     * Match all paths EXCEPT:
+     * - _next/* (Next.js internals)
+     * - Root-level static files (no slashes after initial /):
+     *   /favicon.ico, /og-image.png, /robots.txt, etc.
+     *
+     * DOES match URL slugs (have slashes or aren't static extensions):
+     * - /example.com (.com isn't a static extension)
+     * - /https://site.com/article.html (has slashes, not root-level)
+     * - /nytimes.com/2025/article.html (has slashes)
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|sitemap\\.xml|robots\\.txt).*)",
+    "/((?!_next|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)$).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
   ],
 };
