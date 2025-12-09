@@ -52,7 +52,7 @@ export function FoundersLetter() {
               @michael_chomsky
             </a>
             <Link
-              href="/feedback"
+              href="https://smryai.userjot.com/"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg bg-accent"
             >
               Feedback
