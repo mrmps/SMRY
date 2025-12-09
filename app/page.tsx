@@ -22,6 +22,7 @@ import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { NormalizedUrlSchema } from "@/lib/validation/url";
+import { buildProxyUrl } from "@/lib/proxy-url";
 
 const urlSchema = z.object({
   url: NormalizedUrlSchema,
@@ -64,7 +65,7 @@ export default function Home() {
     try {
       const parsed = urlSchema.parse({ url });
       setUrlError(null);
-      router.push(`/proxy?url=${encodeURIComponent(parsed.url)}`);
+      router.push(buildProxyUrl(parsed.url));
     } catch (error) {
       const message =
         error instanceof z.ZodError

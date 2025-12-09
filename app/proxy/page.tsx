@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
 import { redis } from "@/lib/redis";
-import { normalizeUrl } from "@/lib/validation/url";
+import { normalizeInputUrl, safeDecodeUrl } from "@/lib/proxy-url";
 
 const _adCopies = [
   {
@@ -179,21 +179,22 @@ export async function generateMetadata({
   const candidateUrl = Array.isArray(rawUrlParam)
     ? rawUrlParam[0]
     : rawUrlParam ?? "";
+  const decodedCandidate = safeDecodeUrl(candidateUrl);
 
   const fallbackMetadata: Metadata = {
     title: "SMRY - Article Reader & Summarizer",
     description: "Read articles without paywalls and get AI-powered summaries",
   };
 
-  if (!candidateUrl) {
+  if (!decodedCandidate) {
     return fallbackMetadata;
   }
 
   let normalizedUrl: string;
   try {
-    normalizedUrl = normalizeUrl(candidateUrl);
+    normalizedUrl = normalizeInputUrl(decodedCandidate);
   } catch (error) {
-    console.error("Invalid URL provided for metadata generation:", candidateUrl, error);
+    console.error("Invalid URL provided for metadata generation:", decodedCandidate, error);
     return fallbackMetadata;
   }
 
@@ -289,8 +290,9 @@ export default async function Page({
   const candidateUrl = Array.isArray(rawUrlParam)
     ? rawUrlParam[0]
     : rawUrlParam ?? "";
+  const decodedCandidate = safeDecodeUrl(candidateUrl);
 
-  if (!candidateUrl) {
+  if (!decodedCandidate) {
     return (
       <div className="p-4 text-muted-foreground">Please provide a URL to load an article.</div>
     );
@@ -298,11 +300,11 @@ export default async function Page({
 
   let normalizedUrl: string;
   try {
-    normalizedUrl = normalizeUrl(candidateUrl);
+    normalizedUrl = normalizeInputUrl(decodedCandidate);
   } catch (error) {
     console.error(
       "URL parameter is invalid",
-      candidateUrl,
+      decodedCandidate,
       resolvedSearchParams?.url,
       error
     );

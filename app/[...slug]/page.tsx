@@ -1,36 +1,36 @@
-"use client";
+"use server";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { normalizeUrl } from "@/lib/validation/url";
+import { redirect } from "next/navigation";
+import { normalizeInputUrl } from "@/lib/proxy-url";
 
-export default function RedirectPage() {
-  const pathname = usePathname();
-  const router = useRouter();
+export default async function RedirectPage({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const resolvedParams = await params;
+  const slugSegments = resolvedParams?.slug ?? [];
+  const slug = slugSegments.join("/");
 
-  useEffect(() => {
-    // Skip Next.js internal routes and API routes
-    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
-      return;
-    }
+  if (!slug) {
+    redirect("/");
+  }
 
-    // Extract the path after the initial '/'
-    const slug = pathname.substring(1);
+  // Normalize first; call redirect outside the try to avoid catching NEXT_REDIRECT.
+  let normalized: string | null = null;
 
-    if (!slug) {
-      return;
-    }
-
+  try {
+    normalized = normalizeInputUrl(slug);
+  } catch (error) {
+    console.error("Failed to normalize path slug", slug, error);
+    const fallbackRaw = /^https?:\/\//i.test(slug) ? slug : `https://${slug}`;
     try {
-      const normalized = normalizeUrl(slug);
-      router.push(`/proxy?url=${encodeURIComponent(normalized)}`);
-    } catch (error) {
-      console.error("Failed to normalize path slug", slug, error);
-      const fallback = /^https?:\/\//i.test(slug) ? slug : `https://${slug}`;
-      router.push(`/proxy?url=${encodeURIComponent(fallback)}`);
+      normalized = normalizeInputUrl(fallbackRaw);
+    } catch {
+      normalized = fallbackRaw; // last resort, let proxy handle validation
     }
-  }, [router, pathname]);
+  }
 
-  // Render nothing or a loading indicator
-  return null;
+  const proxyUrl = `/proxy?url=${encodeURIComponent(normalized)}`;
+  redirect(proxyUrl);
 }

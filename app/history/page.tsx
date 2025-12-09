@@ -15,6 +15,7 @@ import {
   Sparkles
 } from "lucide-react";
 import Link from "next/link";
+import { buildProxyUrl } from "@/lib/proxy-url";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -164,7 +165,7 @@ function HistoryItemCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <Link
-            href={`/proxy?url=${encodeURIComponent(item.url)}`}
+            href={buildProxyUrl(item.url)}
             className="block"
           >
             <h3 className="font-medium text-[15px] text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">

@@ -26,9 +26,16 @@ export function normalizeUrl(input: string): string {
     throw new Error("Please enter a URL.");
   }
 
-  const candidate = PROTOCOL_REGEX.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
+  // Browsers or frameworks can collapse "//" in paths (e.g. "https:/example.com").
+  // Repair any single-slash protocol so we still treat it as a valid URL.
+  const repairedProtocol = trimmed.replace(
+    /^([a-zA-Z][a-zA-Z\d+\-.]*):\/(?!\/)/,
+    "$1://"
+  );
+
+  const candidate = PROTOCOL_REGEX.test(repairedProtocol)
+    ? repairedProtocol
+    : `https://${repairedProtocol}`;
 
   if (!isURL(candidate, URL_VALIDATION_OPTIONS)) {
     throw new Error("Please enter a valid URL (e.g. example.com or https://example.com).");
