@@ -16,8 +16,22 @@ const URL_VALIDATION_OPTIONS: IsURLOptions = {
 };
 
 /**
+ * Best-effort URL decode; returns input as-is if decoding fails.
+ */
+function safeDecodeUrl(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
  * Normalize user-provided URLs by ensuring they include a protocol.
  * Accepts inputs with or without http(s) and validates using validator.js.
+ * Also handles:
+ * - Already percent-encoded URLs (decodes first to avoid double-encoding)
+ * - Malformed single-slash protocols like "https:/example.com"
  */
 export function normalizeUrl(input: string): string {
   const trimmed = input.trim();
@@ -26,16 +40,18 @@ export function normalizeUrl(input: string): string {
     throw new Error("Please enter a URL.");
   }
 
-  // Browsers or frameworks can collapse "//" in paths (e.g. "https:/example.com").
-  // Repair any single-slash protocol so we still treat it as a valid URL.
-  const repairedProtocol = trimmed.replace(
+  // Decode first to handle already-encoded URLs
+  const decoded = safeDecodeUrl(trimmed);
+
+  // Repair single-slash protocols (e.g. "https:/example.com" -> "https://example.com")
+  const repaired = decoded.replace(
     /^([a-zA-Z][a-zA-Z\d+\-.]*):\/(?!\/)/,
     "$1://"
   );
 
-  const candidate = PROTOCOL_REGEX.test(repairedProtocol)
-    ? repairedProtocol
-    : `https://${repairedProtocol}`;
+  const candidate = PROTOCOL_REGEX.test(repaired)
+    ? repaired
+    : `https://${repaired}`;
 
   if (!isURL(candidate, URL_VALIDATION_OPTIONS)) {
     throw new Error("Please enter a valid URL (e.g. example.com or https://example.com).");

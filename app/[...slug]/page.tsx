@@ -1,36 +1,33 @@
-"use server";
-
 import { redirect } from "next/navigation";
-import { normalizeInputUrl } from "@/lib/proxy-url";
+import { normalizeUrl } from "@/lib/validation/url";
 
+// Server Component - redirect happens once on the server
 export default async function RedirectPage({
   params,
 }: {
   params: Promise<{ slug?: string[] }>;
 }) {
   const resolvedParams = await params;
-  const slugSegments = resolvedParams?.slug ?? [];
-  const slug = slugSegments.join("/");
+  const slug = (resolvedParams?.slug ?? []).join("/");
 
   if (!slug) {
     redirect("/");
   }
 
-  // Normalize first; call redirect outside the try to avoid catching NEXT_REDIRECT.
-  let normalized: string | null = null;
-
+  // Normalize the URL - handles decoding, protocol repair, and validation
+  let normalizedUrl: string;
   try {
-    normalized = normalizeInputUrl(slug);
-  } catch (error) {
-    console.error("Failed to normalize path slug", slug, error);
-    const fallbackRaw = /^https?:\/\//i.test(slug) ? slug : `https://${slug}`;
+    normalizedUrl = normalizeUrl(slug);
+  } catch {
+    // Fallback: try adding https:// if not present
+    const fallback = /^https?:\/\//i.test(slug) ? slug : `https://${slug}`;
     try {
-      normalized = normalizeInputUrl(fallbackRaw);
+      normalizedUrl = normalizeUrl(fallback);
     } catch {
-      normalized = fallbackRaw; // last resort, let proxy handle validation
+      // Last resort - let proxy handle validation
+      normalizedUrl = fallback;
     }
   }
 
-  const proxyUrl = `/proxy?url=${encodeURIComponent(normalized)}`;
-  redirect(proxyUrl);
+  redirect(`/proxy?url=${encodeURIComponent(normalizedUrl)}`);
 }

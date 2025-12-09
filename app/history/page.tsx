@@ -15,12 +15,12 @@ import {
   Sparkles
 } from "lucide-react";
 import Link from "next/link";
-import { buildProxyUrl } from "@/lib/proxy-url";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { normalizeUrl } from "@/lib/validation/url";
 
 /**
  * Format a date to relative time (e.g., "2 hours ago", "3 days ago")
@@ -123,6 +123,19 @@ function getFaviconUrl(domain: string): string {
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 }
 
+/**
+ * Build proxy URL from history item URL, normalizing it first
+ */
+function buildProxyUrlFromHistory(url: string): string {
+  try {
+    const normalized = normalizeUrl(url);
+    return `/proxy?url=${encodeURIComponent(normalized)}`;
+  } catch {
+    // Fallback to original URL if normalization fails
+    return `/proxy?url=${encodeURIComponent(url)}`;
+  }
+}
+
 function HistoryItemCard({ 
   item, 
   onRemove,
@@ -165,7 +178,7 @@ function HistoryItemCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <Link
-            href={buildProxyUrl(item.url)}
+            href={buildProxyUrlFromHistory(item.url)}
             className="block"
           >
             <h3 className="font-medium text-[15px] text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
