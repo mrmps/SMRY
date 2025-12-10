@@ -16,20 +16,11 @@ export function FoundersLetter() {
         {/* Letter content - clean, readable */}
         <div className="space-y-3 text-sm text-foreground/90">
           <p>
-            I built SMRY because I was kept hitting paywalls on articles and found it annoying to have to try 5 different tricks to attempt to read them.
+            I built SMRY because I was kept hitting paywalls on articles and found it annoying to have to click through 5 different tools to try to read them.
           </p>
 
           <p>
-            This started as a weekend project and has grown into something I use daily.
-            It feels amazing to have built something used regularly by over 250,000 people.
-          </p>
-
-          <p>
-            After two years and over ten thousand dollars in costs, I&apos;ve decided to try to monetize SMRY. I&apos;m starting with a paid tier with more features, but I&apos;m still not sure what will work. I&apos;m open to feedback and suggestions.
-          </p>
-
-          <p>
-            To support SMRY, please feel free to become a monthly or yearly patron.
+            To support SMRY, consider becoming monthly or yearly patron. Patrons get some extra features and help keep this project alive.
           </p>
         </div>
 
