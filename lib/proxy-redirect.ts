@@ -1,6 +1,11 @@
 import { normalizeUrl, repairProtocol } from "@/lib/validation/url";
 
 /**
+ * Supported locales for i18n routing.
+ */
+export const LOCALES = ["en", "pt", "de", "zh", "es", "nl"];
+
+/**
  * App routes that should NOT be treated as URL slugs.
  * These are actual pages/API routes in the app.
  */
@@ -23,14 +28,36 @@ export const SMRY_PARAMS = ["sidebar", "tab", "source"];
  * Check if a pathname is an app route (not a URL slug to proxy).
  * Only matches EXACT routes or routes followed by sub-paths.
  * Does NOT match routes that continue with more path segments (e.g., /proxy.com).
+ * Also handles locale-prefixed routes (e.g., /pt/pricing, /de/proxy).
  */
 export function isAppRoute(pathname: string): boolean {
   // Exact match for root
   if (pathname === "/") return true;
 
+  // Check if path starts with a locale prefix
+  const pathParts = pathname.split("/").filter(Boolean);
+  const firstPart = pathParts[0];
+
+  // If first part is a locale, check the rest of the path
+  if (firstPart && LOCALES.includes(firstPart)) {
+    // Exact locale path (e.g., /pt, /de)
+    if (pathParts.length === 1) return true;
+
+    // Build the path without locale prefix to check against app routes
+    const pathWithoutLocale = "/" + pathParts.slice(1).join("/");
+    return isAppRouteWithoutLocale(pathWithoutLocale);
+  }
+
+  return isAppRouteWithoutLocale(pathname);
+}
+
+/**
+ * Check if a pathname (without locale prefix) is an app route.
+ */
+function isAppRouteWithoutLocale(pathname: string): boolean {
   // Check each app route
   for (const route of APP_ROUTES) {
-    if (route === "/") continue; // Already handled above
+    if (route === "/") continue; // Root handled separately
 
     // Exact match (e.g., /proxy, /pricing)
     if (pathname === route) return true;

@@ -6,6 +6,7 @@ import { GoogleAnalytics } from '@next/third-parties/google'
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
+import { getLocale } from 'next-intl/server';
 
 export const metadata: Metadata = {
   title: "Bypass Paywalls & Read Full Articles Free – No Login | Smry",
@@ -37,17 +38,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+
   return (
     <ClerkProvider>
-      <html lang="en" className="bg-background dark:bg-background" suppressHydrationWarning>
-        {/* <head>
-          <link rel="icon" href="/favicon.ico" sizes="any" />
-        </head> */}
+      <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <body
           className={`${GeistSans.className} bg-background text-foreground`}
         >

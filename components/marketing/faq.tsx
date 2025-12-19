@@ -6,103 +6,69 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import Link from "next/link";
-
-const faqData = [
-  {
-    question: "How does paywall bypass work?",
-    answer: (
-      <>
-        There are two types of paywalls: hard paywalls and soft paywalls. Hard paywalls don&apos;t expose content to the client until you subscribe, so they can&apos;t be bypassed with traditional methods. Most sites use soft paywalls, where content is accessible but blocked by popups or only exposed to certain user agents like Googlebot. SMRY tries multiple methods: directly fetching from the original URL (smry-fast), a proxy (smry-slow), fetching from Wayback Machine archives, and a Jina.ai reader. We make all requests in parallel to save you time.
-      </>
-    ),
-  },
-  {
-    question: "How do I know if content can be bypassed?",
-    answer: (
-      <>
-        If a site needs to show content to search engines for SEO, it likely uses a soft paywall that can be bypassed. If some content is visible but part is obstructed, it&apos;s often a soft paywall. If no content is visible at all, it&apos;s likely a hard paywall. Hard paywalls are common for subscription services like Patreon, OnlyFans, or download-only content. If SMRY or other bypass tools don&apos;t work, that&apos;s a strong sign it&apos;s a hard paywall.
-      </>
-    ),
-  },
-  {
-    question: "What sources does SMRY use?",
-    answer: (
-      <>
-        SMRY tries multiple sources in parallel: directly fetching from the original URL (smry-fast), a proxy (smry-slow), fetching from Wayback Machine archives, and a Jina.ai reader. We make all requests in parallel to save you time. We also show you which source successfully provided the content, so you can try different options if one fails.
-      </>
-    ),
-  },
-  {
-    question: "Is SMRY open source?",
-    answer: (
-      <>
-        Yes! SMRY is completely open source. You can view the code, contribute, or run your own instance at{" "}
-        <Link
-          href="https://github.com/mrmps/SMRY"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-purple-600 hover:underline"
-        >
-          https://github.com/mrmps/SMRY
-        </Link>
-        .
-      </>
-    ),
-  },
-  {
-    question: "How fast are summaries generated?",
-    answer:
-      "Summaries are generated in seconds using AI. We cache summaries to provide instant results for articles that have been summarized before.",
-  },
-  {
-    question: "What languages are supported for summaries?",
-    answer:
-      "Summaries are available in 8 languages: English, Spanish, French, German, Italian, Portuguese, Russian, and Chinese. Select your preferred language when generating a summary.",
-  },
-  {
-    question: "Is there a limit to how many summaries I can generate?",
-    answer:
-      "Yes, to ensure fair usage, there are rate limits: 20 summaries per day and 6 summaries per minute per IP address.",
-  },
-  {
-    question: "How do I use SMRY?",
-    answer: (
-      <>
-        You have three options:
-        <ol className="mt-3 list-decimal space-y-2 pl-5">
-          <li>
-            Prepend{" "}
-            <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs text-neutral-800 dark:bg-yellow-900 dark:text-neutral-200">
-              http://smry.ai/
-            </code>{" "}
-            to the article you&apos;re reading (for example:{" "}
-            <code className="font-mono text-xs text-neutral-800 dark:text-neutral-200">
-              http://smry.ai/https://www.wsj.com/...
-            </code>
-            ). This instantly opens the cleaned article and the summary builder.
-          </li>
-          <li>Paste a URL directly on smry.ai and we&apos;ll fetch it for you.</li>
-          <li>
-            Drag the bookmarklet on our homepage to your bookmarks bar; tapping it wraps whatever
-            page you&apos;re on in SMRY.
-          </li>
-        </ol>
-      </>
-    ),
-  },
-  {
-    question: "Does this work with all websites?",
-    answer:
-      "SMRY works with most websites that use soft paywalls. Hard paywalls (like Patreon, OnlyFans, or sites that require login to download files) cannot be bypassed. We use multiple content sources in parallel to maximize success rates across different types of paywalls.",
-  },
-];
+import { useTranslations } from "next-intl";
 
 export function FAQ() {
+  const t = useTranslations("faq");
+
+  const faqData = [
+    { question: t("q1"), answer: t("a1") },
+    { question: t("q2"), answer: t("a2") },
+    { question: t("q3"), answer: t("a3") },
+    {
+      question: t("q4"),
+      answer: (
+        <>
+          {t("a4")}{" "}
+          <a
+            href="https://github.com/mrmps/SMRY"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:underline"
+          >
+            https://github.com/mrmps/SMRY
+          </a>
+          .
+        </>
+      ),
+    },
+    { question: t("q5"), answer: t("a5") },
+    { question: t("q6"), answer: t("a6") },
+    { question: t("q7"), answer: t("a7") },
+    {
+      question: t("q8"),
+      answer: (
+        <>
+          {t("a8")}
+          <ol className="mt-3 list-decimal space-y-2 pl-5">
+            <li>
+              {t("a8Option1", {
+                code: "http://smry.ai/",
+                example: "http://smry.ai/https://www.wsj.com/..."
+              }).split("{code}").map((part, i) =>
+                i === 0 ? part : (
+                  <span key={i}>
+                    <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs text-neutral-800 dark:bg-yellow-900 dark:text-neutral-200">
+                      http://smry.ai/
+                    </code>
+                    {part}
+                  </span>
+                )
+              )}
+            </li>
+            <li>{t("a8Option2")}</li>
+            <li>{t("a8Option3")}</li>
+          </ol>
+        </>
+      ),
+    },
+    { question: t("q9"), answer: t("a9") },
+  ];
+
   return (
     <div className="mx-auto mt-12 w-full max-w-3xl">
       <h2 className="mb-8 text-center text-2xl font-semibold text-foreground">
-        Frequently Asked Questions
+        {t("title")}
       </h2>
       <Accordion type="single" collapsible className="w-full">
         {faqData.map((item, index) => (
@@ -118,18 +84,18 @@ export function FAQ() {
       </Accordion>
       <div className="mt-12 space-y-2 text-center">
         <p className="text-muted-foreground">
-          Have feedback or questions?{" "}
-          <Link
+          {t("feedbackPrompt")}{" "}
+          <a
             href="https://smryai.userjot.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-purple-600 hover:underline dark:text-purple-400"
           >
-            Share your thoughts
-          </Link>
+            {t("shareThoughts")}
+          </a>
         </p>
         <p className="text-sm text-muted-foreground">
-          For sponsorships and inquiries:{" "}
+          {t("sponsorships")}{" "}
           <a
             href="mailto:contact@smry.ai"
             className="font-medium text-purple-600 hover:underline dark:text-purple-400"

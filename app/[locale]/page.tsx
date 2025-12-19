@@ -7,7 +7,6 @@ import {
 import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { z } from "zod";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button";
@@ -22,6 +21,9 @@ import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { NormalizedUrlSchema } from "@/lib/validation/url";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 const urlSchema = z.object({
   url: NormalizedUrlSchema,
@@ -35,19 +37,20 @@ const ModeToggle = dynamic(
 // Shows "Support" link only for non-premium signed-in users
 function SupportLink() {
   const { isPremium, isLoading } = useIsPremium();
-  
+  const t = useTranslations("home");
+
   // Don't show while loading to prevent flash
   if (isLoading) return null;
-  
+
   // Don't show for premium users (they're already supporters!)
   if (isPremium) return null;
-  
+
   return (
     <Link
       href="/pricing"
       className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
-      Support ♡
+      {t("support")} ♡
     </Link>
   );
 }
@@ -55,6 +58,8 @@ function SupportLink() {
 export default function Home() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
+  const t = useTranslations("home");
+  const tCommon = useTranslations("common");
 
   const router = useRouter();
 
@@ -68,8 +73,8 @@ export default function Home() {
     } catch (error) {
       const message =
         error instanceof z.ZodError
-          ? error.issues[0]?.message ?? "Please enter a valid URL."
-          : "Please enter a valid URL.";
+          ? error.issues[0]?.message ?? t("validationError")
+          : t("validationError");
       setUrlError(message);
       console.error(error);
     }
@@ -87,7 +92,7 @@ export default function Home() {
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
         <SignedIn>
           <SupportLink />
-          <UserButton 
+          <UserButton
             appearance={{
               elements: {
                 avatarBox: "size-9"
@@ -100,14 +105,15 @@ export default function Home() {
             href="/pricing"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Support ♡
+            {t("support")} ♡
           </Link>
         </SignedOut>
+        <LanguageSwitcher />
         <ModeToggle />
       </div>
-      
+
       <AdSpot className="lg:fixed lg:left-6 lg:top-6 lg:z-40" />
-      
+
       <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24 pb-24 lg:pb-4">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
           <GitHubStarsButton
@@ -121,19 +127,19 @@ export default function Home() {
               src="/logo.svg"
               width={280}
               height={280}
-              alt={"smry logo"}
+              alt={tCommon("smryLogo")}
               className="-ml-4 dark:invert"
               priority
             />
           </h1>
 
           <p className="mt-2 text-center text-lg text-muted-foreground">
-            Read paywalled articles for free + get an AI summary.{" "}
+            {t("tagline")}{" "}
             <Link
               href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
               className="border-b border-muted-foreground transition-colors hover:text-foreground hover:border-foreground"
             >
-              Try&nbsp;it
+              {t("tryIt")}
             </Link>
             .
           </p>
@@ -148,7 +154,7 @@ export default function Home() {
               <input
                 className="w-full bg-transparent p-4 py-3 text-lg placeholder:text-muted-foreground focus:outline-none"
                 name="url"
-                placeholder="Paste article URL..."
+                placeholder={t("placeholder")}
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
@@ -193,7 +199,7 @@ export default function Home() {
             </div>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            by{" "}
+            {t("by")}{" "}
             <a
               href="https://x.com/michael_chomsky"
               target="_blank"
@@ -216,17 +222,16 @@ export default function Home() {
 
           <div className="mx-auto mt-12 max-w-2xl space-y-4 text-center">
             <p className="text-[15px] leading-relaxed text-muted-foreground">
-              You can also use smry by prepending{" "}
+              {t("prepend")}{" "}
               <code className="rounded bg-yellow-200 px-2 py-0.5 font-mono text-xs text-stone-700 dark:bg-yellow-900 dark:text-stone-200">
                 https://smry.ai/
               </code>{" "}
-              to any URL.
+              {t("toAnyUrl")}
             </p>
-            
+
             <div className="hidden border-t border-border pt-2 sm:block">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                For quick access, bookmark this <BookmarkletLink />. Drag it to your bookmarks bar, 
-                then click it on any page to open in SMRY.
+                {t("bookmarkletTip")} <BookmarkletLink />. {t("bookmarkletInstructions")}
               </p>
             </div>
           </div>

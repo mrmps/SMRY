@@ -219,3 +219,33 @@
     direction: ltr; /* Keep inline code LTR */
   }
 }
+
+/* Custom Clerk Checkout Button Styling */
+.checkout-btn-primary button,
+.checkout-btn-secondary button {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.checkout-btn-primary button {
+  background-color: var(--foreground);
+  color: var(--background);
+}
+
+.checkout-btn-primary button:hover {
+  opacity: 0.9;
+}
+
+.checkout-btn-secondary button {
+  background-color: var(--accent);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.checkout-btn-secondary button:hover {
+  opacity: 0.8;
+}

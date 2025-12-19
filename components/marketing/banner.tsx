@@ -1,4 +1,7 @@
+"use client";
+
 import Image from 'next/image';
+import { useTranslations } from "next-intl";
 
 type OutletType = {
   name: string;
@@ -76,13 +79,14 @@ const outlets: OutletType[] = [
 
 
 export function Banner() {
+  const t = useTranslations("banner");
   // Repeat outlets to ensure continuous flow
   const repeatedOutlets = Array(5).fill(outlets).flat(); // Adjust the number as needed
 
   return (
     <section className="z-20 max-w-xs overflow-hidden py-12 sm:max-w-full">
       <h2 className="mb-6 text-center text-2xl font-bold text-zinc-700 dark:text-zinc-200">
-        Hop over these paywalls:
+        {t("heading")}
       </h2>
       <div className="mx-auto flex space-x-4" style={{ maxWidth: '1000px', animation: 'scroll 60s linear infinite' }}>
         {repeatedOutlets.map((outlet, index) => (

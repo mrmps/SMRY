@@ -1,8 +1,10 @@
 "use client";
 import type { MouseEvent } from "react";
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 export const BookmarkletLink = () => {
+  const t = useTranslations("bookmarklet");
   // Simple bookmarklet - opens current page in SMRY proxy
   const bookmarklet = `javascript:void(function(){var url=window.location.href;window.open('https://smry.ai/proxy?url='+encodeURIComponent(url),'_blank');}());`;
   const linkRef = useRef<HTMLAnchorElement>(null);
@@ -23,10 +25,10 @@ export const BookmarkletLink = () => {
     <a
       ref={linkRef}
       className="cursor-move border-b-2 border-muted-foreground transition-colors hover:border-foreground"
-      title="Drag to bookmarks bar"
+      title={t("dragTip")}
       onClick={handleClick}
     >
-      smry.ai bookmarklet
+      {t("linkText")}
     </a>
   );
 };

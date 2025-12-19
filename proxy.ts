@@ -2,9 +2,18 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildProxyRedirectUrl } from "@/lib/proxy-redirect";
+import createIntlMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
+
+const intlMiddleware = createIntlMiddleware(routing);
 
 export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const { pathname, search, origin } = request.nextUrl;
+
+  // Skip i18n for API routes - just let them through
+  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+    return NextResponse.next();
+  }
 
   // Build redirect URL for URL slugs (e.g., /nytimes.com → /proxy?url=...)
   const redirectUrl = buildProxyRedirectUrl(pathname, search, origin);
@@ -13,7 +22,8 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
+  // Run i18n middleware for locale handling
+  return intlMiddleware(request);
 });
 
 export default proxy;
@@ -33,8 +43,12 @@ export default proxy;
  */
 export const config = {
   matcher: [
+    // Root path
+    '/',
+    // Locale prefixed paths
+    '/(pt|de|zh|es|nl)/:path*',
     // Exclude _next and root-level static files
-    "/((?!_next|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
+    "/((?!_next|api|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
     // Always run for API routes (Clerk auth)
     "/(api|trpc)(.*)",
   ],
