@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
@@ -11,9 +15,13 @@ const nextConfig = {
           protocol: 'https',
           hostname: 'img.logo.dev',
         },
+        {
+          protocol: 'https',
+          hostname: 'unavatar.io',
+        },
       ],
     },
     serverExternalPackages: ['pino', 'pino-pretty', 'thread-stream'],
   }
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig)

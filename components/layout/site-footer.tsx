@@ -1,10 +1,16 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/app/config/site";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
+  const t = useTranslations("footer");
+  const tCommon = useTranslations("common");
+
   return (
     <footer className={cn(className)}>
       <div className="container mb-10 flex flex-col items-center gap-6 py-10 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8 md:py-6">
@@ -13,11 +19,11 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             src="/logo.svg"
             width={100}
             height={30}
-            alt={"smry logo"}
+            alt={tCommon("smryLogo")}
             className="-mb-1 dark:invert md:ml-10"
           />
           <p className="text-center text-sm md:text-left">
-            Built by{" "}
+            {t("builtBy")}{" "}
             <a
               href={siteConfig.links.twitter}
               target="_blank"
@@ -26,7 +32,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             >
               michael_chomsky
             </a>
-            . Hosted on{" "}
+            . {t("hostedOn")}{" "}
             <a
               href="https://vercel.com"
               target="_blank"
@@ -35,7 +41,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             >
               Vercel
             </a>
-            . The source code is available on{" "}
+            . {t("sourceCode")}{" "}
             <a
               href={siteConfig.links.github}
               target="_blank"
@@ -54,7 +60,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
             rel="noreferrer"
           >
             <Button variant="outline" size="sm">
-              Report Bug / Feedback
+              {t("reportBug")}
             </Button>
           </a>
           <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 md:text-right">
@@ -65,7 +71,7 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
               title="Logo API"
               className="hover:text-zinc-500 dark:hover:text-zinc-500"
             >
-              Logos provided by Logo.dev
+              {t("logosBy")}
             </a>
           </p>
         </div>

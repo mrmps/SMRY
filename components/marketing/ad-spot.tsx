@@ -381,12 +381,12 @@ function SupportLink({ className }: { className?: string }) {
       href="/pricing"
       onClick={handleClick}
       className={cn(
-        "inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-500 transition-colors font-medium",
+        "inline-flex items-center gap-1 text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors",
         className
       )}
     >
-      <Crown className="size-3" />
-      Support ♡
+      <Crown className="size-3 text-purple-500" />
+      Go Pro
     </Link>
   );
 }
