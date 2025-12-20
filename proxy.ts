@@ -40,17 +40,14 @@ export default proxy;
  * - /favicon.ico → excluded (root-level static file)
  * - /nytimes.com/article.html → matched (has slashes, goes to middleware)
  * - /example.com → matched (.com isn't a static extension)
- *
- * IMPORTANT: The locale prefixes below must be kept in sync with i18n/routing.ts
- * If you add or remove locales from routing.locales, update this matcher pattern.
- * Note: 'en' is excluded as it's the default locale with 'as-needed' prefix strategy.
  */
 export const config = {
   matcher: [
     // Root path
     '/',
-    // Locale prefixed paths (excluding 'en' - default locale with as-needed prefix)
-    // SYNC WITH: i18n/routing.ts locales array
+    // Locale prefixed paths - MANUAL SYNC REQUIRED with i18n/routing.ts
+    // Pattern: `/(${nonDefaultLocales.join('|')})/:path*`
+    // 'en' excluded since it's the default locale with 'as-needed' prefix strategy
     '/(pt|de|zh|es|nl)/:path*',
     // Exclude _next and root-level static files
     "/((?!_next|api|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
