@@ -185,6 +185,9 @@ importers:
       react-resizable-panels:
         specifier: ^3.0.6
         version: 3.0.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      react-tweet:
+        specifier: ^3.3.0
+        version: 3.3.0(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react-use-measure:
         specifier: ^2.1.7
         version: 2.1.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -3973,6 +3976,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  react-tweet@3.3.0:
+    resolution: {integrity: sha512-gSIG2169ZK7UH6rBzuU+j1xnQbH3IlOTLEkuGrRiJJTMgETik+h+26yHyyVKrLkzwrOaYPk4K3OtEKycqKgNLw==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
 
   react-use-measure@2.1.7:
     resolution: {integrity: sha512-KrvcAo13I/60HpwGO5jpW7E9DfusKyLPLvuHlUyP5zqnmAPhNc6qTRjUQrdTADl0lpPpDVU2/Gg51UlOGHXbdg==}
@@ -8754,6 +8763,14 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.2
+
+  react-tweet@3.3.0(react-dom@19.2.1(react@19.2.1))(react@19.2.1):
+    dependencies:
+      '@swc/helpers': 0.5.15
+      clsx: 2.1.1
+      react: 19.2.1
+      react-dom: 19.2.1(react@19.2.1)
+      swr: 2.3.6(react@19.2.1)
 
   react-use-measure@2.1.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1):
     dependencies:

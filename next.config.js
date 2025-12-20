@@ -15,6 +15,10 @@ const nextConfig = {
           protocol: 'https',
           hostname: 'img.logo.dev',
         },
+        {
+          protocol: 'https',
+          hostname: 'unavatar.io',
+        },
       ],
     },
     serverExternalPackages: ['pino', 'pino-pretty', 'thread-stream'],

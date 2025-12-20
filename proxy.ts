@@ -30,22 +30,27 @@ export default proxy;
 
 /**
  * Matcher config - static file detection happens here via regex.
- * 
+ *
  * Pattern breakdown: [^/]+\.(?:ext)(?:[?#]|$)
  * - [^/]+ = filename without slashes (ROOT-LEVEL ONLY)
  * - \.(?:ext) = dot followed by static extension
  * - (?:[?#]|$) = must end OR be followed by query/fragment
- * 
+ *
  * This ensures:
  * - /favicon.ico → excluded (root-level static file)
  * - /nytimes.com/article.html → matched (has slashes, goes to middleware)
  * - /example.com → matched (.com isn't a static extension)
+ *
+ * IMPORTANT: The locale prefixes below must be kept in sync with i18n/routing.ts
+ * If you add or remove locales from routing.locales, update this matcher pattern.
+ * Note: 'en' is excluded as it's the default locale with 'as-needed' prefix strategy.
  */
 export const config = {
   matcher: [
     // Root path
     '/',
-    // Locale prefixed paths
+    // Locale prefixed paths (excluding 'en' - default locale with as-needed prefix)
+    // SYNC WITH: i18n/routing.ts locales array
     '/(pt|de|zh|es|nl)/:path*',
     // Exclude _next and root-level static files
     "/((?!_next|api|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",

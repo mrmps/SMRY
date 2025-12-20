@@ -34,10 +34,9 @@ const ModeToggle = dynamic(
   { ssr: false, loading: () => <div className="size-9" /> }
 );
 
-// Shows "Support" link only for non-premium signed-in users
+// Shows "Go Pro" link only for non-premium signed-in users
 function SupportLink() {
   const { isPremium, isLoading } = useIsPremium();
-  const t = useTranslations("home");
 
   // Don't show while loading to prevent flash
   if (isLoading) return null;
@@ -48,9 +47,9 @@ function SupportLink() {
   return (
     <Link
       href="/pricing"
-      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+      className="inline-flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
     >
-      {t("support")} ♡
+      Go Pro
     </Link>
   );
 }
@@ -103,9 +102,9 @@ export default function Home() {
         <SignedOut>
           <Link
             href="/pricing"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
           >
-            {t("support")} ♡
+            Go Pro
           </Link>
         </SignedOut>
         <LanguageSwitcher />

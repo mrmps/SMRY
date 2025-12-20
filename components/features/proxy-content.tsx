@@ -297,9 +297,9 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 <SignedOut>
                   <Link
                     href="/pricing"
-                    className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                    className="text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors whitespace-nowrap"
                   >
-                    Premium
+                    Go Pro
                   </Link>
                 </SignedOut>
               </div>
@@ -412,9 +412,9 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 <SignedOut>
                   <Link
                     href="/pricing"
-                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                    className="text-[11px] font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent whitespace-nowrap"
                   >
-                    Pro
+                    Go Pro
                   </Link>
                 </SignedOut>
               </div>

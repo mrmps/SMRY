@@ -249,3 +249,116 @@
 .checkout-btn-secondary button:hover {
   opacity: 0.8;
 }
+
+/* Clerk portal/sidebar positioning - ensure it's above all page content */
+.cl-rootBox,
+.cl-card,
+.cl-modalContent,
+.cl-drawer,
+.cl-drawerContent,
+[data-clerk-portal],
+[data-clerk-component] {
+  z-index: 9999 !important;
+}
+
+/* Target Clerk's subscription/checkout drawer - it renders in a portal */
+div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
+.cl-subscriptionDetails,
+.cl-checkout {
+  z-index: 9999 !important;
+}
+
+/* Minimal Tweet Card Styling */
+.tweet-card-minimal {
+  --tweet-bg-color: var(--card);
+  --tweet-bg-color-hover: var(--accent);
+  --tweet-border: 1px solid var(--border);
+  --tweet-border-radius: 1rem;
+  --tweet-font-family: inherit;
+  --tweet-font-color: var(--foreground);
+  --tweet-font-color-secondary: var(--muted-foreground);
+  --tweet-link-color: var(--foreground);
+  --tweet-link-color-hover: var(--muted-foreground);
+}
+
+.tweet-card-minimal [data-theme="light"],
+.tweet-card-minimal [data-theme="dark"] {
+  --tweet-bg-color: var(--card) !important;
+  --tweet-border: 1px solid var(--border) !important;
+  --tweet-font-color: var(--foreground) !important;
+  --tweet-font-color-secondary: var(--muted-foreground) !important;
+}
+
+/* Hide unnecessary tweet elements */
+.tweet-card-minimal .react-tweet-theme {
+  margin: 0 !important;
+}
+
+/* Remove "Read more on X" button */
+.tweet-card-minimal a[href*="twitter.com"][target="_blank"]:has(span),
+.tweet-card-minimal [data-testid="tweet-link"] {
+  display: none !important;
+}
+
+/* Hide actions (reply, retweet, like, share) */
+.tweet-card-minimal [role="group"],
+.tweet-card-minimal .react-tweet-actions {
+  display: none !important;
+}
+
+/* Hide the copy link and info buttons at the bottom */
+.tweet-card-minimal a[aria-label*="Copy"],
+.tweet-card-minimal a[aria-label*="copy"],
+.tweet-card-minimal button[aria-label*="Copy"],
+.tweet-card-minimal div:has(> a[aria-label*="Copy"]) {
+  display: none !important;
+}
+
+/* Make avatar smaller */
+.tweet-card-minimal img[alt=""] {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+/* Style the container */
+.tweet-card-minimal > div {
+  border-radius: 1rem !important;
+  padding: 1.25rem !important;
+  transition: all 0.2s ease;
+}
+
+.tweet-card-minimal > div:hover {
+  background-color: var(--accent) !important;
+}
+
+/* Hide the X/Twitter logo */
+.tweet-card-minimal svg[viewBox="0 0 24 24"]:has(path[d*="M18.244"]) {
+  opacity: 0.3;
+}
+
+/* Clean up the header spacing */
+.tweet-card-minimal [data-testid="User-Name"] {
+  gap: 0.25rem !important;
+}
+
+/* Make text more readable */
+.tweet-card-minimal p {
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Hide reply context for cleaner look */
+.tweet-card-minimal [data-testid="reply"] {
+  display: none !important;
+}
+
+/* Hide timestamp link styling */
+.tweet-card-minimal time {
+  color: var(--muted-foreground) !important;
+}
+
+/* Ensure proper dark mode */
+.dark .tweet-card-minimal {
+  --tweet-bg-color: var(--card);
+  --tweet-border: 1px solid var(--border);
+}

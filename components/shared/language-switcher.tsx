@@ -14,10 +14,10 @@ import { Globe } from "lucide-react";
 
 const languageNames: Record<Locale, string> = {
   en: "English",
-  pt: "Portugues",
+  pt: "Português",
   de: "Deutsch",
   zh: "中文",
-  es: "Espanol",
+  es: "Español",
   nl: "Nederlands",
 };
 

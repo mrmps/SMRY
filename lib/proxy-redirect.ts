@@ -1,9 +1,10 @@
 import { normalizeUrl, repairProtocol } from "@/lib/validation/url";
+import { routing } from "@/i18n/routing";
 
 /**
- * Supported locales for i18n routing.
+ * Supported locales for i18n routing (imported from routing config).
  */
-export const LOCALES = ["en", "pt", "de", "zh", "es", "nl"];
+export const LOCALES = routing.locales;
 
 /**
  * App routes that should NOT be treated as URL slugs.
@@ -39,7 +40,7 @@ export function isAppRoute(pathname: string): boolean {
   const firstPart = pathParts[0];
 
   // If first part is a locale, check the rest of the path
-  if (firstPart && LOCALES.includes(firstPart)) {
+  if (firstPart && (LOCALES as readonly string[]).includes(firstPart)) {
     // Exact locale path (e.g., /pt, /de)
     if (pathParts.length === 1) return true;
 
