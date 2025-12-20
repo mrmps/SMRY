@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { CheckoutButton, useSubscription, SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
-import { Check, X, ChevronDown, ArrowLeft } from "lucide-react";
+import { Check, X, ChevronDown, ArrowLeft, Crown } from "lucide-react";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 
@@ -57,6 +58,12 @@ export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { data: subscription } = useSubscription();
+  const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
+
+  // Derive user state for UI (only used within SignedIn blocks)
+  // These are stable after loading completes
+  const isProUser = isPremium && !isPremiumLoading;
+  const isFreeUser = !isPremium && !isPremiumLoading;
 
   const monthlyPrice = 7.99;
   const annualPrice = 36;
@@ -172,7 +179,24 @@ export default function PricingPage() {
       <div className="flex justify-center px-4 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl w-full">
           {/* Free Card */}
-          <div className="rounded-2xl border border-border bg-card p-6">
+          <div className={`rounded-2xl border border-border bg-card p-6 relative ${isProUser ? "opacity-60" : ""}`}>
+            {/* Current Plan badge for free users */}
+            {isFreeUser && (
+              <div className="absolute -top-3 left-4">
+                <span className="bg-muted text-foreground text-xs font-semibold px-2 py-1 rounded-lg border border-border">
+                  {t("currentPlan")}
+                </span>
+              </div>
+            )}
+            {/* Included badge for pro users */}
+            {isProUser && (
+              <div className="absolute -top-3 left-4">
+                <span className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-1 rounded-lg border border-border">
+                  {t("included")}
+                </span>
+              </div>
+            )}
+
             <div className="mb-4">
               <h3 className="text-lg font-semibold">{t("free")}</h3>
               <p className="text-sm text-muted-foreground">{t("forCasualReaders")}</p>
@@ -183,12 +207,38 @@ export default function PricingPage() {
               <span className="text-muted-foreground ml-1">{t("forever")}</span>
             </div>
 
-            <Link
-              href="/"
-              className="block w-full py-2.5 px-4 rounded-lg bg-accent text-foreground font-medium text-sm text-center hover:bg-accent/80 transition-colors"
-            >
-              {t("continueFree")}
-            </Link>
+            {/* Different CTAs based on user state */}
+            <SignedIn>
+              {isFreeUser ? (
+                <div className="w-full py-2.5 px-4 rounded-lg bg-accent/50 text-muted-foreground font-medium text-sm text-center border border-border">
+                  {t("yourPlan")}
+                </div>
+              ) : isProUser ? (
+                <Link
+                  href="/"
+                  className="block w-full py-2.5 px-4 rounded-lg bg-accent/50 text-muted-foreground font-medium text-sm text-center"
+                >
+                  {t("continueFree")}
+                </Link>
+              ) : (
+                <Link
+                  href="/"
+                  className="block w-full py-2.5 px-4 rounded-lg bg-accent text-foreground font-medium text-sm text-center hover:bg-accent/80 transition-colors"
+                >
+                  {t("continueFree")}
+                </Link>
+              )}
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="w-full py-2.5 px-4 rounded-lg bg-accent text-foreground font-medium text-sm text-center hover:bg-accent/80 transition-colors">
+                  {t("signUpFree")}
+                </button>
+              </SignInButton>
+              <p className="mt-2 text-xs text-muted-foreground text-center">
+                {t("freeAccountBenefits")}
+              </p>
+            </SignedOut>
 
             <ul className="mt-6 space-y-3">
               <li className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -215,11 +265,19 @@ export default function PricingPage() {
           </div>
 
           {/* Pro Card */}
-          <div className="rounded-2xl border-2 border-foreground/20 bg-card p-6 relative">
+          <div className={`rounded-2xl border-2 ${isProUser ? "border-amber-500/50" : "border-foreground/20"} bg-card p-6 relative`}>
+            {/* Badge: Current Plan for Pro users, Popular for others */}
             <div className="absolute -top-3 left-4">
-              <span className="bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-lg">
-                {t("popular")}
-              </span>
+              {isProUser ? (
+                <span className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs font-semibold px-2 py-1 rounded-lg">
+                  <Crown className="size-3" />
+                  {t("currentPlan")}
+                </span>
+              ) : (
+                <span className="bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-lg">
+                  {t("popular")}
+                </span>
+              )}
             </div>
 
             <div className="mb-4">
@@ -240,7 +298,7 @@ export default function PricingPage() {
             </div>
 
             <SignedIn>
-              {(subscription as { plan?: { id?: string } })?.plan?.id === PATRON_PLAN_ID ? (
+              {isProUser ? (
                 <SubscriptionDetailsButton>
                   <button className="w-full py-2.5 px-4 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors">
                     {t("manageSubscription")}
@@ -252,7 +310,7 @@ export default function PricingPage() {
                     planId={PATRON_PLAN_ID}
                     planPeriod={billingPeriod === "annual" ? "annual" : "month"}
                   >
-                    {subscription ? t("upgradeToPro") : t("startFreeTrial")}
+                    {t("upgradeToPro")}
                   </CheckoutButton>
                 </div>
               )}

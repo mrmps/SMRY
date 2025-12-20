@@ -89,6 +89,11 @@
     "forCasualReaders": "适合休闲读者",
     "forever": "永久",
     "continueFree": "继续免费使用",
+    "currentPlan": "当前方案",
+    "included": "已包含",
+    "yourPlan": "您的方案",
+    "signUpFree": "免费注册",
+    "freeAccountBenefits": "获取历史记录和跨设备同步",
     "articlesPerDay": "每日文章数",
     "aiSummariesPerDay": "每日AI摘要数",
     "articlesInHistory": "历史记录中的文章",
@@ -191,5 +196,60 @@
   "common": {
     "premium": "高级版",
     "smryLogo": "smry标志"
+  },
+  "ads": {
+    "advertise": "投放广告",
+    "goPro": "升级Pro",
+    "wispr": {
+      "tagline": "我每天使用的语音转文字工具",
+      "endorsement": "— michael，smry创始人"
+    },
+    "gptHuman": {
+      "tagline": "绕过AI检测器，像人类一样写作"
+    },
+    "months": {
+      "january": "一月",
+      "february": "二月",
+      "march": "三月",
+      "april": "四月",
+      "may": "五月",
+      "june": "六月",
+      "july": "七月",
+      "august": "八月",
+      "september": "九月",
+      "october": "十月",
+      "november": "十一月",
+      "december": "十二月"
+    },
+    "modal": {
+      "title": "在SMRY投放广告",
+      "badge": "SMRY赞助商 · 近30天",
+      "heroSubtext": "绕过付费墙获取资讯的科技专业人士",
+      "stats": {
+        "views": "浏览量",
+        "users": "用户",
+        "topCountries": "主要国家",
+        "countriesTotal": "个国家"
+      },
+      "whatsIncluded": "包含内容",
+      "benefits": {
+        "reach": "每月触达200K+活跃读者",
+        "placement": "优质侧边栏和移动端横幅广告位",
+        "rotation": "与其他赞助商公平轮换（每10秒）",
+        "analytics": "月度效果报告",
+        "support": "专属客户支持"
+      },
+      "pricing": {
+        "monthly": "月费",
+        "depositLabel": "预订金",
+        "depositNote": "（抵扣首月费用）"
+      },
+      "urgency": {
+        "spotsLeft": "仅剩3个名额",
+        "nextAvailable": "{month}起"
+      },
+      "cta": "预订广告位",
+      "contact": "有问题？"
+    }
   }
 }

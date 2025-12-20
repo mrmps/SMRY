@@ -89,6 +89,11 @@
     "forCasualReaders": "Für Gelegenheitsleser",
     "forever": "für immer",
     "continueFree": "Kostenlos fortfahren",
+    "currentPlan": "Aktueller Plan",
+    "included": "Inklusive",
+    "yourPlan": "Ihr Plan",
+    "signUpFree": "Kostenlos registrieren",
+    "freeAccountBenefits": "Verlauf & Gerätesynchronisierung erhalten",
     "articlesPerDay": "Artikel pro Tag",
     "aiSummariesPerDay": "KI-Zusammenfassungen pro Tag",
     "articlesInHistory": "Artikel im Verlauf",
@@ -191,5 +196,60 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry Logo"
+  },
+  "ads": {
+    "advertise": "Werben",
+    "goPro": "Pro werden",
+    "wispr": {
+      "tagline": "Sprache-zu-Text, das ich täglich nutze",
+      "endorsement": "— michael, Ersteller von smry"
+    },
+    "gptHuman": {
+      "tagline": "KI-Detektoren umgehen und wie ein Mensch schreiben"
+    },
+    "months": {
+      "january": "Januar",
+      "february": "Februar",
+      "march": "März",
+      "april": "April",
+      "may": "Mai",
+      "june": "Juni",
+      "july": "Juli",
+      "august": "August",
+      "september": "September",
+      "october": "Oktober",
+      "november": "November",
+      "december": "Dezember"
+    },
+    "modal": {
+      "title": "Auf SMRY werben",
+      "badge": "SMRY Sponsoren · Letzte 30 Tage",
+      "heroSubtext": "Technikaffine Fachleute, die Paywalls umgehen, um informiert zu bleiben",
+      "stats": {
+        "views": "Aufrufe",
+        "users": "Nutzer",
+        "topCountries": "Top Länder",
+        "countriesTotal": "Länder gesamt"
+      },
+      "whatsIncluded": "Was enthalten ist",
+      "benefits": {
+        "reach": "Erreichen Sie 200K+ engagierte Leser monatlich",
+        "placement": "Premium Seitenleiste & Mobile Banner Platzierung",
+        "rotation": "Faire 10-Sekunden-Rotation mit anderen Sponsoren",
+        "analytics": "Monatliche Leistungsberichte",
+        "support": "Persönlicher Account-Support"
+      },
+      "pricing": {
+        "monthly": "Monatstarif",
+        "depositLabel": "Zur Reservierung",
+        "depositNote": "(wird auf ersten Monat angerechnet)"
+      },
+      "urgency": {
+        "spotsLeft": "Nur noch 3 Plätze frei",
+        "nextAvailable": "Ab {month}"
+      },
+      "cta": "Platz reservieren",
+      "contact": "Fragen?"
+    }
   }
 }

@@ -89,6 +89,11 @@
     "forCasualReaders": "Voor occasionele lezers",
     "forever": "voor altijd",
     "continueFree": "Gratis doorgaan",
+    "currentPlan": "Huidig Plan",
+    "included": "Inbegrepen",
+    "yourPlan": "Jouw Plan",
+    "signUpFree": "Gratis Registreren",
+    "freeAccountBenefits": "Krijg geschiedenis en synchronisatie tussen apparaten",
     "articlesPerDay": "artikelen per dag",
     "aiSummariesPerDay": "AI-samenvattingen per dag",
     "articlesInHistory": "artikelen in geschiedenis",
@@ -191,5 +196,60 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry logo"
+  },
+  "ads": {
+    "advertise": "Adverteren",
+    "goPro": "Ga Pro",
+    "wispr": {
+      "tagline": "Spraak-naar-tekst die ik dagelijks gebruik",
+      "endorsement": "— michael, maker van smry"
+    },
+    "gptHuman": {
+      "tagline": "Omzeil AI-detectoren en schrijf als een mens"
+    },
+    "months": {
+      "january": "Januari",
+      "february": "Februari",
+      "march": "Maart",
+      "april": "April",
+      "may": "Mei",
+      "june": "Juni",
+      "july": "Juli",
+      "august": "Augustus",
+      "september": "September",
+      "october": "Oktober",
+      "november": "November",
+      "december": "December"
+    },
+    "modal": {
+      "title": "Adverteren op SMRY",
+      "badge": "SMRY Sponsors · Laatste 30 dagen",
+      "heroSubtext": "Tech-savvy professionals die betaalmuren omzeilen om geïnformeerd te blijven",
+      "stats": {
+        "views": "weergaven",
+        "users": "gebruikers",
+        "topCountries": "Top landen",
+        "countriesTotal": "landen totaal"
+      },
+      "whatsIncluded": "Wat is inbegrepen",
+      "benefits": {
+        "reach": "Bereik 200K+ betrokken lezers per maand",
+        "placement": "Premium zijbalk & mobiele banner plaatsing",
+        "rotation": "Eerlijke 10-seconden rotatie met andere sponsors",
+        "analytics": "Maandelijkse prestatierapporten",
+        "support": "Toegewijd account support"
+      },
+      "pricing": {
+        "monthly": "Maandtarief",
+        "depositLabel": "Om te reserveren",
+        "depositNote": "(verrekend met eerste maand)"
+      },
+      "urgency": {
+        "spotsLeft": "Nog maar 3 plekken",
+        "nextAvailable": "Vanaf {month}"
+      },
+      "cta": "Reserveer je plek",
+      "contact": "Vragen?"
+    }
   }
 }

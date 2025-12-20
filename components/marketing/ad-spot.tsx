@@ -2,14 +2,24 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Megaphone, ExternalLink, Users, Zap, Eye, Check, Crown } from "lucide-react";
+import { ExternalLink, Check, Crown } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
+
+// Get the name of next month in user's locale
+function useNextMonth(): string {
+  const t = useTranslations("ads");
+  const now = new Date();
+  const monthIndex = (now.getMonth() + 1) % 12;
+  const monthKeys = ["january", "february", "march", "april", "may", "june",
+                     "july", "august", "september", "october", "november", "december"] as const;
+  return t(`months.${monthKeys[monthIndex]}`);
+}
 
 // Google Analytics event helper
 declare global {
@@ -55,6 +65,7 @@ interface AdSpotProps {
 // ============================================
 
 function WisprAdCard({ className }: { className?: string }) {
+  const t = useTranslations("ads");
   const handleClick = () => {
     trackGAEvent("ad_click", {
       event_category: "Ads",
@@ -82,10 +93,10 @@ function WisprAdCard({ className }: { className?: string }) {
           />
           <div className="space-y-1">
             <p className="text-xs md:text-sm text-muted-foreground">
-              Voice-to-text I use daily
+              {t("wispr.tagline")}
             </p>
             <p className="text-[10px] md:text-xs text-muted-foreground/70 italic">
-              — michael, creator of smry
+              {t("wispr.endorsement")}
             </p>
           </div>
         </div>
@@ -100,6 +111,7 @@ function WisprAdCard({ className }: { className?: string }) {
 // ============================================
 
 function GptHumanAdCard({ className }: { className?: string }) {
+  const t = useTranslations("ads");
   const handleClick = () => {
     trackGAEvent("ad_click", {
       event_category: "Ads",
@@ -127,8 +139,7 @@ function GptHumanAdCard({ className }: { className?: string }) {
           />
           <div className="space-y-1">
             <p className="text-xs md:text-sm text-muted-foreground">
-              Bypass AI detectors <br />
-              and write like a human
+              {t("gptHuman.tagline")}
             </p>
           </div>
         </div>
@@ -144,8 +155,8 @@ function GptHumanAdCard({ className }: { className?: string }) {
 
 const AdvertiseTrigger = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, onClick, ...props }, ref) => {
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { label?: string }
+>(({ className, onClick, label, ...props }, ref) => {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     trackGAEvent("advertise_modal_open", {
       event_category: "Ads",
@@ -164,174 +175,159 @@ const AdvertiseTrigger = React.forwardRef<
       onClick={handleClick}
       {...props}
     >
-      Advertise
+      {label}
     </button>
   );
 });
 AdvertiseTrigger.displayName = "AdvertiseTrigger";
 
-function AdDrawerContent() {
-  const [showStats, setShowStats] = React.useState(false);
+const TOP_COUNTRIES = [
+  { flag: "🇺🇸", code: "US", users: 38713, percent: 17.8 },
+  { flag: "🇧🇷", code: "BR", users: 29142, percent: 13.4 },
+  { flag: "🇬🇧", code: "UK", users: 23825, percent: 11.0 },
+  { flag: "🇩🇪", code: "DE", users: 20916, percent: 9.6 },
+  { flag: "🇦🇺", code: "AU", users: 12870, percent: 5.9 },
+  { flag: "🇪🇸", code: "ES", users: 11854, percent: 5.4 },
+];
 
+function CountryBar({ flag, code, users, percent, maxPercent }: {
+  flag: string;
+  code: string;
+  users: number;
+  percent: number;
+  maxPercent: number;
+}) {
+  const width = (percent / maxPercent) * 100;
   return (
-    <div className="flex flex-col bg-background">
-      {/* Hero Section */}
-      <div className="px-6 pt-6 pb-4 text-center">
-        <div className="mx-auto mb-3 size-14 rounded-2xl bg-[#B46201]/10 flex items-center justify-center">
-          <Megaphone className="size-7 text-[#B46201]" />
-        </div>
-        <h3 className="text-xl font-semibold">Advertise on SMRY</h3>
-        <p className="mt-1 text-xs font-medium uppercase tracking-wide text-[#B46201]">
-          Sponsor Program
-        </p>
-      </div>
-
-      {/* Feature cards - nested card pattern */}
-      <div className="px-6 space-y-2">
-        <FeatureCard
-          icon={<Users className="size-4" />}
-          title="Hundreds of thousands of readers"
-          description="Reach engaged readers and grow your brand"
-          action={
-            !showStats ? (
-              <button
-                onClick={() => setShowStats(true)}
-                className="text-[10px] font-medium text-[#B46201] hover:text-[#B46201]/80 transition-colors whitespace-nowrap"
-              >
-                View stats →
-              </button>
-            ) : null
-          }
-        />
-        {showStats && (
-          <div className="p-0.5 bg-accent rounded-[14px] animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="bg-card rounded-xl p-2 overflow-hidden">
-              <Image
-                src="/stats.png"
-                alt="SMRY Analytics - 1.4M views, 213K users"
-                width={800}
-                height={600}
-                className="w-full h-auto rounded-lg"
-                priority={false}
-              />
-              <p className="text-[10px] text-muted-foreground text-center mt-2">
-                Analytics from Google Analytics on 12/06/2025
-              </p>
-            </div>
-          </div>
-        )}
-        <FeatureCard
-          icon={<Eye className="size-4" />}
-          title="Premium placement"
-          description="Sidebar on desktop, banner on mobile across all pages"
-        />
-        <FeatureCard
-          icon={<Zap className="size-4" />}
-          title="Fair rotation"
-          description="Sponsors rotate every 10 seconds for equal visibility"
+    <div className="flex items-center gap-2">
+      <span className="text-base">{flag}</span>
+      <span className="text-xs font-medium w-6">{code}</span>
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all"
+          style={{ width: `${width}%` }}
         />
       </div>
-
-      {/* Availability Section */}
-      <div className="px-6 mt-5">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-          Availability
-        </p>
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-sm">
-            <Check className="size-4 text-[#B46201]" />
-            <span className="text-muted-foreground">5 spots total</span>
-            <span className="ml-auto font-medium text-[#B46201]">
-              Only 3 left
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Check className="size-4 text-[#039550]" />
-            <span className="text-muted-foreground">Next available</span>
-            <span className="ml-auto font-medium">December 15th</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing Card - nested card pattern */}
-      <div className="px-6 mt-5">
-        <div className="p-0.5 bg-accent rounded-[14px]">
-          <div className="bg-card rounded-xl p-4">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold">$499</span>
-              <span className="text-sm text-muted-foreground">one-time deposit</span>
-            </div>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Locks your spot for January. Applied toward your{" "}
-              <span className="text-foreground font-medium">$999/mo</span> rate.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="px-6 pt-5 pb-6">
-        <Button
-          size="lg"
-          className="w-full"
-          render={(defaultProps) => {
-            const handleCheckoutClick = () => {
-              trackGAEvent("advertise_checkout_click", {
-                event_category: "Ads",
-                event_label: "Stripe Checkout",
-                checkout_type: "advertise_deposit",
-              });
-            };
-
-            return (
-              <a
-                {...defaultProps}
-                href={STRIPE_CHECKOUT_URL}
-                target="_blank"
-                rel="noreferrer"
-                onClick={handleCheckoutClick}
-              >
-                Lock spot for January
-                <ExternalLink className="ml-2 size-4" />
-              </a>
-            );
-          }}
-        />
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Questions?{" "}
-          <a href="mailto:contact@smry.ai" className="underline hover:text-foreground">
-            contact@smry.ai
-          </a>
-        </p>
-      </div>
+      <span className="text-xs tabular-nums text-muted-foreground w-14 text-right">{users.toLocaleString()}</span>
     </div>
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
+function AdDrawerContent() {
+  const t = useTranslations("ads");
+  const nextMonth = useNextMonth();
+
+  const benefits = [
+    t("modal.benefits.reach"),
+    t("modal.benefits.placement"),
+    t("modal.benefits.rotation"),
+    t("modal.benefits.analytics"),
+    t("modal.benefits.support"),
+  ];
+
+  const maxPercent = Math.max(...TOP_COUNTRIES.map(c => c.percent));
+
   return (
-    <div className="p-0.5 bg-accent rounded-[14px]">
-      <div className="flex gap-3 bg-card rounded-xl p-3">
-        <div className="shrink-0 size-9 rounded-lg bg-accent flex items-center justify-center text-muted-foreground">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-sm">{title}</p>
-            {action}
+    <div className="flex flex-col bg-background">
+      {/* Hero Stats */}
+      <div className="px-6 pt-6 pb-2">
+        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-4 text-center">
+          {t("modal.badge")}
+        </p>
+
+        {/* Big numbers row */}
+        <div className="flex items-center justify-center gap-8 mb-2">
+          <div className="text-center">
+            <div className="text-4xl font-bold tracking-tight">1.6M</div>
+            <div className="text-xs text-muted-foreground mt-1">{t("modal.stats.views")}</div>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          <div className="w-px h-12 bg-border" />
+          <div className="text-center">
+            <div className="text-4xl font-bold tracking-tight">217K</div>
+            <div className="text-xs text-muted-foreground mt-1">{t("modal.stats.users")}</div>
+          </div>
         </div>
+      </div>
+
+      {/* Countries breakdown */}
+      <div className="px-6 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-medium text-muted-foreground">{t("modal.stats.topCountries")}</span>
+          <span className="text-[10px] text-muted-foreground">214 {t("modal.stats.countriesTotal")}</span>
+        </div>
+        <div className="space-y-2.5">
+          {TOP_COUNTRIES.map((country) => (
+            <CountryBar key={country.code} {...country} maxPercent={maxPercent} />
+          ))}
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground text-center">
+          {t("modal.heroSubtext")}
+        </p>
+      </div>
+
+      {/* What's included - Cosmos style */}
+      <div className="px-6 pb-6">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-sm font-medium text-muted-foreground">{t("modal.whatsIncluded")}</span>
+          <div className="flex-1 border-t border-dashed border-border" />
+        </div>
+
+        <div className="space-y-4">
+          {benefits.map((benefit, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="size-6 rounded-full bg-foreground/10 flex items-center justify-center shrink-0">
+                <Check className="size-3.5 text-foreground" />
+              </div>
+              <span className="text-[15px]">{benefit}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pricing - clean and clear */}
+      <div className="px-6 py-5 border-t border-border">
+        <div className="flex items-baseline justify-between mb-1">
+          <span className="text-sm text-muted-foreground">{t("modal.pricing.monthly")}</span>
+          <span className="text-2xl font-bold">$999<span className="text-sm font-normal text-muted-foreground">/mo</span></span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm text-muted-foreground">{t("modal.pricing.depositLabel")}</span>
+          <span className="text-sm">$499 <span className="text-muted-foreground">{t("modal.pricing.depositNote")}</span></span>
+        </div>
+      </div>
+
+      {/* Urgency - subtle */}
+      <div className="px-6 py-3 bg-amber-500/10 border-y border-amber-500/20">
+        <p className="text-sm text-center">
+          <span className="font-medium text-amber-600 dark:text-amber-400">{t("modal.urgency.spotsLeft")}</span>
+          <span className="text-muted-foreground"> · </span>
+          <span className="text-muted-foreground">{t("modal.urgency.nextAvailable", { month: nextMonth })}</span>
+        </p>
+      </div>
+
+      {/* CTA */}
+      <div className="px-6 pt-5 pb-6">
+        <a
+          href={STRIPE_CHECKOUT_URL}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => {
+            trackGAEvent("advertise_checkout_click", {
+              event_category: "Ads",
+              event_label: "Stripe Checkout",
+              checkout_type: "advertise_deposit",
+            });
+          }}
+          className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-full bg-foreground text-background font-medium text-[15px] hover:bg-foreground/90 transition-colors"
+        >
+          {t("modal.cta", { month: nextMonth })}
+        </a>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          {t("modal.contact")}{" "}
+          <a href="mailto:ads@smry.ai" className="underline hover:text-foreground">
+            ads@smry.ai
+          </a>
+        </p>
       </div>
     </div>
   );
@@ -349,12 +345,13 @@ function AdvertiseModal({
   trigger: React.ReactElement<Record<string, unknown>>;
   nativeButton?: boolean;
 }) {
+  const t = useTranslations("ads");
   return (
     <ResponsiveDrawer
       open={open}
       onOpenChange={onOpenChange}
       trigger={trigger}
-      title="Advertise on SMRY"
+      title={t("modal.title")}
       scrollable
       showCloseButton
       nativeButton={nativeButton}
@@ -369,6 +366,7 @@ function AdvertiseModal({
 // ============================================
 
 function SupportLink({ className }: { className?: string }) {
+  const t = useTranslations("ads");
   const handleClick = () => {
     trackGAEvent("support_cta_click", {
       event_category: "Support",
@@ -386,7 +384,7 @@ function SupportLink({ className }: { className?: string }) {
       )}
     >
       <Crown className="size-3 text-purple-500" />
-      Go Pro
+      {t("goPro")}
     </Link>
   );
 }
@@ -412,10 +410,11 @@ export function AdSpot({ className }: AdSpotProps) {
 }
 
 export function AdSpotSidebar({ className, hidden = false }: AdSpotProps & { hidden?: boolean }) {
+  const t = useTranslations("ads");
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
-    <div 
+    <div
       className={cn(
         "flex flex-col gap-2 transition-opacity duration-200",
         hidden ? "opacity-0 pointer-events-none" : "opacity-100",
@@ -429,7 +428,7 @@ export function AdSpotSidebar({ className, hidden = false }: AdSpotProps & { hid
         <AdvertiseModal
           open={advertiseOpen}
           onOpenChange={setAdvertiseOpen}
-          trigger={<AdvertiseTrigger />}
+          trigger={<AdvertiseTrigger label={t("advertise")} />}
           nativeButton
         />
         <span className="text-muted-foreground/50">·</span>
@@ -469,10 +468,11 @@ function MobileAdPill({ href, imageSrc, alt, eventLabel }: { href: string; image
 }
 
 export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { hidden?: boolean }) {
+  const t = useTranslations("ads");
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
-    <div 
+    <div
       className={cn(
         "fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40 transition-all duration-200",
         hidden ? "opacity-0 pointer-events-none translate-y-full" : "opacity-100 translate-y-0",
@@ -501,8 +501,8 @@ export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { h
           <ResponsiveDrawer
             open={advertiseOpen}
             onOpenChange={setAdvertiseOpen}
-            trigger={<AdvertiseTrigger />}
-            title="Advertise on SMRY"
+            trigger={<AdvertiseTrigger label={t("advertise")} />}
+            title={t("modal.title")}
             scrollable
             showCloseButton
           >

@@ -89,6 +89,11 @@
     "forCasualReaders": "Para leitores casuais",
     "forever": "para sempre",
     "continueFree": "Continuar grátis",
+    "currentPlan": "Plano Atual",
+    "included": "Incluído",
+    "yourPlan": "Seu Plano",
+    "signUpFree": "Cadastre-se Grátis",
+    "freeAccountBenefits": "Obtenha histórico e sincronização entre dispositivos",
     "articlesPerDay": "Artigos por dia",
     "aiSummariesPerDay": "Resumos de IA por dia",
     "articlesInHistory": "Artigos no histórico",
@@ -191,5 +196,60 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "logo smry"
+  },
+  "ads": {
+    "advertise": "Anunciar",
+    "goPro": "Seja Pro",
+    "wispr": {
+      "tagline": "Voz para texto que uso diariamente",
+      "endorsement": "— michael, criador do smry"
+    },
+    "gptHuman": {
+      "tagline": "Burle detectores de IA e escreva como humano"
+    },
+    "months": {
+      "january": "Janeiro",
+      "february": "Fevereiro",
+      "march": "Março",
+      "april": "Abril",
+      "may": "Maio",
+      "june": "Junho",
+      "july": "Julho",
+      "august": "Agosto",
+      "september": "Setembro",
+      "october": "Outubro",
+      "november": "Novembro",
+      "december": "Dezembro"
+    },
+    "modal": {
+      "title": "Anuncie no SMRY",
+      "badge": "Patrocinadores SMRY · Últimos 30 dias",
+      "heroSubtext": "Profissionais de tecnologia que burlam paywalls para se manterem informados",
+      "stats": {
+        "views": "visualizações",
+        "users": "usuários",
+        "topCountries": "Principais países",
+        "countriesTotal": "países no total"
+      },
+      "whatsIncluded": "O que está incluído",
+      "benefits": {
+        "reach": "Alcance 200K+ leitores engajados por mês",
+        "placement": "Posicionamento premium em sidebar e banner mobile",
+        "rotation": "Rotação justa de 10 segundos com outros patrocinadores",
+        "analytics": "Relatórios de desempenho mensais",
+        "support": "Suporte dedicado de conta"
+      },
+      "pricing": {
+        "monthly": "Taxa mensal",
+        "depositLabel": "Para reservar",
+        "depositNote": "(aplicado ao primeiro mês)"
+      },
+      "urgency": {
+        "spotsLeft": "Apenas 3 vagas restantes",
+        "nextAvailable": "A partir de {month}"
+      },
+      "cta": "Reserve sua vaga",
+      "contact": "Dúvidas?"
+    }
   }
 }

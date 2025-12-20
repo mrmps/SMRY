@@ -89,6 +89,11 @@
     "forCasualReaders": "For casual readers",
     "forever": "forever",
     "continueFree": "Continue free",
+    "currentPlan": "Current Plan",
+    "included": "Included",
+    "yourPlan": "Your Plan",
+    "signUpFree": "Sign Up Free",
+    "freeAccountBenefits": "Get history & sync across devices",
     "articlesPerDay": "articles per day",
     "aiSummariesPerDay": "AI summaries per day",
     "articlesInHistory": "articles in history",
@@ -191,5 +196,60 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry logo"
+  },
+  "ads": {
+    "advertise": "Advertise",
+    "goPro": "Go Pro",
+    "wispr": {
+      "tagline": "Voice-to-text I use daily",
+      "endorsement": "— michael, creator of smry"
+    },
+    "gptHuman": {
+      "tagline": "Bypass AI detectors and write like a human"
+    },
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    },
+    "modal": {
+      "title": "Advertise on SMRY",
+      "badge": "SMRY Sponsors · Last 30 days",
+      "heroSubtext": "Tech-savvy professionals who bypass paywalls to stay informed",
+      "stats": {
+        "views": "views",
+        "users": "users",
+        "topCountries": "Top countries",
+        "countriesTotal": "countries total"
+      },
+      "whatsIncluded": "What's included",
+      "benefits": {
+        "reach": "Reach 200K+ engaged readers monthly",
+        "placement": "Premium sidebar & mobile banner placement",
+        "rotation": "Fair 10-second rotation with other sponsors",
+        "analytics": "Monthly performance reports",
+        "support": "Dedicated account support"
+      },
+      "pricing": {
+        "monthly": "Monthly rate",
+        "depositLabel": "To reserve",
+        "depositNote": "(applied to first month)"
+      },
+      "urgency": {
+        "spotsLeft": "Only 3 spots left",
+        "nextAvailable": "Starting {month}"
+      },
+      "cta": "Reserve your spot",
+      "contact": "Questions?"
+    }
   }
 }
