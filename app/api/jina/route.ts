@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         // Only return if cached article is reasonably long
         if (article.length > 4000) {
           logger.debug({ hostname: new URL(validatedUrl).hostname, length: article.length }, 'Jina cache hit');
-          
+
           const response = ArticleResponseSchema.parse({
             source: "jina.ai",
             cacheURL: `https://r.jina.ai/${validatedUrl}`,
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       if (!validatedExisting || article.length > validatedExisting.length) {
         await saveToCache(articleWithDir);
         logger.info({ hostname: new URL(url).hostname, length: article.length, dir: articleDir }, 'Jina cache updated');
-        
+
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
           cacheURL: `https://r.jina.ai/${url}`,
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(response);
       } else {
         logger.debug({ hostname: new URL(url).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
-        
+
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
           cacheURL: `https://r.jina.ai/${url}`,
@@ -206,10 +206,10 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Jina cache update error');
-      
+
       // Detect text direction for the article
       const articleDir = getTextDirection(null, article.textContent);
-      
+
       // Return the article even if caching fails
       const response = ArticleResponseSchema.parse({
         source: "jina.ai",
