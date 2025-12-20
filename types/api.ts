@@ -22,6 +22,10 @@ export const DebugContextSchema = z.object({
   steps: z.array(DebugStepSchema),
 });
 
+// Paywall detection schema (frontend-only, based on error state)
+export const PaywallBypassStatusSchema = z.enum(["success", "blocked"]);
+export type PaywallBypassStatus = z.infer<typeof PaywallBypassStatusSchema>;
+
 // Article schema
 export const ArticleSchema = z.object({
   title: z.string(),

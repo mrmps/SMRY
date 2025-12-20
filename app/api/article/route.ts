@@ -105,6 +105,7 @@ async function saveOrReturnLongerArticle(
     // Helper to save both compressed article and metadata
     const saveToCache = async (article: CachedArticle) => {
       const metaKey = `meta:${key}`;
+
       const metadata: ArticleMetadata = {
         title: article.title,
         siteName: article.siteName,
@@ -444,7 +445,7 @@ export async function GET(request: NextRequest) {
 
           if (article.length > 4000 && article.htmlContent) {
             logger.debug({ source: validatedSource, hostname: new URL(validatedUrl).hostname, length: article.length }, 'Cache hit');
-            
+
             // Validate final response structure
             const response = ArticleResponseSchema.parse({
               source: validatedSource,
@@ -547,12 +548,12 @@ export async function GET(request: NextRequest) {
           },
           status: "success",
         });
-        
+
         return NextResponse.json(response);
       }
-      
+
       const validatedSavedArticle = savedValidation.data;
-      
+
       const response = ArticleResponseSchema.parse({
         source: validatedSource,
         cacheURL,
@@ -600,7 +601,7 @@ export async function GET(request: NextRequest) {
       }
       
       const validatedArticle = articleValidation.data;
-      
+
       const response = ArticleResponseSchema.parse({
         source: validatedSource,
         cacheURL,
