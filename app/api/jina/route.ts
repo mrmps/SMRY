@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { JinaCacheRequestSchema, JinaCacheUpdateSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { createLogger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
 import { compress, decompress } from "@/lib/redis-compression";
 import { getTextDirection } from "@/lib/rtl";
-
-const logger = createLogger('api:jina');
+import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 
 // Cached article schema
 const CachedArticleSchema = z.object({
@@ -26,17 +24,27 @@ const CachedArticleSchema = z.object({
 /**
  * GET /api/jina?url=...
  * Check cache for Jina article
+ *
+ * Uses wide event pattern - one canonical log line per request.
  */
 export async function GET(request: NextRequest) {
+  const ctx = createRequestContext({
+    ...extractRequestInfo(request),
+    ip: extractClientIp(request),
+  });
+  ctx.set("endpoint", "/api/jina");
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const url = searchParams.get("url");
+
+    ctx.set("url_param", url);
 
     const validationResult = JinaCacheRequestSchema.safeParse({ url });
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      logger.error({ error: error.toString() }, 'Validation error');
+      ctx.error(error.toString(), { error_type: "VALIDATION_ERROR", status_code: 400 });
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -47,20 +55,26 @@ export async function GET(request: NextRequest) {
     }
 
     const { url: validatedUrl } = validationResult.data;
+    const hostname = new URL(validatedUrl).hostname;
     const cacheKey = `jina.ai:${validatedUrl}`;
 
-    logger.debug({ hostname: new URL(validatedUrl).hostname }, 'Checking Jina cache');
+    ctx.merge({ hostname, url: validatedUrl });
 
     try {
+      const cacheStart = Date.now();
       const rawCachedArticle = await redis.get(cacheKey);
       const cachedArticle = decompress(rawCachedArticle);
+      ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
       if (cachedArticle) {
         const article = CachedArticleSchema.parse(cachedArticle);
 
-        // Only return if cached article is reasonably long
         if (article.length > 4000) {
-          logger.debug({ hostname: new URL(validatedUrl).hostname, length: article.length }, 'Jina cache hit');
+          ctx.merge({
+            cache_hit: true,
+            article_length: article.length,
+            status_code: 200,
+          });
 
           const response = ArticleResponseSchema.parse({
             source: "jina.ai",
@@ -71,23 +85,26 @@ export async function GET(request: NextRequest) {
               dir: article.dir || getTextDirection(article.lang, article.textContent),
               lang: article.lang || "",
               publishedTime: article.publishedTime || null,
-              htmlContent: article.content, // Use markdown-converted HTML as htmlContent
+              htmlContent: article.content,
             },
             status: "success",
           });
 
+          ctx.success();
           return NextResponse.json(response);
         } else {
-          logger.debug({ length: article.length }, 'Jina cache too short, will fetch fresh');
+          ctx.set("cache_status", "too_short");
         }
       } else {
-        logger.debug({ hostname: new URL(validatedUrl).hostname }, 'Jina cache miss');
+        ctx.set("cache_status", "miss");
       }
-    } catch (error) {
-      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Jina cache read error');
+    } catch {
+      ctx.set("cache_status", "error");
     }
 
-    // No cache or cache too short - return empty success
+    ctx.merge({ cache_hit: false, status_code: 404 });
+    ctx.success();
+
     return NextResponse.json(
       ErrorResponseSchema.parse({
         error: "Not cached",
@@ -96,8 +113,11 @@ export async function GET(request: NextRequest) {
       { status: 404 }
     );
   } catch (error) {
-    logger.error({ error }, 'Unexpected error in Jina GET');
-    
+    ctx.error(error instanceof Error ? error : String(error), {
+      error_type: "UNKNOWN_ERROR",
+      status_code: 500,
+    });
+
     return NextResponse.json(
       ErrorResponseSchema.parse({
         error: "An unexpected error occurred",
@@ -112,16 +132,24 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/jina
  * Update cache with Jina article if it's longer than existing or doesn't exist
+ *
+ * Uses wide event pattern - one canonical log line per request.
  */
 export async function POST(request: NextRequest) {
+  const ctx = createRequestContext({
+    ...extractRequestInfo(request),
+    ip: extractClientIp(request),
+  });
+  ctx.set("endpoint", "/api/jina");
+
   try {
     const body = await request.json();
-    
+
     const validationResult = JinaCacheUpdateSchema.safeParse(body);
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      logger.error({ error: error.toString() }, 'Validation error');
+      ctx.error(error.toString(), { error_type: "VALIDATION_ERROR", status_code: 400 });
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -132,19 +160,29 @@ export async function POST(request: NextRequest) {
     }
 
     const { url, article } = validationResult.data;
+    const hostname = new URL(url).hostname;
     const cacheKey = `jina.ai:${url}`;
 
-    logger.info({ hostname: new URL(url).hostname, length: article.length }, 'Updating Jina cache');
+    ctx.merge({
+      hostname,
+      url,
+      article_length: article.length,
+    });
 
     try {
+      const cacheStart = Date.now();
       const rawExistingArticle = await redis.get(cacheKey);
       const existingArticle = decompress(rawExistingArticle);
+      ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
       const validatedExisting = existingArticle
         ? CachedArticleSchema.parse(existingArticle)
         : null;
 
-      // Helper to save both compressed article and metadata
+      if (validatedExisting) {
+        ctx.set("existing_length", validatedExisting.length);
+      }
+
       const saveToCache = async (newArticle: z.infer<typeof CachedArticleSchema>) => {
         const metaKey = `meta:${cacheKey}`;
         const metadata = {
@@ -161,14 +199,17 @@ export async function POST(request: NextRequest) {
         ]);
       };
 
-      // Detect text direction for the incoming article
       const articleDir = getTextDirection(null, article.textContent);
       const articleWithDir = { ...article, dir: articleDir, lang: null };
 
-      // Only update if new article is longer or doesn't exist
       if (!validatedExisting || article.length > validatedExisting.length) {
+        const saveStart = Date.now();
         await saveToCache(articleWithDir);
-        logger.info({ hostname: new URL(url).hostname, length: article.length, dir: articleDir }, 'Jina cache updated');
+        ctx.merge({
+          cache_save_ms: Date.now() - saveStart,
+          cache_updated: true,
+          status_code: 200,
+        });
 
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
@@ -179,14 +220,18 @@ export async function POST(request: NextRequest) {
             dir: articleDir,
             lang: "",
             publishedTime: article.publishedTime || null,
-            htmlContent: article.content, // Use markdown-converted HTML as htmlContent
+            htmlContent: article.content,
           },
           status: "success",
         });
 
+        ctx.success();
         return NextResponse.json(response);
       } else {
-        logger.debug({ hostname: new URL(url).hostname, existingLength: validatedExisting.length, newLength: article.length }, 'Keeping existing Jina cache');
+        ctx.merge({
+          cache_updated: false,
+          status_code: 200,
+        });
 
         const response = ArticleResponseSchema.parse({
           source: "jina.ai",
@@ -197,20 +242,19 @@ export async function POST(request: NextRequest) {
             dir: validatedExisting.dir || getTextDirection(validatedExisting.lang, validatedExisting.textContent),
             lang: validatedExisting.lang || "",
             publishedTime: validatedExisting.publishedTime || null,
-            htmlContent: validatedExisting.content, // Use markdown-converted HTML as htmlContent
+            htmlContent: validatedExisting.content,
           },
           status: "success",
         });
 
+        ctx.success();
         return NextResponse.json(response);
       }
-    } catch (error) {
-      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Jina cache update error');
+    } catch {
+      ctx.set("cache_error", true);
 
-      // Detect text direction for the article
       const articleDir = getTextDirection(null, article.textContent);
 
-      // Return the article even if caching fails
       const response = ArticleResponseSchema.parse({
         source: "jina.ai",
         cacheURL: `https://r.jina.ai/${url}`,
@@ -220,16 +264,21 @@ export async function POST(request: NextRequest) {
           dir: articleDir,
           lang: "",
           publishedTime: article.publishedTime || null,
-          htmlContent: article.content, // Use markdown-converted HTML as htmlContent
+          htmlContent: article.content,
         },
         status: "success",
       });
 
+      ctx.merge({ status_code: 200 });
+      ctx.success();
       return NextResponse.json(response);
     }
   } catch (error) {
-    logger.error({ error }, 'Unexpected error in Jina POST');
-    
+    ctx.error(error instanceof Error ? error : String(error), {
+      error_type: "UNKNOWN_ERROR",
+      status_code: 500,
+    });
+
     return NextResponse.json(
       ErrorResponseSchema.parse({
         error: "An unexpected error occurred",

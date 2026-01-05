@@ -3,9 +3,9 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from "ai";
 import { z } from "zod";
-import { createLogger } from "@/lib/logger";
 import { redis } from "@/lib/redis";
 import { auth } from "@clerk/nextjs/server";
+import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 
 // Configure OpenRouter provider]
 // OpenRouter provides unified access to 300+ AI models with automatic provider fallback
@@ -20,8 +20,6 @@ const openrouter = createOpenAI({
     'X-Title': '13ft - Paywall Bypass & AI Summaries',
   },
 });
-
-const logger = createLogger('api:summary');
 
 // Request schema for useCompletion
 const SummaryRequestSchema = z.object({
@@ -80,35 +78,44 @@ ${isNonEnglish ? `REMINDER: Your entire response must be in ${langName}. Not Eng
 /**
  * POST /api/summary
  * Generate AI summary of article content
+ *
+ * Uses wide event pattern - one canonical log line per request with all context.
  */
 export async function POST(request: NextRequest) {
+  const ctx = createRequestContext({
+    ...extractRequestInfo(request),
+    ip: extractClientIp(request),
+  });
+  ctx.set("endpoint", "/api/summary");
+
   try {
     const body = await request.json();
-    
-    logger.info({ 
-      contentLength: body.prompt?.length, 
+
+    ctx.merge({
+      content_length: body.prompt?.length,
       title: body.title,
-      language: body.language 
-    }, 'Summary Request');
+      language: body.language,
+    });
 
     const validationResult = SummaryRequestSchema.safeParse(body);
 
     if (!validationResult.success) {
       const error = validationResult.error.errors[0]?.message || "Invalid request parameters";
-      logger.error({ error: validationResult.error }, 'Validation error');
+      ctx.error(error, { error_type: "VALIDATION_ERROR", status_code: 400 });
       return NextResponse.json({ error }, { status: 400 });
     }
 
     const { prompt: content, title, url, ip, language } = validationResult.data;
-    const clientIp = ip || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "unknown";
+    const clientIp = ip || extractClientIp(request);
 
-    logger.debug({ clientIp, language, contentLength: content.length }, 'Request details');
+    ctx.merge({ client_ip: clientIp, url });
 
-    // Check if user is premium - premium users get unlimited summaries
+    // Check if user is premium
     const { has } = await auth();
     const isPremium = has?.({ plan: "premium" }) ?? false;
+    ctx.set("is_premium", isPremium);
 
-    // Usage tracking - will be added to response headers
+    // Usage tracking
     const dailyLimit = process.env.NODE_ENV === "development" ? 100 : 20;
     let currentUsage = 0;
 
@@ -132,11 +139,15 @@ export async function POST(request: NextRequest) {
           `ratelimit_minute_${clientIp}`
         );
 
-        // Calculate current usage from remaining (after this request)
         currentUsage = dailyLimit - dailyRemaining;
+        ctx.merge({ usage_count: currentUsage, usage_limit: dailyLimit });
 
         if (!dailySuccess) {
-          logger.warn({ clientIp }, 'Daily rate limit exceeded');
+          ctx.error("Daily rate limit exceeded", {
+            error_type: "RATE_LIMIT",
+            status_code: 429,
+            rate_limit_type: "daily",
+          });
           return NextResponse.json(
             { error: `Daily limit reached`, usage: currentUsage, limit: dailyLimit },
             {
@@ -152,7 +163,12 @@ export async function POST(request: NextRequest) {
 
         if (!minuteSuccess) {
           const waitSeconds = Math.ceil((minuteReset - Date.now()) / 1000);
-          logger.warn({ clientIp, waitSeconds }, 'Minute rate limit exceeded');
+          ctx.error("Minute rate limit exceeded", {
+            error_type: "RATE_LIMIT",
+            status_code: 429,
+            rate_limit_type: "minute",
+            retry_after_seconds: waitSeconds,
+          });
           return NextResponse.json(
             { error: `Too many requests. Wait ${waitSeconds}s or upgrade for unlimited.`, usage: currentUsage, limit: dailyLimit, retryAfter: waitSeconds },
             {
@@ -166,35 +182,35 @@ export async function POST(request: NextRequest) {
             }
           );
         }
-      } catch (redisError) {
-        // If Redis fails, log the error but allow the request to proceed
-        // This ensures that Redis outages don't break the summary feature
-        logger.warn({ error: redisError, clientIp }, 'Redis rate limiting failed, allowing request');
+      } catch {
+        // Redis failure - allow request to proceed
+        ctx.set("rate_limit_redis_error", true);
       }
-    } else {
-      logger.debug({ clientIp }, 'Premium user - skipping rate limits');
     }
 
-    // Common headers for usage tracking
     const usageHeaders = {
       "X-Usage-Count": String(currentUsage),
       "X-Usage-Limit": String(dailyLimit),
       "X-Is-Premium": String(isPremium),
     };
 
-    // Check cache (use content hash or URL for cache key)
+    // Check cache
     const cacheKey = url
       ? `summary:${language}:${url}`
       : `summary:${language}:${Buffer.from(content.substring(0, 500)).toString('base64').substring(0, 50)}`;
 
-    logger.debug({ cacheKey, language, url }, 'Cache lookup');
-
-    // Try to get cached summary, but don't fail if Redis is down
     try {
+      const cacheStart = Date.now();
       const cached = await redis.get<string>(cacheKey);
+      ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
       if (cached && typeof cached === "string") {
-        logger.info({ cacheKey, language, cachedLength: cached.length }, 'Cache hit');
+        ctx.merge({
+          cache_hit: true,
+          summary_length: cached.length,
+          status_code: 200,
+        });
+        ctx.success();
         return new Response(cached, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -203,13 +219,13 @@ export async function POST(request: NextRequest) {
           },
         });
       }
-    } catch (redisError) {
-      logger.warn({ error: redisError }, 'Redis cache retrieval failed, will generate fresh summary');
+    } catch {
+      ctx.set("cache_lookup_error", true);
     }
 
-    logger.info({ title: title || 'article', language }, 'Generating summary');
+    ctx.set("cache_hit", false);
 
-    // Build prompts with system message for better language instruction following
+    // Build prompts and stream
     const { system, user: userPrompt } = buildSummaryPrompts(content.substring(0, 6000), language);
 
     const result = streamText({
@@ -217,21 +233,20 @@ export async function POST(request: NextRequest) {
       system,
       messages: [{ role: "user", content: userPrompt }],
       onFinish: async ({ text, usage }) => {
-        // Cache the complete summary after streaming finishes
-        logger.info({ 
-          length: text.length,
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens,
-          totalTokens: usage.totalTokens
-        }, 'Summary generated with OpenRouter');
-        
-        // Try to cache with 1 week TTL, but don't fail if Redis is down
+        ctx.merge({
+          summary_length: text.length,
+          input_tokens: usage.inputTokens,
+          output_tokens: usage.outputTokens,
+          total_tokens: usage.totalTokens,
+          status_code: 200,
+        });
+        ctx.success();
+
+        // Cache result
         try {
-          await redis.set(cacheKey, text, { ex: 60 * 60 * 24 * 7 }); // 1 week
-          logger.debug('Summary cached successfully');
-        } catch (redisError) {
-          // Log the error but don't break the streaming response
-          logger.warn({ error: redisError }, 'Failed to cache summary in Redis');
+          await redis.set(cacheKey, text, { ex: 60 * 60 * 24 * 7 });
+        } catch {
+          // Ignore cache errors
         }
       },
     });
@@ -240,7 +255,11 @@ export async function POST(request: NextRequest) {
       headers: usageHeaders,
     });
   } catch (error) {
-    logger.error({ error }, 'Unexpected error');
+    ctx.error(error instanceof Error ? error : String(error), {
+      error_type: "UNKNOWN_ERROR",
+      status_code: 500,
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "An unexpected error occurred" },
       { status: 500 }

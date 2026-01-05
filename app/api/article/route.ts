@@ -9,6 +9,7 @@ import { AppError, createNetworkError, createParseError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
 import { Readability } from "@mozilla/readability";
 import { JSDOM, VirtualConsole } from "jsdom";
+import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 
 // Suppress JSDOM CSS parsing errors that fill up logs
 const virtualConsole = new VirtualConsole();
@@ -17,7 +18,8 @@ virtualConsole.on("error", () => {
 });
 import { getTextDirection } from "@/lib/rtl";
 
-const logger = createLogger('api:article');
+// Logger for internal helper functions (debug level)
+const logger = createLogger("api:article");
 
 // Diffbot Article schema - validates the response from fetchArticleWithDiffbot
 const DiffbotArticleSchema = z.object({
@@ -383,20 +385,33 @@ async function fetchArticle(
 
 /**
  * GET /api/article?url=...&source=...
+ *
+ * Uses wide event pattern - one canonical log line per request with all context.
  */
 export async function GET(request: NextRequest) {
+  // Initialize wide event context
+  const ctx = createRequestContext({
+    ...extractRequestInfo(request),
+    ip: extractClientIp(request),
+  });
+  ctx.set("endpoint", "/api/article");
+
   try {
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
     const url = searchParams.get("url");
     const source = searchParams.get("source");
 
+    ctx.merge({ url_param: url, source_param: source });
+
     const validationResult = ArticleRequestSchema.safeParse({ url, source });
 
     if (!validationResult.success) {
       const error = fromError(validationResult.error);
-      const debugSmryUrl = url ? buildSmryUrl(url, source ?? "smry-fast") : undefined;
-      logger.error({ error: error.toString(), smryUrl: debugSmryUrl, url, source }, 'Validation error - Full URL for debugging');
+      ctx.error(error.toString(), {
+        error_type: "VALIDATION_ERROR",
+        status_code: 400,
+      });
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: error.toString(),
@@ -407,13 +422,21 @@ export async function GET(request: NextRequest) {
     }
 
     const { url: validatedUrl, source: validatedSource } = validationResult.data;
+    const hostname = new URL(validatedUrl).hostname;
 
-    // Construct the full smry.ai URL for debugging
-    const smryUrl = buildSmryUrl(validatedUrl, validatedSource);
+    // Add validated params to context
+    ctx.merge({
+      source: validatedSource,
+      hostname,
+      url: validatedUrl,
+    });
 
-    // Jina.ai is handled by a separate endpoint (/api/jina) for client-side fetching
+    // Jina.ai is handled by a separate endpoint
     if (validatedSource === "jina.ai") {
-      logger.warn({ source: validatedSource, smryUrl }, 'Jina.ai source not supported in this endpoint');
+      ctx.error("Jina.ai source not supported", {
+        error_type: "VALIDATION_ERROR",
+        status_code: 400,
+      });
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: "Jina.ai source is handled client-side. Use /api/jina endpoint instead.",
@@ -423,36 +446,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    logger.info({ source: validatedSource, hostname: new URL(validatedUrl).hostname, smryUrl }, 'API Request');
-
     const urlWithSource = getUrlWithSource(validatedSource, validatedUrl);
     const cacheKey = `${validatedSource}:${validatedUrl}`;
 
     // Try to get from cache
+    let cacheHit = false;
+    let cacheStatus: "hit" | "miss" | "invalid" | "error" = "miss";
+
     try {
+      const cacheStart = Date.now();
       const rawCachedArticle = await redis.get(cacheKey);
+      const cacheLookupMs = Date.now() - cacheStart;
+      ctx.set("cache_lookup_ms", cacheLookupMs);
+
       const cachedArticle = decompress(rawCachedArticle);
 
       if (cachedArticle) {
-        // Validate cached data
         const cacheValidation = CachedArticleSchema.safeParse(cachedArticle);
-        
+
         if (!cacheValidation.success) {
-          const validationError = fromError(cacheValidation.error);
-          logger.warn({ 
-            cacheKey,
-            validationError: validationError.toString(),
-            receivedType: typeof cachedArticle,
-            hasKeys: cachedArticle ? Object.keys(cachedArticle as any) : []
-          }, 'Cache validation failed - will fetch fresh');
-          // Continue to fetch fresh data instead of using invalid cache
+          cacheStatus = "invalid";
         } else {
           const article = cacheValidation.data;
 
           if (article.length > 4000 && article.htmlContent) {
-            logger.debug({ source: validatedSource, hostname: new URL(validatedUrl).hostname, length: article.length }, 'Cache hit');
+            cacheHit = true;
+            cacheStatus = "hit";
+            ctx.merge({
+              cache_hit: true,
+              article_length: article.length,
+              article_title: article.title,
+              status_code: 200,
+            });
 
-            // Validate final response structure
             const response = ArticleResponseSchema.parse({
               source: validatedSource,
               cacheURL: urlWithSource,
@@ -472,48 +498,37 @@ export async function GET(request: NextRequest) {
               status: "success",
             });
 
+            ctx.success();
             return NextResponse.json(response);
           } else if (article.length > 4000 && !article.htmlContent) {
-             logger.info({ source: validatedSource, hostname: new URL(validatedUrl).hostname }, 'Cache hit but missing HTML content - fetching fresh');
+            cacheStatus = "miss"; // Valid but missing HTML, need to refetch
           }
         }
       }
-    } catch (error) {
-      const validationError = fromError(error);
-      logger.warn({ 
-        error: error instanceof Error ? error.message : String(error),
-        validationError: validationError.toString()
-      }, 'Cache read error');
-      // Continue to fetch fresh data
+    } catch {
+      cacheStatus = "error";
     }
 
+    ctx.set("cache_status", cacheStatus);
+
     // Fetch fresh data
-    logger.info({ source: validatedSource, smryUrl }, 'Fetching fresh data');
+    const fetchStart = Date.now();
     const result = await fetchArticle(urlWithSource, validatedSource);
+    const fetchMs = Date.now() - fetchStart;
+    ctx.set("fetch_ms", fetchMs);
 
     if ("error" in result) {
       const appError = result.error;
-      logger.error({ 
-        source: validatedSource, 
-        errorType: appError.type, 
-        message: appError.message, 
-        hasDebugContext: !!appError.debugContext,
-        smryUrl,
-        urlWithSource,
-      }, 'Fetch failed - Full URL for debugging');
-      
-      // Include cacheURL in error details so frontend can show the actual URL that was attempted
-      const errorDetails = {
-        ...appError,
-        url: urlWithSource, // The actual URL that was attempted (with source prefix)
-        smryUrl, // Full smry.ai URL for easy debugging
-      };
-      
+      ctx.error(appError.message, {
+        error_type: appError.type,
+        status_code: 500,
+      });
+
       return NextResponse.json(
         ErrorResponseSchema.parse({
           error: appError.message,
           type: appError.type,
-          details: errorDetails,
+          details: { url: urlWithSource },
           debugContext: appError.debugContext,
         }),
         { status: 500 }
@@ -524,19 +539,15 @@ export async function GET(request: NextRequest) {
 
     // Save to cache
     try {
+      const cacheStart = Date.now();
       const savedArticle = await saveOrReturnLongerArticle(cacheKey, article);
-      
-      // Validate saved article
+      ctx.set("cache_save_ms", Date.now() - cacheStart);
+
       const savedValidation = CachedArticleSchema.safeParse(savedArticle);
-      
+
       if (!savedValidation.success) {
-        const validationError = fromError(savedValidation.error);
-        logger.error({ 
-          cacheKey,
-          validationError: validationError.toString() 
-        }, 'Saved article validation failed');
-        
-        // Use original article if saved validation fails
+        ctx.set("cache_save_valid", false);
+        // Use original article
         const response = ArticleResponseSchema.parse({
           source: validatedSource,
           cacheURL,
@@ -555,6 +566,13 @@ export async function GET(request: NextRequest) {
           status: "success",
         });
 
+        ctx.merge({
+          cache_hit: false,
+          article_length: article.length,
+          article_title: article.title,
+          status_code: 200,
+        });
+        ctx.success();
         return NextResponse.json(response);
       }
 
@@ -578,25 +596,26 @@ export async function GET(request: NextRequest) {
         status: "success",
       });
 
-      logger.info({ source: validatedSource, title: validatedSavedArticle.title }, 'Success');
+      ctx.merge({
+        cache_hit: false,
+        article_length: validatedSavedArticle.length,
+        article_title: validatedSavedArticle.title,
+        status_code: 200,
+      });
+      ctx.success();
       return NextResponse.json(response);
+
     } catch (error) {
-      const validationError = fromError(error);
-      logger.warn({ 
-        error: error instanceof Error ? error.message : String(error),
-        validationError: validationError.toString()
-      }, 'Cache save error');
-      
-      // Return article even if caching fails - validate it first
+      // Return article even if caching fails
       const articleValidation = CachedArticleSchema.safeParse(article);
-      
+
       if (!articleValidation.success) {
         const articleError = fromError(articleValidation.error);
-        logger.error({ 
-          validationError: articleError.toString() 
-        }, 'Article validation failed in error handler');
-        
-        // Return error if we can't validate the article
+        ctx.error(articleError.toString(), {
+          error_type: "VALIDATION_ERROR",
+          status_code: 500,
+        });
+
         return NextResponse.json(
           ErrorResponseSchema.parse({
             error: `Article validation failed: ${articleError.toString()}`,
@@ -605,7 +624,7 @@ export async function GET(request: NextRequest) {
           { status: 500 }
         );
       }
-      
+
       const validatedArticle = articleValidation.data;
 
       const response = ArticleResponseSchema.parse({
@@ -627,22 +646,22 @@ export async function GET(request: NextRequest) {
         status: "success",
       });
 
+      ctx.merge({
+        cache_hit: false,
+        cache_save_error: true,
+        article_length: validatedArticle.length,
+        article_title: validatedArticle.title,
+        status_code: 200,
+      });
+      ctx.success();
       return NextResponse.json(response);
     }
   } catch (error) {
-    // Try to extract URL info for better debugging
-    const searchParams = request.nextUrl.searchParams;
-    const url = searchParams.get("url");
-    const source = searchParams.get("source") || "smry-fast";
-    const debugSmryUrl = url ? buildSmryUrl(url, source) : undefined;
-    
-    logger.error({ 
-      error, 
-      smryUrl: debugSmryUrl,
-      url,
-      source,
-    }, 'Unexpected error in API route - Full URL for debugging');
-    
+    ctx.error(error instanceof Error ? error : String(error), {
+      error_type: "UNKNOWN_ERROR",
+      status_code: 500,
+    });
+
     return NextResponse.json(
       ErrorResponseSchema.parse({
         error: "An unexpected error occurred",
