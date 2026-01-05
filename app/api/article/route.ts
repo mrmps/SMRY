@@ -6,6 +6,7 @@ import { compressAsync, decompressAsync } from "@/lib/redis-compression";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { AppError, createNetworkError, createParseError } from "@/lib/errors";
+import { isHardPaywall, getHardPaywallInfo } from "@/lib/hard-paywalls";
 import { createLogger } from "@/lib/logger";
 import { Readability } from "@mozilla/readability";
 import { JSDOM, VirtualConsole } from "jsdom";
@@ -456,6 +457,28 @@ export async function GET(request: NextRequest) {
       hostname,
       url: validatedUrl,
     });
+
+    // Check for hard paywalls - return early with clear error
+    if (isHardPaywall(hostname)) {
+      const paywallInfo = getHardPaywallInfo(hostname);
+      const siteName = paywallInfo?.name || hostname;
+
+      ctx.error(`Hard paywall site: ${siteName}`, {
+        error_type: "PAYWALL_ERROR",
+        status_code: 403,
+      });
+
+      return NextResponse.json(
+        {
+          error: `${siteName} uses a hard paywall that cannot be bypassed. This site requires a paid subscription to access their content.`,
+          type: "PAYWALL_ERROR",
+          hostname,
+          siteName,
+          learnMoreUrl: "/hard-paywalls",
+        },
+        { status: 403 }
+      );
+    }
 
     // Jina.ai is handled by a separate endpoint
     if (validatedSource === "jina.ai") {

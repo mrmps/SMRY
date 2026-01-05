@@ -41,6 +41,7 @@ export type AppError =
   | RateLimitError
   | CacheError
   | ValidationError
+  | PaywallError
   | UnknownError;
 
 // Network-related errors
@@ -115,6 +116,17 @@ export type ValidationError = {
   type: "VALIDATION_ERROR";
   message: string;
   field?: string;
+  originalError?: string;
+  debugContext?: DebugContext;
+};
+
+// Hard paywall errors - sites that require paid subscriptions
+export type PaywallError = {
+  type: "PAYWALL_ERROR";
+  message: string;
+  hostname: string;
+  siteName?: string;
+  learnMoreUrl: string;
   originalError?: string;
   debugContext?: DebugContext;
 };
@@ -223,6 +235,17 @@ export const createValidationError = (
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
 });
 
+export const createPaywallError = (
+  hostname: string,
+  siteName?: string
+): PaywallError => ({
+  type: "PAYWALL_ERROR",
+  message: `${siteName || hostname} uses a hard paywall that cannot be bypassed. This site requires a paid subscription to access content.`,
+  hostname,
+  siteName,
+  learnMoreUrl: "/hard-paywalls",
+});
+
 export const createUnknownError = (originalError?: unknown): UnknownError => ({
   type: "UNKNOWN_ERROR",
   message: "An unexpected error occurred",
@@ -294,6 +317,9 @@ export const getErrorMessage = (error: AppError): string => {
         ? `Validation error in ${error.field}: ${error.message}`
         : `Validation error: ${error.message}`;
 
+    case "PAYWALL_ERROR":
+      return error.message;
+
     case "UNKNOWN_ERROR":
       return "An unexpected error occurred. Please try again or use a different source.";
 
@@ -329,6 +355,8 @@ export const getErrorTitle = (error: AppError): string => {
       return "Cache Error";
     case "VALIDATION_ERROR":
       return "Validation Error";
+    case "PAYWALL_ERROR":
+      return "Hard Paywall";
     case "UNKNOWN_ERROR":
       return "Unknown Error";
     default:

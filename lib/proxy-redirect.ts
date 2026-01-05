@@ -18,6 +18,7 @@ export const APP_ROUTES = [
   "/history",
   "/feedback",
   "/admin",
+  "/hard-paywalls",
 ];
 
 /**

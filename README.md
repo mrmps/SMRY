@@ -25,11 +25,13 @@ SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered
 
 ## What This Does
 
-1. **Paywall Bypass**: Fetches article content from three sources in parallel:
+1. **Soft Paywall Access**: Fetches article content from three sources in parallel:
    - **Direct**: Uses Diffbot API for intelligent article extraction from original URLs (server-side)
    - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages (server-side)
    - **Jina.ai**: Fetches and parses markdown directly in the browser (client-side)
-   
+
+   > **Note**: Hard paywalls (Bloomberg, Barron's, etc.) cannot be accessed. See [/hard-paywalls](https://smry.ai/hard-paywalls) for details.
+
 2. **AI Summaries**: Generates concise summaries in 8 languages using OpenRouter (openai/gpt-oss-20b:free)
 
 3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with client-side markdown parsing for Jina.ai to reduce server load
@@ -372,7 +374,7 @@ See [LOGGING.md](./LOGGING.md) for detailed documentation and integration with l
 
 ### High Priority
 - [ ] Support for more content sources (Archive.is, Google Cache, etc.)
-- [ ] Improve paywall bypass for specific sites (NYT, WSJ, etc.)
+- [ ] Better soft paywall handling for news sites
 - [ ] Browser extension for easier access
 - [ ] PDF export functionality
 - [ ] Better mobile UI/UX

@@ -6,6 +6,7 @@ import { redis } from "@/lib/redis";
 import { compressAsync, decompressAsync } from "@/lib/redis-compression";
 import { getTextDirection } from "@/lib/rtl";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
+import { isHardPaywall, getHardPaywallInfo } from "@/lib/hard-paywalls";
 
 // Cached article schema
 const CachedArticleSchema = z.object({
@@ -60,6 +61,28 @@ export async function GET(request: NextRequest) {
     const cacheKey = `jina.ai:${validatedUrl}`;
 
     ctx.merge({ hostname, url: validatedUrl });
+
+    // Check for hard paywalls - return early with clear error
+    if (isHardPaywall(hostname)) {
+      const paywallInfo = getHardPaywallInfo(hostname);
+      const siteName = paywallInfo?.name || hostname;
+
+      ctx.error(`Hard paywall site: ${siteName}`, {
+        error_type: "PAYWALL_ERROR",
+        status_code: 403,
+      });
+
+      return NextResponse.json(
+        {
+          error: `${siteName} uses a hard paywall that cannot be bypassed. This site requires a paid subscription to access their content.`,
+          type: "PAYWALL_ERROR",
+          hostname,
+          siteName,
+          learnMoreUrl: "/hard-paywalls",
+        },
+        { status: 403 }
+      );
+    }
 
     try {
       const cacheStart = Date.now();
