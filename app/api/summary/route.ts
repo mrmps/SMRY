@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { streamText } from "ai";
 import { z } from "zod";
 import { redis } from "@/lib/redis";
@@ -23,15 +23,14 @@ const minuteRatelimit = new Ratelimit({
   prefix: "ratelimit_minute",
 });
 
-// Configure OpenRouter provider]
+// Configure OpenRouter provider
 // OpenRouter provides unified access to 300+ AI models with automatic provider fallback
 // Documentation: https://openrouter.ai/docs
-const openrouter = createOpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
+const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY!,
+  // App attribution headers for OpenRouter rankings
+  // See: https://openrouter.ai/docs/features/app-attribution
   headers: {
-    // Optional headers for app attribution and rankings
-    // See: https://openrouter.ai/docs/features/app-attribution
     'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://13ft.com',
     'X-Title': '13ft - Paywall Bypass & AI Summaries',
   },
@@ -234,8 +233,27 @@ export async function POST(request: NextRequest) {
     // Build prompts and stream
     const { system, user: userPrompt } = buildSummaryPrompts(content.substring(0, 6000), language);
 
+    // OpenRouter-specific configuration for reliability:
+    // - models: fallback chain of free models (tries in order if one fails)
+    // - provider.ignore: ban providers with overly aggressive content moderation
+    // See: https://openrouter.ai/docs/guides/routing/model-fallbacks
+    // See: https://openrouter.ai/docs/guides/routing/provider-selection
+    // Top free models by throughput: https://openrouter.ai/models?order=throughput-high-to-low&max_price=0
     const result = streamText({
-      model: openrouter("openai/gpt-oss-20b:free"),
+      model: openrouter("nvidia/nemotron-3-nano-30b-a3b:free", {
+        extraBody: {
+          // Fallback models - OpenRouter tries these in order if primary fails
+          models: [
+            "nvidia/nemotron-3-nano-30b-a3b:free",  // 256K context, highest throughput
+            "arcee-ai/trinity-mini:free",            // 131K context, MoE 26B (3B active)
+            "qwen/qwen3-4b:free",                    // 41K context, dual-mode reasoning
+          ],
+          provider: {
+            ignore: ["OpenInference"],  // False positive moderation issues
+            allow_fallbacks: true,
+          },
+        },
+      }),
       system,
       messages: [{ role: "user", content: userPrompt }],
       onFinish: async ({ text, usage }) => {

@@ -213,10 +213,13 @@ function ExpandedSummary({
   }, [articleResults, complete]);
 
   // Language change handler - regenerate immediately
+  // Must pass language in body override since state update is async
   const handleLanguageChange = useCallback((newLang: string) => {
     setPreferredLanguage(newLang);
     if (selectedArticle?.article?.textContent) {
-      complete(selectedArticle.article.textContent);
+      complete(selectedArticle.article.textContent, {
+        body: { language: newLang },
+      });
     }
   }, [selectedArticle, complete, setPreferredLanguage]);
 

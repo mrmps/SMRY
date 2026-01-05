@@ -10,8 +10,8 @@ const intlMiddleware = createIntlMiddleware(routing);
 export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const { pathname, search, origin } = request.nextUrl;
 
-  // Skip i18n for API routes - just let them through
-  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+  // Skip i18n for API routes and admin routes - just let them through
+  if (pathname.startsWith('/api') || pathname.startsWith('/trpc') || pathname.startsWith('/admin')) {
     return NextResponse.next();
   }
 

@@ -1,0 +1,61 @@
+# Full local dev stack - run with: docker-compose up
+# Or use: bun run dev:docker (starts everything)
+
+services:
+  # Clickhouse analytics database
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: smry-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./docs/clickhouse-schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      CLICKHOUSE_DB: smry_analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # Next.js app
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: smry-app
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot reload
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      # Clickhouse (internal Docker network)
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_DATABASE: smry_analytics
+      ANALYTICS_SECRET_KEY: dev_secret_key
+      # Pass through from host .env
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+      DIFFBOT_API_KEY: ${DIFFBOT_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+volumes:
+  clickhouse-data:

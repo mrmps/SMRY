@@ -16,6 +16,7 @@ import { ArticleResponse, Source } from "@/types/api";
 import { ErrorDisplay } from "../shared/error-display";
 import { DebugPanel } from "../shared/debug-panel";
 import { ArticleFetchError } from "@/lib/api/client";
+import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
 
 export type { Source };
 
@@ -294,12 +295,16 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                     </div>
                   )
                 ) : data.article?.content ? (
-                  <div
-                    className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
-                    dir={data.article.dir || 'ltr'}
-                    lang={data.article.lang || undefined}
-                    dangerouslySetInnerHTML={{ __html: data.article.content }}
-                  />
+                  <>
+                    <div
+                      className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
+                      dir={data.article.dir || 'ltr'}
+                      lang={data.article.lang || undefined}
+                      dangerouslySetInnerHTML={{ __html: data.article.content }}
+                    />
+                    {/* Upgrade CTA - shows only for non-premium users */}
+                    <UpgradeCTA />
+                  </>
                 ) : (
                   <div className="mt-6 flex items-center space-x-2">
                     <p className="text-gray-600">Content not available.</p>

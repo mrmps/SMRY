@@ -17,6 +17,7 @@ export const APP_ROUTES = [
   "/pricing",
   "/history",
   "/feedback",
+  "/admin",
 ];
 
 /**

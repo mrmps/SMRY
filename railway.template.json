@@ -1,0 +1,105 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "name": "SMRY.ai",
+  "description": "Paywall bypass and article summarization with Clickhouse analytics",
+  "buttons": [
+    {
+      "name": "Deploy to Railway",
+      "provider": "railway"
+    }
+  ],
+  "services": {
+    "smry-app": {
+      "name": "smry-app",
+      "description": "Next.js application",
+      "source": {
+        "repo": "https://github.com/yourusername/13ft"
+      },
+      "build": {
+        "builder": "RAILPACK"
+      },
+      "deploy": {
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      },
+      "variables": {
+        "CLICKHOUSE_URL": {
+          "value": "http://${{clickhouse.RAILWAY_PRIVATE_DOMAIN}}:8123"
+        },
+        "CLICKHOUSE_USER": {
+          "value": "default"
+        },
+        "CLICKHOUSE_PASSWORD": {
+          "value": "${{clickhouse.CLICKHOUSE_PASSWORD}}"
+        },
+        "CLICKHOUSE_DATABASE": {
+          "value": "smry_analytics"
+        },
+        "ANALYTICS_SECRET_KEY": {
+          "description": "Secret key for accessing /admin/analytics",
+          "required": true,
+          "generate": true
+        },
+        "UPSTASH_REDIS_REST_URL": {
+          "description": "Upstash Redis REST URL",
+          "required": true
+        },
+        "UPSTASH_REDIS_REST_TOKEN": {
+          "description": "Upstash Redis REST token",
+          "required": true
+        },
+        "DIFFBOT_API_KEY": {
+          "description": "Diffbot API key for article extraction",
+          "required": false
+        },
+        "OPENROUTER_API_KEY": {
+          "description": "OpenRouter API key for AI summaries",
+          "required": false
+        },
+        "CLERK_SECRET_KEY": {
+          "description": "Clerk secret key",
+          "required": false
+        },
+        "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
+          "description": "Clerk publishable key",
+          "required": false
+        }
+      },
+      "networking": {
+        "public": {
+          "enabled": true
+        }
+      }
+    },
+    "clickhouse": {
+      "name": "clickhouse",
+      "description": "Clickhouse analytics database",
+      "image": "clickhouse/clickhouse-server:24.8",
+      "variables": {
+        "CLICKHOUSE_DB": {
+          "value": "smry_analytics"
+        },
+        "CLICKHOUSE_USER": {
+          "value": "default"
+        },
+        "CLICKHOUSE_PASSWORD": {
+          "generate": true
+        },
+        "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT": {
+          "value": "1"
+        }
+      },
+      "volumes": [
+        {
+          "mount": "/var/lib/clickhouse",
+          "name": "clickhouse-data"
+        }
+      ],
+      "networking": {
+        "public": {
+          "enabled": false
+        }
+      }
+    }
+  }
+}
