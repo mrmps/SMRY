@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     ip: extractClientIp(request),
   });
   ctx.set("endpoint", "/api/jina");
+  ctx.set("source", "jina.ai");
 
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
     ip: extractClientIp(request),
   });
   ctx.set("endpoint", "/api/jina");
+  ctx.set("source", "jina.ai");
 
   try {
     const body = await request.json();

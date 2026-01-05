@@ -27,7 +27,9 @@ interface HourlyTraffic {
 interface ErrorBreakdown {
   hostname: string;
   error_type: string;
+  error_message: string;
   error_count: number;
+  latest_timestamp: string;
 }
 
 interface HealthMetrics {
@@ -46,10 +48,69 @@ interface PopularPage {
   count: number;
 }
 
+interface RequestEvent {
+  request_id: string;
+  timestamp: string;
+  url: string;
+  hostname: string;
+  source: string;
+  outcome: string;
+  status_code: number;
+  error_type: string;
+  error_message: string;
+  duration_ms: number;
+  fetch_ms: number;
+  cache_lookup_ms: number;
+  cache_save_ms: number;
+  cache_hit: number;
+  cache_status: string;
+  article_length: number;
+  article_title: string;
+}
+
+interface LiveRequest {
+  request_id: string;
+  timestamp: string;
+  url: string;
+  hostname: string;
+  source: string;
+  outcome: string;
+  duration_ms: number;
+  error_type: string;
+  cache_hit: number;
+}
+
 export async function GET(request: NextRequest) {
   // Parse time range
   const timeRange = request.nextUrl.searchParams.get("range") || "24h";
   const hours = timeRange === "7d" ? 168 : timeRange === "1h" ? 1 : 24;
+
+  // Parse filters
+  const hostnameFilter = request.nextUrl.searchParams.get("hostname") || "";
+  const sourceFilter = request.nextUrl.searchParams.get("source") || "";
+  const outcomeFilter = request.nextUrl.searchParams.get("outcome") || "";
+  const urlSearch = request.nextUrl.searchParams.get("urlSearch") || "";
+
+  // Build WHERE clause
+  const buildWhereClause = (includeTimeFilter = true) => {
+    const conditions: string[] = [];
+    if (includeTimeFilter) {
+      conditions.push(`timestamp > now() - INTERVAL ${hours} HOUR`);
+    }
+    if (hostnameFilter) {
+      conditions.push(`hostname = '${hostnameFilter.replace(/'/g, "''")}'`);
+    }
+    if (sourceFilter) {
+      conditions.push(`source = '${sourceFilter.replace(/'/g, "''")}'`);
+    }
+    if (outcomeFilter) {
+      conditions.push(`outcome = '${outcomeFilter.replace(/'/g, "''")}'`);
+    }
+    if (urlSearch) {
+      conditions.push(`url LIKE '%${urlSearch.replace(/'/g, "''").replace(/%/g, "\\%")}%'`);
+    }
+    return conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  };
 
   try {
     // Run all queries in parallel for performance
@@ -60,6 +121,8 @@ export async function GET(request: NextRequest) {
       errorBreakdown,
       healthMetrics,
       realtimePopular,
+      requestEvents,
+      liveRequests,
     ] = await Promise.all([
       // 1. Which sites consistently error (top 50 by volume)
       queryClickhouse<HostnameStats>(`
@@ -77,7 +140,7 @@ export async function GET(request: NextRequest) {
         LIMIT 50
       `),
 
-      // 2. Which sources work for which sites (min 5 requests for significance)
+      // 2. Which sources work for which sites (min 3 requests for significance - reduced from 5)
       queryClickhouse<SourceEffectiveness>(`
         SELECT
           hostname,
@@ -89,7 +152,7 @@ export async function GET(request: NextRequest) {
           AND hostname != ''
           AND source != ''
         GROUP BY hostname, source
-        HAVING request_count >= 5
+        HAVING request_count >= 3
         ORDER BY hostname, success_rate DESC
       `),
 
@@ -106,12 +169,14 @@ export async function GET(request: NextRequest) {
         ORDER BY hour
       `),
 
-      // 4. Error breakdown by hostname and type
+      // 4. Error breakdown by hostname and type - NOW WITH ERROR MESSAGES
       queryClickhouse<ErrorBreakdown>(`
         SELECT
           hostname,
           error_type,
-          count() AS error_count
+          any(error_message) AS error_message,
+          count() AS error_count,
+          max(timestamp) AS latest_timestamp
         FROM request_events
         WHERE timestamp > now() - INTERVAL ${hours} HOUR
           AND outcome = 'error'
@@ -148,15 +213,71 @@ export async function GET(request: NextRequest) {
         ORDER BY count DESC
         LIMIT 20
       `),
+
+      // 7. Request explorer - individual requests for debugging
+      queryClickhouse<RequestEvent>(`
+        SELECT
+          request_id,
+          formatDateTime(timestamp, '%Y-%m-%d %H:%M:%S') AS timestamp,
+          url,
+          hostname,
+          source,
+          outcome,
+          status_code,
+          error_type,
+          error_message,
+          duration_ms,
+          fetch_ms,
+          cache_lookup_ms,
+          cache_save_ms,
+          cache_hit,
+          cache_status,
+          article_length,
+          article_title
+        FROM request_events
+        ${buildWhereClause()}
+        ORDER BY timestamp DESC
+        LIMIT 200
+      `),
+
+      // 8. Live requests (last 60 seconds for live feed)
+      queryClickhouse<LiveRequest>(`
+        SELECT
+          request_id,
+          formatDateTime(timestamp, '%H:%M:%S') AS timestamp,
+          url,
+          hostname,
+          source,
+          outcome,
+          duration_ms,
+          error_type,
+          cache_hit
+        FROM request_events
+        WHERE timestamp > now() - INTERVAL 60 SECOND
+        ORDER BY timestamp DESC
+        LIMIT 50
+      `),
     ]);
 
     // Get buffer stats for monitoring
     const bufferStats = getBufferStats();
 
+    // Get list of unique sources for filter dropdown
+    const sources = Array.from(new Set(requestEvents.map(e => e.source).filter(Boolean)));
+    const hostnames = Array.from(new Set(requestEvents.map(e => e.hostname).filter(Boolean))).slice(0, 50);
+
     return NextResponse.json({
       timeRange,
       generatedAt: new Date().toISOString(),
       bufferStats,
+      filters: {
+        hostname: hostnameFilter,
+        source: sourceFilter,
+        outcome: outcomeFilter,
+        urlSearch,
+        availableSources: sources,
+        availableHostnames: hostnames,
+      },
       health: healthMetrics[0] || {
         total_requests_24h: 0,
         success_rate_24h: 0,
@@ -171,6 +292,8 @@ export async function GET(request: NextRequest) {
       hourlyTraffic,
       errorBreakdown,
       realtimePopular,
+      requestEvents,
+      liveRequests,
     });
   } catch (error) {
     console.error("[analytics] Query error:", error);
