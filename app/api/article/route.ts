@@ -219,66 +219,72 @@ async function fetchArticleWithSmryFast(
     const originalHtml = html;
 
     const dom = new JSDOM(html, { url, virtualConsole });
-    const reader = new Readability(dom.window.document);
-    const parsed = reader.parse();
+    try {
+      const reader = new Readability(dom.window.document);
+      const parsed = reader.parse();
 
-    if (!parsed || !parsed.content || !parsed.textContent) {
-      logger.warn({ source: "smry-fast" }, 'Readability extraction failed');
-      return {
-        error: createParseError('Failed to extract article content with Readability', 'smry-fast'),
+      if (!parsed || !parsed.content || !parsed.textContent) {
+        logger.warn({ source: "smry-fast" }, 'Readability extraction failed');
+        return {
+          error: createParseError('Failed to extract article content with Readability', 'smry-fast'),
+        };
+      }
+
+      // Extract language from HTML
+      const htmlLang = dom.window.document.documentElement.getAttribute('lang') ||
+                       dom.window.document.documentElement.getAttribute('xml:lang') ||
+                       parsed.lang || // Readability may extract this
+                       null;
+
+      // Detect text direction based on language or content analysis
+      const textDir = getTextDirection(htmlLang, parsed.textContent);
+
+      const articleCandidate: CachedArticle = {
+        title: parsed.title || dom.window.document.title || 'Untitled',
+        content: parsed.content,
+        textContent: parsed.textContent,
+        length: parsed.textContent.length,
+        siteName: (() => {
+          try {
+            return new URL(url).hostname;
+          } catch {
+            return parsed.siteName || 'unknown';
+          }
+        })(),
+        byline: parsed.byline,
+        publishedTime: extractDateFromDom(dom.window.document) || null,
+        image: extractImageFromDom(dom.window.document) || null,
+        htmlContent: originalHtml, // Original page HTML
+        lang: htmlLang,
+        dir: textDir,
       };
-    }
 
-    // Extract language from HTML
-    const htmlLang = dom.window.document.documentElement.getAttribute('lang') || 
-                     dom.window.document.documentElement.getAttribute('xml:lang') ||
-                     parsed.lang || // Readability may extract this
-                     null;
-    
-    // Detect text direction based on language or content analysis
-    const textDir = getTextDirection(htmlLang, parsed.textContent);
+      const validationResult = CachedArticleSchema.safeParse(articleCandidate);
 
-    const articleCandidate: CachedArticle = {
-      title: parsed.title || dom.window.document.title || 'Untitled',
-      content: parsed.content,
-      textContent: parsed.textContent,
-      length: parsed.textContent.length,
-      siteName: (() => {
-        try {
-          return new URL(url).hostname;
-        } catch {
-          return parsed.siteName || 'unknown';
-        }
-      })(),
-      byline: parsed.byline,
-      publishedTime: extractDateFromDom(dom.window.document) || null,
-      image: extractImageFromDom(dom.window.document) || null,
-      htmlContent: originalHtml, // Original page HTML
-      lang: htmlLang,
-      dir: textDir,
-    };
+      if (!validationResult.success) {
+        const validationError = fromError(validationResult.error);
+        logger.error({ source: "smry-fast", validationError: validationError.toString() }, 'Readability article validation failed');
+        return {
+          error: createParseError(
+            `Invalid Readability article: ${validationError.toString()}`,
+            'smry-fast',
+            validationError
+          ),
+        };
+      }
 
-    const validationResult = CachedArticleSchema.safeParse(articleCandidate);
+      const validatedArticle = validationResult.data;
+      logger.debug({ source: "smry-fast", title: validatedArticle.title, length: validatedArticle.length }, 'Direct article parsed and validated');
 
-    if (!validationResult.success) {
-      const validationError = fromError(validationResult.error);
-      logger.error({ source: "smry-fast", validationError: validationError.toString() }, 'Readability article validation failed');
       return {
-        error: createParseError(
-          `Invalid Readability article: ${validationError.toString()}`,
-          'smry-fast',
-          validationError
-        ),
+        article: validatedArticle,
+        cacheURL: url,
       };
+    } finally {
+      // IMPORTANT: Close JSDOM window to prevent memory leaks
+      // See docs/MEMORY_LEAK_FIX.md for details
+      dom.window.close();
     }
-
-    const validatedArticle = validationResult.data;
-    logger.debug({ source: "smry-fast", title: validatedArticle.title, length: validatedArticle.length }, 'Direct article parsed and validated');
-
-    return {
-      article: validatedArticle,
-      cacheURL: url,
-    };
   } catch (error) {
     logger.error({ source: "smry-fast", error }, 'Direct fetch exception');
     return {

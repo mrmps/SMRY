@@ -218,7 +218,11 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
   addDebugStep(debugContext, 'readability_fallback', 'info', 'Diffbot did not fully extract article, trying Readability on DOM', {
     domLength: html.length,
   });
-  
+
+  // Track JSDOM instances to ensure cleanup - prevents memory leaks
+  // See docs/MEMORY_LEAK_FIX.md for details
+  const jsdomInstances: JSDOM[] = [];
+
   try {
     // Extract original URL from Wayback URL if present
     let baseUrl = url;
@@ -230,15 +234,16 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         logger.debug({ originalUrl: url, extractedUrl: baseUrl }, 'Extracted original URL from Wayback');
       }
     }
-    
+
     // Suppress CSS parsing errors
     const { VirtualConsole } = require('jsdom');
     const virtualConsole = new VirtualConsole();
     virtualConsole.on("error", () => {}); // Suppress errors
-    
+
     const dom = new JSDOM(html, { url: baseUrl, virtualConsole });
+    jsdomInstances.push(dom);
     const doc = dom.window.document;
-    
+
     // Try to find the main article container first
     // This helps with pages that have complex layouts (like Google Blogger)
     const contentSelectors = [
@@ -249,51 +254,53 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
       'article .content',
       '[role="article"]',
     ];
-    
+
     for (const selector of contentSelectors) {
       const container = doc.querySelector(selector);
       if (container && container.textContent && container.textContent.length > 500) {
         logger.debug({ selector, contentLength: container.textContent.length }, 'Found article container');
-        
+
         // Create a clean document with just the article content
-        const cleanDoc = new JSDOM(`
+        const cleanDom = new JSDOM(`
           <!DOCTYPE html>
           <html><head><title>${doc.title || 'Article'}</title></head>
           <body><article>${container.innerHTML}</article></body></html>
-        `, { url: baseUrl, virtualConsole }).window.document;
-        
+        `, { url: baseUrl, virtualConsole });
+        jsdomInstances.push(cleanDom);
+        const cleanDoc = cleanDom.window.document;
+
         const reader = new Readability(cleanDoc);
         const article = reader.parse();
-        
+
         if (article && article.textContent && article.textContent.length > 500) {
           // Validate Readability result
           const validationResult = ReadabilityArticleSchema.safeParse(article);
-          
+
           if (!validationResult.success) {
             const validationError = fromError(validationResult.error);
-            logger.warn({ 
-              url, 
-              validationError: validationError.toString() 
+            logger.warn({
+              url,
+              validationError: validationError.toString()
             }, 'Readability result validation failed (targeted)');
             continue; // Try next selector
           }
-          
+
           const validatedArticle = validationResult.data;
-          
-          logger.info({ 
+
+          logger.info({
             hostname: new URL(url).hostname,
             title: validatedArticle.title,
             textLength: validatedArticle.textContent.length,
             method: 'targeted-container'
           }, 'Successfully extracted article using targeted container');
-          
+
           addDebugStep(debugContext, 'readability_extraction', 'success', 'Readability extraction succeeded (targeted)', {
             selector,
             extractedTitle: validatedArticle.title,
             extractedTextLength: validatedArticle.textContent.length,
             extractedHtmlLength: validatedArticle.content.length,
           });
-          
+
           const result: DiffbotArticle = {
             title: validatedArticle.title || doc.title || 'Untitled',
             html: validatedArticle.content,
@@ -304,7 +311,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
             htmlContent: html, // Store the original DOM HTML used for extraction
             image: extractImageFromDom(doc),
           };
-          
+
           // Final validation before returning
           const finalValidation = DiffbotArticleSchema.safeParse(result);
           if (!finalValidation.success) {
@@ -312,47 +319,47 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
             logger.warn({ url, finalError: finalError.toString() }, 'Final article validation failed (targeted)');
             continue; // Try next selector
           }
-          
+
           return finalValidation.data;
         }
       }
     }
-    
+
     // Fallback to standard Readability on full document
     logger.debug({}, 'Using standard Readability on full document');
     const reader = new Readability(doc);
     const article = reader.parse();
-    
+
     if (article && article.textContent && article.textContent.length > 100) {
       // Validate Readability result
       const validationResult = ReadabilityArticleSchema.safeParse(article);
-      
+
       if (!validationResult.success) {
         const validationError = fromError(validationResult.error);
-        logger.warn({ 
-          url, 
-          validationError: validationError.toString() 
+        logger.warn({
+          url,
+          validationError: validationError.toString()
         }, 'Readability result validation failed');
         addDebugStep(debugContext, 'readability_validation', 'warning', 'Readability result validation failed', {
           validationError: validationError.toString(),
         });
         return null;
       }
-      
+
       const validatedArticle = validationResult.data;
-      
-      logger.info({ 
+
+      logger.info({
         hostname: new URL(url).hostname,
         title: validatedArticle.title,
         textLength: validatedArticle.textContent.length,
       }, 'Successfully extracted article with Readability fallback');
-      
+
       addDebugStep(debugContext, 'readability_extraction', 'success', 'Readability extraction succeeded', {
         extractedTitle: validatedArticle.title,
         extractedTextLength: validatedArticle.textContent.length,
         extractedHtmlLength: validatedArticle.content.length,
       });
-      
+
       const result: DiffbotArticle = {
         title: validatedArticle.title || 'Untitled',
         html: validatedArticle.content,
@@ -360,10 +367,10 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         siteName: validatedArticle.siteName || new URL(url).hostname,
         byline: validatedArticle.byline,
         publishedTime: validatedArticle.publishedTime || extractDateFromDom(doc),
-            htmlContent: html, // Store the original DOM HTML used for extraction
-            image: extractImageFromDom(doc),
-          };
-      
+        htmlContent: html, // Store the original DOM HTML used for extraction
+        image: extractImageFromDom(doc),
+      };
+
       // Final validation before returning
       const finalValidation = DiffbotArticleSchema.safeParse(result);
       if (!finalValidation.success) {
@@ -374,10 +381,10 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         });
         return null;
       }
-      
+
       return finalValidation.data;
     }
-    
+
     addDebugStep(debugContext, 'readability_extraction', 'warning', 'Readability returned insufficient content');
     return null;
   } catch (error) {
@@ -386,6 +393,15 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
       errorDetails: error instanceof Error ? error.message : String(error),
     });
     return null;
+  } finally {
+    // IMPORTANT: Close all JSDOM windows to prevent memory leaks
+    for (const instance of jsdomInstances) {
+      try {
+        instance.window.close();
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 }
 
