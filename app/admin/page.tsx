@@ -107,6 +107,23 @@ interface DashboardData {
   }>;
   requestEvents: RequestEvent[];
   liveRequests: LiveRequest[];
+  endpointStats: Array<{
+    endpoint: string;
+    total_requests: number;
+    success_count: number;
+    error_count: number;
+    success_rate: number;
+    avg_duration_ms: number;
+    total_input_tokens: number;
+    total_output_tokens: number;
+  }>;
+  hourlyEndpointTraffic: Array<{
+    hour: string;
+    endpoint: string;
+    request_count: number;
+    success_count: number;
+    error_count: number;
+  }>;
 }
 
 type TabType = "overview" | "requests" | "live" | "errors";
@@ -266,7 +283,12 @@ export default function AnalyticsDashboard() {
                   placeholder="Search URLs... (press / to focus)"
                   value={urlSearch}
                   onChange={(e) => setUrlSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && refetch()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      refetch();
+                    }
+                  }}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-4 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
                 />
                 <span className="absolute right-3 top-2.5 text-zinc-500 text-xs">
@@ -554,6 +576,103 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
         ) : (
           <div className="py-8 text-center text-zinc-500">
             No source effectiveness data yet
+          </div>
+        )}
+      </div>
+
+      {/* Endpoint Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Endpoint Stats Cards */}
+        <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+            API Endpoints
+          </h2>
+          {data.endpointStats.length > 0 ? (
+            <div className="space-y-4">
+              {data.endpointStats.map((ep) => (
+                <div key={ep.endpoint} className="p-4 bg-zinc-800/50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-mono text-sm text-zinc-200">{ep.endpoint}</span>
+                    <SuccessRateBadge rate={ep.success_rate} />
+                  </div>
+                  <div className="grid grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <p className="text-zinc-500">Requests</p>
+                      <p className="text-zinc-200 font-medium">{ep.total_requests.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500">Errors</p>
+                      <p className="text-red-400 font-medium">{ep.error_count.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500">Avg Latency</p>
+                      <p className="text-zinc-200 font-medium">{ep.avg_duration_ms}ms</p>
+                    </div>
+                    {ep.endpoint === "/api/summary" && (
+                      <div>
+                        <p className="text-zinc-500">Tokens</p>
+                        <p className="text-zinc-200 font-medium">
+                          {((ep.total_input_tokens + ep.total_output_tokens) / 1000).toFixed(1)}k
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-zinc-500">
+              No endpoint data yet
+            </div>
+          )}
+        </div>
+
+        {/* Summary API Details */}
+        {data.endpointStats.find(e => e.endpoint === "/api/summary") && (
+          <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
+            <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+              Summary API Details
+            </h2>
+            {(() => {
+              const summary = data.endpointStats.find(e => e.endpoint === "/api/summary");
+              if (!summary) return null;
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-zinc-800/50 rounded-lg">
+                      <p className="text-xs text-zinc-500 uppercase mb-1">Success Rate</p>
+                      <p className={`text-2xl font-bold ${summary.success_rate >= 90 ? 'text-emerald-400' : summary.success_rate >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                        {summary.success_rate}%
+                      </p>
+                    </div>
+                    <div className="p-4 bg-zinc-800/50 rounded-lg">
+                      <p className="text-xs text-zinc-500 uppercase mb-1">Failed Summaries</p>
+                      <p className="text-2xl font-bold text-red-400">{summary.error_count}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-zinc-800/50 rounded-lg">
+                      <p className="text-xs text-zinc-500 uppercase mb-1">Input Tokens</p>
+                      <p className="text-xl font-bold text-zinc-200">
+                        {(summary.total_input_tokens / 1000).toFixed(1)}k
+                      </p>
+                    </div>
+                    <div className="p-4 bg-zinc-800/50 rounded-lg">
+                      <p className="text-xs text-zinc-500 uppercase mb-1">Output Tokens</p>
+                      <p className="text-xl font-bold text-zinc-200">
+                        {(summary.total_output_tokens / 1000).toFixed(1)}k
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-zinc-800/50 rounded-lg">
+                    <p className="text-xs text-zinc-500 uppercase mb-1">Avg Response Time</p>
+                    <p className={`text-xl font-bold ${summary.avg_duration_ms > 10000 ? 'text-red-400' : 'text-zinc-200'}`}>
+                      {summary.avg_duration_ms}ms
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

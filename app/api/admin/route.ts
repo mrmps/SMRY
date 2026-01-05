@@ -80,6 +80,25 @@ interface LiveRequest {
   cache_hit: number;
 }
 
+interface EndpointStats {
+  endpoint: string;
+  total_requests: number;
+  success_count: number;
+  error_count: number;
+  success_rate: number;
+  avg_duration_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+}
+
+interface HourlyEndpointTraffic {
+  hour: string;
+  endpoint: string;
+  request_count: number;
+  success_count: number;
+  error_count: number;
+}
+
 export async function GET(request: NextRequest) {
   // Parse time range
   const timeRange = request.nextUrl.searchParams.get("range") || "24h";
@@ -134,6 +153,8 @@ export async function GET(request: NextRequest) {
       realtimePopular,
       requestEvents,
       liveRequests,
+      endpointStats,
+      hourlyEndpointTraffic,
     ] = await Promise.all([
       // 1. Which sites consistently error (top 50 by volume)
       queryClickhouse<HostnameStats>(`
@@ -151,7 +172,7 @@ export async function GET(request: NextRequest) {
         LIMIT 50
       `),
 
-      // 2. Which sources work for which sites (min 3 requests for significance - reduced from 5)
+      // 2. Which sources work for which sites (show all with at least 1 request)
       queryClickhouse<SourceEffectiveness>(`
         SELECT
           hostname,
@@ -163,8 +184,7 @@ export async function GET(request: NextRequest) {
           AND hostname != ''
           AND source != ''
         GROUP BY hostname, source
-        HAVING request_count >= 3
-        ORDER BY hostname, success_rate DESC
+        ORDER BY hostname, request_count DESC
       `),
 
       // 3. Hourly traffic pattern
@@ -270,6 +290,39 @@ export async function GET(request: NextRequest) {
         ORDER BY timestamp DESC
         LIMIT 50
       `),
+
+      // 9. Endpoint statistics (article, summary, jina)
+      queryClickhouse<EndpointStats>(`
+        SELECT
+          endpoint,
+          count() AS total_requests,
+          countIf(outcome = 'success') AS success_count,
+          countIf(outcome = 'error') AS error_count,
+          round(countIf(outcome = 'success') / count() * 100, 2) AS success_rate,
+          round(avg(duration_ms)) AS avg_duration_ms,
+          sum(input_tokens) AS total_input_tokens,
+          sum(output_tokens) AS total_output_tokens
+        FROM request_events
+        WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND endpoint != ''
+        GROUP BY endpoint
+        ORDER BY total_requests DESC
+      `),
+
+      // 10. Hourly traffic by endpoint (for trends)
+      queryClickhouse<HourlyEndpointTraffic>(`
+        SELECT
+          formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
+          endpoint,
+          count() AS request_count,
+          countIf(outcome = 'success') AS success_count,
+          countIf(outcome = 'error') AS error_count
+        FROM request_events
+        WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND endpoint != ''
+        GROUP BY hour, endpoint
+        ORDER BY hour, endpoint
+      `),
     ]);
 
     // Get buffer stats for monitoring
@@ -308,6 +361,8 @@ export async function GET(request: NextRequest) {
       realtimePopular,
       requestEvents,
       liveRequests,
+      endpointStats,
+      hourlyEndpointTraffic,
     });
   } catch (error) {
     console.error("[analytics] Query error:", error);
