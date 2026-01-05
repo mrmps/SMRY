@@ -1,9 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/health",
-      "schedule": "*/10 * * * *"
-    }
-  ],
   "headers": []
 }

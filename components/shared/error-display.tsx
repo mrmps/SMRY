@@ -148,6 +148,17 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
                   <ExternalLink className="size-3.5" />
                 </a>
               )}
+
+              {/* Archive.is recommendation - always show as alternative */}
+              <a
+                href={`https://archive.is/newest/${displayUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Try archive.is
+                <ExternalLink className="size-3.5" />
+              </a>
             </div>
           )}
 

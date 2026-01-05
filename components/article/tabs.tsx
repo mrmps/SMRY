@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
   TooltipPopup,
 } from "@/components/ui/tooltip";
+import { InlineSummary } from "@/components/features/inline-summary";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
@@ -111,18 +112,24 @@ type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
 interface TabProps {
   url: string;
+  ip: string;
   articleResults: ArticleResults;
   viewMode: "markdown" | "html" | "iframe";
   activeSource: Source;
   onSourceChange: (source: Source) => void;
+  summaryOpen: boolean;
+  onSummaryOpenChange: (open: boolean) => void;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
   url,
+  ip,
   articleResults,
   viewMode,
   activeSource,
   onSourceChange,
+  summaryOpen,
+  onSummaryOpenChange,
 }) => {
   const results = articleResults;
   const tabsId = React.useId();
@@ -170,7 +177,16 @@ const ArrowTabs: React.FC<TabProps> = ({
             errorStates={errorStates}
           />
         </div>
-        
+
+        {/* Inline Summary - between tabs and content */}
+        <InlineSummary
+          urlProp={url}
+          ipProp={ip}
+          articleResults={results}
+          isOpen={summaryOpen}
+          onOpenChange={onSummaryOpenChange}
+        />
+
         <TabsContent value={"smry-fast"}>
           <ArticleContent 
             query={results["smry-fast"]} 
