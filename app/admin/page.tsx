@@ -61,6 +61,7 @@ interface DashboardData {
     source: string;
     outcome: string;
     urlSearch: string;
+    hasFilters: boolean;
     availableSources: string[];
     availableHostnames: string[];
   };
@@ -335,6 +336,7 @@ export default function AnalyticsDashboard() {
             requests={data.requestEvents}
             expandedRequest={expandedRequest}
             setExpandedRequest={setExpandedRequest}
+            hasFilters={data.filters.hasFilters}
           />
         )}
 
@@ -343,6 +345,7 @@ export default function AnalyticsDashboard() {
             liveRequests={data.liveRequests}
             enabled={liveStreamEnabled}
             setEnabled={setLiveStreamEnabled}
+            hasFilters={data.filters.hasFilters}
           />
         )}
 
@@ -597,10 +600,12 @@ function RequestExplorerTab({
   requests,
   expandedRequest,
   setExpandedRequest,
+  hasFilters,
 }: {
   requests: RequestEvent[];
   expandedRequest: string | null;
   setExpandedRequest: (id: string | null) => void;
+  hasFilters: boolean;
 }) {
   return (
     <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
@@ -608,11 +613,12 @@ function RequestExplorerTab({
         <h2 className="text-lg font-semibold text-zinc-100">
           Request Explorer
           <span className="text-xs text-zinc-500 font-normal ml-2">
-            ({requests.length} requests)
+            ({requests.length} requests{hasFilters && ", filtered"})
           </span>
         </h2>
         <p className="text-xs text-zinc-500 mt-1">
           Click a row to expand timing waterfall and details
+          {hasFilters && <span className="text-amber-400 ml-2">• Filters applied</span>}
         </p>
       </div>
 
@@ -790,10 +796,12 @@ function LiveStreamTab({
   liveRequests,
   enabled,
   setEnabled,
+  hasFilters,
 }: {
   liveRequests: LiveRequest[];
   enabled: boolean;
   setEnabled: (v: boolean) => void;
+  hasFilters: boolean;
 }) {
   return (
     <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
@@ -807,6 +815,7 @@ function LiveStreamTab({
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             Last 60 seconds of requests (5s refresh)
+            {hasFilters && <span className="text-amber-400 ml-2">• Filters applied</span>}
           </p>
         </div>
         <button

@@ -91,26 +91,37 @@ export async function GET(request: NextRequest) {
   const outcomeFilter = request.nextUrl.searchParams.get("outcome") || "";
   const urlSearch = request.nextUrl.searchParams.get("urlSearch") || "";
 
-  // Build WHERE clause
-  const buildWhereClause = (includeTimeFilter = true) => {
+  // Build WHERE clause for filtered queries
+  const buildWhereClause = (options: {
+    timeInterval?: string;
+    includeFilters?: boolean;
+  } = {}) => {
+    const { timeInterval = `${hours} HOUR`, includeFilters = true } = options;
     const conditions: string[] = [];
-    if (includeTimeFilter) {
-      conditions.push(`timestamp > now() - INTERVAL ${hours} HOUR`);
+
+    // Always include time filter
+    conditions.push(`timestamp > now() - INTERVAL ${timeInterval}`);
+
+    if (includeFilters) {
+      if (hostnameFilter) {
+        conditions.push(`hostname = '${hostnameFilter.replace(/'/g, "''")}'`);
+      }
+      if (sourceFilter) {
+        conditions.push(`source = '${sourceFilter.replace(/'/g, "''")}'`);
+      }
+      if (outcomeFilter) {
+        conditions.push(`outcome = '${outcomeFilter.replace(/'/g, "''")}'`);
+      }
+      if (urlSearch) {
+        conditions.push(`url LIKE '%${urlSearch.replace(/'/g, "''").replace(/%/g, "\\%")}%'`);
+      }
     }
-    if (hostnameFilter) {
-      conditions.push(`hostname = '${hostnameFilter.replace(/'/g, "''")}'`);
-    }
-    if (sourceFilter) {
-      conditions.push(`source = '${sourceFilter.replace(/'/g, "''")}'`);
-    }
-    if (outcomeFilter) {
-      conditions.push(`outcome = '${outcomeFilter.replace(/'/g, "''")}'`);
-    }
-    if (urlSearch) {
-      conditions.push(`url LIKE '%${urlSearch.replace(/'/g, "''").replace(/%/g, "\\%")}%'`);
-    }
-    return conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    return `WHERE ${conditions.join(" AND ")}`;
   };
+
+  // Check if any filters are active
+  const hasFilters = !!(hostnameFilter || sourceFilter || outcomeFilter || urlSearch);
 
   try {
     // Run all queries in parallel for performance
@@ -214,7 +225,7 @@ export async function GET(request: NextRequest) {
         LIMIT 20
       `),
 
-      // 7. Request explorer - individual requests for debugging
+      // 7. Request explorer - individual requests for debugging (applies filters)
       queryClickhouse<RequestEvent>(`
         SELECT
           request_id,
@@ -235,12 +246,13 @@ export async function GET(request: NextRequest) {
           article_length,
           article_title
         FROM request_events
-        ${buildWhereClause()}
+        ${buildWhereClause({ includeFilters: true })}
+          AND hostname != ''
         ORDER BY timestamp DESC
         LIMIT 200
       `),
 
-      // 8. Live requests (last 60 seconds for live feed)
+      // 8. Live requests (last 60 seconds for live feed - also applies filters)
       queryClickhouse<LiveRequest>(`
         SELECT
           request_id,
@@ -253,7 +265,8 @@ export async function GET(request: NextRequest) {
           error_type,
           cache_hit
         FROM request_events
-        WHERE timestamp > now() - INTERVAL 60 SECOND
+        ${buildWhereClause({ timeInterval: '60 SECOND', includeFilters: true })}
+          AND hostname != ''
         ORDER BY timestamp DESC
         LIMIT 50
       `),
@@ -275,6 +288,7 @@ export async function GET(request: NextRequest) {
         source: sourceFilter,
         outcome: outcomeFilter,
         urlSearch,
+        hasFilters,
         availableSources: sources,
         availableHostnames: hostnames,
       },
