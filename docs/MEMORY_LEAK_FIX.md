@@ -1,17 +1,33 @@
-# JSDOM Memory Leak Fix
+# Memory Leak Fixes
 
 ## Issue (2026-01-05)
 
 The service experienced memory exhaustion on Railway, with memory climbing from ~2GB to 5GB+ causing 502 errors across all endpoints.
 
-## Root Cause
+## Root Causes Found
+
+### 1. JSDOM instances not closed
 
 JSDOM instances were being created but never properly closed. JSDOM creates a full browser-like environment with a `window` object that holds significant memory. Without calling `window.close()`, these objects remain in memory indefinitely.
 
-### Affected Files
+**Affected Files:**
+- `app/api/article/route.ts` - `fetchArticleWithSmryFast()`
+- `lib/api/diffbot.ts` - `extractWithReadability()` and date/image extraction helpers
 
-1. **`app/api/article/route.ts`** - `fetchArticleWithSmryFast()`
-2. **`lib/api/diffbot.ts`** - `extractWithReadability()` and date/image extraction helpers
+### 2. Ratelimit instances created per-request
+
+`new Ratelimit()` was being called inside the request handler, creating new instances on every request. These should be module-level singletons.
+
+**Affected Files:**
+- `app/api/summary/route.ts`
+
+### 3. Missing request timeouts
+
+Fetch requests had no timeout, causing requests to hang indefinitely when external servers were slow, leading to connection/memory pileup.
+
+**Affected Files:**
+- `app/api/article/route.ts` - Added 30s timeout
+- `lib/api/diffbot.ts` - Added 45s timeout
 
 ### The Problem Pattern
 
