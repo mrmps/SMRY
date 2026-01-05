@@ -7,6 +7,22 @@ import { redis } from "@/lib/redis";
 import { auth } from "@clerk/nextjs/server";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 
+// Rate limiters as module-level singletons to prevent memory leaks
+// Creating new Ratelimit instances per request causes memory accumulation
+const dailyLimit = process.env.NODE_ENV === "development" ? 100 : 20;
+
+const dailyRatelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(dailyLimit, "1 d"),
+  prefix: "ratelimit_daily",
+});
+
+const minuteRatelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(12, "1 m"),
+  prefix: "ratelimit_minute",
+});
+
 // Configure OpenRouter provider]
 // OpenRouter provides unified access to 300+ AI models with automatic provider fallback
 // Documentation: https://openrouter.ai/docs
@@ -116,27 +132,17 @@ export async function POST(request: NextRequest) {
     ctx.set("is_premium", isPremium);
 
     // Usage tracking
-    const dailyLimit = process.env.NODE_ENV === "development" ? 100 : 20;
     let currentUsage = 0;
 
     // Rate limiting - skip for premium users
     if (!isPremium) {
       try {
-        const dailyRatelimit = new Ratelimit({
-          redis: redis,
-          limiter: Ratelimit.slidingWindow(dailyLimit, "1 d"),
-        });
-
-        const minuteRatelimit = new Ratelimit({
-          redis: redis,
-          limiter: Ratelimit.slidingWindow(12, "1 m"),
-        });
-
+        // Use module-level singleton rate limiters (not per-request instances)
         const { success: dailySuccess, remaining: dailyRemaining } = await dailyRatelimit.limit(
-          `ratelimit_daily_${clientIp}`
+          clientIp
         );
         const { success: minuteSuccess, reset: minuteReset } = await minuteRatelimit.limit(
-          `ratelimit_minute_${clientIp}`
+          clientIp
         );
 
         currentUsage = dailyLimit - dailyRemaining;
