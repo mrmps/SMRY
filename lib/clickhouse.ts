@@ -219,9 +219,13 @@ export function trackEvent(event: Partial<AnalyticsEvent>): void {
   if (!process.env.CLICKHOUSE_URL) return;
 
   // Build full event with defaults
+  // Convert ISO timestamp to Clickhouse-compatible format (remove 'T' and 'Z')
+  const rawTimestamp = event.timestamp || new Date().toISOString();
+  const clickhouseTimestamp = rawTimestamp.replace("T", " ").replace("Z", "");
+
   const fullEvent: AnalyticsEvent = {
     request_id: event.request_id || "",
-    timestamp: event.timestamp || new Date().toISOString(),
+    timestamp: clickhouseTimestamp,
     method: event.method || "",
     endpoint: event.endpoint || "",
     path: event.path || "",

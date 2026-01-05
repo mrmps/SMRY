@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS request_events
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (hostname, source, timestamp, request_id)
-TTL timestamp + INTERVAL 90 DAY
+TTL toDateTime(timestamp) + INTERVAL 90 DAY  -- Auto-delete data older than 90 days
 SETTINGS index_granularity = 8192;
 
 -- Index for faster hostname lookups
@@ -81,6 +81,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS hourly_stats
 ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(hour)
 ORDER BY (hostname, source, hour)
+TTL hour + INTERVAL 90 DAY  -- Match raw data TTL
 AS SELECT
     toStartOfHour(timestamp) AS hour,
     hostname,
@@ -100,6 +101,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS error_rates
 ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(hour)
 ORDER BY (hostname, source, error_type, hour)
+TTL hour + INTERVAL 90 DAY  -- Match raw data TTL
 AS SELECT
     toStartOfHour(timestamp) AS hour,
     hostname,
@@ -153,3 +155,30 @@ GROUP BY hour, hostname, source, error_type;
 -- FROM request_events
 -- WHERE timestamp > now() - INTERVAL 24 HOUR
 -- GROUP BY endpoint;
+
+
+-- ============================================================================
+-- MEMORY MANAGEMENT
+-- ============================================================================
+--
+-- Built-in safeguards:
+-- 1. TTL (90 days) - auto-deletes old data via background merges
+-- 2. LowCardinality columns - reduces memory for repeated strings (hostname, source, etc)
+-- 3. Monthly partitioning - enables efficient partition drops
+-- 4. Compression enabled client-side
+--
+-- Monitor disk usage:
+-- SELECT database, table, formatReadableSize(sum(bytes)) as size
+-- FROM system.parts
+-- WHERE active
+-- GROUP BY database, table;
+--
+-- Manual partition cleanup (if needed):
+-- ALTER TABLE request_events DROP PARTITION '202501';
+--
+-- Check TTL progress:
+-- SELECT table, formatReadableSize(sum(bytes)) as size,
+--        min(min_date), max(max_date)
+-- FROM system.parts
+-- WHERE database = 'smry_analytics' AND active
+-- GROUP BY table;
