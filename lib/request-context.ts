@@ -71,6 +71,12 @@ export function createRequestContext(initial?: InitialContext): RequestContext {
     event.duration_ms = durationMs();
     event.outcome = outcome;
 
+    // Add memory usage for monitoring memory leaks
+    const memUsage = process.memoryUsage();
+    event.heap_used_mb = Math.round(memUsage.heapUsed / 1024 / 1024);
+    event.heap_total_mb = Math.round(memUsage.heapTotal / 1024 / 1024);
+    event.rss_mb = Math.round(memUsage.rss / 1024 / 1024);
+
     if (extra) {
       Object.assign(event, extra);
     }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ArticleRequestSchema, ArticleResponseSchema, ErrorResponseSchema } from "@/types/api";
 import { fetchArticleWithDiffbot, extractDateFromDom, extractImageFromDom } from "@/lib/api/diffbot";
 import { redis } from "@/lib/redis";
-import { compress, decompress } from "@/lib/redis-compression";
+import { compressAsync, decompressAsync } from "@/lib/redis-compression";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { AppError, createNetworkError, createParseError } from "@/lib/errors";
@@ -10,13 +10,19 @@ import { createLogger } from "@/lib/logger";
 import { Readability } from "@mozilla/readability";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
-
-// Suppress JSDOM CSS parsing errors that fill up logs
-const virtualConsole = new VirtualConsole();
-virtualConsole.on("error", () => {
-  // Intentionally ignore CSS parsing errors
-});
 import { getTextDirection } from "@/lib/rtl";
+
+/**
+ * Create a fresh VirtualConsole for each JSDOM instance.
+ * This prevents memory accumulation from a shared singleton.
+ */
+function createVirtualConsole(): VirtualConsole {
+  const vc = new VirtualConsole();
+  vc.on("error", () => {
+    // Intentionally ignore CSS parsing errors
+  });
+  return vc;
+}
 
 // Logger for internal helper functions (debug level)
 const logger = createLogger("api:article");
@@ -123,14 +129,15 @@ async function saveOrReturnLongerArticle(
         image: article.image,
       };
 
+      const compressedArticle = await compressAsync(article);
       await Promise.all([
-        redis.set(key, compress(article)),
+        redis.set(key, compressedArticle),
         redis.set(metaKey, metadata)
       ]);
     };
 
     const rawCachedData = await redis.get(key);
-    const cachedData = decompress(rawCachedData);
+    const cachedData = await decompressAsync(rawCachedData);
 
     if (cachedData) {
       const existingValidation = CachedArticleSchema.safeParse(cachedData);
@@ -182,6 +189,9 @@ async function saveOrReturnLongerArticle(
 async function fetchArticleWithSmryFast(
   url: string
 ): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
   try {
     logger.info({ source: "smry-fast", hostname: new URL(url).hostname }, 'Fetching article directly');
 
@@ -193,6 +203,7 @@ async function fetchArticleWithSmryFast(
       },
       cache: "no-store",
       redirect: "follow",
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -218,7 +229,7 @@ async function fetchArticleWithSmryFast(
     // Store original HTML before Readability parsing
     const originalHtml = html;
 
-    const dom = new JSDOM(html, { url, virtualConsole });
+    const dom = new JSDOM(html, { url, virtualConsole: createVirtualConsole() });
     try {
       const reader = new Readability(dom.window.document);
       const parsed = reader.parse();
@@ -286,10 +297,19 @@ async function fetchArticleWithSmryFast(
       dom.window.close();
     }
   } catch (error) {
+    // Handle timeout/abort errors specifically
+    if (error instanceof Error && error.name === 'AbortError') {
+      logger.error({ source: "smry-fast", url }, 'Request timed out after 30s');
+      return {
+        error: createNetworkError('Request timed out', url, 408, error),
+      };
+    }
     logger.error({ source: "smry-fast", error }, 'Direct fetch exception');
     return {
       error: createNetworkError('Failed to fetch article directly', url, undefined, error),
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -465,7 +485,7 @@ export async function GET(request: NextRequest) {
       const cacheLookupMs = Date.now() - cacheStart;
       ctx.set("cache_lookup_ms", cacheLookupMs);
 
-      const cachedArticle = decompress(rawCachedArticle);
+      const cachedArticle = await decompressAsync(rawCachedArticle);
 
       if (cachedArticle) {
         const cacheValidation = CachedArticleSchema.safeParse(cachedArticle);

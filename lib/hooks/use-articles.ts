@@ -68,7 +68,7 @@ function useJinaArticle(url: string): UseQueryResult<ArticleResponse, Error> {
       return articleResponse;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes - reduced to prevent memory buildup from large articles
     retry: 1,
     enabled: !!url,
   });
@@ -86,7 +86,7 @@ export function useArticles(url: string) {
       queryKey: ["article", source, url],
       queryFn: () => articleAPI.getArticle(url, source),
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 5 * 60 * 1000, // 5 minutes - reduced to prevent memory buildup from large articles
       retry: 1,
       enabled: !!url, // Only fetch if URL is provided
     })),

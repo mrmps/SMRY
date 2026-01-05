@@ -103,8 +103,11 @@ function createDebugContext(url: string, source: string): DebugContext {
 }
 
 /**
- * Helper to add a debug step
+ * Helper to add a debug step.
+ * Caps the steps array at 20 entries to prevent unbounded memory growth.
  */
+const MAX_DEBUG_STEPS = 20;
+
 function addDebugStep(
   context: DebugContext,
   step: string,
@@ -112,6 +115,11 @@ function addDebugStep(
   message: string,
   data?: DebugStep['data']
 ): void {
+  // Prevent unbounded growth of debug context
+  if (context.steps.length >= MAX_DEBUG_STEPS) {
+    // Remove oldest step to make room
+    context.steps.shift();
+  }
   context.steps.push({
     step,
     timestamp: new Date().toISOString(),
@@ -431,18 +439,21 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
 
   return ResultAsync.fromPromise(
     new Promise<DiffbotArticle>(async (resolve, reject) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for Diffbot
+
       try {
         // Use REST API directly to support fields parameter
         const apiUrl = new URL('https://api.diffbot.com/v3/article');
         apiUrl.searchParams.set('token', process.env.DIFFBOT_API_KEY!);
         apiUrl.searchParams.set('url', url);
         apiUrl.searchParams.set('fields', 'title,text,html,siteName,dom'); // Request both article data AND raw DOM
-        
+
         addDebugStep(debugContext, 'diffbot_request', 'info', 'Requesting article with DOM field for fallback', {
           requestedFields: 'title,text,html,siteName,dom',
         });
 
-        const response = await fetch(apiUrl.toString());
+        const response = await fetch(apiUrl.toString(), { signal: controller.signal });
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -747,11 +758,20 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         reject(new Error(`Could not extract article content for URL: ${url}`));
 
       } catch (error) {
-        logger.error({ url, error }, 'Exception during Diffbot request');
-        addDebugStep(debugContext, 'diffbot_exception', 'error', 'Exception during request', {
-          errorDetails: error instanceof Error ? error.message : String(error),
-        });
-        reject(error);
+        // Handle timeout/abort errors specifically
+        if (error instanceof Error && error.name === 'AbortError') {
+          logger.error({ url }, 'Diffbot request timed out after 45s');
+          addDebugStep(debugContext, 'diffbot_timeout', 'error', 'Request timed out after 45s');
+          reject(new Error('Request timeout'));
+        } else {
+          logger.error({ url, error }, 'Exception during Diffbot request');
+          addDebugStep(debugContext, 'diffbot_exception', 'error', 'Exception during request', {
+            errorDetails: error instanceof Error ? error.message : String(error),
+          });
+          reject(error);
+        }
+      } finally {
+        clearTimeout(timeoutId);
       }
     }),
     (error) => {

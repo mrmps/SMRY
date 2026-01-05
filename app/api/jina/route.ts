@@ -3,7 +3,7 @@ import { JinaCacheRequestSchema, JinaCacheUpdateSchema, ArticleResponseSchema, E
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { redis } from "@/lib/redis";
-import { compress, decompress } from "@/lib/redis-compression";
+import { compressAsync, decompressAsync } from "@/lib/redis-compression";
 import { getTextDirection } from "@/lib/rtl";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     try {
       const cacheStart = Date.now();
       const rawCachedArticle = await redis.get(cacheKey);
-      const cachedArticle = decompress(rawCachedArticle);
+      const cachedArticle = await decompressAsync(rawCachedArticle);
       ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
       if (cachedArticle) {
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
     try {
       const cacheStart = Date.now();
       const rawExistingArticle = await redis.get(cacheKey);
-      const existingArticle = decompress(rawExistingArticle);
+      const existingArticle = await decompressAsync(rawExistingArticle);
       ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
       const validatedExisting = existingArticle
@@ -193,8 +193,9 @@ export async function POST(request: NextRequest) {
           publishedTime: newArticle.publishedTime,
         };
 
+        const compressedArticle = await compressAsync(newArticle);
         await Promise.all([
-          redis.set(cacheKey, compress(newArticle)),
+          redis.set(cacheKey, compressedArticle),
           redis.set(metaKey, metadata)
         ]);
       };

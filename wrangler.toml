@@ -1,0 +1,13 @@
+name = "13ft"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+[vars]
+# Add any non-secret environment variables here
+# SECRET env vars should be added via Cloudflare dashboard or wrangler secret put
+
+# Uncomment if you need KV storage
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id"
