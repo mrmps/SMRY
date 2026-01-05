@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ExternalLink, Check, Crown } from "lucide-react";
+import { ExternalLink, Check } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
@@ -16,8 +15,20 @@ function useNextMonth(): string {
   const t = useTranslations("ads");
   const now = new Date();
   const monthIndex = (now.getMonth() + 1) % 12;
-  const monthKeys = ["january", "february", "march", "april", "may", "june",
-                     "july", "august", "september", "october", "november", "december"] as const;
+  const monthKeys = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+  ] as const;
   return t(`months.${monthKeys[monthIndex]}`);
 }
 
@@ -31,7 +42,7 @@ declare global {
         event_category?: string;
         event_label?: string;
         [key: string]: string | number | boolean | undefined;
-      }
+      },
     ) => void;
   }
 }
@@ -42,7 +53,7 @@ const trackGAEvent = (
     event_category?: string;
     event_label?: string;
     [key: string]: string | number | boolean | undefined;
-  }
+  },
 ) => {
   if (typeof window !== "undefined" && window.gtag) {
     window.gtag("event", eventName, params);
@@ -80,22 +91,25 @@ function WisprAdCard({ className }: { className?: string }) {
       target="_blank"
       rel="noreferrer"
       onClick={handleClick}
-      className={cn("block p-0.5 bg-accent rounded-[14px] group", className)}
+      className={cn(
+        "block p-0.5 bg-accent rounded-[14px] group overflow-hidden shrink-0",
+        className,
+      )}
     >
-      <div className="bg-card rounded-xl p-5 md:p-6 transition-colors group-hover:bg-accent/50">
-        <div className="flex flex-col items-center gap-3 md:gap-4 text-center">
+      <div className="bg-card rounded-xl p-4 transition-colors group-hover:bg-accent/50">
+        <div className="flex flex-col items-center gap-2 text-center">
           <Image
             src="/whisper-flow-transparent.png"
             alt="Wispr Flow"
             width={120}
             height={28}
-            className="h-6 md:h-7 w-auto dark:invert"
+            className="h-6 w-auto dark:invert shrink-0"
           />
-          <div className="space-y-1">
-            <p className="text-xs md:text-sm text-muted-foreground">
+          <div className="space-y-0.5">
+            <p className="text-[11px] text-muted-foreground leading-tight" suppressHydrationWarning>
               {t("wispr.tagline")}
             </p>
-            <p className="text-[10px] md:text-xs text-muted-foreground/70 italic">
+            <p className="text-[10px] text-muted-foreground/70 italic leading-tight" suppressHydrationWarning>
               {t("wispr.endorsement")}
             </p>
           </div>
@@ -104,7 +118,6 @@ function WisprAdCard({ className }: { className?: string }) {
     </a>
   );
 }
-
 
 // ============================================
 // SPONSORED AD: GPT Human
@@ -126,19 +139,22 @@ function GptHumanAdCard({ className }: { className?: string }) {
       target="_blank"
       rel="noreferrer"
       onClick={handleClick}
-      className={cn("block p-0.5 bg-accent rounded-[14px] group", className)}
+      className={cn(
+        "block p-0.5 bg-accent rounded-[14px] group overflow-hidden shrink-0",
+        className,
+      )}
     >
-      <div className="bg-card rounded-xl p-5 md:p-6 transition-colors group-hover:bg-accent/50">
-        <div className="flex flex-col items-center gap-3 md:gap-4 text-center">
+      <div className="bg-card rounded-xl p-4 transition-colors group-hover:bg-accent/50">
+        <div className="flex flex-col items-center gap-2 text-center">
           <Image
             src="/gpt-human-transparent.png"
             alt="GPT Human"
             width={120}
             height={28}
-            className="h-6 md:h-7 w-auto dark:invert"
+            className="h-6 w-auto dark:invert shrink-0"
           />
-          <div className="space-y-1">
-            <p className="text-xs md:text-sm text-muted-foreground">
+          <div className="space-y-0.5">
+            <p className="text-[11px] text-muted-foreground leading-tight" suppressHydrationWarning>
               {t("gptHuman.tagline")}
             </p>
           </div>
@@ -147,7 +163,6 @@ function GptHumanAdCard({ className }: { className?: string }) {
     </a>
   );
 }
-
 
 // ============================================
 // ADVERTISE CTA (for potential sponsors)
@@ -169,13 +184,13 @@ const AdvertiseTrigger = React.forwardRef<
     <button
       ref={ref}
       className={cn(
-        "text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline",
-        className
+        "text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent text-foreground transition-colors",
+        className,
       )}
       onClick={handleClick}
       {...props}
     >
-      {label}
+      📣 {label}
     </button>
   );
 });
@@ -190,7 +205,13 @@ const TOP_COUNTRIES = [
   { flag: "🇪🇸", code: "ES", users: 11854, percent: 5.4 },
 ];
 
-function CountryBar({ flag, code, users, percent, maxPercent }: {
+function CountryBar({
+  flag,
+  code,
+  users,
+  percent,
+  maxPercent,
+}: {
   flag: string;
   code: string;
   users: number;
@@ -208,7 +229,9 @@ function CountryBar({ flag, code, users, percent, maxPercent }: {
           style={{ width: `${width}%` }}
         />
       </div>
-      <span className="text-xs tabular-nums text-muted-foreground w-14 text-right">{users.toLocaleString()}</span>
+      <span className="text-xs tabular-nums text-muted-foreground w-14 text-right">
+        {users.toLocaleString()}
+      </span>
     </div>
   );
 }
@@ -225,7 +248,7 @@ function AdDrawerContent() {
     t("modal.benefits.support"),
   ];
 
-  const maxPercent = Math.max(...TOP_COUNTRIES.map(c => c.percent));
+  const maxPercent = Math.max(...TOP_COUNTRIES.map((c) => c.percent));
 
   return (
     <div className="flex flex-col bg-background">
@@ -239,12 +262,16 @@ function AdDrawerContent() {
         <div className="flex items-center justify-center gap-8 mb-2">
           <div className="text-center">
             <div className="text-4xl font-bold tracking-tight">1.6M</div>
-            <div className="text-xs text-muted-foreground mt-1">{t("modal.stats.views")}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {t("modal.stats.views")}
+            </div>
           </div>
           <div className="w-px h-12 bg-border" />
           <div className="text-center">
             <div className="text-4xl font-bold tracking-tight">217K</div>
-            <div className="text-xs text-muted-foreground mt-1">{t("modal.stats.users")}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {t("modal.stats.users")}
+            </div>
           </div>
         </div>
       </div>
@@ -252,12 +279,20 @@ function AdDrawerContent() {
       {/* Countries breakdown */}
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium text-muted-foreground">{t("modal.stats.topCountries")}</span>
-          <span className="text-[10px] text-muted-foreground">214 {t("modal.stats.countriesTotal")}</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {t("modal.stats.topCountries")}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            214 {t("modal.stats.countriesTotal")}
+          </span>
         </div>
         <div className="space-y-2.5">
           {TOP_COUNTRIES.map((country) => (
-            <CountryBar key={country.code} {...country} maxPercent={maxPercent} />
+            <CountryBar
+              key={country.code}
+              {...country}
+              maxPercent={maxPercent}
+            />
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground text-center">
@@ -268,7 +303,9 @@ function AdDrawerContent() {
       {/* What's included - Cosmos style */}
       <div className="px-6 pb-6">
         <div className="flex items-center gap-3 mb-5">
-          <span className="text-sm font-medium text-muted-foreground">{t("modal.whatsIncluded")}</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            {t("modal.whatsIncluded")}
+          </span>
           <div className="flex-1 border-t border-dashed border-border" />
         </div>
 
@@ -287,21 +324,39 @@ function AdDrawerContent() {
       {/* Pricing - clean and clear */}
       <div className="px-6 py-5 border-t border-border">
         <div className="flex items-baseline justify-between mb-1">
-          <span className="text-sm text-muted-foreground">{t("modal.pricing.monthly")}</span>
-          <span className="text-2xl font-bold">$999<span className="text-sm font-normal text-muted-foreground">/mo</span></span>
+          <span className="text-sm text-muted-foreground">
+            {t("modal.pricing.monthly")}
+          </span>
+          <span className="text-2xl font-bold">
+            $999
+            <span className="text-sm font-normal text-muted-foreground">
+              /mo
+            </span>
+          </span>
         </div>
         <div className="flex items-baseline justify-between">
-          <span className="text-sm text-muted-foreground">{t("modal.pricing.depositLabel")}</span>
-          <span className="text-sm">$499 <span className="text-muted-foreground">{t("modal.pricing.depositNote")}</span></span>
+          <span className="text-sm text-muted-foreground">
+            {t("modal.pricing.depositLabel")}
+          </span>
+          <span className="text-sm">
+            $499{" "}
+            <span className="text-muted-foreground">
+              {t("modal.pricing.depositNote")}
+            </span>
+          </span>
         </div>
       </div>
 
       {/* Urgency - subtle */}
       <div className="px-6 py-3 bg-amber-500/10 border-y border-amber-500/20">
         <p className="text-sm text-center">
-          <span className="font-medium text-amber-600 dark:text-amber-400">{t("modal.urgency.spotsLeft")}</span>
+          <span className="font-medium text-amber-600 dark:text-amber-400">
+            {t("modal.urgency.spotsLeft")}
+          </span>
           <span className="text-muted-foreground"> · </span>
-          <span className="text-muted-foreground">{t("modal.urgency.nextAvailable", { month: nextMonth })}</span>
+          <span className="text-muted-foreground">
+            {t("modal.urgency.nextAvailable", { month: nextMonth })}
+          </span>
         </p>
       </div>
 
@@ -324,7 +379,10 @@ function AdDrawerContent() {
         </a>
         <p className="mt-4 text-center text-xs text-muted-foreground">
           {t("modal.contact")}{" "}
-          <a href="mailto:ads@smry.ai" className="underline hover:text-foreground">
+          <a
+            href="mailto:ads@smry.ai"
+            className="underline hover:text-foreground"
+          >
             ads@smry.ai
           </a>
         </p>
@@ -362,42 +420,14 @@ function AdvertiseModal({
 }
 
 // ============================================
-// GO PREMIUM CTA
-// ============================================
-
-function SupportLink({ className }: { className?: string }) {
-  const t = useTranslations("ads");
-  const handleClick = () => {
-    trackGAEvent("support_cta_click", {
-      event_category: "Support",
-      event_label: "Support CTA",
-    });
-  };
-
-  return (
-    <Link
-      href="/pricing"
-      onClick={handleClick}
-      className={cn(
-        "inline-flex items-center gap-1 text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors",
-        className
-      )}
-    >
-      <Crown className="size-3 text-purple-500" />
-      {t("goPro")}
-    </Link>
-  );
-}
-
-
-// ============================================
 // EXPORTED COMPONENTS
 // ============================================
 
 export function AdSpot({ className }: AdSpotProps) {
   const { isPremium, isLoading } = useIsPremium();
-  const isMobile = useMediaQuery("(max-width: 768px)", {
-    defaultValue: false,
+  // Use 1280px breakpoint to match Tailwind's xl: prefix - ensures enough room for ads + content
+  const isMobile = useMediaQuery("(max-width: 1279px)", {
+    defaultValue: true,
     initializeWithValue: false,
   });
 
@@ -409,36 +439,47 @@ export function AdSpot({ className }: AdSpotProps) {
   );
 }
 
-export function AdSpotSidebar({ className, hidden = false }: AdSpotProps & { hidden?: boolean }) {
+export function AdSpotSidebar({
+  className,
+  hidden = false,
+}: AdSpotProps & { hidden?: boolean }) {
   const t = useTranslations("ads");
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 transition-opacity duration-200",
+        "flex flex-col gap-2 transition-opacity duration-200 w-[200px] max-w-[200px] max-h-[calc(100vh-6rem)] overflow-hidden",
         hidden ? "opacity-0 pointer-events-none" : "opacity-100",
-        className
+        className,
       )}
       aria-hidden={hidden}
     >
-      <WisprAdCard />
-      <GptHumanAdCard />
-      <div className="flex items-center justify-center gap-3 text-center">
+      <WisprAdCard className="w-full" />
+      <GptHumanAdCard className="w-full" />
+      <div className="flex items-center justify-center text-center">
         <AdvertiseModal
           open={advertiseOpen}
           onOpenChange={setAdvertiseOpen}
-          trigger={<AdvertiseTrigger label={t("advertise")} />}
+          trigger={<AdvertiseTrigger label="Advertise to 200k users" />}
           nativeButton
         />
-        <span className="text-muted-foreground/50">·</span>
-        <SupportLink />
       </div>
     </div>
   );
 }
 
-function MobileAdPill({ href, imageSrc, alt, eventLabel }: { href: string; imageSrc: string; alt: string; eventLabel: string }) {
+function MobileAdPill({
+  href,
+  imageSrc,
+  alt,
+  eventLabel,
+}: {
+  href: string;
+  imageSrc: string;
+  alt: string;
+  eventLabel: string;
+}) {
   const handleClick = () => {
     trackGAEvent("ad_click", {
       event_category: "Ads",
@@ -467,7 +508,10 @@ function MobileAdPill({ href, imageSrc, alt, eventLabel }: { href: string; image
   );
 }
 
-export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { hidden?: boolean }) {
+export function AdSpotMobileBar({
+  className,
+  hidden = false,
+}: AdSpotProps & { hidden?: boolean }) {
   const t = useTranslations("ads");
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
@@ -475,8 +519,10 @@ export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { h
     <div
       className={cn(
         "fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40 transition-all duration-200",
-        hidden ? "opacity-0 pointer-events-none translate-y-full" : "opacity-100 translate-y-0",
-        className
+        hidden
+          ? "opacity-0 pointer-events-none translate-y-full"
+          : "opacity-100 translate-y-0",
+        className,
       )}
       aria-hidden={hidden}
     >
@@ -495,20 +541,16 @@ export function AdSpotMobileBar({ className, hidden = false }: AdSpotProps & { h
             eventLabel="GPT Human Ad Mobile"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <SupportLink />
-          <span className="text-muted-foreground/30">·</span>
-          <ResponsiveDrawer
-            open={advertiseOpen}
-            onOpenChange={setAdvertiseOpen}
-            trigger={<AdvertiseTrigger label={t("advertise")} />}
-            title={t("modal.title")}
-            scrollable
-            showCloseButton
-          >
-            <AdDrawerContent />
-          </ResponsiveDrawer>
-        </div>
+        <ResponsiveDrawer
+          open={advertiseOpen}
+          onOpenChange={setAdvertiseOpen}
+          trigger={<AdvertiseTrigger label="Advertise to 200k" />}
+          title={t("modal.title")}
+          scrollable
+          showCloseButton
+        >
+          <AdDrawerContent />
+        </ResponsiveDrawer>
       </div>
     </div>
   );

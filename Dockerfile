@@ -1,14 +1,32 @@
-FROM node:lts-alpine AS build
+FROM oven/bun:1 AS base
 
-WORKDIR /app/
+# Install dependencies
+FROM base AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
+# Build the application
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN bun run build
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Production image
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN --mount=type=cache,target=/root/.local/share/pnpm \
-    pnpm install --prefer-offline && \
-    pnpm build
+# Copy standalone build
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-CMD [ "pnpm", "start" ]
 EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["bun", "server.js"]

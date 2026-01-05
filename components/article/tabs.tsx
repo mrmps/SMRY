@@ -8,6 +8,13 @@ import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { detectPaywallBypass } from "@/lib/paywall";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipPopup,
+} from "@/components/ui/tooltip";
+import { InlineSummary } from "@/components/features/inline-summary";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
@@ -27,11 +34,13 @@ const EnhancedTabsList: React.FC<{
   sources: readonly Source[];
   counts: Record<Source, number | undefined>;
   loadingStates: Record<Source, boolean>;
-}> = ({ sources, counts, loadingStates }) => {
+  errorStates: Record<Source, boolean>;
+}> = ({ sources, counts, loadingStates, errorStates }) => {
+
   // Helper to format word count minimally
   const formatWordCount = (count: number | undefined): string | null => {
     if (count === undefined || count === null) return null;
-    
+
     if (count >= 1000) {
       return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     }
@@ -42,13 +51,16 @@ const EnhancedTabsList: React.FC<{
     <div className="w-full overflow-x-auto pb-2 pt-1 pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <TabsPrimitive.List className="flex h-auto w-max min-w-full items-center justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
         {sources.map((source, index) => {
-          const wordCount = formatWordCount(counts[source]);
+          const count = counts[source];
+          const wordCount = formatWordCount(count);
           const isLoading = loadingStates[source];
-          
+          const hasError = errorStates[source];
+          const status = detectPaywallBypass(count, hasError);
+
           return (
-            <TabsPrimitive.Tab 
-              key={index} 
-              value={source} 
+            <TabsPrimitive.Tab
+              key={index}
+              value={source}
               className={cn(
                 "group flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 rounded-xl px-1 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors outline-none",
                 // Inactive state
@@ -60,10 +72,10 @@ const EnhancedTabsList: React.FC<{
             >
               <span className="hidden sm:inline">{SOURCE_LABELS[source]}</span>
               <span className="inline sm:hidden">{MOBILE_SOURCE_LABELS[source]}</span>
-              
+
               {isLoading ? (
                 <Skeleton className="h-4 w-8 sm:h-5 sm:w-10 rounded-md sm:rounded-lg" />
-              ) : wordCount && (
+              ) : wordCount ? (
                 <span
                   className={cn(
                     "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
@@ -72,7 +84,22 @@ const EnhancedTabsList: React.FC<{
                 >
                   {wordCount}
                 </span>
-              )}
+              ) : status === "blocked" ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={<span />}
+                    className={cn(
+                      "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold transition-colors cursor-help",
+                      "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
+                    )}
+                  >
+                    ✗
+                  </TooltipTrigger>
+                  <TooltipPopup>
+                    <p>Failed to load content</p>
+                  </TooltipPopup>
+                </Tooltip>
+              ) : null}
             </TabsPrimitive.Tab>
           );
         })}
@@ -85,18 +112,24 @@ type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
 interface TabProps {
   url: string;
+  ip: string;
   articleResults: ArticleResults;
   viewMode: "markdown" | "html" | "iframe";
   activeSource: Source;
   onSourceChange: (source: Source) => void;
+  summaryOpen: boolean;
+  onSummaryOpenChange: (open: boolean) => void;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
   url,
+  ip,
   articleResults,
   viewMode,
   activeSource,
   onSourceChange,
+  summaryOpen,
+  onSummaryOpenChange,
 }) => {
   const results = articleResults;
   const tabsId = React.useId();
@@ -113,6 +146,13 @@ const ArrowTabs: React.FC<TabProps> = ({
     "smry-slow": results["smry-slow"].isLoading,
     "wayback": results.wayback.isLoading,
     "jina.ai": results["jina.ai"].isLoading,
+  };
+
+  const errorStates: Record<Source, boolean> = {
+    "smry-fast": results["smry-fast"].isError,
+    "smry-slow": results["smry-slow"].isError,
+    "wayback": results.wayback.isError,
+    "jina.ai": results["jina.ai"].isError,
   };
 
   return (
@@ -134,9 +174,19 @@ const ArrowTabs: React.FC<TabProps> = ({
             sources={SOURCES}
             counts={counts}
             loadingStates={loadingStates}
+            errorStates={errorStates}
           />
         </div>
-        
+
+        {/* Inline Summary - between tabs and content */}
+        <InlineSummary
+          urlProp={url}
+          ipProp={ip}
+          articleResults={results}
+          isOpen={summaryOpen}
+          onOpenChange={onSummaryOpenChange}
+        />
+
         <TabsContent value={"smry-fast"}>
           <ArticleContent 
             query={results["smry-fast"]} 

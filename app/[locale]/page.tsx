@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -25,6 +25,18 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
+// Empty subscribe function for useSyncExternalStore
+const emptySubscribe = () => () => {};
+
+// Hook to detect client-side hydration safely
+function useIsClient() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,  // Client snapshot
+    () => false  // Server snapshot
+  );
+}
+
 const urlSchema = z.object({
   url: NormalizedUrlSchema,
 });
@@ -47,9 +59,9 @@ function SupportLink() {
   return (
     <Link
       href="/pricing"
-      className="inline-flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
+      className="inline-flex items-center gap-1.5 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
     >
-      Go Pro
+      No Ads
     </Link>
   );
 }
@@ -59,6 +71,7 @@ export default function Home() {
   const [urlError, setUrlError] = useState<string | null>(null);
   const t = useTranslations("home");
   const tCommon = useTranslations("common");
+  const isClient = useIsClient();
 
   const router = useRouter();
 
@@ -89,29 +102,33 @@ export default function Home() {
   return (
     <>
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
-        <SignedIn>
-          <SupportLink />
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: "size-9"
-              }
-            }}
-          />
-        </SignedIn>
-        <SignedOut>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-1 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
-          >
-            Go Pro
-          </Link>
-        </SignedOut>
+        {isClient && (
+          <>
+            <SignedIn>
+              <SupportLink />
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: "size-9"
+                  }
+                }}
+              />
+            </SignedIn>
+            <SignedOut>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-1.5 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
+              >
+                No Ads
+              </Link>
+            </SignedOut>
+          </>
+        )}
         <LanguageSwitcher />
         <ModeToggle />
       </div>
 
-      <AdSpot className="lg:fixed lg:left-6 lg:top-6 lg:z-40" />
+      <AdSpot className="xl:fixed xl:left-6 xl:top-6 xl:z-40" />
 
       <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24 pb-24 lg:pb-4">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">

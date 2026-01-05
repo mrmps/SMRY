@@ -10,7 +10,6 @@ import { useAuth, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import {
   Bug as BugIcon,
-  Sparkles as SparklesIcon,
   Sun,
   Moon,
   Laptop,
@@ -48,7 +47,6 @@ import {
   parseAsString,
 } from "nuqs";
 import { Source, SOURCES } from "@/types/api";
-import { ResizableModal } from "./resizable-modal";
 
 const ModeToggle = dynamic(
   () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
@@ -171,18 +169,16 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
-  const content = (
+  return (
     <div className="flex h-dvh flex-col bg-background">
-      {/* Desktop Ad Spot - Left sidebar (hidden for premium users or while loading) */}
-      {/* Always rendered to prevent hydration mismatch, visibility controlled by hidden prop */}
-      <div className="hidden lg:block fixed left-4 top-20 z-40">
+      {/* Desktop Ad Spot - Left sidebar */}
+      <div className="hidden xl:block fixed left-4 top-20 z-40">
         <AdSpotSidebar hidden={isLoading || isPremium} />
       </div>
-      
-      {/* Mobile Ad Spot - Bottom bar (hidden when summary sidebar is open, user is premium, or while loading) */}
-      {/* Always rendered to prevent hydration mismatch, visibility controlled by hidden prop */}
-      <div className="lg:hidden">
-        <AdSpotMobileBar hidden={isLoading || sidebarOpen || isPremium} />
+
+      {/* Mobile Ad Spot - Bottom bar */}
+      <div className="xl:hidden">
+        <AdSpotMobileBar hidden={isLoading || isPremium} />
       </div>
       
       <div className="flex-1 overflow-hidden flex flex-col">
@@ -248,17 +244,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
           <div className="flex items-center gap-2">
             {/* Desktop Actions - Reorganized with overflow menu */}
             <div className="hidden md:flex items-center gap-1.5">
-              {/* Primary Actions Group */}
-              <Button
-                variant={sidebarOpen ? "default" : "outline"}
-                size="sm"
-                className="h-8 text-xs font-medium gap-1.5"
-                onClick={() => handleSidebarChange(!sidebarOpen)}
-              >
-                <SparklesIcon className="size-3.5" />
-                Summary
-              </Button>
-
               <ShareButton
                 url={`https://smry.ai/${url}`}
                 source={source || "smry-fast"}
@@ -283,10 +268,10 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
               <HistoryButton variant="desktop" />
               <ModeToggle />
 
-              {/* User Section - Fixed width to prevent layout shift */}
-              <div className="flex items-center gap-1.5 ml-1 min-w-[28px]">
+              {/* User Section */}
+              <div className="flex items-center gap-1.5 ml-1">
                 <SignedIn>
-                  <UserButton 
+                  <UserButton
                     appearance={{
                       elements: {
                         avatarBox: "size-7"
@@ -297,9 +282,9 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 <SignedOut>
                   <Link
                     href="/pricing"
-                    className="text-xs font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors whitespace-nowrap"
+                    className="px-3 py-1 text-sm font-medium rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors"
                   >
-                    Go Pro
+                    Get Pro
                   </Link>
                 </SignedOut>
               </div>
@@ -367,16 +352,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
             {/* Mobile Actions */}
             <div className="md:hidden flex items-center gap-1">
-              {/* Primary: Summary Button - icon only on smallest screens */}
-              <Button
-                variant={sidebarOpen ? "default" : "outline"}
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => handleSidebarChange(!sidebarOpen)}
-              >
-                <SparklesIcon className="size-4" />
-              </Button>
-
               <ShareButton
                 url={`https://smry.ai/${url}`}
                 source={source || "smry-fast"}
@@ -398,10 +373,10 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
               <HistoryButton variant="mobile" />
 
-              {/* User Section - Fixed width to prevent layout shift */}
-              <div className="flex items-center min-w-[28px]">
+              {/* User Section */}
+              <div className="flex items-center">
                 <SignedIn>
-                  <UserButton 
+                  <UserButton
                     appearance={{
                       elements: {
                         avatarBox: "size-7"
@@ -412,9 +387,9 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 <SignedOut>
                   <Link
                     href="/pricing"
-                    className="text-[11px] font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent whitespace-nowrap"
+                    className="px-2.5 py-0.5 text-xs font-medium rounded-full border border-border bg-background text-foreground"
                   >
-                    Go Pro
+                    Pro
                   </Link>
                 </SignedOut>
               </div>
@@ -561,31 +536,22 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto bg-card pb-20 lg:pb-0 lg:px-52">
-            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-10 py-6 min-h-[calc(100vh-3.5rem)]">
+          <div className="h-full overflow-y-auto bg-card pb-20 lg:pb-0">
+            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-3.5rem)]">
               <ArrowTabs
                 url={url}
+                ip={ip}
                 articleResults={results}
                 viewMode={viewMode}
                 activeSource={source}
                 onSourceChange={handleSourceChange}
+                summaryOpen={sidebarOpen}
+                onSummaryOpenChange={handleSidebarChange}
               />
             </div>
           </div>
         </main>
       </div>
     </div>
-  );
-
-  return (
-    <ResizableModal
-      url={url}
-      ip={ip}
-      articleResults={results}
-      sidebarOpen={sidebarOpen}
-      setSidebarOpen={handleSidebarChange}
-    >
-      {content}
-    </ResizableModal>
   );
 }

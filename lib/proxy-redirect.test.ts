@@ -21,7 +21,7 @@ describe("proxy redirect helpers", () => {
     it("identifies /api routes as app routes", () => {
       expect(isAppRoute("/api")).toBe(true);
       expect(isAppRoute("/api/article")).toBe(true);
-      expect(isAppRoute("/api/summary/status")).toBe(true);
+      expect(isAppRoute("/api/summary")).toBe(true);
     });
 
     it("identifies other app routes", () => {
