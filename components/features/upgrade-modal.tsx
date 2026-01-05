@@ -18,7 +18,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="sm:max-w-sm" showCloseButton={false}>
         <div className="p-6 text-center">
-          <DialogTitle className="text-lg">You've hit your daily limit</DialogTitle>
+          <DialogTitle className="text-lg">You&apos;ve hit your daily limit</DialogTitle>
           <DialogDescription className="mt-2">
             Upgrade for unlimited summaries.
             <span className="block text-xs mt-1 text-muted-foreground/60">

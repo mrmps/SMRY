@@ -11,9 +11,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "pages:build": "bunx @cloudflare/next-on-pages",
     "pages:dev": "bunx wrangler pages dev .vercel/output/static --compatibility-flags=nodejs_compat",
-    "pages:deploy": "bunx wrangler pages deploy .vercel/output/static"
+    "pages:deploy": "bunx wrangler pages deploy .vercel/output/static",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.58",
@@ -76,6 +78,7 @@
     "eslint-config-next": "^16.1.1",
     "eslint-plugin-tailwindcss": "^3.18.2",
     "eslint-plugin-unused-imports": "^4.3.0",
+    "husky": "^9.1.7",
     "pino-pretty": "^10.3.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",

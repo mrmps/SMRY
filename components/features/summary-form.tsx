@@ -96,8 +96,7 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
     const response = await globalThis.fetch(input, init);
     handleResponse(response);
     return response;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }, [handleResponse]) as any;
+  }, [handleResponse]) as typeof fetch;
 
   // Use AI SDK's useCompletion hook for streaming
   const { completion, complete, isLoading, error } = useCompletion({
@@ -186,7 +185,9 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
   // Show modal when rate limit hit
   useEffect(() => {
     if (isRateLimitError && !isPremium) {
-      setShowUpgradeModal(true);
+      // Use setTimeout to avoid synchronous setState in effect
+      const timer = setTimeout(() => setShowUpgradeModal(true), 0);
+      return () => clearTimeout(timer);
     }
   }, [isRateLimitError, isPremium]);
 

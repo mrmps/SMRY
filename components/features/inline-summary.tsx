@@ -49,9 +49,12 @@ function RateLimitError({
 
   useEffect(() => {
     if (secondsLeft <= 0) {
-      setIsRetrying(true);
-      onRetry();
-      return;
+      // Use setTimeout to avoid synchronous setState in effect
+      const retryTimer = setTimeout(() => {
+        setIsRetrying(true);
+        onRetry();
+      }, 0);
+      return () => clearTimeout(retryTimer);
     }
 
     const timer = setTimeout(() => {
