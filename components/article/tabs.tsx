@@ -8,7 +8,6 @@ import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { detectPaywallBypass } from "@/lib/paywall";
 import {
   Tooltip,
   TooltipTrigger,
@@ -55,7 +54,6 @@ const EnhancedTabsList: React.FC<{
           const wordCount = formatWordCount(count);
           const isLoading = loadingStates[source];
           const hasError = errorStates[source];
-          const status = detectPaywallBypass(count, hasError);
 
           return (
             <TabsPrimitive.Tab
@@ -84,7 +82,7 @@ const EnhancedTabsList: React.FC<{
                 >
                   {wordCount}
                 </span>
-              ) : status === "blocked" ? (
+              ) : hasError ? (
                 <Tooltip>
                   <TooltipTrigger
                     render={<span />}
