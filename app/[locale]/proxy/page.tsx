@@ -3,6 +3,9 @@ import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
 import { redis } from "@/lib/redis";
 import { normalizeUrl } from "@/lib/validation/url";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("proxy");
 
 const _adCopies = [
   {
@@ -123,9 +126,8 @@ async function fetchArticleForMetadata(url: string): Promise<Article | null> {
             textContent: "",
           } as Article;
         }
-      } catch (error) {
+      } catch {
         // Continue to next source/fallback if redis check fails
-        console.warn(`Metadata cache check failed for ${source}`, error);
       }
     }
 
@@ -160,8 +162,8 @@ async function fetchArticleForMetadata(url: string): Promise<Article | null> {
     }
     
     return null;
-  } catch (error) {
-    console.error("Error fetching article for metadata:", error);
+  } catch {
+    // Metadata fetch failed - not critical, fallback metadata will be used
     return null;
   }
 }
@@ -192,8 +194,8 @@ export async function generateMetadata({
   let normalizedUrl: string;
   try {
     normalizedUrl = normalizeUrl(candidateUrl);
-  } catch (error) {
-    console.error("Invalid URL provided for metadata generation:", candidateUrl, error);
+  } catch {
+    logger.warn({ invalidUrl: candidateUrl }, "invalid url for metadata");
     return fallbackMetadata;
   }
 
@@ -217,8 +219,8 @@ export async function generateMetadata({
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ') || 'Article';
     }
-  } catch (error) {
-    console.error("Error parsing URL for fallback metadata:", error);
+  } catch {
+    // URL parsing for fallback metadata failed - use defaults
   }
   
   // Override with actual article data if available
@@ -278,8 +280,7 @@ export default async function Page({
       const headersObj = Object.fromEntries(headersList as any);
       ip = headersObj["x-real-ip"] || "default_ip";
     }
-  } catch (error) {
-    console.error("Error accessing headers:", error);
+  } catch {
     ip = "default_ip";
   }
 
@@ -300,12 +301,7 @@ export default async function Page({
   try {
     normalizedUrl = normalizeUrl(candidateUrl);
   } catch (error) {
-    console.error(
-      "URL parameter is invalid",
-      candidateUrl,
-      resolvedSearchParams?.url,
-      error
-    );
+    logger.warn({ invalidUrl: candidateUrl }, "invalid url for page");
     const message =
       error instanceof Error
         ? error.message

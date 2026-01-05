@@ -8,7 +8,13 @@ import { fromError } from "zod-validation-error";
 import { AppError, createNetworkError, createParseError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
 import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
+import { JSDOM, VirtualConsole } from "jsdom";
+
+// Suppress JSDOM CSS parsing errors that fill up logs
+const virtualConsole = new VirtualConsole();
+virtualConsole.on("error", () => {
+  // Intentionally ignore CSS parsing errors
+});
 import { getTextDirection } from "@/lib/rtl";
 
 const logger = createLogger('api:article');
@@ -210,7 +216,7 @@ async function fetchArticleWithSmryFast(
     // Store original HTML before Readability parsing
     const originalHtml = html;
 
-    const dom = new JSDOM(html, { url });
+    const dom = new JSDOM(html, { url, virtualConsole });
     const reader = new Readability(dom.window.document);
     const parsed = reader.parse();
 
