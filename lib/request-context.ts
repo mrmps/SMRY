@@ -1,6 +1,47 @@
 import { createLogger } from "./logger";
 import { randomUUID } from "crypto";
-import { trackEvent } from "./clickhouse";
+import { trackEvent, ErrorSeverity } from "./clickhouse";
+
+/**
+ * Determine error severity based on error type
+ *
+ * - expected: Normal operational errors (external API failures, paywalls, validation)
+ *   → Logged as INFO, doesn't trigger alerts
+ * - degraded: Service partially impaired but functioning (cache failures)
+ *   → Logged as WARN, may need attention
+ * - unexpected: Bugs, crashes, unhandled exceptions
+ *   → Logged as ERROR, requires immediate attention
+ */
+function getErrorSeverity(errorType: string | undefined): ErrorSeverity {
+  if (!errorType) return "unexpected";
+
+  const expectedErrors = [
+    "DIFFBOT_ERROR",     // External API failures (404s, 403s, timeouts)
+    "PAYWALL_ERROR",     // Hard paywalls - expected behavior
+    "VALIDATION_ERROR",  // Bad user input
+    "RATE_LIMIT_ERROR",  // Rate limiting - normal operation
+    "RATE_LIMIT",        // Alternative rate limit type
+    "TIMEOUT_ERROR",     // External timeouts
+    "NETWORK_ERROR",     // Network issues with external services
+    "PROXY_ERROR",       // Proxy failures
+    "PARSE_ERROR",       // Content parsing issues (site structure)
+  ];
+
+  const degradedErrors = [
+    "CACHE_ERROR",       // Cache failures - service degraded but working
+  ];
+
+  if (expectedErrors.includes(errorType)) {
+    return "expected";
+  }
+
+  if (degradedErrors.includes(errorType)) {
+    return "degraded";
+  }
+
+  // UNKNOWN_ERROR or any unrecognized type = unexpected
+  return "unexpected";
+}
 
 const logger = createLogger("request");
 
@@ -82,11 +123,25 @@ export function createRequestContext(initial?: InitialContext): RequestContext {
       Object.assign(event, extra);
     }
 
-    // Emit the canonical log line
-    if (outcome === "error") {
-      logger.error(event, "request completed");
-    } else {
+    // Determine error severity for proper log level
+    const errorSeverity = outcome === "error"
+      ? getErrorSeverity(event.error_type as string | undefined)
+      : "";
+    event.error_severity = errorSeverity;
+
+    // Emit the canonical log line with appropriate level:
+    // - SUCCESS → INFO
+    // - ERROR + expected → INFO (normal operational failure)
+    // - ERROR + degraded → WARN (service partially impaired)
+    // - ERROR + unexpected → ERROR (bug, needs attention)
+    if (outcome === "success") {
       logger.info(event, "request completed");
+    } else if (errorSeverity === "expected") {
+      logger.info(event, "request completed");
+    } else if (errorSeverity === "degraded") {
+      logger.warn(event, "request completed");
+    } else {
+      logger.error(event, "request completed");
     }
 
     // Send to Clickhouse analytics (fire-and-forget, non-blocking)
@@ -104,6 +159,7 @@ export function createRequestContext(initial?: InitialContext): RequestContext {
       status_code: (event.status_code as number) || 0,
       error_type: (event.error_type as string) || "",
       error_message: (event.error_message as string) || "",
+      error_severity: (event.error_severity as ErrorSeverity) || "",
       duration_ms: event.duration_ms as number,
       fetch_ms: (event.fetch_ms as number) || 0,
       cache_lookup_ms: (event.cache_lookup_ms as number) || 0,

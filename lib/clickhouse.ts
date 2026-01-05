@@ -45,6 +45,9 @@ function getClient(): ClickHouseClient | null {
 }
 
 // Analytics event type matching our Clickhouse schema
+// Error severity levels for distinguishing expected vs unexpected errors
+export type ErrorSeverity = "expected" | "degraded" | "unexpected" | "";
+
 export interface AnalyticsEvent {
   request_id: string;
   timestamp: string;
@@ -58,6 +61,7 @@ export interface AnalyticsEvent {
   status_code: number;
   error_type: string;
   error_message: string;
+  error_severity: ErrorSeverity;
   duration_ms: number;
   fetch_ms: number;
   cache_lookup_ms: number;
@@ -122,6 +126,7 @@ async function ensureSchema(): Promise<void> {
             status_code UInt16,
             error_type LowCardinality(String) DEFAULT '',
             error_message String DEFAULT '',
+            error_severity LowCardinality(String) DEFAULT '',
             duration_ms UInt32,
             fetch_ms UInt32 DEFAULT 0,
             cache_lookup_ms UInt32 DEFAULT 0,
@@ -236,6 +241,7 @@ export function trackEvent(event: Partial<AnalyticsEvent>): void {
     status_code: event.status_code || 0,
     error_type: event.error_type || "",
     error_message: event.error_message || "",
+    error_severity: event.error_severity || "",
     duration_ms: event.duration_ms || 0,
     fetch_ms: event.fetch_ms || 0,
     cache_lookup_ms: event.cache_lookup_ms || 0,

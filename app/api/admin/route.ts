@@ -28,6 +28,7 @@ interface ErrorBreakdown {
   hostname: string;
   error_type: string;
   error_message: string;
+  error_severity: string;
   error_count: number;
   latest_timestamp: string;
 }
@@ -50,7 +51,7 @@ interface PopularPage {
 
 interface RequestEvent {
   request_id: string;
-  timestamp: string;
+  event_time: string;
   url: string;
   hostname: string;
   source: string;
@@ -70,7 +71,7 @@ interface RequestEvent {
 
 interface LiveRequest {
   request_id: string;
-  timestamp: string;
+  event_time: string;
   url: string;
   hostname: string;
   source: string;
@@ -187,7 +188,7 @@ export async function GET(request: NextRequest) {
         ORDER BY hostname, request_count DESC
       `),
 
-      // 3. Hourly traffic pattern
+      // 3. Hourly traffic pattern (filter empty hostnames for consistency)
       queryClickhouse<HourlyTraffic>(`
         SELECT
           formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
@@ -196,16 +197,18 @@ export async function GET(request: NextRequest) {
           countIf(outcome = 'error') AS error_count
         FROM request_events
         WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND hostname != ''
         GROUP BY hour
         ORDER BY hour
       `),
 
-      // 4. Error breakdown by hostname and type - NOW WITH ERROR MESSAGES
+      // 4. Error breakdown by hostname and type - NOW WITH ERROR MESSAGES AND SEVERITY
       queryClickhouse<ErrorBreakdown>(`
         SELECT
           hostname,
           error_type,
           any(error_message) AS error_message,
+          any(error_severity) AS error_severity,
           count() AS error_count,
           max(timestamp) AS latest_timestamp
         FROM request_events
@@ -217,7 +220,7 @@ export async function GET(request: NextRequest) {
         LIMIT 100
       `),
 
-      // 5. Overall health metrics
+      // 5. Overall health metrics (filter empty hostnames to match other queries)
       queryClickhouse<HealthMetrics>(`
         SELECT
           count() AS total_requests_24h,
@@ -229,6 +232,7 @@ export async function GET(request: NextRequest) {
           uniq(hostname) AS unique_hostnames_24h
         FROM request_events
         WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND hostname != ''
       `),
 
       // 6. Real-time popular pages (last 5 minutes)
@@ -246,10 +250,11 @@ export async function GET(request: NextRequest) {
       `),
 
       // 7. Request explorer - individual requests for debugging (applies filters)
+      // Note: ClickHouse uses %i for minutes, not %M (which is month name)
       queryClickhouse<RequestEvent>(`
         SELECT
           request_id,
-          formatDateTime(timestamp, '%Y-%m-%d %H:%M:%S') AS timestamp,
+          formatDateTime(timestamp, '%Y-%m-%d %H:%i:%S') AS event_time,
           url,
           hostname,
           source,
@@ -266,17 +271,18 @@ export async function GET(request: NextRequest) {
           article_length,
           article_title
         FROM request_events
-        ${buildWhereClause({ includeFilters: true })}
+        WHERE timestamp > now() - INTERVAL ${hours} HOUR
           AND hostname != ''
         ORDER BY timestamp DESC
         LIMIT 200
       `),
 
       // 8. Live requests (last 60 seconds for live feed - also applies filters)
+      // Note: ClickHouse uses %i for minutes, not %M (which is month name)
       queryClickhouse<LiveRequest>(`
         SELECT
           request_id,
-          formatDateTime(timestamp, '%H:%M:%S') AS timestamp,
+          formatDateTime(timestamp, '%H:%i:%S') AS event_time,
           url,
           hostname,
           source,
@@ -285,7 +291,7 @@ export async function GET(request: NextRequest) {
           error_type,
           cache_hit
         FROM request_events
-        ${buildWhereClause({ timeInterval: '60 SECOND', includeFilters: true })}
+        WHERE timestamp > now() - INTERVAL 60 SECOND
           AND hostname != ''
         ORDER BY timestamp DESC
         LIMIT 50

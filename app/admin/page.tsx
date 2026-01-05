@@ -1,8 +1,8 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -19,7 +19,7 @@ import {
 // Dashboard data types
 interface RequestEvent {
   request_id: string;
-  timestamp: string;
+  event_time: string;
   url: string;
   hostname: string;
   source: string;
@@ -39,7 +39,7 @@ interface RequestEvent {
 
 interface LiveRequest {
   request_id: string;
-  timestamp: string;
+  event_time: string;
   url: string;
   hostname: string;
   source: string;
@@ -128,8 +128,9 @@ interface DashboardData {
 
 type TabType = "overview" | "requests" | "live" | "errors";
 
-export default function AnalyticsDashboard() {
+function AnalyticsDashboardContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const range = searchParams.get("range") || "24h";
 
   // State
@@ -152,6 +153,17 @@ export default function AnalyticsDashboard() {
     return params.toString();
   }, [range, hostnameFilter, sourceFilter, outcomeFilter, urlSearch]);
 
+  // Change time range while preserving filters
+  const changeTimeRange = useCallback((newRange: string) => {
+    const params = new URLSearchParams();
+    params.set("range", newRange);
+    if (hostnameFilter) params.set("hostname", hostnameFilter);
+    if (sourceFilter) params.set("source", sourceFilter);
+    if (outcomeFilter) params.set("outcome", outcomeFilter);
+    if (urlSearch) params.set("urlSearch", urlSearch);
+    router.push(`?${params.toString()}`);
+  }, [router, hostnameFilter, sourceFilter, outcomeFilter, urlSearch]);
+
   const { data, isLoading, error, refetch } = useQuery<DashboardData>({
     queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, urlSearch],
     queryFn: async () => {
@@ -168,18 +180,26 @@ export default function AnalyticsDashboard() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
+      // Don't handle shortcuts when typing in inputs
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
+
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !isTyping) {
         e.preventDefault();
         document.getElementById("url-search")?.focus();
       }
       if (e.key === "Escape") {
         setExpandedRequest(null);
         setUrlSearch("");
+        (document.activeElement as HTMLElement)?.blur();
       }
-      if (e.key === "1") setActiveTab("overview");
-      if (e.key === "2") setActiveTab("requests");
-      if (e.key === "3") setActiveTab("live");
-      if (e.key === "4") setActiveTab("errors");
+      // Only switch tabs if not typing in an input
+      if (!isTyping) {
+        if (e.key === "1") setActiveTab("overview");
+        if (e.key === "2") setActiveTab("requests");
+        if (e.key === "3") setActiveTab("live");
+        if (e.key === "4") setActiveTab("errors");
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -233,9 +253,9 @@ export default function AnalyticsDashboard() {
           <div className="flex gap-2 flex-wrap">
             {/* Time range selector */}
             {["1h", "24h", "7d"].map((r) => (
-              <a
+              <button
                 key={r}
-                href={`?range=${r}`}
+                onClick={() => changeTimeRange(r)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   range === r
                     ? "bg-emerald-600 text-white"
@@ -243,7 +263,7 @@ export default function AnalyticsDashboard() {
                 }`}
               >
                 {r}
-              </a>
+              </button>
             ))}
           </div>
         </div>
@@ -754,16 +774,15 @@ function RequestExplorerTab({
           </thead>
           <tbody>
             {requests.map((req) => (
-              <>
+              <React.Fragment key={req.request_id}>
                 <tr
-                  key={req.request_id}
                   onClick={() => setExpandedRequest(expandedRequest === req.request_id ? null : req.request_id)}
                   className={`border-b border-zinc-800 cursor-pointer transition-colors ${
                     expandedRequest === req.request_id ? "bg-zinc-800" : "hover:bg-zinc-800/50"
                   }`}
                 >
                   <td className="py-3 px-4 font-mono text-xs text-zinc-400">
-                    {req.timestamp}
+                    {req.event_time}
                   </td>
                   <td className="py-3 px-4 max-w-md">
                     <p className="text-zinc-200 truncate text-xs" title={req.url}>
@@ -786,13 +805,13 @@ function RequestExplorerTab({
 
                 {/* Expanded Details */}
                 {expandedRequest === req.request_id && (
-                  <tr key={`${req.request_id}-expanded`}>
+                  <tr>
                     <td colSpan={5} className="p-0">
                       <RequestDetails request={req} />
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -857,7 +876,9 @@ function RequestDetails({ request }: { request: RequestEvent }) {
           {/* Error Message */}
           {request.error_message && (
             <div>
-              <h3 className="text-sm font-semibold text-red-400 mb-2">Error Message</h3>
+              <h3 className="text-sm font-semibold text-red-400 mb-2">
+                Error Message
+              </h3>
               <div className="bg-red-950/30 border border-red-900/50 rounded-md p-3">
                 <p className="text-xs font-mono text-red-300 break-all">
                   {request.error_message}
@@ -956,7 +977,7 @@ function LiveStreamTab({
             className="px-4 py-3 flex items-center gap-4 hover:bg-zinc-800/50 transition-colors"
           >
             <span className="text-xs font-mono text-zinc-500 w-20">
-              {req.timestamp}
+              {req.event_time}
             </span>
 
             <OutcomeBadge outcome={req.outcome} cacheHit={req.cache_hit === 1} />
@@ -1065,7 +1086,7 @@ function ErrorAnalysisTab({
                     <span className="text-red-400 font-medium">{item.error_count}</span>
                   </td>
                   <td className="py-3 px-4 text-right text-zinc-500 text-xs font-mono">
-                    {item.latest_timestamp?.split(" ")[1] || "-"}
+                    {item.latest_timestamp?.split(" ")[1]?.split(".")[0] || "-"}
                   </td>
                 </tr>
               ))}
@@ -1210,5 +1231,41 @@ function OutcomeBadge({ outcome, cacheHit }: { outcome: string; cacheHit?: boole
       <span className="w-2 h-2 rounded-full bg-red-500" />
       <span className="text-xs text-red-400">error</span>
     </span>
+  );
+}
+
+function SeverityBadge({ severity }: { severity?: string }) {
+  if (!severity) return null;
+
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    expected: { bg: "bg-zinc-700", text: "text-zinc-300", label: "expected" },
+    degraded: { bg: "bg-amber-900/30", text: "text-amber-400", label: "degraded" },
+    unexpected: { bg: "bg-red-900/30", text: "text-red-400", label: "unexpected" },
+  };
+
+  const { bg, text, label } = config[severity] || config.unexpected;
+
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${bg} ${text}`}>
+      {label}
+    </span>
+  );
+}
+
+// Loading fallback for Suspense
+function DashboardLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+      <div className="text-zinc-100">Loading analytics...</div>
+    </div>
+  );
+}
+
+// Default export with Suspense boundary (required for useSearchParams)
+export default function AnalyticsDashboard() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <AnalyticsDashboardContent />
+    </Suspense>
   );
 }
