@@ -531,16 +531,21 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             
             // If no date/image from Diffbot, try to extract from DOM if available
             if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback)) {
+               let tempDom: JSDOM | null = null;
                try {
                  const domToUse = (obj.dom || domForFallback) as string;
                  const { VirtualConsole } = require('jsdom');
                  const virtualConsole = new VirtualConsole();
-                 virtualConsole.on("error", () => {}); 
-                 const doc = new JSDOM(domToUse, { virtualConsole }).window.document;
+                 virtualConsole.on("error", () => {});
+                 tempDom = new JSDOM(domToUse, { virtualConsole });
+                 const doc = tempDom.window.document;
                  if (!extractedDate) extractedDate = extractDateFromDom(doc);
                  if (!extractedImage) extractedImage = extractImageFromDom(doc);
                } catch {
                  // Ignore errors
+               } finally {
+                 // Close JSDOM to prevent memory leaks
+                 tempDom?.window.close();
                }
             }
 
@@ -619,15 +624,20 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           
           // If no date/image from Diffbot, try to extract from DOM
           if ((!extractedDate || !extractedImage) && dom) {
+             let tempDom: JSDOM | null = null;
              try {
                const { VirtualConsole } = require('jsdom');
                const virtualConsole = new VirtualConsole();
-               virtualConsole.on("error", () => {}); 
-               const doc = new JSDOM(dom, { virtualConsole }).window.document;
+               virtualConsole.on("error", () => {});
+               tempDom = new JSDOM(dom, { virtualConsole });
+               const doc = tempDom.window.document;
                if (!extractedDate) extractedDate = extractDateFromDom(doc);
                if (!extractedImage) extractedImage = extractImageFromDom(doc);
              } catch {
                // Ignore errors during extra DOM parsing
+             } finally {
+               // Close JSDOM to prevent memory leaks
+               tempDom?.window.close();
              }
           }
 
