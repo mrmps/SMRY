@@ -31,6 +31,17 @@ interface ErrorBreakdown {
   error_severity: string;
   error_count: number;
   latest_timestamp: string;
+  // Upstream error context - which service actually failed
+  upstream_hostname: string;
+  upstream_status_code: number;
+}
+
+interface UpstreamBreakdown {
+  upstream_hostname: string;
+  upstream_status_code: number;
+  error_count: number;
+  affected_hostnames: number;
+  sample_error_type: string;
 }
 
 interface HealthMetrics {
@@ -162,6 +173,7 @@ export async function GET(request: NextRequest) {
       sourceEffectiveness,
       hourlyTraffic,
       errorBreakdown,
+      upstreamBreakdown,
       healthMetrics,
       realtimePopular,
       requestEvents,
@@ -215,7 +227,7 @@ export async function GET(request: NextRequest) {
         ORDER BY hour
       `),
 
-      // 4. Error breakdown by hostname and type - WITH ERROR MESSAGES
+      // 4. Error breakdown by hostname and type - WITH ERROR MESSAGES AND UPSTREAM CONTEXT
       queryClickhouse<ErrorBreakdown>(`
         SELECT
           hostname,
@@ -223,7 +235,9 @@ export async function GET(request: NextRequest) {
           any(error_message) AS error_message,
           '' AS error_severity,
           count() AS error_count,
-          formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS latest_timestamp
+          formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS latest_timestamp,
+          any(upstream_hostname) AS upstream_hostname,
+          any(upstream_status_code) AS upstream_status_code
         FROM request_events
         WHERE timestamp > now() - INTERVAL ${hours} HOUR
           AND outcome = 'error'
@@ -231,6 +245,23 @@ export async function GET(request: NextRequest) {
         GROUP BY hostname, error_type
         ORDER BY error_count DESC
         LIMIT 100
+      `),
+
+      // 4b. Upstream service breakdown - which external services are causing errors
+      queryClickhouse<UpstreamBreakdown>(`
+        SELECT
+          upstream_hostname,
+          upstream_status_code,
+          count() AS error_count,
+          uniq(hostname) AS affected_hostnames,
+          any(error_type) AS sample_error_type
+        FROM request_events
+        WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND outcome = 'error'
+          AND upstream_hostname != ''
+        GROUP BY upstream_hostname, upstream_status_code
+        ORDER BY error_count DESC
+        LIMIT 50
       `),
 
       // 5. Overall health metrics (filter empty hostnames to match other queries)
@@ -398,6 +429,7 @@ export async function GET(request: NextRequest) {
       sourceEffectiveness,
       hourlyTraffic,
       errorBreakdown,
+      upstreamBreakdown,
       realtimePopular,
       requestEvents,
       liveRequests,

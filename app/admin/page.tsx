@@ -49,6 +49,14 @@ interface LiveRequest {
   cache_hit: number;
 }
 
+interface UpstreamBreakdown {
+  upstream_hostname: string;
+  upstream_status_code: number;
+  error_count: number;
+  affected_hostnames: number;
+  sample_error_type: string;
+}
+
 interface DashboardData {
   timeRange: string;
   generatedAt: string;
@@ -99,7 +107,10 @@ interface DashboardData {
     error_message: string;
     error_count: number;
     latest_timestamp: string;
+    upstream_hostname: string;
+    upstream_status_code: number;
   }>;
+  upstreamBreakdown: UpstreamBreakdown[];
   realtimePopular: Array<{
     url: string;
     hostname: string;
@@ -411,6 +422,7 @@ function AnalyticsDashboardContent() {
         {activeTab === "errors" && (
           <ErrorAnalysisTab
             errorBreakdown={data.errorBreakdown}
+            upstreamBreakdown={data.upstreamBreakdown}
             hostnameStats={data.hostnameStats}
             universallyBroken={data.universallyBroken}
           />
@@ -1083,10 +1095,12 @@ function LiveStreamTab({
 // ============ Error Analysis Tab ============
 function ErrorAnalysisTab({
   errorBreakdown,
+  upstreamBreakdown,
   hostnameStats,
   universallyBroken,
 }: {
   errorBreakdown: DashboardData["errorBreakdown"];
+  upstreamBreakdown: DashboardData["upstreamBreakdown"];
   hostnameStats: DashboardData["hostnameStats"];
   universallyBroken: DashboardData["universallyBroken"];
 }) {
@@ -1214,6 +1228,69 @@ function ErrorAnalysisTab({
         </div>
       </div>
 
+      {/* Upstream Service Errors - Shows which external services are failing */}
+      {upstreamBreakdown && upstreamBreakdown.length > 0 && (
+        <div className="bg-amber-950/20 rounded-lg border border-amber-900/50 overflow-hidden">
+          <div className="p-4 border-b border-amber-900/50 bg-amber-950/30">
+            <h2 className="text-lg font-semibold text-amber-400 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-500" />
+              Upstream Service Errors
+            </h2>
+            <p className="text-xs text-amber-300/70 mt-1">
+              Which external services (Wayback, Diffbot API, etc.) are returning errors. This helps identify if issues are with our service or upstream dependencies.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-amber-900/30 bg-amber-950/20">
+                  <th className="text-left py-3 px-4 text-amber-300 font-medium">Upstream Service</th>
+                  <th className="text-center py-3 px-4 text-amber-300 font-medium">HTTP Status</th>
+                  <th className="text-center py-3 px-4 text-amber-300 font-medium">Error Type</th>
+                  <th className="text-right py-3 px-4 text-amber-300 font-medium">Error Count</th>
+                  <th className="text-right py-3 px-4 text-amber-300 font-medium">Sites Affected</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upstreamBreakdown.map((item, i) => (
+                  <tr key={i} className="border-b border-amber-900/20 hover:bg-amber-950/30 transition-colors">
+                    <td className="py-3 px-4 font-mono text-xs text-amber-200">
+                      {item.upstream_hostname || "(unknown)"}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {item.upstream_status_code ? (
+                        <span className={`px-2 py-1 rounded text-xs font-mono ${
+                          item.upstream_status_code === 429 ? "bg-amber-900/50 text-amber-300" :
+                          item.upstream_status_code >= 500 ? "bg-red-900/50 text-red-300" :
+                          item.upstream_status_code === 403 || item.upstream_status_code === 401 ? "bg-orange-900/50 text-orange-300" :
+                          "bg-zinc-700 text-zinc-300"
+                        }`}>
+                          {item.upstream_status_code}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-2 py-1 bg-zinc-700/50 text-zinc-300 rounded text-xs font-mono">
+                        {item.sample_error_type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-amber-300 font-medium">
+                      {item.error_count}
+                    </td>
+                    <td className="py-3 px-4 text-right text-zinc-400">
+                      {item.affected_hostnames}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Error Breakdown Table with Messages */}
       <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-zinc-800">
@@ -1229,6 +1306,7 @@ function ErrorAnalysisTab({
               <tr className="border-b border-zinc-700 bg-zinc-800/50">
                 <th className="text-left py-3 px-4 text-zinc-400 font-medium">Hostname</th>
                 <th className="text-left py-3 px-4 text-zinc-400 font-medium">Error Type</th>
+                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Upstream</th>
                 <th className="text-left py-3 px-4 text-zinc-400 font-medium">Sample Message</th>
                 <th className="text-right py-3 px-4 text-zinc-400 font-medium">Count</th>
                 <th className="text-right py-3 px-4 text-zinc-400 font-medium">Last Seen</th>
@@ -1251,6 +1329,27 @@ function ErrorAnalysisTab({
                         {item.error_type}
                       </span>
                     </td>
+                    <td className="py-3 px-4">
+                      {item.upstream_hostname ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs text-amber-300">
+                            {item.upstream_hostname}
+                          </span>
+                          {item.upstream_status_code > 0 && (
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-mono ${
+                              item.upstream_status_code === 429 ? "bg-amber-900/50 text-amber-300" :
+                              item.upstream_status_code >= 500 ? "bg-red-900/50 text-red-300" :
+                              item.upstream_status_code === 403 || item.upstream_status_code === 401 ? "bg-orange-900/50 text-orange-300" :
+                              "bg-zinc-700 text-zinc-300"
+                            }`}>
+                              {item.upstream_status_code}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-600 text-xs">-</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 max-w-md">
                       <p className="text-xs text-zinc-400 truncate" title={item.error_message}>
                         {item.error_message || "-"}
@@ -1265,9 +1364,9 @@ function ErrorAnalysisTab({
                   </tr>
                   {expandedError === i && (
                     <tr>
-                      <td colSpan={5} className="p-0">
+                      <td colSpan={6} className="p-0">
                         <div className="bg-zinc-800/50 p-4 border-t border-zinc-700">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">Error Details</h4>
                               <dl className="space-y-1 text-xs">
@@ -1288,6 +1387,31 @@ function ErrorAnalysisTab({
                                   <dd className="text-zinc-300">{item.latest_timestamp || "-"}</dd>
                                 </div>
                               </dl>
+                            </div>
+                            {/* Upstream Service Info */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-amber-400 uppercase mb-2">Upstream Service</h4>
+                              {item.upstream_hostname ? (
+                                <dl className="space-y-1 text-xs">
+                                  <div className="flex justify-between">
+                                    <dt className="text-zinc-500">Service</dt>
+                                    <dd className="text-amber-300 font-mono">{item.upstream_hostname}</dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-zinc-500">HTTP Status</dt>
+                                    <dd className={
+                                      item.upstream_status_code === 429 ? "text-amber-400" :
+                                      item.upstream_status_code >= 500 ? "text-red-400" :
+                                      item.upstream_status_code === 403 || item.upstream_status_code === 401 ? "text-orange-400" :
+                                      "text-zinc-300"
+                                    }>
+                                      {item.upstream_status_code || "-"}
+                                    </dd>
+                                  </div>
+                                </dl>
+                              ) : (
+                                <p className="text-xs text-zinc-500 italic">No upstream info available</p>
+                              )}
                             </div>
                             <div>
                               <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">Full Error Message</h4>
