@@ -2,7 +2,7 @@
   "name": "13ft",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "bun@1.3.4",
+  "packageManager": "bun@1.3.5",
   "scripts": {
     "dev": "next dev",
     "dev:full": "docker-compose up -d clickhouse && bun run dev",
