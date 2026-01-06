@@ -97,8 +97,8 @@ export function Banner() {
   );
 }
 const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
-  const logoDevToken = process.env.NEXT_PUBLIC_LOGODEV_TOKEN;
-  const logoUrl = `https://img.logo.dev/${url}?token=${logoDevToken}&size=64&greyscale=true&format=png`;
+  // Use Google's favicon service - free and reliable
+  const logoUrl = `https://www.google.com/s2/favicons?domain=${url}&sz=64`;
   
   return (
     <div className="flex flex-col items-center space-y-2">
