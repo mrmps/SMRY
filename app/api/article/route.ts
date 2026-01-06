@@ -14,17 +14,14 @@ import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib
 import { getTextDirection } from "@/lib/rtl";
 import { storeArticleHtml } from "@/lib/db";
 
-/**
- * Create a fresh VirtualConsole for each JSDOM instance.
- * This prevents memory accumulation from a shared singleton.
- */
-function createVirtualConsole(): VirtualConsole {
-  const vc = new VirtualConsole();
-  vc.on("error", () => {
-    // Intentionally ignore CSS parsing errors
-  });
-  return vc;
-}
+// MEMORY LEAK FIX: Shared VirtualConsole singleton
+// Creating new VirtualConsole instances per request with event listeners
+// causes memory accumulation because the listeners are never cleaned up.
+// Using a single shared instance eliminates per-request allocation.
+const sharedVirtualConsole = new VirtualConsole();
+sharedVirtualConsole.on("error", () => {
+  // Intentionally suppress CSS parsing errors from JSDOM
+});
 
 // Logger for internal helper functions (debug level)
 const logger = createLogger("api:article");
@@ -231,7 +228,7 @@ async function fetchArticleWithSmryFast(
     // Store original HTML before Readability parsing
     const originalHtml = html;
 
-    const dom = new JSDOM(html, { url, virtualConsole: createVirtualConsole() });
+    const dom = new JSDOM(html, { url, virtualConsole: sharedVirtualConsole });
     try {
       const reader = new Readability(dom.window.document);
       const parsed = reader.parse();

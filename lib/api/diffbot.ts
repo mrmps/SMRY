@@ -7,12 +7,21 @@ import {
   UpstreamErrorInfo,
 } from "@/lib/errors/types";
 import { createLogger } from "@/lib/logger";
-import { JSDOM } from "jsdom";
+import { JSDOM, VirtualConsole } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const logger = createLogger('lib:diffbot');
+
+// MEMORY LEAK FIX: Shared VirtualConsole singleton
+// Creating new VirtualConsole instances per request with event listeners
+// causes memory accumulation because the listeners are never cleaned up.
+// Using a single shared instance eliminates per-request allocation.
+const sharedVirtualConsole = new VirtualConsole();
+sharedVirtualConsole.on("error", () => {
+  // Intentionally suppress CSS parsing errors from JSDOM
+});
 
 /**
  * Extract HTTP status code from error message strings
@@ -281,12 +290,8 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
       }
     }
 
-    // Suppress CSS parsing errors
-    const { VirtualConsole } = require('jsdom');
-    const virtualConsole = new VirtualConsole();
-    virtualConsole.on("error", () => {}); // Suppress errors
-
-    const dom = new JSDOM(html, { url: baseUrl, virtualConsole });
+    // Use shared VirtualConsole singleton to prevent memory leaks
+    const dom = new JSDOM(html, { url: baseUrl, virtualConsole: sharedVirtualConsole });
     jsdomInstances.push(dom);
     const doc = dom.window.document;
 
@@ -311,7 +316,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
           <!DOCTYPE html>
           <html><head><title>${doc.title || 'Article'}</title></head>
           <body><article>${container.innerHTML}</article></body></html>
-        `, { url: baseUrl, virtualConsole });
+        `, { url: baseUrl, virtualConsole: sharedVirtualConsole });
         jsdomInstances.push(cleanDom);
         const cleanDoc = cleanDom.window.document;
 
@@ -583,10 +588,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
                let tempDom: JSDOM | null = null;
                try {
                  const domToUse = (obj.dom || domForFallback) as string;
-                 const { VirtualConsole } = require('jsdom');
-                 const virtualConsole = new VirtualConsole();
-                 virtualConsole.on("error", () => {});
-                 tempDom = new JSDOM(domToUse, { virtualConsole });
+                 // Use shared VirtualConsole singleton to prevent memory leaks
+                 tempDom = new JSDOM(domToUse, { virtualConsole: sharedVirtualConsole });
                  const doc = tempDom.window.document;
                  if (!extractedDate) extractedDate = extractDateFromDom(doc);
                  if (!extractedImage) extractedImage = extractImageFromDom(doc);
@@ -675,10 +678,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           if ((!extractedDate || !extractedImage) && dom) {
              let tempDom: JSDOM | null = null;
              try {
-               const { VirtualConsole } = require('jsdom');
-               const virtualConsole = new VirtualConsole();
-               virtualConsole.on("error", () => {});
-               tempDom = new JSDOM(dom, { virtualConsole });
+               // Use shared VirtualConsole singleton to prevent memory leaks
+               tempDom = new JSDOM(dom, { virtualConsole: sharedVirtualConsole });
                const doc = tempDom.window.document;
                if (!extractedDate) extractedDate = extractDateFromDom(doc);
                if (!extractedImage) extractedImage = extractImageFromDom(doc);
