@@ -29,56 +29,7 @@ export interface HardPaywallSite {
  * List of sites with hard paywalls that cannot be bypassed.
  * These sites have 0% success rate across all extraction methods.
  */
-export const HARD_PAYWALL_SITES: HardPaywallSite[] = [
-  {
-    hostname: "www.bloomberg.com",
-    name: "Bloomberg",
-    addedAt: "2026-01-05",
-    notes: "0% success on all sources. Requires Bloomberg subscription.",
-  },
-  {
-    hostname: "www.barrons.com",
-    name: "Barron's",
-    addedAt: "2026-01-05",
-    notes: "0% success on all sources. Requires Dow Jones/WSJ subscription.",
-  },
-  {
-    hostname: "www.ft.com",
-    name: "Financial Times",
-    addedAt: "2026-01-05",
-    notes: "Very low success rate. Premium financial news paywall.",
-  },
-  {
-    hostname: "www.economist.com",
-    name: "The Economist",
-    addedAt: "2026-01-05",
-    notes: "Hard paywall with metered access. Most content blocked.",
-  },
-  {
-    hostname: "www.wsj.com",
-    name: "Wall Street Journal",
-    addedAt: "2026-01-05",
-    notes: "Some articles accessible via wayback, but most are hard paywalled.",
-  },
-  {
-    hostname: "www.thetimes.com",
-    name: "The Times (UK)",
-    addedAt: "2026-01-05",
-    notes: "0% success. Strict hard paywall.",
-  },
-  {
-    hostname: "www.telegraph.co.uk",
-    name: "The Telegraph",
-    addedAt: "2026-01-05",
-    notes: "Hard paywall on most content.",
-  },
-  {
-    hostname: "theathletic.com",
-    name: "The Athletic",
-    addedAt: "2026-01-05",
-    notes: "NYT-owned sports site with strict paywall.",
-  },
-];
+export const HARD_PAYWALL_SITES: HardPaywallSite[] = [];
 
 /**
  * Set for O(1) hostname lookup
