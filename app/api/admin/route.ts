@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       hourlyEndpointTraffic,
       universallyBroken,
     ] = await Promise.all([
-      // 1. Which sites consistently error (top 50 by volume)
+      // 1. Which sites consistently error (top 200 by volume)
       queryClickhouse<HostnameStats>(`
         SELECT
           hostname,
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
           AND hostname != ''
         GROUP BY hostname
         ORDER BY total_requests DESC
-        LIMIT 50
+        LIMIT 200
       `),
 
       // 2. Which sources work for which sites (show all with at least 1 request)

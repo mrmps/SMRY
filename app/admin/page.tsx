@@ -434,6 +434,11 @@ function AnalyticsDashboardContent() {
 
 // ============ Overview Tab ============
 function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix: Record<string, Record<string, number>> }) {
+  const [sitesPage, setSitesPage] = useState(0);
+  const sitesPerPage = 100;
+  const totalSites = Math.min(data.hostnameStats.length, 200);
+  const totalPages = Math.ceil(totalSites / sitesPerPage);
+
   return (
     <>
       {/* Health KPIs */}
@@ -570,14 +575,43 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
 
       {/* Top Sites by Traffic */}
       <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 mb-8">
-        <h2 className="text-lg font-semibold text-zinc-100 mb-4">
-          Top Sites by Traffic
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-zinc-100">
+            Top Sites by Traffic
+            <span className="text-xs text-zinc-500 font-normal ml-2">
+              ({totalSites} sites)
+            </span>
+          </h2>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSitesPage(Math.max(0, sitesPage - 1))}
+                disabled={sitesPage === 0}
+                className="px-3 py-1 text-sm rounded-md bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              <span className="text-sm text-zinc-400">
+                {sitesPage + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => setSitesPage(Math.min(totalPages - 1, sitesPage + 1))}
+                disabled={sitesPage >= totalPages - 1}
+                className="px-3 py-1 text-sm rounded-md bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
         {data.hostnameStats.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-700">
+                  <th className="text-left py-3 px-4 text-zinc-400 font-medium">
+                    #
+                  </th>
                   <th className="text-left py-3 px-4 text-zinc-400 font-medium">
                     Site
                   </th>
@@ -609,17 +643,22 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
               </thead>
               <tbody>
                 {data.hostnameStats
-                  .slice(0, 30)
-                  .map((site) => {
+                  .slice(0, totalSites)
+                  .slice(sitesPage * sitesPerPage, (sitesPage + 1) * sitesPerPage)
+                  .map((site, idx) => {
                     const sources = sourceMatrix[site.hostname] || {};
+                    const rank = sitesPage * sitesPerPage + idx + 1;
                     return (
                       <tr
                         key={site.hostname}
                         className="border-b border-zinc-800 hover:bg-zinc-800/50"
                       >
+                        <td className="py-3 px-4 text-zinc-500 text-xs">
+                          {rank}
+                        </td>
                         <td className="py-3 px-4 font-mono text-xs text-zinc-300">
-                          {site.hostname.length > 25
-                            ? site.hostname.slice(0, 25) + "..."
+                          {site.hostname.length > 30
+                            ? site.hostname.slice(0, 30) + "..."
                             : site.hostname}
                         </td>
                         <td className="py-3 px-4 text-right text-zinc-200 font-medium">
