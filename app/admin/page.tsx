@@ -124,6 +124,14 @@ interface DashboardData {
     success_count: number;
     error_count: number;
   }>;
+  universallyBroken: Array<{
+    hostname: string;
+    total_requests: number;
+    sources_tried: number;
+    sources_list: string;
+    overall_success_rate: number;
+    sample_url: string;
+  }>;
 }
 
 type TabType = "overview" | "requests" | "live" | "errors";
@@ -395,6 +403,7 @@ function AnalyticsDashboardContent() {
           <ErrorAnalysisTab
             errorBreakdown={data.errorBreakdown}
             hostnameStats={data.hostnameStats}
+            universallyBroken={data.universallyBroken}
           />
         )}
       </div>
@@ -1015,12 +1024,70 @@ function LiveStreamTab({
 function ErrorAnalysisTab({
   errorBreakdown,
   hostnameStats,
+  universallyBroken,
 }: {
   errorBreakdown: DashboardData["errorBreakdown"];
   hostnameStats: DashboardData["hostnameStats"];
+  universallyBroken: DashboardData["universallyBroken"];
 }) {
   return (
     <div className="space-y-6">
+      {/* Universally Broken Sites - HIGH PRIORITY */}
+      {universallyBroken && universallyBroken.length > 0 && (
+        <div className="bg-red-950/20 rounded-lg border border-red-900/50 overflow-hidden">
+          <div className="p-4 border-b border-red-900/50 bg-red-950/30">
+            <h2 className="text-lg font-semibold text-red-400 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+              Universally Broken Sites
+            </h2>
+            <p className="text-xs text-red-300/70 mt-1">
+              Sites where ALL attempted sources failed (0% success rate). Consider adding to hard paywall blocklist.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-red-900/30 bg-red-950/20">
+                  <th className="text-left py-3 px-4 text-red-300 font-medium">Hostname</th>
+                  <th className="text-center py-3 px-4 text-red-300 font-medium">Sources Tried</th>
+                  <th className="text-right py-3 px-4 text-red-300 font-medium">Total Requests</th>
+                  <th className="text-left py-3 px-4 text-red-300 font-medium">Sample URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {universallyBroken.map((item, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-red-900/20 hover:bg-red-950/30"
+                  >
+                    <td className="py-3 px-4 font-mono text-xs text-red-200">
+                      {item.hostname}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="text-xs text-red-300">
+                        {item.sources_tried} sources
+                      </span>
+                      <span className="block text-xs text-red-400/60 mt-0.5">
+                        {item.sources_list}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-red-300 font-medium">
+                      {item.total_requests}
+                    </td>
+                    <td className="py-3 px-4 max-w-xs">
+                      <p className="text-xs text-red-400/80 truncate" title={item.sample_url}>
+                        {item.sample_url}
+                      </p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Error Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-800">

@@ -100,6 +100,15 @@ interface HourlyEndpointTraffic {
   error_count: number;
 }
 
+interface UniversallyBrokenHostname {
+  hostname: string;
+  total_requests: number;
+  sources_tried: number;
+  sources_list: string;
+  overall_success_rate: number;
+  sample_url: string;
+}
+
 export async function GET(request: NextRequest) {
   // Parse time range
   const timeRange = request.nextUrl.searchParams.get("range") || "24h";
@@ -156,6 +165,7 @@ export async function GET(request: NextRequest) {
       liveRequests,
       endpointStats,
       hourlyEndpointTraffic,
+      universallyBroken,
     ] = await Promise.all([
       // 1. Which sites consistently error (top 50 by volume)
       queryClickhouse<HostnameStats>(`
@@ -202,15 +212,15 @@ export async function GET(request: NextRequest) {
         ORDER BY hour
       `),
 
-      // 4. Error breakdown by hostname and type - NOW WITH ERROR MESSAGES AND SEVERITY
+      // 4. Error breakdown by hostname and type - WITH ERROR MESSAGES
       queryClickhouse<ErrorBreakdown>(`
         SELECT
           hostname,
           error_type,
           any(error_message) AS error_message,
-          any(error_severity) AS error_severity,
+          '' AS error_severity,
           count() AS error_count,
-          max(timestamp) AS latest_timestamp
+          formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS latest_timestamp
         FROM request_events
         WHERE timestamp > now() - INTERVAL ${hours} HOUR
           AND outcome = 'error'
@@ -329,6 +339,29 @@ export async function GET(request: NextRequest) {
         GROUP BY hour, endpoint
         ORDER BY hour, endpoint
       `),
+
+      // 11. Universally broken hostnames - sites where ALL sources fail
+      // Shows hostnames with 0% success rate across multiple sources
+      queryClickhouse<UniversallyBrokenHostname>(`
+        SELECT
+          hostname,
+          count() AS total_requests,
+          uniq(source) AS sources_tried,
+          arrayStringConcat(groupArray(DISTINCT source), ', ') AS sources_list,
+          round(countIf(outcome = 'success') / count() * 100, 2) AS overall_success_rate,
+          any(url) AS sample_url
+        FROM request_events
+        WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND hostname != ''
+          AND source != ''
+        GROUP BY hostname
+        HAVING
+          sources_tried >= 2
+          AND overall_success_rate = 0
+          AND total_requests >= 3
+        ORDER BY total_requests DESC
+        LIMIT 50
+      `),
     ]);
 
     // Get buffer stats for monitoring
@@ -369,6 +402,7 @@ export async function GET(request: NextRequest) {
       liveRequests,
       endpointStats,
       hourlyEndpointTraffic,
+      universallyBroken,
     });
   } catch (error) {
     console.error("[analytics] Query error:", error);
