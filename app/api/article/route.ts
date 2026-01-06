@@ -9,19 +9,13 @@ import { AppError, createNetworkError, createParseError } from "@/lib/errors";
 import { isHardPaywall, getHardPaywallInfo } from "@/lib/hard-paywalls";
 import { createLogger } from "@/lib/logger";
 import { Readability } from "@mozilla/readability";
-import { JSDOM, VirtualConsole } from "jsdom";
+import { parseHTML } from "linkedom";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 import { getTextDirection } from "@/lib/rtl";
 import { storeArticleHtml } from "@/lib/db";
 
-// MEMORY LEAK FIX: Shared VirtualConsole singleton
-// Creating new VirtualConsole instances per request with event listeners
-// causes memory accumulation because the listeners are never cleaned up.
-// Using a single shared instance eliminates per-request allocation.
-const sharedVirtualConsole = new VirtualConsole();
-sharedVirtualConsole.on("error", () => {
-  // Intentionally suppress CSS parsing errors from JSDOM
-});
+// PERFORMANCE: Using LinkedOM instead of JSDOM
+// LinkedOM is 10-50x faster and has no memory leak concerns
 
 // Logger for internal helper functions (debug level)
 const logger = createLogger("api:article");
@@ -228,73 +222,68 @@ async function fetchArticleWithSmryFast(
     // Store original HTML before Readability parsing
     const originalHtml = html;
 
-    const dom = new JSDOM(html, { url, virtualConsole: sharedVirtualConsole });
-    try {
-      const reader = new Readability(dom.window.document);
-      const parsed = reader.parse();
+    // LinkedOM: Fast HTML parsing (10-50x faster than JSDOM, no cleanup needed)
+    const { document } = parseHTML(html);
+    const reader = new Readability(document);
+    const parsed = reader.parse();
 
-      if (!parsed || !parsed.content || !parsed.textContent) {
-        logger.warn({ source: "smry-fast" }, 'Readability extraction failed');
-        return {
-          error: createParseError('Failed to extract article content with Readability', 'smry-fast'),
-        };
-      }
-
-      // Extract language from HTML
-      const htmlLang = dom.window.document.documentElement.getAttribute('lang') ||
-                       dom.window.document.documentElement.getAttribute('xml:lang') ||
-                       parsed.lang || // Readability may extract this
-                       null;
-
-      // Detect text direction based on language or content analysis
-      const textDir = getTextDirection(htmlLang, parsed.textContent);
-
-      const articleCandidate: CachedArticle = {
-        title: parsed.title || dom.window.document.title || 'Untitled',
-        content: parsed.content,
-        textContent: parsed.textContent,
-        length: parsed.textContent.length,
-        siteName: (() => {
-          try {
-            return new URL(url).hostname;
-          } catch {
-            return parsed.siteName || 'unknown';
-          }
-        })(),
-        byline: parsed.byline,
-        publishedTime: extractDateFromDom(dom.window.document) || null,
-        image: extractImageFromDom(dom.window.document) || null,
-        htmlContent: originalHtml, // Original page HTML
-        lang: htmlLang,
-        dir: textDir,
-      };
-
-      const validationResult = CachedArticleSchema.safeParse(articleCandidate);
-
-      if (!validationResult.success) {
-        const validationError = fromError(validationResult.error);
-        logger.error({ source: "smry-fast", validationError: validationError.toString() }, 'Readability article validation failed');
-        return {
-          error: createParseError(
-            `Invalid Readability article: ${validationError.toString()}`,
-            'smry-fast',
-            validationError
-          ),
-        };
-      }
-
-      const validatedArticle = validationResult.data;
-      logger.debug({ source: "smry-fast", title: validatedArticle.title, length: validatedArticle.length }, 'Direct article parsed and validated');
-
+    if (!parsed || !parsed.content || !parsed.textContent) {
+      logger.warn({ source: "smry-fast" }, 'Readability extraction failed');
       return {
-        article: validatedArticle,
-        cacheURL: url,
+        error: createParseError('Failed to extract article content with Readability', 'smry-fast'),
       };
-    } finally {
-      // IMPORTANT: Close JSDOM window to prevent memory leaks
-      // See docs/MEMORY_LEAK_FIX.md for details
-      dom.window.close();
     }
+
+    // Extract language from HTML
+    const htmlLang = document.documentElement.getAttribute('lang') ||
+                     document.documentElement.getAttribute('xml:lang') ||
+                     parsed.lang || // Readability may extract this
+                     null;
+
+    // Detect text direction based on language or content analysis
+    const textDir = getTextDirection(htmlLang, parsed.textContent);
+
+    const articleCandidate: CachedArticle = {
+      title: parsed.title || document.title || 'Untitled',
+      content: parsed.content,
+      textContent: parsed.textContent,
+      length: parsed.textContent.length,
+      siteName: (() => {
+        try {
+          return new URL(url).hostname;
+        } catch {
+          return parsed.siteName || 'unknown';
+        }
+      })(),
+      byline: parsed.byline,
+      publishedTime: extractDateFromDom(document) || null,
+      image: extractImageFromDom(document) || null,
+      htmlContent: originalHtml, // Original page HTML
+      lang: htmlLang,
+      dir: textDir,
+    };
+
+    const validationResult = CachedArticleSchema.safeParse(articleCandidate);
+
+    if (!validationResult.success) {
+      const validationError = fromError(validationResult.error);
+      logger.error({ source: "smry-fast", validationError: validationError.toString() }, 'Readability article validation failed');
+      return {
+        error: createParseError(
+          `Invalid Readability article: ${validationError.toString()}`,
+          'smry-fast',
+          validationError
+        ),
+      };
+    }
+
+    const validatedArticle = validationResult.data;
+    logger.debug({ source: "smry-fast", title: validatedArticle.title, length: validatedArticle.length }, 'Direct article parsed and validated');
+
+    return {
+      article: validatedArticle,
+      cacheURL: url,
+    };
   } catch (error) {
     // Handle timeout/abort errors specifically
     if (error instanceof Error && error.name === 'AbortError') {

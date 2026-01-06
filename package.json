@@ -39,6 +39,7 @@
     "harden-react-markdown": "^1.1.5",
     "jsdom": "^22.1.0",
     "katex": "^0.16.25",
+    "linkedom": "^0.18.12",
     "lucide-react": "^0.554.0",
     "marked": "^10.0.0",
     "motion": "^12.23.24",

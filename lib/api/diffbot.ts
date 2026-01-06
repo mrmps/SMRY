@@ -7,21 +7,18 @@ import {
   UpstreamErrorInfo,
 } from "@/lib/errors/types";
 import { createLogger } from "@/lib/logger";
-import { JSDOM, VirtualConsole } from "jsdom";
+import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const logger = createLogger('lib:diffbot');
 
-// MEMORY LEAK FIX: Shared VirtualConsole singleton
-// Creating new VirtualConsole instances per request with event listeners
-// causes memory accumulation because the listeners are never cleaned up.
-// Using a single shared instance eliminates per-request allocation.
-const sharedVirtualConsole = new VirtualConsole();
-sharedVirtualConsole.on("error", () => {
-  // Intentionally suppress CSS parsing errors from JSDOM
-});
+// PERFORMANCE: Using LinkedOM instead of JSDOM
+// LinkedOM is 10-50x faster than JSDOM and has no memory leak issues
+// - No VirtualConsole needed (no event listeners to accumulate)
+// - No explicit cleanup needed (no window.close() required)
+// - Lower memory footprint per parse operation
 
 /**
  * Extract HTTP status code from error message strings
@@ -274,10 +271,6 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
     domLength: html.length,
   });
 
-  // Track JSDOM instances to ensure cleanup - prevents memory leaks
-  // See docs/MEMORY_LEAK_FIX.md for details
-  const jsdomInstances: JSDOM[] = [];
-
   try {
     // Extract original URL from Wayback URL if present
     let baseUrl = url;
@@ -290,10 +283,8 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
       }
     }
 
-    // Use shared VirtualConsole singleton to prevent memory leaks
-    const dom = new JSDOM(html, { url: baseUrl, virtualConsole: sharedVirtualConsole });
-    jsdomInstances.push(dom);
-    const doc = dom.window.document;
+    // LinkedOM: Fast HTML parsing without memory leak concerns
+    const { document: doc } = parseHTML(html);
 
     // Try to find the main article container first
     // This helps with pages that have complex layouts (like Google Blogger)
@@ -312,13 +303,11 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
         logger.debug({ selector, contentLength: container.textContent.length }, 'Found article container');
 
         // Create a clean document with just the article content
-        const cleanDom = new JSDOM(`
+        const { document: cleanDoc } = parseHTML(`
           <!DOCTYPE html>
           <html><head><title>${doc.title || 'Article'}</title></head>
           <body><article>${container.innerHTML}</article></body></html>
-        `, { url: baseUrl, virtualConsole: sharedVirtualConsole });
-        jsdomInstances.push(cleanDom);
-        const cleanDoc = cleanDom.window.document;
+        `);
 
         const reader = new Readability(cleanDoc);
         const article = reader.parse();
@@ -444,16 +433,8 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
       errorDetails: error instanceof Error ? error.message : String(error),
     });
     return null;
-  } finally {
-    // IMPORTANT: Close all JSDOM windows to prevent memory leaks
-    for (const instance of jsdomInstances) {
-      try {
-        instance.window.close();
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
   }
+  // Note: LinkedOM doesn't require explicit cleanup like JSDOM's window.close()
 }
 
 /**
@@ -585,19 +566,13 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             
             // If no date/image from Diffbot, try to extract from DOM if available
             if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback)) {
-               let tempDom: JSDOM | null = null;
                try {
                  const domToUse = (obj.dom || domForFallback) as string;
-                 // Use shared VirtualConsole singleton to prevent memory leaks
-                 tempDom = new JSDOM(domToUse, { virtualConsole: sharedVirtualConsole });
-                 const doc = tempDom.window.document;
+                 const { document: doc } = parseHTML(domToUse);
                  if (!extractedDate) extractedDate = extractDateFromDom(doc);
                  if (!extractedImage) extractedImage = extractImageFromDom(doc);
                } catch {
                  // Ignore errors
-               } finally {
-                 // Close JSDOM to prevent memory leaks
-                 tempDom?.window.close();
                }
             }
 
@@ -676,18 +651,12 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           
           // If no date/image from Diffbot, try to extract from DOM
           if ((!extractedDate || !extractedImage) && dom) {
-             let tempDom: JSDOM | null = null;
              try {
-               // Use shared VirtualConsole singleton to prevent memory leaks
-               tempDom = new JSDOM(dom, { virtualConsole: sharedVirtualConsole });
-               const doc = tempDom.window.document;
+               const { document: doc } = parseHTML(dom);
                if (!extractedDate) extractedDate = extractDateFromDom(doc);
                if (!extractedImage) extractedImage = extractImageFromDom(doc);
              } catch {
                // Ignore errors during extra DOM parsing
-             } finally {
-               // Close JSDOM to prevent memory leaks
-               tempDom?.window.close();
              }
           }
 
