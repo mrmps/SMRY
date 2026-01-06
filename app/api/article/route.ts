@@ -568,9 +568,17 @@ export async function GET(request: NextRequest) {
 
     if ("error" in result) {
       const appError = result.error;
+      // Include upstream context if available (tells us which host/service actually failed)
+      const upstream = "upstream" in appError ? appError.upstream : undefined;
       ctx.error(appError.message, {
         error_type: appError.type,
         status_code: 500,
+        ...(upstream && {
+          upstream_hostname: upstream.hostname,
+          upstream_status_code: upstream.statusCode,
+          upstream_error_code: upstream.errorCode,
+          upstream_message: upstream.message,
+        }),
       });
 
       return NextResponse.json(

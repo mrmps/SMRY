@@ -62,6 +62,11 @@ export interface AnalyticsEvent {
   error_type: string;
   error_message: string;
   error_severity: ErrorSeverity;
+  // Upstream error info - which host/service actually caused the error
+  upstream_hostname: string;
+  upstream_status_code: number;
+  upstream_error_code: string;
+  upstream_message: string;
   duration_ms: number;
   fetch_ms: number;
   cache_lookup_ms: number;
@@ -168,6 +173,10 @@ async function ensureSchema(): Promise<void> {
             error_type LowCardinality(String) DEFAULT '',
             error_message String DEFAULT '',
             error_severity LowCardinality(String) DEFAULT '',
+            upstream_hostname LowCardinality(String) DEFAULT '',
+            upstream_status_code UInt16 DEFAULT 0,
+            upstream_error_code LowCardinality(String) DEFAULT '',
+            upstream_message String DEFAULT '',
             duration_ms UInt32,
             fetch_ms UInt32 DEFAULT 0,
             cache_lookup_ms UInt32 DEFAULT 0,
@@ -195,6 +204,24 @@ async function ensureSchema(): Promise<void> {
         SETTINGS index_granularity = 8192
       `,
     });
+
+    // Add new upstream columns to existing tables (safe for already-existing tables)
+    try {
+      await clickhouse.command({
+        query: `ALTER TABLE request_events ADD COLUMN IF NOT EXISTS upstream_hostname LowCardinality(String) DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE request_events ADD COLUMN IF NOT EXISTS upstream_status_code UInt16 DEFAULT 0`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE request_events ADD COLUMN IF NOT EXISTS upstream_error_code LowCardinality(String) DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE request_events ADD COLUMN IF NOT EXISTS upstream_message String DEFAULT ''`,
+      });
+    } catch {
+      // Ignore errors - columns may already exist
+    }
 
     schemaMigrated = true;
     console.log("[clickhouse] Schema migration complete");
@@ -283,6 +310,10 @@ export function trackEvent(event: Partial<AnalyticsEvent>): void {
     error_type: event.error_type || "",
     error_message: event.error_message || "",
     error_severity: event.error_severity || "",
+    upstream_hostname: event.upstream_hostname || "",
+    upstream_status_code: event.upstream_status_code || 0,
+    upstream_error_code: event.upstream_error_code || "",
+    upstream_message: (event.upstream_message || "").slice(0, 500), // Truncate
     duration_ms: event.duration_ms || 0,
     fetch_ms: event.fetch_ms || 0,
     cache_lookup_ms: event.cache_lookup_ms || 0,

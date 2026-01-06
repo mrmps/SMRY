@@ -4,6 +4,7 @@ import {
   createDiffbotError,
   DebugContext,
   DebugStep,
+  UpstreamErrorInfo,
 } from "@/lib/errors/types";
 import { createLogger } from "@/lib/logger";
 import { JSDOM } from "jsdom";
@@ -12,6 +13,43 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const logger = createLogger('lib:diffbot');
+
+/**
+ * Extract HTTP status code from error message strings
+ * Matches patterns like "(429)", "(403)", "HTTP 429", "error 500", etc.
+ */
+function extractStatusFromError(errorMsg: string): number | undefined {
+  // Match patterns like "(429)", "(403)", "HTTP 429", "error 500", "status 404"
+  const match = errorMsg.match(/\((\d{3})\)|HTTP\s*(\d{3})|error\s*(\d{3})|status\s*(\d{3})/i);
+  if (match) {
+    const code = match[1] || match[2] || match[3] || match[4];
+    return code ? parseInt(code, 10) : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Extract hostname from a URL string safely
+ */
+function extractHostnameFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Build upstream error info from URL and error message
+ */
+function buildUpstreamErrorInfo(url: string, errorMsg: string, errorCode?: number | string): UpstreamErrorInfo {
+  return {
+    hostname: extractHostnameFromUrl(url),
+    statusCode: extractStatusFromError(errorMsg) || (typeof errorCode === 'number' ? errorCode : undefined),
+    errorCode: errorCode?.toString(),
+    message: errorMsg,
+  };
+}
 
 // Zod schemas for Diffbot API responses
 const DiffbotStatsSchema = z.object({
@@ -776,24 +814,33 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
     }),
     (error) => {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      
-      // Check for specific error patterns
+
+      // Build upstream error info - this tells us which host actually failed
+      // (e.g., web.archive.org when fetching wayback, or the target site when fetching directly)
+      const upstream = buildUpstreamErrorInfo(url, errorMsg);
+
+      // Check for specific error patterns and return with upstream context
       if (errorMsg.toLowerCase().includes('rate limit') || errorMsg.includes('429')) {
-        return createDiffbotError(`Rate limit exceeded`, url, error, debugContext);
+        upstream.statusCode = 429;
+        return createDiffbotError(`Rate limit exceeded`, url, error, debugContext, upstream);
       } else if (errorMsg.toLowerCase().includes('timeout')) {
-        return createDiffbotError(`Request timeout`, url, error, debugContext);
+        return createDiffbotError(`Request timeout`, url, error, debugContext, upstream);
       } else if (errorMsg.toLowerCase().includes('unauthorized') || errorMsg.includes('401')) {
-        return createDiffbotError(`API authentication failed`, url, error, debugContext);
+        upstream.statusCode = 401;
+        return createDiffbotError(`API authentication failed`, url, error, debugContext, upstream);
       } else if (errorMsg.toLowerCase().includes('incomplete')) {
-        return createDiffbotError(`Incomplete article data returned`, url, error, debugContext);
+        return createDiffbotError(`Incomplete article data returned`, url, error, debugContext, upstream);
       } else if (errorMsg.includes('404') || errorMsg.toLowerCase().includes('could not download page')) {
-        return createDiffbotError(`Page not found or could not be accessed (404)`, url, error, debugContext);
+        upstream.statusCode = 404;
+        return createDiffbotError(`Page not found or could not be accessed (404)`, url, error, debugContext, upstream);
       } else if (errorMsg.includes('403')) {
-        return createDiffbotError(`Access forbidden (403)`, url, error, debugContext);
+        upstream.statusCode = 403;
+        return createDiffbotError(`Access forbidden (403)`, url, error, debugContext, upstream);
       } else if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) {
-        return createDiffbotError(`Server error while fetching page`, url, error, debugContext);
+        upstream.statusCode = extractStatusFromError(errorMsg) || 500;
+        return createDiffbotError(`Server error while fetching page`, url, error, debugContext, upstream);
       } else {
-        return createDiffbotError(`${errorMsg.substring(0, 150)}`, url, error, debugContext);
+        return createDiffbotError(`${errorMsg.substring(0, 150)}`, url, error, debugContext, upstream);
       }
     }
   );

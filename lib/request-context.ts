@@ -160,6 +160,11 @@ export function createRequestContext(initial?: InitialContext): RequestContext {
       error_type: (event.error_type as string) || "",
       error_message: (event.error_message as string) || "",
       error_severity: (event.error_severity as ErrorSeverity) || "",
+      // Upstream error info - which host/service actually caused the error
+      upstream_hostname: (event.upstream_hostname as string) || "",
+      upstream_status_code: (event.upstream_status_code as number) || 0,
+      upstream_error_code: (event.upstream_error_code as string) || "",
+      upstream_message: (event.upstream_message as string) || "",
       duration_ms: event.duration_ms as number,
       fetch_ms: (event.fetch_ms as number) || 0,
       cache_lookup_ms: (event.cache_lookup_ms as number) || 0,

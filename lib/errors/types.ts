@@ -1,4 +1,15 @@
 /**
+ * Upstream error info for debugging proxy chains
+ * Captures which service/host actually caused the error
+ */
+export interface UpstreamErrorInfo {
+  hostname: string;        // Which host returned the error (e.g., "web.archive.org", "api.diffbot.com")
+  statusCode?: number;     // HTTP status from that host (e.g., 429, 403, 500)
+  errorCode?: string;      // API-specific error code if available
+  message: string;         // Original error message from upstream
+}
+
+/**
  * Debug context for troubleshooting extraction issues
  * Captures all intermediate data and steps in the extraction pipeline
  */
@@ -50,6 +61,7 @@ export type NetworkError = {
   message: string;
   statusCode?: number;
   url: string;
+  upstream?: UpstreamErrorInfo;
   originalError?: string;
   debugContext?: DebugContext;
 };
@@ -59,6 +71,7 @@ export type ProxyError = {
   type: "PROXY_ERROR";
   message: string;
   url: string;
+  upstream?: UpstreamErrorInfo;
   originalError?: string;
   debugContext?: DebugContext;
 };
@@ -68,6 +81,7 @@ export type DiffbotError = {
   type: "DIFFBOT_ERROR";
   message: string;
   url: string;
+  upstream?: UpstreamErrorInfo;
   originalError?: string;
   debugContext?: DebugContext;
 };
@@ -87,6 +101,7 @@ export type TimeoutError = {
   message: string;
   url: string;
   timeoutMs: number;
+  upstream?: UpstreamErrorInfo;
   originalError?: string;
   debugContext?: DebugContext;
 };
@@ -98,6 +113,7 @@ export type RateLimitError = {
   statusCode: 429;
   url: string;
   retryAfter?: number;
+  upstream?: UpstreamErrorInfo;
   originalError?: string;
   debugContext?: DebugContext;
 };
@@ -145,12 +161,14 @@ export const createNetworkError = (
   url: string,
   statusCode?: number,
   originalError?: unknown,
-  debugContext?: DebugContext
+  debugContext?: DebugContext,
+  upstream?: UpstreamErrorInfo
 ): NetworkError => ({
   type: "NETWORK_ERROR",
   message,
   url,
   statusCode,
+  upstream,
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
   debugContext,
 });
@@ -159,11 +177,13 @@ export const createProxyError = (
   message: string,
   url: string,
   originalError?: unknown,
-  debugContext?: DebugContext
+  debugContext?: DebugContext,
+  upstream?: UpstreamErrorInfo
 ): ProxyError => ({
   type: "PROXY_ERROR",
   message,
   url,
+  upstream,
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
   debugContext,
 });
@@ -172,11 +192,13 @@ export const createDiffbotError = (
   message: string,
   url: string,
   originalError?: unknown,
-  debugContext?: DebugContext
+  debugContext?: DebugContext,
+  upstream?: UpstreamErrorInfo
 ): DiffbotError => ({
   type: "DIFFBOT_ERROR",
   message,
   url,
+  upstream,
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
   debugContext,
 });
@@ -192,24 +214,32 @@ export const createParseError = (
   originalError: originalError instanceof Error ? originalError.message : String(originalError),
 });
 
-export const createTimeoutError = (url: string, timeoutMs: number, originalError?: unknown): TimeoutError => ({
+export const createTimeoutError = (
+  url: string,
+  timeoutMs: number,
+  originalError?: unknown,
+  upstream?: UpstreamErrorInfo
+): TimeoutError => ({
   type: "TIMEOUT_ERROR",
   message: `Request timed out after ${timeoutMs}ms`,
   url,
   timeoutMs,
+  upstream,
   originalError: originalError instanceof Error ? originalError.message : originalError ? String(originalError) : undefined,
 });
 
 export const createRateLimitError = (
   url: string,
   retryAfter?: number,
-  originalError?: unknown
+  originalError?: unknown,
+  upstream?: UpstreamErrorInfo
 ): RateLimitError => ({
   type: "RATE_LIMIT_ERROR",
   message: "Rate limit exceeded. Please try again later.",
   statusCode: 429,
   url,
   retryAfter,
+  upstream,
   originalError: originalError instanceof Error ? originalError.message : originalError ? String(originalError) : undefined,
 });
 
