@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { redis } from "@/lib/redis";
 import { normalizeUrl } from "@/lib/validation/url";
 import { createLogger } from "@/lib/logger";
-import { TawkChat } from "@/components/shared/tawk-chat";
 
 const logger = createLogger("proxy");
 
@@ -297,7 +296,6 @@ export default async function Page({
         url={normalizedUrl}
         ip={ip}
       />
-      <TawkChat />
     </>
   );
 }

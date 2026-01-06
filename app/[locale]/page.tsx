@@ -24,7 +24,6 @@ import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { TawkChat } from "@/components/shared/tawk-chat";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -262,7 +261,6 @@ export default function Home() {
         <SiteFooter className="border-t border-border" />
       </div>
 
-      <TawkChat />
     </>
   );
 }
