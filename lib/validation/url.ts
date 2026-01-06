@@ -15,6 +15,14 @@ const URL_VALIDATION_OPTIONS: IsURLOptions = {
   disallow_auth: false,
 };
 
+// Block self-referential URLs to prevent recursive loops
+const BLOCKED_HOSTNAMES = new Set([
+  "smry.ai",
+  "www.smry.ai",
+  "localhost",
+  "127.0.0.1",
+]);
+
 /**
  * Best-effort URL decode; returns input as-is if decoding fails.
  */
@@ -61,6 +69,17 @@ export function normalizeUrl(input: string): string {
 
   if (!isURL(candidate, URL_VALIDATION_OPTIONS)) {
     throw new Error("Please enter a valid URL (e.g. example.com or https://example.com).");
+  }
+
+  // Block self-referential URLs to prevent recursive loops
+  try {
+    const hostname = new URL(candidate).hostname.toLowerCase();
+    if (BLOCKED_HOSTNAMES.has(hostname)) {
+      throw new Error("Cannot summarize SMRY URLs. Please enter the original article URL.");
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("SMRY")) throw e;
+    // URL parsing failed - let it through, will fail later with better error
   }
 
   return candidate;

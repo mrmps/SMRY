@@ -41,6 +41,18 @@ describe("normalizeUrl", () => {
   it("throws on invalid URL", () => {
     expect(() => normalizeUrl("not a url")).toThrow("Please enter a valid URL");
   });
+
+  it("blocks self-referential smry.ai URLs", () => {
+    expect(() => normalizeUrl("https://smry.ai/proxy?url=https://example.com")).toThrow("Cannot summarize SMRY URLs");
+    expect(() => normalizeUrl("https://www.smry.ai/article")).toThrow("Cannot summarize SMRY URLs");
+    expect(() => normalizeUrl("smry.ai")).toThrow("Cannot summarize SMRY URLs");
+  });
+
+  it("blocks localhost URLs", () => {
+    // localhost:port fails URL validation first, 127.0.0.1 hits our blocklist
+    expect(() => normalizeUrl("http://localhost:3000/test")).toThrow();
+    expect(() => normalizeUrl("http://127.0.0.1/test")).toThrow("Cannot summarize SMRY URLs");
+  });
 });
 
 describe("isValidUrl", () => {
