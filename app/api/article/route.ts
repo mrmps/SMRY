@@ -12,6 +12,7 @@ import { Readability } from "@mozilla/readability";
 import { JSDOM, VirtualConsole } from "jsdom";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 import { getTextDirection } from "@/lib/rtl";
+import { storeArticleHtml } from "@/lib/db";
 
 /**
  * Create a fresh VirtualConsole for each JSDOM instance.
@@ -593,6 +594,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { article, cacheURL } = result;
+
+    // Store HTML for training (fire and forget)
+    if (article.htmlContent) {
+      storeArticleHtml(validatedUrl, article.htmlContent);
+    }
 
     // Save to cache
     try {
