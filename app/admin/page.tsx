@@ -145,21 +145,30 @@ function AnalyticsDashboardContent() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
   const [urlSearch, setUrlSearch] = useState("");
+  const [debouncedUrlSearch, setDebouncedUrlSearch] = useState("");
   const [hostnameFilter, setHostnameFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("");
   const [liveStreamEnabled, setLiveStreamEnabled] = useState(true);
 
-  // Build query string
+  // Debounce URL search to prevent flashing on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUrlSearch(urlSearch);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [urlSearch]);
+
+  // Build query string (uses debounced search to prevent flashing)
   const buildQueryString = useCallback(() => {
     const params = new URLSearchParams();
     params.set("range", range);
     if (hostnameFilter) params.set("hostname", hostnameFilter);
     if (sourceFilter) params.set("source", sourceFilter);
     if (outcomeFilter) params.set("outcome", outcomeFilter);
-    if (urlSearch) params.set("urlSearch", urlSearch);
+    if (debouncedUrlSearch) params.set("urlSearch", debouncedUrlSearch);
     return params.toString();
-  }, [range, hostnameFilter, sourceFilter, outcomeFilter, urlSearch]);
+  }, [range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch]);
 
   // Change time range while preserving filters
   const changeTimeRange = useCallback((newRange: string) => {
@@ -168,12 +177,12 @@ function AnalyticsDashboardContent() {
     if (hostnameFilter) params.set("hostname", hostnameFilter);
     if (sourceFilter) params.set("source", sourceFilter);
     if (outcomeFilter) params.set("outcome", outcomeFilter);
-    if (urlSearch) params.set("urlSearch", urlSearch);
+    if (debouncedUrlSearch) params.set("urlSearch", debouncedUrlSearch);
     router.push(`?${params.toString()}`);
-  }, [router, hostnameFilter, sourceFilter, outcomeFilter, urlSearch]);
+  }, [router, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch]);
 
   const { data, isLoading, error, refetch } = useQuery<DashboardData>({
-    queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, urlSearch],
+    queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch],
     queryFn: async () => {
       const res = await fetch(`/api/admin?${buildQueryString()}`);
       if (!res.ok) {
@@ -952,6 +961,8 @@ function LiveStreamTab({
   setEnabled: (v: boolean) => void;
   hasFilters: boolean;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
       <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
@@ -963,7 +974,7 @@ function LiveStreamTab({
             </span>
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
-            Last 60 seconds of requests (5s refresh)
+            Last 60 seconds of requests (5s refresh) - Click any row to expand
             {hasFilters && <span className="text-amber-400 ml-2">• Filters applied</span>}
           </p>
         </div>
@@ -980,35 +991,84 @@ function LiveStreamTab({
       </div>
 
       <div className="divide-y divide-zinc-800 max-h-[600px] overflow-y-auto">
-        {liveRequests.map((req, i) => (
-          <div
-            key={`${req.request_id}-${i}`}
-            className="px-4 py-3 flex items-center gap-4 hover:bg-zinc-800/50 transition-colors"
-          >
-            <span className="text-xs font-mono text-zinc-500 w-20">
-              {req.event_time}
-            </span>
+        {liveRequests.map((req, i) => {
+          const itemId = `${req.request_id}-${i}`;
+          const isExpanded = expandedId === itemId;
+          return (
+            <div key={itemId}>
+              <div
+                onClick={() => setExpandedId(isExpanded ? null : itemId)}
+                className={`px-4 py-3 flex items-center gap-4 cursor-pointer transition-colors ${
+                  isExpanded ? "bg-zinc-800" : "hover:bg-zinc-800/50"
+                }`}
+              >
+                <span className="text-xs font-mono text-zinc-500 w-20">
+                  {req.event_time}
+                </span>
 
-            <OutcomeBadge outcome={req.outcome} cacheHit={req.cache_hit === 1} />
+                <OutcomeBadge outcome={req.outcome} cacheHit={req.cache_hit === 1} />
 
-            <span className="flex-1 text-sm text-zinc-300 truncate" title={req.url}>
-              {req.hostname}
-              <span className="text-zinc-500 ml-2">{req.url.replace(`https://${req.hostname}`, "").slice(0, 50)}</span>
-            </span>
+                <span className="flex-1 text-sm text-zinc-300 truncate" title={req.url}>
+                  {req.hostname}
+                  <span className="text-zinc-500 ml-2">{req.url.replace(`https://${req.hostname}`, "").slice(0, 50)}</span>
+                </span>
 
-            <SourceBadge source={req.source} />
+                <SourceBadge source={req.source} />
 
-            <span className={`text-xs font-mono w-16 text-right ${req.duration_ms > 5000 ? "text-red-400" : "text-zinc-400"}`}>
-              {req.duration_ms}ms
-            </span>
+                <span className={`text-xs font-mono w-16 text-right ${req.duration_ms > 5000 ? "text-red-400" : "text-zinc-400"}`}>
+                  {req.duration_ms}ms
+                </span>
 
-            {req.error_type && (
-              <span className="text-xs text-red-400 font-mono">
-                {req.error_type}
-              </span>
-            )}
-          </div>
-        ))}
+                {req.error_type && (
+                  <span className="text-xs text-red-400 font-mono">
+                    {req.error_type}
+                  </span>
+                )}
+              </div>
+
+              {/* Expanded Details */}
+              {isExpanded && (
+                <div className="bg-zinc-800/50 p-4 border-t border-zinc-700">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">Request Details</h4>
+                      <dl className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <dt className="text-zinc-500">Request ID</dt>
+                          <dd className="text-zinc-300 font-mono">{req.request_id}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-zinc-500">Source</dt>
+                          <dd className="text-zinc-300">{req.source || "unknown"}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-zinc-500">Duration</dt>
+                          <dd className="text-zinc-300">{req.duration_ms}ms</dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-zinc-500">Cache</dt>
+                          <dd className="text-zinc-300">{req.cache_hit ? "Hit" : "Miss"}</dd>
+                        </div>
+                        {req.error_type && (
+                          <div className="flex justify-between">
+                            <dt className="text-zinc-500">Error Type</dt>
+                            <dd className="text-red-400">{req.error_type}</dd>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">Full URL</h4>
+                      <p className="text-xs font-mono text-zinc-400 break-all bg-zinc-900 p-2 rounded">
+                        {req.url}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {liveRequests.length === 0 && (
           <div className="py-12 text-center text-zinc-500">
@@ -1030,6 +1090,9 @@ function ErrorAnalysisTab({
   hostnameStats: DashboardData["hostnameStats"];
   universallyBroken: DashboardData["universallyBroken"];
 }) {
+  const [expandedBroken, setExpandedBroken] = useState<number | null>(null);
+  const [expandedError, setExpandedError] = useState<number | null>(null);
+
   return (
     <div className="space-y-6">
       {/* Universally Broken Sites - HIGH PRIORITY */}
@@ -1041,7 +1104,7 @@ function ErrorAnalysisTab({
               Universally Broken Sites
             </h2>
             <p className="text-xs text-red-300/70 mt-1">
-              Sites where ALL attempted sources failed (0% success rate). Consider adding to hard paywall blocklist.
+              Sites where ALL attempted sources failed (0% success rate). Click to see full URL. Consider adding to hard paywall blocklist.
             </p>
           </div>
 
@@ -1057,30 +1120,71 @@ function ErrorAnalysisTab({
               </thead>
               <tbody>
                 {universallyBroken.map((item, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-red-900/20 hover:bg-red-950/30"
-                  >
-                    <td className="py-3 px-4 font-mono text-xs text-red-200">
-                      {item.hostname}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="text-xs text-red-300">
-                        {item.sources_tried} sources
-                      </span>
-                      <span className="block text-xs text-red-400/60 mt-0.5">
-                        {item.sources_list}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-red-300 font-medium">
-                      {item.total_requests}
-                    </td>
-                    <td className="py-3 px-4 max-w-xs">
-                      <p className="text-xs text-red-400/80 truncate" title={item.sample_url}>
-                        {item.sample_url}
-                      </p>
-                    </td>
-                  </tr>
+                  <React.Fragment key={i}>
+                    <tr
+                      onClick={() => setExpandedBroken(expandedBroken === i ? null : i)}
+                      className={`border-b border-red-900/20 cursor-pointer transition-colors ${
+                        expandedBroken === i ? "bg-red-950/40" : "hover:bg-red-950/30"
+                      }`}
+                    >
+                      <td className="py-3 px-4 font-mono text-xs text-red-200">
+                        {item.hostname}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-xs text-red-300">
+                          {item.sources_tried} sources
+                        </span>
+                        <span className="block text-xs text-red-400/60 mt-0.5">
+                          {item.sources_list}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right text-red-300 font-medium">
+                        {item.total_requests}
+                      </td>
+                      <td className="py-3 px-4 max-w-xs">
+                        <p className="text-xs text-red-400/80 truncate" title={item.sample_url}>
+                          {item.sample_url}
+                        </p>
+                      </td>
+                    </tr>
+                    {expandedBroken === i && (
+                      <tr>
+                        <td colSpan={4} className="p-0">
+                          <div className="bg-red-950/30 p-4 border-t border-red-900/30">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="text-xs font-semibold text-red-300 uppercase mb-2">Site Details</h4>
+                                <dl className="space-y-1 text-xs">
+                                  <div className="flex justify-between">
+                                    <dt className="text-red-400/70">Hostname</dt>
+                                    <dd className="text-red-200 font-mono">{item.hostname}</dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-red-400/70">Total Requests</dt>
+                                    <dd className="text-red-200">{item.total_requests}</dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-red-400/70">Success Rate</dt>
+                                    <dd className="text-red-400 font-bold">{item.overall_success_rate}%</dd>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <dt className="text-red-400/70">Sources Tried</dt>
+                                    <dd className="text-red-200">{item.sources_list}</dd>
+                                  </div>
+                                </dl>
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-semibold text-red-300 uppercase mb-2">Sample URL</h4>
+                                <p className="text-xs font-mono text-red-300 break-all bg-red-950/50 p-2 rounded border border-red-900/30">
+                                  {item.sample_url}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -1115,7 +1219,7 @@ function ErrorAnalysisTab({
         <div className="p-4 border-b border-zinc-800">
           <h2 className="text-lg font-semibold text-zinc-100">Error Breakdown</h2>
           <p className="text-xs text-zinc-500 mt-1">
-            Grouped by hostname and error type, with sample error messages
+            Grouped by hostname and error type - Click any row to see full error message
           </p>
         </div>
 
@@ -1132,30 +1236,73 @@ function ErrorAnalysisTab({
             </thead>
             <tbody>
               {errorBreakdown.map((item, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-zinc-800 hover:bg-zinc-800/50"
-                >
-                  <td className="py-3 px-4 font-mono text-xs text-zinc-300">
-                    {item.hostname}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-1 bg-red-900/30 text-red-400 rounded text-xs font-mono">
-                      {item.error_type}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 max-w-md">
-                    <p className="text-xs text-zinc-400 truncate" title={item.error_message}>
-                      {item.error_message || "-"}
-                    </p>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="text-red-400 font-medium">{item.error_count}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right text-zinc-500 text-xs font-mono">
-                    {item.latest_timestamp?.split(" ")[1]?.split(".")[0] || "-"}
-                  </td>
-                </tr>
+                <React.Fragment key={i}>
+                  <tr
+                    onClick={() => setExpandedError(expandedError === i ? null : i)}
+                    className={`border-b border-zinc-800 cursor-pointer transition-colors ${
+                      expandedError === i ? "bg-zinc-800" : "hover:bg-zinc-800/50"
+                    }`}
+                  >
+                    <td className="py-3 px-4 font-mono text-xs text-zinc-300">
+                      {item.hostname}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-1 bg-red-900/30 text-red-400 rounded text-xs font-mono">
+                        {item.error_type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 max-w-md">
+                      <p className="text-xs text-zinc-400 truncate" title={item.error_message}>
+                        {item.error_message || "-"}
+                      </p>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className="text-red-400 font-medium">{item.error_count}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-zinc-500 text-xs font-mono">
+                      {item.latest_timestamp?.split(" ")[1]?.split(".")[0] || "-"}
+                    </td>
+                  </tr>
+                  {expandedError === i && (
+                    <tr>
+                      <td colSpan={5} className="p-0">
+                        <div className="bg-zinc-800/50 p-4 border-t border-zinc-700">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">Error Details</h4>
+                              <dl className="space-y-1 text-xs">
+                                <div className="flex justify-between">
+                                  <dt className="text-zinc-500">Hostname</dt>
+                                  <dd className="text-zinc-300 font-mono">{item.hostname}</dd>
+                                </div>
+                                <div className="flex justify-between">
+                                  <dt className="text-zinc-500">Error Type</dt>
+                                  <dd className="text-red-400">{item.error_type}</dd>
+                                </div>
+                                <div className="flex justify-between">
+                                  <dt className="text-zinc-500">Occurrences</dt>
+                                  <dd className="text-red-400 font-bold">{item.error_count}</dd>
+                                </div>
+                                <div className="flex justify-between">
+                                  <dt className="text-zinc-500">Last Seen</dt>
+                                  <dd className="text-zinc-300">{item.latest_timestamp || "-"}</dd>
+                                </div>
+                              </dl>
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-semibold text-zinc-400 uppercase mb-2">Full Error Message</h4>
+                              <div className="bg-red-950/30 border border-red-900/50 rounded-md p-3">
+                                <p className="text-xs font-mono text-red-300 break-all whitespace-pre-wrap">
+                                  {item.error_message || "No error message available"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
