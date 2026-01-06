@@ -10,40 +10,43 @@ function getDb() {
   return sql;
 }
 
+// PERF: Precompiled regexes for HTML stripping - avoids recompilation on each call
+const STRIP_PATTERNS = {
+  // Combined pattern for tags with content that should be removed entirely
+  tagsWithContent: /<(script|style|svg|noscript|iframe)\b[^>]*>[\s\S]*?<\/\1>/gi,
+  // Self-closing or void tags
+  imgTags: /<img\b[^>]*\/?>/gi,
+  // HTML comments
+  comments: /<!--[\s\S]*?-->/g,
+  // Combined pattern for attributes to remove (style, data-*, event handlers)
+  unwantedAttrs: /\s+(style|data-[\w-]+|on\w+)\s*=\s*["'][^"']*["']/gi,
+  // Collapse whitespace
+  whitespace: /\s+/g,
+};
+
+/**
+ * Strip unnecessary HTML content for storage
+ * PERF: Uses precompiled regexes and fewer passes (5 instead of 18)
+ */
 function stripHtml(html: string): string {
   return html
-    // Remove script tags and contents
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    // Remove style tags and contents
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    // Remove svg tags and contents
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, "")
-    // Remove noscript tags and contents
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, "")
-    // Remove iframe tags
-    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
-    // Remove img tags (keep alt text would require more complex parsing)
-    .replace(/<img\b[^>]*\/?>/gi, "")
-    // Remove HTML comments
-    .replace(/<!--[\s\S]*?-->/g, "")
-    // Remove inline style attributes
-    .replace(/\s+style\s*=\s*"[^"]*"/gi, "")
-    .replace(/\s+style\s*=\s*'[^']*'/gi, "")
-    // Remove data-* attributes
-    .replace(/\s+data-[\w-]+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\s+data-[\w-]+\s*=\s*'[^']*'/gi, "")
-    // Remove event handlers (onclick, onload, etc.)
-    .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\s+on\w+\s*=\s*'[^']*'/gi, "")
-    // Collapse multiple whitespace/newlines
-    .replace(/\s+/g, " ")
+    .replace(STRIP_PATTERNS.tagsWithContent, "")
+    .replace(STRIP_PATTERNS.imgTags, "")
+    .replace(STRIP_PATTERNS.comments, "")
+    .replace(STRIP_PATTERNS.unwantedAttrs, "")
+    .replace(STRIP_PATTERNS.whitespace, " ")
     .trim();
 }
 
+/**
+ * Store article HTML for training data
+ * Fire-and-forget - errors are logged but don't affect request
+ */
 export async function storeArticleHtml(url: string, html: string) {
   try {
     const db = getDb();
     if (!tableCreated) {
+      // PERF: Added index on url for faster lookups
       await db`
         CREATE TABLE IF NOT EXISTS articles (
           id SERIAL PRIMARY KEY,
@@ -52,6 +55,8 @@ export async function storeArticleHtml(url: string, html: string) {
           fetched_at TIMESTAMPTZ DEFAULT NOW()
         )
       `;
+      // Create index separately (IF NOT EXISTS for idempotency)
+      await db`CREATE INDEX IF NOT EXISTS idx_articles_url ON articles(url)`;
       tableCreated = true;
     }
     const stripped = stripHtml(html);

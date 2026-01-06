@@ -81,21 +81,39 @@ function buildSmryUrl(url: string, source?: string | null): string {
   return `https://smry.ai/${url}?source=${source}`;
 }
 
+// PERF: Max HTML content size to prevent memory spikes (50KB)
+const MAX_HTML_CONTENT_SIZE = 50 * 1024;
+
+/**
+ * Truncate HTML content to prevent memory issues with large articles
+ */
+function truncateHtmlContent(article: CachedArticle): CachedArticle {
+  if (article.htmlContent && article.htmlContent.length > MAX_HTML_CONTENT_SIZE) {
+    return {
+      ...article,
+      htmlContent: article.htmlContent.substring(0, MAX_HTML_CONTENT_SIZE),
+    };
+  }
+  return article;
+}
+
 /**
  * Save or return longer article
+ * PERF: Accepts optional pre-fetched cached article to avoid double Redis decompress
  */
 async function saveOrReturnLongerArticle(
   key: string,
-  newArticle: CachedArticle
+  newArticle: CachedArticle,
+  existingCachedArticle?: CachedArticle | null
 ): Promise<CachedArticle> {
   try {
     // Validate incoming article first
     const incomingValidation = CachedArticleSchema.safeParse(newArticle);
-    
+
     if (!incomingValidation.success) {
       const validationError = fromError(incomingValidation.error);
-      logger.error({ 
-        key, 
+      logger.error({
+        key,
         validationError: validationError.toString(),
         articleData: {
           hasTitle: !!newArticle.title,
@@ -106,9 +124,10 @@ async function saveOrReturnLongerArticle(
       }, 'Incoming article validation failed');
       throw new Error(`Invalid article data: ${validationError.toString()}`);
     }
-    
-    const validatedNewArticle = incomingValidation.data;
-    
+
+    // PERF: Truncate HTML content before caching to limit memory usage
+    const validatedNewArticle = truncateHtmlContent(incomingValidation.data);
+
     // Helper to save both compressed article and metadata
     const saveToCache = async (article: CachedArticle) => {
       const metaKey = `meta:${key}`;
@@ -129,8 +148,12 @@ async function saveOrReturnLongerArticle(
       ]);
     };
 
-    const rawCachedData = await redis.get(key);
-    const cachedData = await decompressAsync(rawCachedData);
+    // PERF: Use pre-fetched cached article if provided, avoiding double decompress
+    let cachedData = existingCachedArticle;
+    if (cachedData === undefined) {
+      const rawCachedData = await redis.get(key);
+      cachedData = await decompressAsync(rawCachedData);
+    }
 
     if (cachedData) {
       const existingValidation = CachedArticleSchema.safeParse(cachedData);
@@ -486,8 +509,10 @@ export async function GET(request: NextRequest) {
     const cacheKey = `${validatedSource}:${validatedUrl}`;
 
     // Try to get from cache
+    // PERF: Store decompressed article to avoid double decompress later
     let cacheHit = false;
     let cacheStatus: "hit" | "miss" | "invalid" | "error" = "miss";
+    let existingCachedArticle: CachedArticle | null = null;
 
     try {
       const cacheStart = Date.now();
@@ -504,6 +529,8 @@ export async function GET(request: NextRequest) {
           cacheStatus = "invalid";
         } else {
           const article = cacheValidation.data;
+          // PERF: Store for later use to avoid re-fetching from Redis
+          existingCachedArticle = article;
 
           if (article.length > 4000 && article.htmlContent) {
             cacheHit = true;
@@ -587,9 +614,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Save to cache
+    // PERF: Pass existing cached article to avoid double Redis decompress
     try {
       const cacheStart = Date.now();
-      const savedArticle = await saveOrReturnLongerArticle(cacheKey, article);
+      const savedArticle = await saveOrReturnLongerArticle(cacheKey, article, existingCachedArticle);
       ctx.set("cache_save_ms", Date.now() - cacheStart);
 
       const savedValidation = CachedArticleSchema.safeParse(savedArticle);

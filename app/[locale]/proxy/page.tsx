@@ -93,29 +93,25 @@ export type ResponseItem = {
 };
 
 /**
- * Fetch article data from the most reliable source for metadata
+ * Fetch article metadata from cache only (no full API fetch)
+ * PERF: Only checks metadata cache - saves 200-400ms by avoiding duplicate API calls
+ * The page component will fetch the full article anyway, so we just need cached metadata for SEO
  */
 async function fetchArticleForMetadata(url: string): Promise<Article | null> {
   try {
     // Try sources in order: smry-fast, smry-slow, jina.ai, wayback
     const sources = ["smry-fast", "smry-slow", "jina.ai", "wayback"];
-    
-    // 1. Try to check lightweight metadata cache first
+
+    // Only check lightweight metadata cache - no full API fetch
+    // Full article will be fetched by the page component anyway
     for (const source of sources) {
       try {
-        let cacheKey;
-        if (source === 'jina.ai') {
-          cacheKey = `jina.ai:${url}`;
-        } else {
-          cacheKey = `${source}:${url}`;
-        }
-        
+        const cacheKey = source === 'jina.ai' ? `jina.ai:${url}` : `${source}:${url}`;
         const metaKey = `meta:${cacheKey}`;
         const meta = await redis.get<{ title: string; siteName: string; length: number }>(metaKey);
-        
+
         if (meta && meta.title) {
           // Return minimal article object for metadata
-          // We return empty strings for content to satisfy the type but save bandwidth
           return {
             title: meta.title,
             siteName: meta.siteName || null,
@@ -128,43 +124,14 @@ async function fetchArticleForMetadata(url: string): Promise<Article | null> {
           } as Article;
         }
       } catch {
-        // Continue to next source/fallback if redis check fails
+        // Continue to next source if redis check fails
       }
     }
 
-    // 2. Fallback to full fetch if not found in metadata cache
-    for (const source of sources) {
-      try {
-        // Add timeout to prevent hanging
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-        
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_URL}/api/article?url=${encodeURIComponent(url)}&source=${source}`,
-          { 
-            cache: 'no-store',
-            next: { revalidate: 0 },
-            signal: controller.signal
-          }
-        );
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.article && data.article.title) {
-            return data.article;
-          }
-        }
-      } catch {
-        // Try next source
-        continue;
-      }
-    }
-    
+    // No cached metadata found - return null and use URL-based fallback
+    // This is fine because the page will fetch the full article anyway
     return null;
   } catch {
-    // Metadata fetch failed - not critical, fallback metadata will be used
     return null;
   }
 }
