@@ -78,12 +78,6 @@ export const HARD_PAYWALL_SITES: HardPaywallSite[] = [
     addedAt: "2026-01-05",
     notes: "NYT-owned sports site with strict paywall.",
   },
-  {
-    hostname: "www.theatlantic.com",
-    name: "The Atlantic",
-    addedAt: "2026-01-05",
-    notes: "Metered paywall, most content blocked.",
-  },
 ];
 
 /**
