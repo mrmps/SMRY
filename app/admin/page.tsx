@@ -568,18 +568,30 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
         </div>
       </div>
 
-      {/* Source Effectiveness Matrix */}
+      {/* Top Sites by Traffic */}
       <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 mb-8">
         <h2 className="text-lg font-semibold text-zinc-100 mb-4">
-          Source Effectiveness by Site
+          Top Sites by Traffic
         </h2>
-        {Object.keys(sourceMatrix).length > 0 ? (
+        {data.hostnameStats.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-700">
                   <th className="text-left py-3 px-4 text-zinc-400 font-medium">
-                    Hostname
+                    Site
+                  </th>
+                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">
+                    Requests
+                  </th>
+                  <th className="text-center py-3 px-4 text-zinc-400 font-medium">
+                    Success
+                  </th>
+                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">
+                    Errors
+                  </th>
+                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">
+                    Latency
                   </th>
                   <th className="text-center py-3 px-4 text-zinc-400 font-medium">
                     smry-fast
@@ -596,36 +608,51 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(sourceMatrix)
-                  .slice(0, 25)
-                  .map(([hostname, sources]) => (
-                    <tr
-                      key={hostname}
-                      className="border-b border-zinc-800 hover:bg-zinc-800/50"
-                    >
-                      <td className="py-3 px-4 font-mono text-xs text-zinc-300">
-                        {hostname.length > 30
-                          ? hostname.slice(0, 30) + "..."
-                          : hostname}
-                      </td>
-                      {["smry-fast", "smry-slow", "wayback", "jina.ai"].map(
-                        (source) => (
-                          <td
-                            key={source}
-                            className="text-center py-3 px-4"
-                          >
-                            <SuccessRateBadge rate={sources[source]} />
-                          </td>
-                        )
-                      )}
-                    </tr>
-                  ))}
+                {data.hostnameStats
+                  .slice(0, 30)
+                  .map((site) => {
+                    const sources = sourceMatrix[site.hostname] || {};
+                    return (
+                      <tr
+                        key={site.hostname}
+                        className="border-b border-zinc-800 hover:bg-zinc-800/50"
+                      >
+                        <td className="py-3 px-4 font-mono text-xs text-zinc-300">
+                          {site.hostname.length > 25
+                            ? site.hostname.slice(0, 25) + "..."
+                            : site.hostname}
+                        </td>
+                        <td className="py-3 px-4 text-right text-zinc-200 font-medium">
+                          {Number(site.total_requests).toLocaleString()}
+                        </td>
+                        <td className="text-center py-3 px-4">
+                          <SuccessRateBadge rate={site.success_rate} />
+                        </td>
+                        <td className="py-3 px-4 text-right text-red-400 font-mono text-xs">
+                          {site.error_count}
+                        </td>
+                        <td className="py-3 px-4 text-right text-zinc-400 font-mono text-xs">
+                          {site.avg_duration_ms}ms
+                        </td>
+                        {["smry-fast", "smry-slow", "wayback", "jina.ai"].map(
+                          (source) => (
+                            <td
+                              key={source}
+                              className="text-center py-3 px-4"
+                            >
+                              <SuccessRateBadge rate={sources[source]} />
+                            </td>
+                          )
+                        )}
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
         ) : (
           <div className="py-8 text-center text-zinc-500">
-            No source effectiveness data yet
+            No traffic data yet
           </div>
         )}
       </div>
