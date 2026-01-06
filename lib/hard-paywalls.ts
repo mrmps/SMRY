@@ -29,7 +29,14 @@ export interface HardPaywallSite {
  * List of sites with hard paywalls that cannot be bypassed.
  * These sites have 0% success rate across all extraction methods.
  */
-export const HARD_PAYWALL_SITES: HardPaywallSite[] = [];
+export const HARD_PAYWALL_SITES: HardPaywallSite[] = [
+  {
+    hostname: "www.barrons.com",
+    name: "Barron's",
+    addedAt: "2026-01-05",
+    notes: "0% success on all sources. Requires Dow Jones/WSJ subscription.",
+  },
+];
 
 /**
  * Set for O(1) hostname lookup
