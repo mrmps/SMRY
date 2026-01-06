@@ -30,6 +30,7 @@ const STRIP_PATTERNS = {
  */
 function stripHtml(html: string): string {
   return html
+    .replace(/\x00/g, "") // Remove null bytes (invalid in PostgreSQL UTF-8)
     .replace(STRIP_PATTERNS.tagsWithContent, "")
     .replace(STRIP_PATTERNS.imgTags, "")
     .replace(STRIP_PATTERNS.comments, "")
