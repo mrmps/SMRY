@@ -10,6 +10,36 @@ function getDb() {
   return sql;
 }
 
+function stripHtml(html: string): string {
+  return html
+    // Remove script tags and contents
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    // Remove style tags and contents
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    // Remove svg tags and contents
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, "")
+    // Remove noscript tags and contents
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, "")
+    // Remove iframe tags
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
+    // Remove img tags (keep alt text would require more complex parsing)
+    .replace(/<img\b[^>]*\/?>/gi, "")
+    // Remove HTML comments
+    .replace(/<!--[\s\S]*?-->/g, "")
+    // Remove inline style attributes
+    .replace(/\s+style\s*=\s*"[^"]*"/gi, "")
+    .replace(/\s+style\s*=\s*'[^']*'/gi, "")
+    // Remove data-* attributes
+    .replace(/\s+data-[\w-]+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\s+data-[\w-]+\s*=\s*'[^']*'/gi, "")
+    // Remove event handlers (onclick, onload, etc.)
+    .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\s+on\w+\s*=\s*'[^']*'/gi, "")
+    // Collapse multiple whitespace/newlines
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function storeArticleHtml(url: string, html: string) {
   try {
     const db = getDb();
@@ -24,7 +54,8 @@ export async function storeArticleHtml(url: string, html: string) {
       `;
       tableCreated = true;
     }
-    await db`INSERT INTO articles (url, html) VALUES (${url}, ${html})`;
+    const stripped = stripHtml(html);
+    await db`INSERT INTO articles (url, html) VALUES (${url}, ${stripped})`;
   } catch (error) {
     console.error("Failed to store article HTML:", error);
   }
