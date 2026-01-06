@@ -131,6 +131,9 @@ export async function GET(request: NextRequest) {
     // Always include time filter
     conditions.push(`timestamp > now() - INTERVAL ${timeInterval}`);
 
+    // Always filter out empty hostnames
+    conditions.push(`hostname != ''`);
+
     if (includeFilters) {
       if (hostnameFilter) {
         conditions.push(`hostname = '${hostnameFilter.replace(/'/g, "''")}'`);
@@ -146,7 +149,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return `WHERE ${conditions.join(" AND ")}`;
+    return conditions.join(" AND ");
   };
 
   // Check if any filters are active
@@ -281,8 +284,7 @@ export async function GET(request: NextRequest) {
           article_length,
           article_title
         FROM request_events
-        WHERE timestamp > now() - INTERVAL ${hours} HOUR
-          AND hostname != ''
+        WHERE ${buildWhereClause()}
         ORDER BY timestamp DESC
         LIMIT 200
       `),
@@ -301,8 +303,7 @@ export async function GET(request: NextRequest) {
           error_type,
           cache_hit
         FROM request_events
-        WHERE timestamp > now() - INTERVAL 60 SECOND
-          AND hostname != ''
+        WHERE ${buildWhereClause({ timeInterval: "60 SECOND" })}
         ORDER BY timestamp DESC
         LIMIT 50
       `),
