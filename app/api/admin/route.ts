@@ -120,6 +120,14 @@ interface UniversallyBrokenHostname {
   sample_url: string;
 }
 
+interface SourceErrorRateTimeSeries {
+  time_bucket: string;
+  source: string;
+  total_requests: number;
+  error_count: number;
+  error_rate: number;
+}
+
 export async function GET(request: NextRequest) {
   // Parse time range
   const timeRange = request.nextUrl.searchParams.get("range") || "24h";
@@ -181,6 +189,7 @@ export async function GET(request: NextRequest) {
       endpointStats,
       hourlyEndpointTraffic,
       universallyBroken,
+      sourceErrorRateTimeSeries,
     ] = await Promise.all([
       // 1. Which sites consistently error (top 200 by volume)
       queryClickhouse<HostnameStats>(`
@@ -394,6 +403,23 @@ export async function GET(request: NextRequest) {
         ORDER BY total_requests DESC
         LIMIT 50
       `),
+
+      // 12. Source error rates over time - for observability/regression detection
+      // 15-minute buckets showing error rate % per source
+      queryClickhouse<SourceErrorRateTimeSeries>(`
+        SELECT
+          formatDateTime(toStartOfFifteenMinutes(timestamp), '%Y-%m-%d %H:%i') AS time_bucket,
+          source,
+          count() AS total_requests,
+          countIf(outcome = 'error') AS error_count,
+          round(countIf(outcome = 'error') / count() * 100, 2) AS error_rate
+        FROM request_events
+        WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          AND hostname != ''
+          AND source != ''
+        GROUP BY time_bucket, source
+        ORDER BY time_bucket, source
+      `),
     ]);
 
     // Get buffer stats for monitoring
@@ -436,6 +462,7 @@ export async function GET(request: NextRequest) {
       endpointStats,
       hourlyEndpointTraffic,
       universallyBroken,
+      sourceErrorRateTimeSeries,
     });
   } catch (error) {
     console.error("[analytics] Query error:", error);

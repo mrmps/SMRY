@@ -143,6 +143,13 @@ interface DashboardData {
     overall_success_rate: number;
     sample_url: string;
   }>;
+  sourceErrorRateTimeSeries: Array<{
+    time_bucket: string;
+    source: string;
+    total_requests: number;
+    error_count: number;
+    error_rate: number;
+  }>;
 }
 
 type TabType = "overview" | "requests" | "live" | "errors";
@@ -439,6 +446,26 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
   const totalSites = Math.min(data.hostnameStats.length, 200);
   const totalPages = Math.ceil(totalSites / sitesPerPage);
 
+  // Transform source error rate time series for recharts (pivot by source)
+  const sourceErrorRateChartData = React.useMemo(() => {
+    const timeMap = new Map<string, Record<string, string | number>>();
+
+    for (const item of data.sourceErrorRateTimeSeries || []) {
+      if (!timeMap.has(item.time_bucket)) {
+        timeMap.set(item.time_bucket, { time_bucket: item.time_bucket });
+      }
+      const entry = timeMap.get(item.time_bucket)!;
+      // Use source name as key with error_rate as value
+      entry[item.source] = item.error_rate;
+      // Also store request count for tooltip
+      entry[`${item.source}_requests`] = item.total_requests;
+    }
+
+    return Array.from(timeMap.values()).sort((a, b) =>
+      String(a.time_bucket).localeCompare(String(b.time_bucket))
+    );
+  }, [data.sourceErrorRateTimeSeries]);
+
   return (
     <>
       {/* Health KPIs */}
@@ -475,6 +502,105 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
           title="Unique Sites"
           value={data.health.unique_hostnames_24h?.toString() || "0"}
         />
+      </div>
+
+      {/* Source Error Rate Over Time - Key Observability Chart */}
+      <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800 mb-8">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-100">
+              Source Error Rates Over Time
+            </h2>
+            <p className="text-xs text-zinc-500 mt-1">
+              Error rate % by source (15-min buckets) - Use to detect regressions after deployments
+            </p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { source: "smry-fast", color: "#3b82f6" },
+              { source: "smry-slow", color: "#a855f7" },
+              { source: "wayback", color: "#f59e0b" },
+              { source: "jina.ai", color: "#ec4899" },
+            ].map(({ source, color }) => (
+              <span key={source} className="flex items-center gap-1 text-xs text-zinc-400">
+                <span className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
+                {source}
+              </span>
+            ))}
+          </div>
+        </div>
+        {sourceErrorRateChartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={sourceErrorRateChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+              <XAxis
+                dataKey="time_bucket"
+                tickFormatter={(v) => v.split(" ")[1] || v}
+                stroke="#71717a"
+                fontSize={11}
+              />
+              <YAxis
+                stroke="#71717a"
+                fontSize={11}
+                tickFormatter={(v) => `${v}%`}
+                domain={[0, 'auto']}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#18181b",
+                  border: "1px solid #3f3f46",
+                  borderRadius: "8px",
+                }}
+                labelStyle={{ color: "#a1a1aa" }}
+                formatter={(value, name, props) => {
+                  const requests = props.payload[`${name}_requests`];
+                  return [`${value}% (${requests || 0} requests)`, name];
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="smry-fast"
+                stroke="#3b82f6"
+                name="smry-fast"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="smry-slow"
+                stroke="#a855f7"
+                name="smry-slow"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="wayback"
+                stroke="#f59e0b"
+                name="wayback"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="jina.ai"
+                stroke="#ec4899"
+                name="jina.ai"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[300px] flex items-center justify-center text-zinc-500">
+            No source error rate data yet
+          </div>
+        )}
       </div>
 
       {/* Charts Grid */}
