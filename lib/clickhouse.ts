@@ -88,6 +88,47 @@ const MAX_BUFFER_SIZE = 500;
 const BATCH_SIZE = 50;
 const FLUSH_INTERVAL_MS = 5000;
 
+// CONCURRENCY CONTROL: Limit concurrent queries to prevent thread exhaustion
+// ClickHouse has limited threads (typically 28), so we limit concurrent queries
+const MAX_CONCURRENT_QUERIES = 4;
+const QUERY_SLOT_TIMEOUT_MS = 30_000; // 30s timeout waiting for slot
+let activeQueries = 0;
+const queryQueue: Array<{
+  resolve: () => void;
+  reject: (err: Error) => void;
+}> = [];
+
+async function acquireQuerySlot(): Promise<void> {
+  if (activeQueries < MAX_CONCURRENT_QUERIES) {
+    activeQueries++;
+    return;
+  }
+  // Wait for a slot to become available (with timeout)
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      const idx = queryQueue.findIndex((q) => q.resolve === wrappedResolve);
+      if (idx !== -1) queryQueue.splice(idx, 1);
+      reject(new Error("Query slot timeout - too many concurrent queries"));
+    }, QUERY_SLOT_TIMEOUT_MS);
+
+    const wrappedResolve = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+
+    queryQueue.push({ resolve: wrappedResolve, reject });
+  });
+}
+
+function releaseQuerySlot(): void {
+  activeQueries--;
+  const next = queryQueue.shift();
+  if (next) {
+    activeQueries++;
+    next.resolve();
+  }
+}
+
 const eventBuffer: AnalyticsEvent[] = [];
 let flushTimer: NodeJS.Timeout | null = null;
 let isInitialized = false;
@@ -282,10 +323,14 @@ export function trackEvent(event: Partial<AnalyticsEvent>): void {
 /**
  * Query helper for dashboard
  * Returns empty array on error (graceful degradation)
+ * Uses semaphore to limit concurrent queries and prevent thread exhaustion
  */
 export async function queryClickhouse<T>(query: string): Promise<T[]> {
   const clickhouse = getClient();
   if (!clickhouse) return [];
+
+  // Acquire a query slot (may wait if at capacity)
+  await acquireQuerySlot();
 
   try {
     const result = await clickhouse.query({
@@ -299,16 +344,28 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
       error instanceof Error ? error.message : error
     );
     return [];
+  } finally {
+    // Always release the slot, even on error
+    releaseQuerySlot();
   }
 }
 
 /**
- * Get buffer stats for monitoring
+ * Get buffer and query stats for monitoring
  */
-export function getBufferStats(): { size: number; maxSize: number } {
+export function getBufferStats(): {
+  size: number;
+  maxSize: number;
+  activeQueries: number;
+  queuedQueries: number;
+  maxConcurrentQueries: number;
+} {
   return {
     size: eventBuffer.length,
     maxSize: MAX_BUFFER_SIZE,
+    activeQueries,
+    queuedQueries: queryQueue.length,
+    maxConcurrentQueries: MAX_CONCURRENT_QUERIES,
   };
 }
 
