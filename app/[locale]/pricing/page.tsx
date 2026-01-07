@@ -66,8 +66,8 @@ export default function PricingPage() {
   const isProUser = isPremium && !isPremiumLoading;
   const isFreeUser = !isPremium && !isPremiumLoading;
 
-  const monthlyPrice = 7.99;
-  const annualPrice = 36;
+  const monthlyPrice = 4.99;
+  const annualPrice = 47.88;
   const annualMonthly = annualPrice / 12;
   const savings = Math.round((1 - annualMonthly / monthlyPrice) * 100);
 
@@ -138,7 +138,7 @@ export default function PricingPage() {
         </h1>
         <p className="mt-4 text-lg text-muted-foreground text-center max-w-md">
           {t("fullAccessFrom")}{" "}
-          <span className="text-foreground font-medium">$0.10 {t("perDay")}</span> — {t("cancelAnytime")}.
+          <span className="text-foreground font-medium">$0.13 {t("perDay")}</span> — {t("cancelAnytime")}.
         </p>
 
         {/* Billing Toggle */}

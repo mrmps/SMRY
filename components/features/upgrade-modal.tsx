@@ -22,7 +22,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           <DialogDescription className="mt-2">
             Upgrade for unlimited summaries.
             <span className="block text-xs mt-1 text-muted-foreground/60">
-              $3/mo billed yearly · Cancel anytime
+              $3.99/mo billed yearly · Cancel anytime
             </span>
           </DialogDescription>
 

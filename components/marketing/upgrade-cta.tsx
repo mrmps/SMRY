@@ -68,10 +68,10 @@ export function UpgradeCTA({ className }: UpgradeCTAProps) {
 
           {/* Price highlight */}
           <div className="mt-4 flex items-center gap-2">
-            <span className="text-2xl font-bold text-white">$3</span>
+            <span className="text-2xl font-bold text-white">$3.99</span>
             <span className="text-white/50">/month</span>
             <span className="ml-2 rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
-              Save 62%
+              Save 20%
             </span>
           </div>
 
