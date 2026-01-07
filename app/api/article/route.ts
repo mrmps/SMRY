@@ -13,6 +13,7 @@ import { parseHTML } from "linkedom";
 import { createRequestContext, extractRequestInfo, extractClientIp } from "@/lib/request-context";
 import { getTextDirection } from "@/lib/rtl";
 import { storeArticleHtml } from "@/lib/db";
+import { safeFetch } from "@/lib/safe-fetch";
 
 // PERFORMANCE: Using LinkedOM instead of JSDOM
 // LinkedOM is 10-50x faster and has no memory leak concerns
@@ -204,13 +205,14 @@ async function fetchArticleWithSmryFast(
   try {
     logger.info({ source: "smry-fast", hostname: new URL(url).hostname }, 'Fetching article directly');
 
-    const response = await fetch(url, {
+    // MEMORY FIX: Use node-fetch via safeFetch to avoid Next.js memory leak
+    // See: https://github.com/vercel/next.js/issues/85914
+    const response = await safeFetch(url, {
       headers: {
         "User-Agent": "smry.ai bot/1.0 (+https://smry.ai)",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      cache: "no-store",
       redirect: "follow",
       signal: controller.signal,
     });

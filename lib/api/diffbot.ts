@@ -11,6 +11,7 @@ import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+import { safeFetch } from "@/lib/safe-fetch";
 
 const logger = createLogger('lib:diffbot');
 
@@ -477,7 +478,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           requestedFields: 'title,text,html,siteName,dom',
         });
 
-        const response = await fetch(apiUrl.toString(), { signal: controller.signal });
+        // MEMORY FIX: Use node-fetch via safeFetch to avoid Next.js memory leak
+        const response = await safeFetch(apiUrl.toString(), { signal: controller.signal });
         
         if (!response.ok) {
           const errorText = await response.text();
