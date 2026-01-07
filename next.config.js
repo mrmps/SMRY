@@ -8,7 +8,6 @@ const nextConfig = {
     // Memory leak mitigations for Next.js 16 + standalone mode
     // See: https://github.com/vercel/next.js/issues/85914
     experimental: {
-      instrumentationHook: true,
       // Limit server action body size to prevent memory pressure
       serverActions: {
         bodySizeLimit: '2mb',

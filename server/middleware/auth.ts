@@ -1,12 +1,54 @@
 /**
- * Auth Middleware - Clerk JWT verification
+ * Auth Middleware - Clerk JWT verification with Billing support
  */
 
-import { verifyToken } from "@clerk/backend";
+import { createClerkClient, verifyToken } from "@clerk/backend";
+
+// Initialize Clerk client for billing API calls
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+
+// Cache billing status to avoid repeated API calls (5 min TTL)
+const billingCache = new Map<string, { isPremium: boolean; expiresAt: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface AuthInfo {
   isPremium: boolean;
   userId: string | null;
+}
+
+async function checkBillingStatus(userId: string): Promise<boolean> {
+  // Check cache first
+  const cached = billingCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[auth] Cache hit for", userId, "isPremium:", cached.isPremium);
+    }
+    return cached.isPremium;
+  }
+
+  try {
+    const subscription = await clerk.billing.getUserBillingSubscription(userId);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[auth] Subscription for", userId, JSON.stringify(subscription, null, 2));
+    }
+
+    // Check if user has an active subscription with the "premium" plan
+    const isPremium = subscription.subscriptionItems?.some(
+      item => item.plan?.slug === "premium" && item.status === "active"
+    ) ?? false;
+
+    // Cache the result
+    billingCache.set(userId, { isPremium, expiresAt: Date.now() + CACHE_TTL_MS });
+    return isPremium;
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[auth] Billing check error for", userId, error);
+    }
+    // No subscription found = not premium
+    billingCache.set(userId, { isPremium: false, expiresAt: Date.now() + CACHE_TTL_MS });
+    return false;
+  }
 }
 
 export async function getAuthInfo(request: Request): Promise<AuthInfo> {
@@ -31,12 +73,22 @@ export async function getAuthInfo(request: Request): Promise<AuthInfo> {
     if (!result) return { isPremium: false, userId: null };
 
     const claims = result as Record<string, unknown>;
-    const metadata = claims.public_metadata as Record<string, unknown> | undefined;
-    const isPremium = metadata?.plan === "premium";
     const userId = (claims.sub as string) || null;
 
+    if (!userId) return { isPremium: false, userId: null };
+
+    // Check billing status via Clerk API
+    const isPremium = await checkBillingStatus(userId);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[auth] User:", userId, "Premium:", isPremium);
+    }
+
     return { isPremium, userId };
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[auth] Error:", error);
+    }
     return { isPremium: false, userId: null };
   }
 }

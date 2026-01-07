@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "@/components/ui/button";
-import { Sparkles as SparklesIcon } from "lucide-react";
+import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Drawer,
@@ -67,7 +67,7 @@ export function ResponsiveDrawer({
 
   const defaultTrigger = (
     <Button variant="outline" size="sm" className="h-9 shrink-0 pl-4 pr-8 text-sm font-medium transition-all">
-      <SparklesIcon className="size-4" />
+      <FileText className="size-4" />
       Generate Summary
     </Button>
   );

@@ -17,3 +17,60 @@ CHECK: 2026-01-07 01:31:50
    Memory monitor restarts detected: 0
 
 ⏰ Sleeping for 30 minutes...
+═══════════════════════════════════════════════════════════════
+CHECK: 2026-01-07 02:01:55
+═══════════════════════════════════════════════════════════════
+
+📊 Memory Snapshots (last 5):
+   Uptime: 42min | Heap: 362MB | RSS: 954MB | Delta: -1MB
+   Uptime: 42min | Heap: 465MB | RSS: 1026MB | Delta: 103MB
+
+📈 Heap Usage from Recent Requests:
+   Min: 376MB | Max: 506MB | Avg: 440MB
+   ⚠️  WARNING: Max heap exceeds 500MB!
+
+❌ Recent Errors (last 10):
+   Error count in last 500 logs: 68
+
+🔄 Deployment Status:
+   Memory monitor restarts detected: 0
+
+⏰ Sleeping for 30 minutes...
+═══════════════════════════════════════════════════════════════
+CHECK: 2026-01-07 13:02:07
+═══════════════════════════════════════════════════════════════
+
+📊 Memory Snapshots (last 5):
+   Uptime: 1min | Heap: 186MB | RSS: 526MB | Delta: 58MB
+   Uptime: 2min | Heap: 104MB | RSS: 468MB | Delta: -82MB
+
+📈 Heap Usage from Recent Requests:
+   Min: 93MB | Max: 163MB | Avg: 135MB
+   ✅ Memory looks healthy
+
+❌ Recent Errors (last 10):
+   Error count in last 500 logs: 58
+
+🔄 Deployment Status:
+   Memory monitor restarts detected: 0
+
+⏰ Sleeping for 30 minutes...
+═══════════════════════════════════════════════════════════════
+CHECK: 2026-01-07 13:32:15
+═══════════════════════════════════════════════════════════════
+
+📊 Memory Snapshots (last 5):
+   Uptime: 9min | Heap: 226MB | RSS: 633MB | Delta: 13MB
+   Uptime: 10min | Heap: 248MB | RSS: 717MB | Delta: 22MB
+
+📈 Heap Usage from Recent Requests:
+   Min: 157MB | Max: 290MB | Avg: 230MB
+   ✅ Memory looks healthy
+
+❌ Recent Errors (last 10):
+   Error count in last 500 logs: 56
+
+🔄 Deployment Status:
+   Memory monitor restarts detected: 0
+
+⏰ Sleeping for 30 minutes...

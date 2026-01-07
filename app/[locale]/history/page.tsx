@@ -2,17 +2,17 @@
 
 import { useHistory, type HistoryItem } from "@/lib/hooks/use-history";
 import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
-import { 
-  ArrowLeft, 
-  History, 
-  Trash2, 
-  ExternalLink, 
-  Crown, 
+import {
+  ArrowLeft,
+  History,
+  Trash2,
+  ExternalLink,
+  Crown,
   Search,
   X,
   Clock,
   Globe,
-  Sparkles
+  BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -243,7 +243,7 @@ function EmptyState() {
           <History className="size-10 text-muted-foreground/50" />
         </div>
         <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-primary/10 flex items-center justify-center">
-          <Sparkles className="size-3 text-primary" />
+          <BookOpen className="size-3 text-primary" />
         </div>
       </div>
       <h3 className="text-lg font-semibold">No reading history yet</h3>

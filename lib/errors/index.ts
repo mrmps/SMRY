@@ -5,4 +5,5 @@
 
 export * from './types';
 export * from './safe-error';
+export * from './summary';
 

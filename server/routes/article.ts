@@ -52,21 +52,14 @@ function getUrlWithSource(source: string, url: string): string {
   return source === "wayback" ? `https://web.archive.org/web/2/${url}` : url;
 }
 
-const MAX_HTML_SIZE = 50 * 1024;
-
-function truncateHtmlContent(article: CachedArticle): CachedArticle {
-  if (article.htmlContent && article.htmlContent.length > MAX_HTML_SIZE) {
-    return { ...article, htmlContent: article.htmlContent.substring(0, MAX_HTML_SIZE) };
-  }
-  return article;
-}
+// No truncation - we need the full HTML for the "original" view
 
 async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle, existing?: CachedArticle | null): Promise<CachedArticle> {
   try {
     const validation = CachedArticleSchema.safeParse(newArticle);
     if (!validation.success) throw new Error("Invalid article");
 
-    const validated = truncateHtmlContent(validation.data);
+    const validated = validation.data;
 
     const saveToCache = async (article: CachedArticle) => {
       const metaKey = `meta:${key}`;
@@ -88,10 +81,19 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
         return validated;
       }
       const existingArticle = existingValidation.data;
+      // Prefer article with htmlContent over one without
       if (!existingArticle.htmlContent && validated.htmlContent) {
         await saveToCache(validated);
         return validated;
       }
+      // Prefer article with longer htmlContent (fixes old truncated cache entries)
+      const existingHtmlLen = existingArticle.htmlContent?.length || 0;
+      const newHtmlLen = validated.htmlContent?.length || 0;
+      if (newHtmlLen > existingHtmlLen) {
+        await saveToCache(validated);
+        return validated;
+      }
+      // Prefer article with longer text content
       if (validated.length > existingArticle.length) {
         await saveToCache(validated);
         return validated;
@@ -250,7 +252,12 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           if (validation.success) {
             const article = validation.data;
             existingCachedArticle = article;
-            if (article.length > 4000 && article.htmlContent) {
+            // Cache hit if: article has good content AND htmlContent is not truncated
+            // Old truncated cache entries had htmlContent capped at exactly 50KB (51200 bytes)
+            // Treat entries at exactly 51200 bytes as truncated and refresh them
+            const OLD_TRUNCATION_LIMIT = 51200;
+            const htmlContentComplete = article.htmlContent && article.htmlContent.length !== OLD_TRUNCATION_LIMIT;
+            if (article.length > 4000 && htmlContentComplete) {
               cacheStatus = "hit";
               ctx.merge({ cache_hit: true, article_length: article.length, status_code: 200 });
               ctx.success();

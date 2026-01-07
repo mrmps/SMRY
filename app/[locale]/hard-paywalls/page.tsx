@@ -17,7 +17,7 @@ const CATEGORY_ICONS: Record<PaywallCategory, React.ReactNode> = {
 
 const CATEGORY_COLORS: Record<PaywallCategory, string> = {
   news: "bg-red-900/30 text-red-400",
-  creator: "bg-purple-900/30 text-purple-400",
+  creator: "bg-teal-900/30 text-teal-400",
   social: "bg-blue-900/30 text-blue-400",
   document: "bg-amber-900/30 text-amber-400",
   other: "bg-zinc-800 text-zinc-400",

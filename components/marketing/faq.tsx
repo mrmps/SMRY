@@ -24,7 +24,7 @@ export function FAQ() {
             href="https://github.com/mrmps/SMRY"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-purple-600 hover:underline"
+            className="text-foreground underline underline-offset-2 hover:text-muted-foreground"
           >
             https://github.com/mrmps/SMRY
           </a>
@@ -89,7 +89,7 @@ export function FAQ() {
             href="https://smryai.userjot.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-purple-600 hover:underline dark:text-purple-400"
+            className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
           >
             {t("shareThoughts")}
           </a>
@@ -98,7 +98,7 @@ export function FAQ() {
           {t("sponsorships")}{" "}
           <a
             href="mailto:contact@smry.ai"
-            className="font-medium text-purple-600 hover:underline dark:text-purple-400"
+            className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
           >
             contact@smry.ai
           </a>

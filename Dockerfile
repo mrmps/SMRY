@@ -25,8 +25,21 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-EXPOSE 3000
+# Copy Elysia server and its dependencies
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/types ./types
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy entrypoint script
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# Expose both ports: Next.js (3000) and Elysia API (3001)
+EXPOSE 3000 3001
 ENV PORT=3000
+ENV API_PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["bun", "server.js"]
+# Run both servers via entrypoint script
+CMD ["./docker-entrypoint.sh"]
