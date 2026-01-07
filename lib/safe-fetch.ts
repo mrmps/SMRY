@@ -4,16 +4,16 @@
  * Next.js 16 + standalone has a known memory leak with native fetch (undici).
  * See: https://github.com/vercel/next.js/issues/85914
  *
- * This module provides a fetch wrapper that uses node-fetch for non-streaming
- * requests to avoid the memory leak, while keeping native fetch available
- * for streaming responses (like AI SDK).
+ * IMPORTANT: node-fetch v3 ALSO uses undici, so it has the same leak!
+ * We use node-fetch v2 which uses Node's native http/https modules.
  *
  * Usage:
  *   import { safeFetch } from "@/lib/safe-fetch";
  *   const response = await safeFetch(url, options);
  */
 
-import nodeFetch, { RequestInit as NodeFetchRequestInit } from "node-fetch";
+// node-fetch v2 is CommonJS
+const nodeFetch = require("node-fetch");
 
 // Types compatible with standard fetch
 type FetchInput = string | URL;
@@ -23,7 +23,7 @@ type FetchOptions = RequestInit & {
 
 /**
  * Memory-safe fetch for non-streaming requests.
- * Uses node-fetch instead of native fetch to avoid the Next.js memory leak.
+ * Uses node-fetch v2 (http/https based) to avoid the undici memory leak.
  *
  * IMPORTANT: Do NOT use this for streaming responses (AI SDK).
  * Use native fetch for streaming.
@@ -34,21 +34,19 @@ export async function safeFetch(
 ): Promise<Response> {
   const url = typeof input === "string" ? input : input.toString();
 
-  // Convert standard RequestInit to node-fetch compatible options
-  const nodeOptions: NodeFetchRequestInit = {
+  // Convert standard RequestInit to node-fetch v2 compatible options
+  const nodeOptions: Record<string, unknown> = {
     method: init?.method,
-    headers: init?.headers as NodeFetchRequestInit["headers"],
-    body: init?.body as NodeFetchRequestInit["body"],
-    redirect: init?.redirect as NodeFetchRequestInit["redirect"],
-    signal: init?.signal as NodeFetchRequestInit["signal"],
-    // node-fetch doesn't cache, so no need for cache: "no-store"
+    headers: init?.headers,
+    body: init?.body,
+    redirect: init?.redirect,
+    signal: init?.signal,
   };
 
-  // Use node-fetch
+  // Use node-fetch v2 (uses http/https, NOT undici)
   const response = await nodeFetch(url, nodeOptions);
 
   // Convert node-fetch Response to standard Response
-  // This is needed because the return types are slightly different
   return response as unknown as Response;
 }
 
@@ -73,17 +71,4 @@ export async function safeFetchWithTimeout(
   } finally {
     clearTimeout(timeoutId);
   }
-}
-
-/**
- * Check if we should use safe fetch (node-fetch) or native fetch.
- * Use native fetch only for:
- * - AI SDK streaming responses
- * - WebSocket upgrades
- * - Other streaming use cases
- */
-export function shouldUseSafeFetch(_url: string, _options?: FetchOptions): boolean {
-  // For now, always prefer safe fetch for server-side requests
-  // The AI SDK will use its own fetch internally
-  return true;
 }
