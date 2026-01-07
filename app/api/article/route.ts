@@ -603,6 +603,14 @@ export async function GET(request: NextRequest) {
 
     const { article, cacheURL } = result;
 
+    // Debug: Log htmlContent status
+    console.log('[article] Fetched article htmlContent:', {
+      hasHtmlContent: !!article.htmlContent,
+      htmlContentLength: article.htmlContent?.length || 0,
+      source: validatedSource,
+      url: validatedUrl,
+    });
+
     // Store HTML for training (fire and forget)
     if (article.htmlContent) {
       storeArticleHtml(validatedUrl, article.htmlContent);

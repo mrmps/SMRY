@@ -4,16 +4,12 @@
  * Next.js 16 + standalone has a known memory leak with native fetch (undici).
  * See: https://github.com/vercel/next.js/issues/85914
  *
- * IMPORTANT: node-fetch v3 ALSO uses undici, so it has the same leak!
- * We use node-fetch v2 which uses Node's native http/https modules.
- *
- * Usage:
- *   import { safeFetch } from "@/lib/safe-fetch";
- *   const response = await safeFetch(url, options);
+ * This uses Node's built-in http/https modules directly to avoid undici entirely.
  */
 
-// node-fetch v2 is CommonJS
-const nodeFetch = require("node-fetch");
+import * as https from "https";
+import * as http from "http";
+import { URL } from "url";
 
 // Types compatible with standard fetch
 type FetchInput = string | URL;
@@ -22,37 +18,81 @@ type FetchOptions = RequestInit & {
 };
 
 /**
- * Memory-safe fetch for non-streaming requests.
- * Uses node-fetch v2 (http/https based) to avoid the undici memory leak.
- *
- * IMPORTANT: Do NOT use this for streaming responses (AI SDK).
- * Use native fetch for streaming.
+ * Memory-safe fetch using Node's native http/https modules.
+ * Avoids undici entirely to prevent memory leaks.
  */
 export async function safeFetch(
   input: FetchInput,
   init?: FetchOptions
 ): Promise<Response> {
-  const url = typeof input === "string" ? input : input.toString();
+  const urlString = typeof input === "string" ? input : input.toString();
+  const url = new URL(urlString);
+  const isHttps = url.protocol === "https:";
+  const httpModule = isHttps ? https : http;
 
-  // Convert standard RequestInit to node-fetch v2 compatible options
-  const nodeOptions: Record<string, unknown> = {
-    method: init?.method,
-    headers: init?.headers,
-    body: init?.body,
-    redirect: init?.redirect,
-    signal: init?.signal,
-  };
+  return new Promise((resolve, reject) => {
+    const options: http.RequestOptions = {
+      method: init?.method || "GET",
+      headers: init?.headers as http.OutgoingHttpHeaders,
+      timeout: 30000,
+    };
 
-  // Use node-fetch v2 (uses http/https, NOT undici)
-  const response = await nodeFetch(url, nodeOptions);
+    const req = httpModule.request(url, options, (res) => {
+      const chunks: Buffer[] = [];
 
-  // Convert node-fetch Response to standard Response
-  return response as unknown as Response;
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => {
+        const body = Buffer.concat(chunks);
+        const headers = new Headers();
+
+        // Convert Node headers to fetch Headers
+        for (const [key, value] of Object.entries(res.headers)) {
+          if (value) {
+            if (Array.isArray(value)) {
+              value.forEach(v => headers.append(key, v));
+            } else {
+              headers.set(key, value);
+            }
+          }
+        }
+
+        // Create a Response-like object
+        const response = new Response(body, {
+          status: res.statusCode || 200,
+          statusText: res.statusMessage || "",
+          headers,
+        });
+
+        resolve(response);
+      });
+      res.on("error", reject);
+    });
+
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Request timeout"));
+    });
+
+    // Handle abort signal
+    if (init?.signal) {
+      init.signal.addEventListener("abort", () => {
+        req.destroy();
+        reject(new Error("Aborted"));
+      });
+    }
+
+    // Send body if present
+    if (init?.body) {
+      req.write(init.body);
+    }
+
+    req.end();
+  });
 }
 
 /**
- * Fetch with timeout wrapper for memory-safe fetch.
- * Automatically aborts after the specified timeout.
+ * Fetch with timeout wrapper.
  */
 export async function safeFetchWithTimeout(
   input: FetchInput,
