@@ -80,6 +80,7 @@ interface InitialContext {
   source?: string;
   ip?: string;
   userAgent?: string;
+  url?: string;
 }
 
 /**
