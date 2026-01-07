@@ -5,9 +5,14 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
-    // Enable instrumentation hook for memory leak fix
+    // Memory leak mitigations for Next.js 16 + standalone mode
+    // See: https://github.com/vercel/next.js/issues/85914
     experimental: {
       instrumentationHook: true,
+      // Limit server action body size to prevent memory pressure
+      serverActions: {
+        bodySizeLimit: '2mb',
+      },
     },
     images: {
       minimumCacheTTL: 2678400, // 31 days
