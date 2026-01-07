@@ -22,6 +22,10 @@ const STRIP_PATTERNS = {
   unwantedAttrs: /\s+(style|data-[\w-]+|on\w+)\s*=\s*["'][^"']*["']/gi,
   // Collapse whitespace
   whitespace: /\s+/g,
+  // Remove null bytes and lone surrogates (invalid in PostgreSQL UTF-8)
+  // Lone surrogates: U+D800-U+DFFF (invalid in UTF-8 when not part of a valid pair)
+  // Also remove other control characters except newline, tab, carriage return
+  invalidUtf8: /[\x00\uD800-\uDFFF\x01-\x08\x0B\x0C\x0E-\x1F]/g,
 };
 
 /**
@@ -30,7 +34,7 @@ const STRIP_PATTERNS = {
  */
 function stripHtml(html: string): string {
   return html
-    .replace(/\x00/g, "") // Remove null bytes (invalid in PostgreSQL UTF-8)
+    .replace(STRIP_PATTERNS.invalidUtf8, "") // Remove null bytes, lone surrogates, control chars
     .replace(STRIP_PATTERNS.tagsWithContent, "")
     .replace(STRIP_PATTERNS.imgTags, "")
     .replace(STRIP_PATTERNS.comments, "")

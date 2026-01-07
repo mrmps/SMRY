@@ -53,10 +53,13 @@ describe("HTML stripping regex patterns", () => {
     comments: /<!--[\s\S]*?-->/g,
     unwantedAttrs: /\s+(style|data-[\w-]+|on\w+)\s*=\s*["'][^"']*["']/gi,
     whitespace: /\s+/g,
+    // Remove null bytes, lone surrogates, and control characters
+    invalidUtf8: /[\x00\uD800-\uDFFF\x01-\x08\x0B\x0C\x0E-\x1F]/g,
   };
 
   function stripHtml(html: string): string {
     return html
+      .replace(STRIP_PATTERNS.invalidUtf8, "") // Remove null bytes, lone surrogates, control chars
       .replace(STRIP_PATTERNS.tagsWithContent, "")
       .replace(STRIP_PATTERNS.imgTags, "")
       .replace(STRIP_PATTERNS.comments, "")
@@ -138,6 +141,41 @@ describe("HTML stripping regex patterns", () => {
 
     expect(result).not.toContain("    ");
     expect(result).not.toContain("\n");
+  });
+
+  test("removes null bytes (0x00)", () => {
+    const html = '<p>Hello\x00World</p>';
+    const result = stripHtml(html);
+
+    expect(result).not.toContain('\x00');
+    expect(result).toContain("Hello");
+    expect(result).toContain("World");
+  });
+
+  test("removes lone surrogate characters", () => {
+    // Lone surrogates are invalid in UTF-8 (U+D800-U+DFFF when not paired)
+    const html = '<p>Hello\uD800World\uDFFFEnd</p>';
+    const result = stripHtml(html);
+
+    expect(result).not.toMatch(/[\uD800-\uDFFF]/);
+    expect(result).toContain("Hello");
+    expect(result).toContain("World");
+    expect(result).toContain("End");
+  });
+
+  test("removes control characters except newline, tab, carriage return", () => {
+    // Control chars 0x01-0x08, 0x0B, 0x0C, 0x0E-0x1F should be removed
+    // But \n (0x0A), \t (0x09), \r (0x0D) should be preserved (then collapsed to space)
+    const html = '<p>A\x01B\x02C\tD\nE</p>';
+    const result = stripHtml(html);
+
+    expect(result).not.toContain('\x01');
+    expect(result).not.toContain('\x02');
+    expect(result).toContain("A");
+    expect(result).toContain("B");
+    expect(result).toContain("C");
+    expect(result).toContain("D");
+    expect(result).toContain("E");
   });
 
   test("handles complex real-world HTML", () => {
