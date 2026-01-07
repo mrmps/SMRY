@@ -7,20 +7,34 @@ import { streamText } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "../../lib/redis";
-import { createRequestContext, extractClientIp } from "../../lib/request-context";
+import {
+  createRequestContext,
+  extractClientIp,
+} from "../../lib/request-context";
 import { getAuthInfo } from "../middleware/auth";
 import { createHash } from "crypto";
+import {
+  createSummaryError,
+  formatSummaryErrorResponse,
+} from "../../lib/errors/summary";
+import { getLanguagePrompt } from "../../types/api";
 
 const dailyRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(process.env.NODE_ENV === "development" ? 100 : 20, "24h"),
+  limiter: Ratelimit.slidingWindow(
+    process.env.NODE_ENV === "development" ? 100 : 20,
+    "24h",
+  ),
   analytics: true,
   prefix: "ratelimit:summary:daily",
 });
 
 const minuteRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(12, "1m"),
+  limiter: Ratelimit.slidingWindow(
+    process.env.NODE_ENV === "development" ? 60 : 12,
+    "1m",
+  ),
   analytics: true,
   prefix: "ratelimit:summary:minute",
 });
@@ -35,15 +49,6 @@ const MODELS = [
   "qwen/qwen3-4b:free",
 ];
 
-const LANGUAGE_PROMPTS: Record<string, string> = {
-  en: "",
-  es: "Responde siempre en español.",
-  fr: "Réponds toujours en français.",
-  de: "Antworte immer auf Deutsch.",
-  zh: "请用中文回答。",
-  ja: "日本語で回答してください。",
-};
-
 export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
   "/summary",
   async ({ body, request, set }) => {
@@ -56,7 +61,19 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
     ctx.set("endpoint", "/api/summary");
 
     try {
-      const { content, title, url, language = "en" } = body;
+      // AI SDK useCompletion sends content as "prompt", support both
+      const content = body.prompt || body.content;
+      if (!content || content.length < 100) {
+        ctx.error("Content too short", {
+          error_type: "VALIDATION_ERROR",
+          status_code: 422,
+        });
+        set.status = 422;
+        return formatSummaryErrorResponse(
+          createSummaryError("CONTENT_TOO_SHORT"),
+        );
+      }
+      const { title, url, language = "en" } = body;
       ctx.merge({ content_length: content.length, language });
 
       const { isPremium, userId } = await getAuthInfo(request);
@@ -65,24 +82,60 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       const clientIp = extractClientIp(request);
       const rateLimitKey = userId || clientIp;
 
+      const dailyLimit = process.env.NODE_ENV === "development" ? 100 : 20;
+
+      // Track usage for headers - premium users get -1 (unlimited)
+      let usageRemaining = isPremium ? -1 : dailyLimit;
+
       if (!isPremium) {
         const dailyResult = await dailyRateLimit.limit(rateLimitKey);
+        // remaining is how many are left AFTER this request (0 if denied)
+        usageRemaining = dailyResult.remaining;
+
         if (!dailyResult.success) {
-          ctx.error("Daily rate limit exceeded", { error_type: "RATE_LIMIT", status_code: 429 });
+          const retryAfter = Math.ceil((dailyResult.reset - Date.now()) / 1000);
+          ctx.error("Daily rate limit exceeded", {
+            error_type: "RATE_LIMIT",
+            status_code: 429,
+          });
           set.status = 429;
-          set.headers["Retry-After"] = String(Math.ceil((dailyResult.reset - Date.now()) / 1000));
-          return { error: "Daily summary limit reached." };
+          set.headers["Retry-After"] = String(retryAfter);
+          set.headers["X-Usage-Remaining"] = "0";
+          set.headers["X-Usage-Limit"] = String(dailyLimit);
+          set.headers["X-Is-Premium"] = "false";
+          return formatSummaryErrorResponse(
+            createSummaryError("DAILY_LIMIT_REACHED", {
+              retryAfter,
+              usage: dailyLimit - dailyResult.remaining,
+              limit: dailyLimit,
+            }),
+          );
         }
 
         const minuteResult = await minuteRateLimit.limit(rateLimitKey);
         if (!minuteResult.success) {
-          ctx.error("Minute rate limit exceeded", { error_type: "RATE_LIMIT", status_code: 429 });
+          const retryAfter = Math.ceil(
+            (minuteResult.reset - Date.now()) / 1000,
+          );
+          ctx.error("Minute rate limit exceeded", {
+            error_type: "RATE_LIMIT",
+            status_code: 429,
+          });
           set.status = 429;
-          return { error: "Too many requests. Please wait." };
+          set.headers["Retry-After"] = String(retryAfter);
+          set.headers["X-Usage-Remaining"] = String(usageRemaining);
+          set.headers["X-Usage-Limit"] = String(dailyLimit);
+          set.headers["X-Is-Premium"] = "false";
+          return formatSummaryErrorResponse(
+            createSummaryError("RATE_LIMITED", { retryAfter }),
+          );
         }
       }
 
+      // Set usage headers for all successful responses
       set.headers["X-Is-Premium"] = String(isPremium);
+      set.headers["X-Usage-Remaining"] = String(usageRemaining);
+      set.headers["X-Usage-Limit"] = String(isPremium ? -1 : dailyLimit);
 
       const cacheKey = url
         ? `summary:${language}:${url}`
@@ -90,15 +143,26 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
 
       const cachedSummary = await redis.get(cacheKey);
       if (cachedSummary && typeof cachedSummary === "string") {
-        ctx.merge({ cache_hit: true, summary_length: cachedSummary.length, status_code: 200 });
+        ctx.merge({
+          cache_hit: true,
+          summary_length: cachedSummary.length,
+          status_code: 200,
+        });
         ctx.success();
         return new Response(cachedSummary, {
-          headers: { "Content-Type": "text/plain; charset=utf-8", "X-Cached": "true" },
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Cached": "true",
+            "X-Is-Premium": String(isPremium),
+            "X-Usage-Remaining": String(usageRemaining),
+            "X-Usage-Limit": String(isPremium ? -1 : dailyLimit),
+          },
         });
       }
 
-      const languagePrompt = LANGUAGE_PROMPTS[language] || "";
-      const systemPrompt = `You are a helpful assistant that summarizes articles. Provide a clear, concise summary of the main points in 3-5 paragraphs. ${languagePrompt}`.trim();
+      const languagePrompt = getLanguagePrompt(language);
+      const systemPrompt =
+        `You are a helpful assistant that summarizes articles. Provide a clear, concise summary of the main points in 3-5 paragraphs. ${languagePrompt}`.trim();
       const userPrompt = title
         ? `Please summarize this article titled "${title}":\n\n${content.slice(0, 12000)}`
         : `Please summarize this article:\n\n${content.slice(0, 12000)}`;
@@ -126,17 +190,24 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       set.headers["Content-Type"] = "text/plain; charset=utf-8";
       return result.toTextStreamResponse();
     } catch (error) {
-      ctx.error(error instanceof Error ? error : String(error), { error_type: "UNKNOWN_ERROR", status_code: 500 });
+      ctx.error(error instanceof Error ? error : String(error), {
+        error_type: "UNKNOWN_ERROR",
+        status_code: 500,
+      });
       set.status = 500;
-      return { error: "Failed to generate summary" };
+      return formatSummaryErrorResponse(
+        createSummaryError("GENERATION_FAILED"),
+      );
     }
   },
   {
     body: t.Object({
-      content: t.String({ minLength: 100 }),
+      // AI SDK useCompletion sends content as "prompt"
+      prompt: t.Optional(t.String({ minLength: 100 })),
+      content: t.Optional(t.String({ minLength: 100 })),
       title: t.Optional(t.String()),
       url: t.Optional(t.String()),
       language: t.Optional(t.String()),
     }),
-  }
+  },
 );

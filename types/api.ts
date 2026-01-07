@@ -2,7 +2,12 @@ import { z } from "zod";
 import { NormalizedUrlSchema } from "@/lib/validation/url";
 
 // Source type
-export const SOURCES = ["smry-fast", "smry-slow", "wayback", "jina.ai"] as const;
+export const SOURCES = [
+  "smry-fast",
+  "smry-slow",
+  "wayback",
+  "jina.ai",
+] as const;
 export const SourceSchema = z.enum(SOURCES);
 export type Source = z.infer<typeof SourceSchema>;
 
@@ -10,7 +15,7 @@ export type Source = z.infer<typeof SourceSchema>;
 export const DebugStepSchema = z.object({
   step: z.string(),
   timestamp: z.string(),
-  status: z.enum(['success', 'error', 'warning', 'info']),
+  status: z.enum(["success", "error", "warning", "info"]),
   message: z.string(),
   data: z.any().optional(),
 });
@@ -30,7 +35,7 @@ export type PaywallBypassStatus = z.infer<typeof PaywallBypassStatusSchema>;
 export const ArticleSchema = z.object({
   title: z.string(),
   byline: z.string().nullable().optional(),
-  dir: z.enum(['rtl', 'ltr']).default('ltr'),
+  dir: z.enum(["rtl", "ltr"]).default("ltr"),
   lang: z.string().nullable().optional(),
   content: z.string(),
   textContent: z.string(),
@@ -108,21 +113,32 @@ export const JinaCacheUpdateSchema = z.object({
 });
 export type JinaCacheUpdate = z.infer<typeof JinaCacheUpdateSchema>;
 
-// Available languages
+// Available languages with display names and AI prompts
+// This is the single source of truth for language configuration
 export const LANGUAGES = [
-  { code: "en", name: "English" },
-  { code: "es", name: "Español" },
-  { code: "fr", name: "Français" },
-  { code: "de", name: "Deutsch" },
-  { code: "zh", name: "中文" },
-  { code: "ja", name: "日本語" },
-  { code: "pt", name: "Português" },
-  { code: "ru", name: "Русский" },
-  { code: "hi", name: "हिन्दी" },
-  { code: "it", name: "Italiano" },
-  { code: "ko", name: "한국어" },
-  { code: "ar", name: "العربية" },
-  { code: "nl", name: "Nederlands" },
-  { code: "tr", name: "Türkçe" },
+  { code: "en", name: "English", prompt: "" },
+  { code: "es", name: "Español", prompt: "Responde siempre en español." },
+  { code: "fr", name: "Français", prompt: "Réponds toujours en français." },
+  { code: "de", name: "Deutsch", prompt: "Antworte immer auf Deutsch." },
+  { code: "zh", name: "中文", prompt: "请用中文回答。" },
+  { code: "ja", name: "日本語", prompt: "日本語で回答してください。" },
+  { code: "pt", name: "Português", prompt: "Responda sempre em português." },
+  { code: "ru", name: "Русский", prompt: "Всегда отвечай на русском языке." },
+  { code: "hi", name: "हिन्दी", prompt: "कृपया हमेशा हिंदी में उत्तर दें।" },
+  { code: "it", name: "Italiano", prompt: "Rispondi sempre in italiano." },
+  { code: "ko", name: "한국어", prompt: "항상 한국어로 답변해 주세요." },
+  { code: "ar", name: "العربية", prompt: "أجب دائماً باللغة العربية." },
+  {
+    code: "nl",
+    name: "Nederlands",
+    prompt: "Antwoord altijd in het Nederlands.",
+  },
+  { code: "tr", name: "Türkçe", prompt: "Her zaman Türkçe olarak yanıt ver." },
 ] as const;
 
+export type LanguageCode = (typeof LANGUAGES)[number]["code"];
+
+// Helper to get language prompt by code
+export function getLanguagePrompt(code: string): string {
+  return LANGUAGES.find((l) => l.code === code)?.prompt ?? "";
+}

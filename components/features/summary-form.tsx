@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { useCompletion } from "@ai-sdk/react";
 import Link from "next/link";
 import { LANGUAGES, Source, ArticleResponse } from "@/types/api";
@@ -16,11 +22,12 @@ import { UseQueryResult } from "@tanstack/react-query";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { Response } from "../ai/response";
 import { UpgradeModal } from "./upgrade-modal";
-
-const DAILY_LIMIT = process.env.NODE_ENV === "development" ? 100 : 20;
+import { getApiUrl } from "@/lib/api/config";
+import { parseSummaryError, SummaryError } from "@/lib/errors/summary";
+import { Zap, AlertCircle } from "lucide-react";
 
 // RTL languages - summary direction is based on selected language, not article
-const RTL_LANGUAGES = new Set(['ar', 'he', 'fa', 'ur']);
+const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
 type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
@@ -31,7 +38,83 @@ const SOURCE_LABELS: Record<Source, string> = {
   "jina.ai": "Jina.ai",
 };
 
-const SUMMARY_SOURCES: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
+const SUMMARY_SOURCES: Source[] = [
+  "smry-fast",
+  "smry-slow",
+  "wayback",
+  "jina.ai",
+];
+
+// Error display component for summary form
+function SummaryFormError({
+  error,
+  onRetry,
+}: {
+  error: SummaryError;
+  onRetry: () => void;
+}) {
+  // Daily limit reached - prominent upgrade CTA
+  if (error.code === "DAILY_LIMIT_REACHED") {
+    return (
+      <div className="rounded-xl bg-card border border-border p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 p-2 rounded-full bg-muted">
+            <Zap className="size-4 text-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-foreground">
+              Daily limit reached
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error.userMessage}
+            </p>
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Upgrade to Premium
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Rate limited - show wait message
+  if (error.code === "RATE_LIMITED") {
+    return (
+      <div className="rounded-xl bg-card border border-border p-4 shadow-sm">
+        <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Slow down
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {error.userMessage}
+          {error.retryAfter && ` Try again in ${error.retryAfter} seconds.`}
+        </p>
+      </div>
+    );
+  }
+
+  // Generic errors
+  return (
+    <div className="rounded-xl bg-card border border-border p-4 shadow-sm">
+      <div className="flex items-start gap-2.5">
+        <AlertCircle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-foreground">{error.userMessage}</p>
+          {error.code === "GENERATION_FAILED" && (
+            <button
+              onClick={onRetry}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mt-1.5"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface SummaryFormProps {
   urlProp: string;
@@ -41,26 +124,43 @@ interface SummaryFormProps {
   usePortal?: boolean;
 }
 
-export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = true, usePortal = true }: SummaryFormProps) {
+export default function SummaryForm({
+  urlProp,
+  ipProp,
+  articleResults,
+  isOpen = true,
+  usePortal = true,
+}: SummaryFormProps) {
   // Minimum character threshold for summary eligibility
   const MIN_CHARS_FOR_SUMMARY = 400;
 
   // Usage tracking - updated from response headers
-  const [usageCount, setUsageCount] = useState(0);
+  const [usageData, setUsageData] = useState<{
+    remaining: number;
+    limit: number;
+  } | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [hasLoadedUsage, setHasLoadedUsage] = useState(false);
 
-  const showUsageCounter = hasLoadedUsage && !isPremium;
-  const showSoftUpgrade = showUsageCounter && usageCount >= 10 && usageCount < DAILY_LIMIT;
+  const usageCount = usageData ? usageData.limit - usageData.remaining : 0;
+  const showUsageCounter = hasLoadedUsage && !isPremium && usageData !== null;
+  const showSoftUpgrade =
+    showUsageCounter &&
+    usageData &&
+    usageCount >= 10 &&
+    usageCount < usageData.limit;
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Update usage from response headers
   const handleResponse = useCallback((response: globalThis.Response) => {
-    const usage = response.headers.get("X-Usage-Count");
+    const remaining = response.headers.get("X-Usage-Remaining");
+    const limit = response.headers.get("X-Usage-Limit");
     const premium = response.headers.get("X-Is-Premium");
 
-    if (usage !== null) {
-      setUsageCount(parseInt(usage, 10));
+    if (remaining !== null && limit !== null) {
+      const remainingNum = parseInt(remaining, 10);
+      const limitNum = parseInt(limit, 10);
+      setUsageData({ remaining: remainingNum, limit: limitNum });
       setHasLoadedUsage(true);
     }
     if (premium !== null) {
@@ -71,10 +171,12 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
   // Find the source with the longest content from already-loaded articles
   // Only consider sources with at least MIN_CHARS_FOR_SUMMARY characters
   const longestAvailableSource = useMemo(() => {
-    const sources: { source: Source; length: number }[] = SUMMARY_SOURCES.map((source) => ({
-      source,
-      length: articleResults[source]?.data?.article?.textContent?.length || 0,
-    })).filter((s) => s.length >= MIN_CHARS_FOR_SUMMARY);
+    const sources: { source: Source; length: number }[] = SUMMARY_SOURCES.map(
+      (source) => ({
+        source,
+        length: articleResults[source]?.data?.article?.textContent?.length || 0,
+      }),
+    ).filter((s) => s.length >= MIN_CHARS_FOR_SUMMARY);
 
     // Sort by length and return the longest
     sources.sort((a, b) => b.length - a.length);
@@ -89,19 +191,25 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
   const selectedArticle = articleResults[selectedSource]?.data;
 
   // Persist language preference
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage<string>("summary-language", "en");
+  const [preferredLanguage, setPreferredLanguage] = useLocalStorage<string>(
+    "summary-language",
+    "en",
+  );
 
   // Custom fetch wrapper to extract usage headers
-  const customFetch = useCallback(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const response = await globalThis.fetch(input, init);
-    handleResponse(response);
-    return response;
-  }, [handleResponse]) as typeof fetch;
+  const customFetch = useCallback(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await globalThis.fetch(input, init);
+      handleResponse(response);
+      return response;
+    },
+    [handleResponse],
+  ) as typeof fetch;
 
   // Use AI SDK's useCompletion hook for streaming
   const { completion, complete, isLoading, error } = useCompletion({
-    api: '/api/summary',
-    streamProtocol: 'text', // Use plain text streaming
+    api: getApiUrl("/api/summary"),
+    streamProtocol: "text", // Use plain text streaming
     body: {
       title: selectedArticle?.article?.title,
       url: urlProp,
@@ -123,20 +231,28 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
   };
 
   // Check if ANY article has loaded (not just if they're currently loading)
-  const hasArticleData = Object.values(articleResults).some((result) => result.data?.article?.textContent);
-  const allArticlesLoading = Object.values(articleResults).every((result) => result.isLoading);
+  const hasArticleData = Object.values(articleResults).some(
+    (result) => result.data?.article?.textContent,
+  );
+  const allArticlesLoading = Object.values(articleResults).every(
+    (result) => result.isLoading,
+  );
   const shouldDisableSource = allArticlesLoading || !hasArticleData;
 
   // Get content lengths for display
-  const contentLengths = SUMMARY_SOURCES.reduce<Record<Source, number>>((acc, source) => {
-    acc[source] = articleResults[source].data?.article?.textContent?.length || 0;
-    return acc;
-  }, {
-    "smry-fast": 0,
-    "smry-slow": 0,
-    wayback: 0,
-    "jina.ai": 0,
-  });
+  const contentLengths = SUMMARY_SOURCES.reduce<Record<Source, number>>(
+    (acc, source) => {
+      acc[source] =
+        articleResults[source].data?.article?.textContent?.length || 0;
+      return acc;
+    },
+    {
+      "smry-fast": 0,
+      "smry-slow": 0,
+      wayback: 0,
+      "jina.ai": 0,
+    },
+  );
 
   // Track if we've auto-generated
   const hasAutoGeneratedRef = useRef(false);
@@ -155,8 +271,16 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
       hasAutoGeneratedRef.current = true;
       complete(selectedArticle.article.textContent);
     }
-  }, [selectedArticle, completion, isLoading, complete, selectedSource, contentLengths, isOpen, manualSource]);
-
+  }, [
+    selectedArticle,
+    completion,
+    isLoading,
+    complete,
+    selectedSource,
+    contentLengths,
+    isOpen,
+    manualSource,
+  ]);
 
   // Helper to determine if a source should be disabled and why
   const getSourceStatus = (source: Source) => {
@@ -178,91 +302,65 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
     return { disabled: false, label: null };
   };
 
-  // Check for rate limit error and show modal
-  const isRateLimitError = error && error.message.toLowerCase().includes("limit") &&
-    (error.message.toLowerCase().includes("summaries") || error.message.toLowerCase().includes("slow down"));
+  // Parse error into typed SummaryError
+  const parsedError = useMemo(() => {
+    if (!error) return null;
+    return parseSummaryError(error);
+  }, [error]);
 
-  // Show modal when rate limit hit
+  // Show upgrade modal when daily limit reached
   useEffect(() => {
-    if (isRateLimitError && !isPremium) {
-      // Use setTimeout to avoid synchronous setState in effect
+    if (parsedError?.code === "DAILY_LIMIT_REACHED" && !isPremium) {
       const timer = setTimeout(() => setShowUpgradeModal(true), 0);
       return () => clearTimeout(timer);
     }
-  }, [isRateLimitError, isPremium]);
+  }, [parsedError, isPremium]);
 
-  const errorContent = useMemo(() => {
-    if (!error || isRateLimitError) return null;
-
-    const msg = error.message.toLowerCase();
-
-    // Content too short
-    if (msg.includes("content must be at least")) {
-      return {
-        title: "Content Too Short",
-        message: "This article doesn't have enough content to summarize. Try a different source tab.",
-        bgClass: "bg-amber-500/10",
-        textClass: "text-amber-600 dark:text-amber-400",
-        titleClass: "text-amber-700 dark:text-amber-300",
-      };
+  const handleRetry = () => {
+    if (selectedArticle?.article?.textContent) {
+      complete(selectedArticle.article.textContent);
     }
-
-    // Generic error
-    return {
-      title: "Error",
-      message: error.message,
-      bgClass: "bg-red-500/10",
-      textClass: "text-red-600 dark:text-red-400",
-      titleClass: "text-red-700 dark:text-red-300",
-    };
-  }, [error, isRateLimitError]);
+  };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-3 px-4 py-2">
-          
-        {errorContent && (
-          <div className={`rounded-[14px] p-0.5 ${errorContent.bgClass}`}>
-            <div className="rounded-xl bg-card p-4 dark:bg-card">
-              <h3 className={`mb-1 text-xs font-medium uppercase tracking-wide ${errorContent.titleClass}`}>
-                {errorContent.title}
-              </h3>
-              <p className={`text-sm ${errorContent.textClass}`}>
-                {errorContent.message}
-              </p>
+          {parsedError && (
+            <SummaryFormError error={parsedError} onRetry={handleRetry} />
+          )}
+
+          <UpgradeModal
+            open={showUpgradeModal}
+            onOpenChange={setShowUpgradeModal}
+          />
+
+          {(completion || isLoading) && (
+            <div className="text-sm text-foreground">
+              {isLoading && !completion && (
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-[95%]" />
+                  <Skeleton className="h-4 w-[90%]" />
+                </div>
+              )}
+              {completion && (
+                <>
+                  <Response
+                    dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
+                    lang={preferredLanguage}
+                  >
+                    {completion}
+                  </Response>
+                  {isLoading && (
+                    <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground mt-1"></span>
+                  )}
+                </>
+              )}
             </div>
-          </div>
-        )}
-
-        <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} />
-
-        {(completion || isLoading) && (
-          <div className="text-sm text-foreground">
-            {isLoading && !completion && (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-[95%]" />
-                <Skeleton className="h-4 w-[90%]" />
-              </div>
-            )}
-            {completion && (
-              <>
-                <Response
-                  dir={RTL_LANGUAGES.has(preferredLanguage) ? 'rtl' : 'ltr'}
-                  lang={preferredLanguage}
-                >
-                  {completion}
-                </Response>
-                {isLoading && (
-                  <span className="inline-block h-4 w-0.5 animate-pulse bg-purple-500 mt-1"></span>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </div>
 
       <div className="z-10 border-t border-border bg-card p-4 dark:border-border dark:bg-card">
@@ -279,7 +377,9 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
                     <div className="flex w-full items-center gap-2 truncate text-left">
                       <span>{SOURCE_LABELS[selectedSource]}</span>
                       {longestAvailableSource === selectedSource && (
-                        <span className="text-xs font-normal text-purple-500">Best</span>
+                        <span className="text-xs font-normal text-emerald-500">
+                          Best
+                        </span>
                       )}
                     </div>
                   </SelectTrigger>
@@ -288,12 +388,27 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
                       const status = getSourceStatus(source);
                       const length = contentLengths[source];
                       return (
-                        <SelectItem key={source} value={source} disabled={status.disabled}>
+                        <SelectItem
+                          key={source}
+                          value={source}
+                          disabled={status.disabled}
+                        >
                           <span className="flex flex-wrap items-center gap-2 whitespace-normal leading-snug">
                             <span>{SOURCE_LABELS[source]}</span>
-                            {length > 0 && <span className="text-muted-foreground">• {length.toLocaleString()} chars</span>}
-                            {status.label && <span className="text-muted-foreground">• {status.label}</span>}
-                            {longestAvailableSource === source && !status.disabled && <span className="text-purple-500">• Best</span>}
+                            {length > 0 && (
+                              <span className="text-muted-foreground">
+                                • {length.toLocaleString()} chars
+                              </span>
+                            )}
+                            {status.label && (
+                              <span className="text-muted-foreground">
+                                • {status.label}
+                              </span>
+                            )}
+                            {longestAvailableSource === source &&
+                              !status.disabled && (
+                                <span className="text-emerald-500">• Best</span>
+                              )}
                           </span>
                         </SelectItem>
                       );
@@ -301,9 +416,9 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
                   </SelectContent>
                 </Select>
               </div>
-  
+
               <div className="hidden h-4 w-px bg-border md:block" />
-  
+
               <div className="w-full shrink-0 md:w-[110px]">
                 <Select
                   value={preferredLanguage}
@@ -311,9 +426,10 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
                   disabled={isLoading}
                 >
                   <SelectTrigger className="h-9 w-full min-w-0 border-0 bg-transparent text-sm font-medium shadow-none focus:ring-0 focus:ring-offset-0">
-                     <span className="truncate text-left">
-                      {LANGUAGES.find(l => l.code === preferredLanguage)?.name || "Language"}
-                     </span>
+                    <span className="truncate text-left">
+                      {LANGUAGES.find((l) => l.code === preferredLanguage)
+                        ?.name || "Language"}
+                    </span>
                   </SelectTrigger>
                   <SelectContent portal={usePortal}>
                     {LANGUAGES.map((lang) => (
@@ -324,26 +440,43 @@ export default function SummaryForm({ urlProp, ipProp, articleResults, isOpen = 
                   </SelectContent>
                 </Select>
               </div>
-  
-              <Button 
-                type="submit" 
+
+              <Button
+                type="submit"
                 variant={completion ? "ghost" : "default"}
                 size="sm"
-                disabled={isLoading || shouldDisableSource || !selectedArticle?.article?.textContent}
+                disabled={
+                  isLoading ||
+                  shouldDisableSource ||
+                  !selectedArticle?.article?.textContent
+                }
                 className="h-9 shrink-0 px-4 text-sm font-medium transition-all active:scale-95"
               >
-                {isLoading ? "Generating..." : completion ? "Update" : "Generate"}
+                {isLoading
+                  ? "Generating..."
+                  : completion
+                    ? "Update"
+                    : "Generate"}
               </Button>
             </div>
           </div>
-          
+
           <p className="truncate px-2 text-center text-[10px] text-muted-foreground/60">
-            {!manualSource && hasArticleData && `${contentLengths[selectedSource].toLocaleString()} chars`}
-            {!manualSource && hasArticleData && showUsageCounter && ' · '}
-            {showUsageCounter && (
+            {!manualSource &&
+              hasArticleData &&
+              `${contentLengths[selectedSource].toLocaleString()} chars`}
+            {!manualSource && hasArticleData && showUsageCounter && " · "}
+            {showUsageCounter && usageData && (
               <>
-                {usageCount}/{DAILY_LIMIT} today
-                {showSoftUpgrade && <Link href="/pricing" className="text-purple-500/60 hover:text-purple-500 ml-1">· unlimited</Link>}
+                {usageCount}/{usageData.limit} today
+                {showSoftUpgrade && (
+                  <Link
+                    href="/pricing"
+                    className="text-muted-foreground hover:text-foreground ml-1"
+                  >
+                    · unlimited
+                  </Link>
+                )}
               </>
             )}
           </p>
