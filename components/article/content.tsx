@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -62,6 +62,25 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   };
 
   const cacheURL = getCacheURL();
+
+  // Prepare HTML content with base tag for proper URL resolution
+  const preparedHtmlContent = useMemo(() => {
+    const htmlContent = data?.article?.htmlContent;
+    if (!htmlContent) return null;
+
+    // Inject <base> tag to resolve relative URLs against the original URL
+    const baseTag = `<base href="${url}">`;
+
+    // Insert base tag after <head> or at the start of the document
+    if (htmlContent.includes('<head>')) {
+      return htmlContent.replace('<head>', `<head>${baseTag}`);
+    } else if (htmlContent.includes('<head ')) {
+      return htmlContent.replace(/<head\s[^>]*>/, (match) => `${match}${baseTag}`);
+    } else if (htmlContent.includes('<html')) {
+      return htmlContent.replace(/<html[^>]*>/, (match) => `${match}<head>${baseTag}</head>`);
+    }
+    return `<head>${baseTag}</head>${htmlContent}`;
+  }, [data?.article?.htmlContent, url]);
 
   return (
     <div className="mt-2">
@@ -241,7 +260,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                 )}
 
                 {viewMode === "html" ? (
-                  data.article?.htmlContent ? (
+                  preparedHtmlContent ? (
                     <div
                       className={
                         isFullScreen
@@ -263,7 +282,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                         )}
                       </Button>
                       <iframe
-                        srcDoc={data.article.htmlContent}
+                        srcDoc={preparedHtmlContent}
                         className={
                           isFullScreen
                             ? "size-full rounded-lg border border-zinc-200 bg-white"

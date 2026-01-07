@@ -75,19 +75,11 @@ function getUrlWithSource(source: string, url: string): string {
 }
 
 
-// PERF: Max HTML content size to prevent memory spikes (50KB)
-const MAX_HTML_CONTENT_SIZE = 50 * 1024;
-
 /**
- * Truncate HTML content to prevent memory issues with large articles
+ * Pass through article without modification
+ * Note: htmlContent is NOT truncated - it's needed for Original view
  */
-function truncateHtmlContent(article: CachedArticle): CachedArticle {
-  if (article.htmlContent && article.htmlContent.length > MAX_HTML_CONTENT_SIZE) {
-    return {
-      ...article,
-      htmlContent: article.htmlContent.substring(0, MAX_HTML_CONTENT_SIZE),
-    };
-  }
+function prepareArticleForCache(article: CachedArticle): CachedArticle {
   return article;
 }
 
@@ -120,7 +112,7 @@ async function saveOrReturnLongerArticle(
     }
 
     // PERF: Truncate HTML content before caching to limit memory usage
-    const validatedNewArticle = truncateHtmlContent(incomingValidation.data);
+    const validatedNewArticle = prepareArticleForCache(incomingValidation.data);
 
     // Helper to save both compressed article and metadata
     const saveToCache = async (article: CachedArticle) => {
