@@ -15,7 +15,7 @@ export async function register() {
     );
 
     // Store original for potential debugging
-    const originalFetch = globalThis.fetch;
+    const _originalFetch = globalThis.fetch;
 
     // Replace global fetch with node-fetch to avoid Next.js 16 memory leak
     // @ts-expect-error - node-fetch types slightly differ but are compatible

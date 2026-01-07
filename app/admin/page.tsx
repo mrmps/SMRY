@@ -1764,7 +1764,7 @@ function OutcomeBadge({ outcome, cacheHit }: { outcome: string; cacheHit?: boole
   );
 }
 
-function SeverityBadge({ severity }: { severity?: string }) {
+function _SeverityBadge({ severity }: { severity?: string }) {
   if (!severity) return null;
 
   const config: Record<string, { bg: string; text: string; label: string }> = {

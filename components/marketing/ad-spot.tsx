@@ -443,7 +443,7 @@ export function AdSpotSidebar({
   className,
   hidden = false,
 }: AdSpotProps & { hidden?: boolean }) {
-  const t = useTranslations("ads");
+  const _t = useTranslations("ads");
   const [advertiseOpen, setAdvertiseOpen] = React.useState(false);
 
   return (

@@ -57,7 +57,7 @@ export default function PricingPage() {
   const t = useTranslations("pricing");
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const { data: subscription } = useSubscription();
+  const { data: _subscription } = useSubscription();
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
 
   // Derive user state for UI (only used within SignedIn blocks)

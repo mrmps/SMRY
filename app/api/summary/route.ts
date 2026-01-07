@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    const { prompt: content, title, url, ip, language } = validationResult.data;
+    const { prompt: content, title: _title, url, ip, language } = validationResult.data;
     const clientIp = ip || extractClientIp(request);
 
     ctx.merge({ client_ip: clientIp, url });

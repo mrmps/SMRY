@@ -73,13 +73,6 @@ function getUrlWithSource(source: string, url: string): string {
   }
 }
 
-function buildSmryUrl(url: string, source?: string | null): string {
-  if (!source || source === "smry-fast") {
-    return `https://smry.ai/${url}`;
-  }
-
-  return `https://smry.ai/${url}?source=${source}`;
-}
 
 // PERF: Max HTML content size to prevent memory spikes (50KB)
 const MAX_HTML_CONTENT_SIZE = 50 * 1024;
@@ -510,7 +503,7 @@ export async function GET(request: NextRequest) {
 
     // Try to get from cache
     // PERF: Store decompressed article to avoid double decompress later
-    let cacheHit = false;
+    let _cacheHit = false;
     let cacheStatus: "hit" | "miss" | "invalid" | "error" = "miss";
     let existingCachedArticle: CachedArticle | null = null;
 
@@ -533,7 +526,7 @@ export async function GET(request: NextRequest) {
           existingCachedArticle = article;
 
           if (article.length > 4000 && article.htmlContent) {
-            cacheHit = true;
+            _cacheHit = true;
             cacheStatus = "hit";
             ctx.merge({
               cache_hit: true,
@@ -682,7 +675,7 @@ export async function GET(request: NextRequest) {
       ctx.success();
       return NextResponse.json(response);
 
-    } catch (error) {
+    } catch {
       // Return article even if caching fails
       const articleValidation = CachedArticleSchema.safeParse(article);
 
