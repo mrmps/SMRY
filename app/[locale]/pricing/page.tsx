@@ -42,7 +42,8 @@ const testimonials = [
 
 type BillingPeriod = "monthly" | "annual";
 
-const PATRON_PLAN_ID = process.env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID || "";
+// Clerk CheckoutButton expects the plan slug (e.g., "premium"), not the internal ID
+const PATRON_PLAN_SLUG = "premium";
 
 const publications = [
   "Medium",
@@ -307,7 +308,7 @@ export default function PricingPage() {
               ) : (
                 <div className="checkout-btn-primary">
                   <CheckoutButton
-                    planId={PATRON_PLAN_ID}
+                    planId={PATRON_PLAN_SLUG}
                     planPeriod={billingPeriod === "annual" ? "annual" : "month"}
                   >
                     {t("upgradeToPro")}
