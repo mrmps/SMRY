@@ -5,6 +5,9 @@ import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { CheckoutButton } from "@clerk/nextjs/experimental";
 import { Check } from "lucide-react";
 
+// Clerk plan ID from dashboard
+const PATRON_PLAN_ID = "cplan_36Vi5qaiHA0417wdNSZjHSJrjxI";
+
 export function CustomPricingTable() {
   const t = useTranslations("pricing");
 
@@ -39,7 +42,7 @@ export function CustomPricingTable() {
 
           <SignedIn>
             <div className="checkout-btn-secondary">
-              <CheckoutButton planId="premium" planPeriod="month">
+              <CheckoutButton planId={PATRON_PLAN_ID} planPeriod="month">
                 {t("startFreeTrial")}
               </CheckoutButton>
             </div>
@@ -88,7 +91,7 @@ export function CustomPricingTable() {
 
           <SignedIn>
             <div className="checkout-btn-primary">
-              <CheckoutButton planId="premium" planPeriod="annual">
+              <CheckoutButton planId={PATRON_PLAN_ID} planPeriod="annual">
                 {t("startFreeTrial")}
               </CheckoutButton>
             </div>
