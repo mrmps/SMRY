@@ -1,11 +1,77 @@
 import { Link } from "@/i18n/navigation";
-import { ArrowLeft, Lock, Unlock, AlertTriangle } from "lucide-react";
-import { HARD_PAYWALL_SITES } from "@/lib/hard-paywalls";
+import { ArrowLeft, Lock, Unlock, AlertTriangle, Users, FileText, Share2 } from "lucide-react";
+import { getSitesGroupedByCategory, CATEGORY_INFO, type PaywallCategory } from "@/lib/hard-paywalls";
 
 export const metadata = {
   title: "Hard Paywalls vs Soft Paywalls | SMRY",
   description: "Learn the difference between hard and soft paywalls, and why some sites cannot be accessed through SMRY.",
 };
+
+const CATEGORY_ICONS: Record<PaywallCategory, React.ReactNode> = {
+  news: <Lock className="w-4 h-4" />,
+  creator: <Users className="w-4 h-4" />,
+  social: <Share2 className="w-4 h-4" />,
+  document: <FileText className="w-4 h-4" />,
+  other: <Lock className="w-4 h-4" />,
+};
+
+const CATEGORY_COLORS: Record<PaywallCategory, string> = {
+  news: "bg-red-900/30 text-red-400",
+  creator: "bg-purple-900/30 text-purple-400",
+  social: "bg-blue-900/30 text-blue-400",
+  document: "bg-amber-900/30 text-amber-400",
+  other: "bg-zinc-800 text-zinc-400",
+};
+
+function BlockedSitesSection() {
+  const groupedSites = getSitesGroupedByCategory();
+  const categoryOrder: PaywallCategory[] = ["creator", "social", "document", "news", "other"];
+
+  return (
+    <section className="mb-12">
+      <h2 className="text-xl font-semibold mb-4">Sites That Cannot Be Accessed</h2>
+      <p className="text-zinc-400 mb-6">
+        The following sites cannot be accessed through SMRY for various reasons.
+        Understanding why helps set the right expectations.
+      </p>
+
+      <div className="space-y-6">
+        {categoryOrder.map((category) => {
+          const sites = groupedSites[category];
+          if (sites.length === 0) return null;
+
+          const info = CATEGORY_INFO[category];
+
+          return (
+            <div key={category} className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-3">
+                <div className={`p-1.5 rounded ${CATEGORY_COLORS[category]}`}>
+                  {CATEGORY_ICONS[category]}
+                </div>
+                <div>
+                  <h3 className="font-medium text-zinc-200">{info.title}</h3>
+                  <p className="text-xs text-zinc-500">{info.description}</p>
+                </div>
+              </div>
+              <div className="px-4 py-3">
+                <div className="flex flex-wrap gap-2">
+                  {sites.map((site) => (
+                    <span
+                      key={site.hostname}
+                      className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-400"
+                    >
+                      {site.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 export default function HardPaywallsPage() {
   return (
@@ -137,37 +203,8 @@ export default function HardPaywallsPage() {
           </div>
         </section>
 
-        {/* Blocked Sites List */}
-        <section className="mb-12">
-          <h2 className="text-xl font-semibold mb-4">Sites with Hard Paywalls</h2>
-          <p className="text-zinc-400 mb-6">
-            The following sites use hard paywalls and cannot be accessed through SMRY.
-            This list is updated based on our analytics data.
-          </p>
-
-          <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-zinc-800">
-                  <th className="text-left py-3 px-4 text-zinc-400 font-medium text-sm">Publication</th>
-                  <th className="text-left py-3 px-4 text-zinc-400 font-medium text-sm">Domain</th>
-                </tr>
-              </thead>
-              <tbody>
-                {HARD_PAYWALL_SITES.map((site) => (
-                  <tr key={site.hostname} className="border-b border-zinc-800 last:border-0">
-                    <td className="py-3 px-4 text-zinc-200">{site.name}</td>
-                    <td className="py-3 px-4">
-                      <code className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-400">
-                        {site.hostname}
-                      </code>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {/* Blocked Sites List - Grouped by Category */}
+        <BlockedSitesSection />
 
         {/* FAQ */}
         <section>
