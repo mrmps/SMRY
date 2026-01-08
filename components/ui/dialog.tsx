@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const Dialog = DialogPrimitive.Root;
 
 function DialogTrigger(props: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+  return <DialogPrimitive.Trigger {...props} />;
 }
 
 function DialogPortal(props: DialogPrimitive.Portal.Props) {
