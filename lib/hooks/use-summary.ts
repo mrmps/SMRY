@@ -95,17 +95,28 @@ async function* streamSummary(
   }
 
   if (!response.ok) {
-    const errorData = await response.json();
-    const error: SummaryError = {
-      code: errorData.code || "GENERATION_FAILED",
-      message: errorData.message || "Failed to generate summary",
-      userMessage:
-        errorData.userMessage || "Something went wrong. Please try again.",
-      retryAfter: errorData.retryAfter,
-      usage: errorData.usage,
-      limit: errorData.limit,
-    };
-    throw error;
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      try {
+        const errorData = await response.json();
+        const error: SummaryError = {
+          code: errorData.code || "GENERATION_FAILED",
+          message: errorData.message || "Failed to generate summary",
+          userMessage:
+            errorData.userMessage || "Something went wrong. Please try again.",
+          retryAfter: errorData.retryAfter,
+          usage: errorData.usage,
+          limit: errorData.limit,
+        };
+        throw error;
+      } catch (jsonError) {
+        throw normalizeSummaryError(jsonError);
+      }
+    }
+
+    const fallbackBody = await response.text().catch(() => "");
+    throw normalizeSummaryError(fallbackBody || response.statusText);
   }
 
   const reader = response.body?.getReader();

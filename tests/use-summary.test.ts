@@ -36,4 +36,11 @@ describe("normalizeSummaryError", () => {
     expect(normalized.code).toBe("GENERATION_FAILED");
     expect(normalized.userMessage.length).toBeGreaterThan(0);
   });
+
+  it("handles HTML error payloads gracefully", () => {
+    const html = "<!DOCTYPE html><html><body>502 Bad Gateway</body></html>";
+    const normalized = normalizeSummaryError(html);
+    expect(normalized.code).toBe("GENERATION_FAILED");
+    expect(normalized.userMessage.length).toBeGreaterThan(0);
+  });
 });
