@@ -16,7 +16,6 @@ import { parseHTML } from "linkedom";
 import { createRequestContext, extractClientIp } from "../../lib/request-context";
 import { getTextDirection } from "../../lib/rtl";
 import { storeArticleHtml } from "../../lib/db";
-import { safeFetch } from "../../lib/safe-fetch";
 
 const logger = createLogger("api:article");
 
@@ -114,7 +113,7 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
   try {
     logger.info({ source: "smry-fast", hostname: new URL(url).hostname }, "Fetching article directly");
 
-    const response = await safeFetch(url, {
+    const response = await fetch(url, {
       headers: { "User-Agent": "smry.ai bot/1.0", Accept: "text/html,application/xhtml+xml" },
       redirect: "follow",
       signal: controller.signal,
