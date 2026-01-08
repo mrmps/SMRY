@@ -22,7 +22,8 @@ RUN bun run build
 FROM base AS prod-deps
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+# Skip Husky prepare script when installing production deps (husky isn't installed)
+RUN HUSKY=0 bun install --frozen-lockfile --production
 
 # Production image
 FROM base AS runner
