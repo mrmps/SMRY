@@ -18,52 +18,27 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN bun run build
 
-# Production dependencies only (for Elysia server)
-FROM base AS prod-deps
-WORKDIR /app
-COPY package.json bun.lock ./
-# Skip Husky prepare script when installing production deps (husky isn't installed)
-RUN HUSKY=0 bun install --frozen-lockfile --production
-
-# Production image
+# Production image - Next.js only
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user for security (Debian-based image ships groupadd/useradd)
+# Create non-root user for security
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
 
-# Copy Next.js standalone build (includes its own node_modules)
+# Copy Next.js standalone build
 COPY --chown=nextjs:nodejs --from=builder /app/public ./public
 COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
 COPY --chown=nextjs:nodejs --from=builder /app/.next/static ./.next/static
 
-# Copy Elysia server source and runtime dependencies
-COPY --chown=nextjs:nodejs --from=builder /app/server ./server
-COPY --chown=nextjs:nodejs --from=builder /app/lib ./lib
-COPY --chown=nextjs:nodejs --from=builder /app/types ./types
-COPY --chown=nextjs:nodejs --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --chown=nextjs:nodejs --from=prod-deps /app/node_modules ./node_modules
-
-# Copy entrypoint script
-COPY --chown=nextjs:nodejs --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
-
 USER nextjs
 
-# Expose ports: Next.js (3000) and Elysia API (3001)
-# Railway routes external traffic to PORT (3000), Elysia handles /api/* via internal routing
-EXPOSE 3000 3001
+EXPOSE 3000
 
 ENV PORT=3000
-ENV API_PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
-# Railway handles health checks via railway.json healthcheckPath
-# No Docker HEALTHCHECK needed (Railway monitors /health endpoint directly)
-
-# Run both servers via entrypoint script
-CMD ["./docker-entrypoint.sh"]
+CMD ["bun", "server.js"]
