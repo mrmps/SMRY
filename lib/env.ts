@@ -31,6 +31,10 @@ export const env = createEnv({
     API_PORT: z.coerce.number().default(3001),
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
 
+    // Optional - Alerting
+    RESEND_API_KEY: z.string().optional(),
+    ALERT_EMAIL: z.string().email().optional(),
+
     // Node.js built-in
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   },
@@ -67,6 +71,8 @@ export const env = createEnv({
     API_PORT: process.env.API_PORT,
     LOG_LEVEL: process.env.LOG_LEVEL,
     NODE_ENV: process.env.NODE_ENV,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    ALERT_EMAIL: process.env.ALERT_EMAIL,
 
     // Client
     NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,

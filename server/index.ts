@@ -4,17 +4,26 @@
 
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { cron } from "@elysiajs/cron";
 import { articleRoutes } from "./routes/article";
 import { adminRoutes } from "./routes/admin";
 import { summaryRoutes } from "./routes/summary";
 import { jinaRoutes } from "./routes/jina";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
+import { checkErrorRateAndAlert } from "../lib/alerting";
 import { env } from "../lib/env";
 
 startMemoryMonitor();
 
 const app = new Elysia()
   .use(cors({ origin: env.CORS_ORIGIN ?? true, credentials: true }))
+  .use(
+    cron({
+      name: "error-rate-alerting",
+      pattern: "*/5 * * * *", // Every 5 minutes
+      run: checkErrorRateAndAlert,
+    })
+  )
   .get("/", () => ({
     service: "smry-api",
     status: "running",
