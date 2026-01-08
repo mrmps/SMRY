@@ -19,6 +19,8 @@ export const APP_ROUTES = [
   "/feedback",
   "/admin",
   "/hard-paywalls",
+  "/sign-in",
+  "/sign-up",
 ];
 
 /**
