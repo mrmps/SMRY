@@ -69,6 +69,7 @@
     "resend": "^6.6.0",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7",
+    "undici": "^7.18.2",
     "usehooks-ts": "^3.1.1",
     "validator": "^13.15.23",
     "vaul-base": "^0.0.6",

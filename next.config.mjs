@@ -21,6 +21,8 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+    // Reduce memory usage during webpack builds
+    webpackMemoryOptimizations: true,
   },
   images: {
     minimumCacheTTL: 2678400, // 31 days
@@ -39,7 +41,7 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["pino", "pino-pretty", "thread-stream"],
+  serverExternalPackages: ["pino", "pino-pretty", "thread-stream", "undici"],
 
   // Redirect auth routes to pricing page (sign-in modal is there)
   async redirects() {
