@@ -29,4 +29,11 @@ describe("normalizeSummaryError", () => {
     expect(normalized.code).toBe("GENERATION_FAILED");
     expect(normalized.message.length).toBeGreaterThan(0);
   });
+
+  it("does not treat DOMException-like objects as SummaryError", () => {
+    const domError = { name: "AbortError", code: 20 };
+    const normalized = normalizeSummaryError(domError);
+    expect(normalized.code).toBe("GENERATION_FAILED");
+    expect(normalized.userMessage.length).toBeGreaterThan(0);
+  });
 });

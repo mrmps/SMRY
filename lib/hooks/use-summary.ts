@@ -47,7 +47,13 @@ interface GenerateParams {
 }
 
 export function normalizeSummaryError(errorInput: unknown): SummaryError {
-  if (typeof errorInput === "object" && errorInput && "code" in errorInput) {
+  if (
+    typeof errorInput === "object" &&
+    errorInput &&
+    "code" in errorInput &&
+    typeof (errorInput as SummaryError).code === "string" &&
+    "userMessage" in errorInput
+  ) {
     return errorInput as SummaryError;
   }
 
