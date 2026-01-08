@@ -23,7 +23,11 @@ const nextConfig = {
     },
     // Reduce memory usage during webpack builds
     webpackMemoryOptimizations: true,
+    // Disable preloading entries to reduce memory usage
+    preloadEntriesOnStart: false,
   },
+  // Disable in-memory cache to reduce memory usage
+  cacheMaxMemorySize: 0,
   images: {
     minimumCacheTTL: 2678400, // 31 days
     remotePatterns: [
