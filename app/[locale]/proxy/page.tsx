@@ -95,32 +95,15 @@ export type ResponseItem = {
 /**
  * Fetch article metadata from API for SEO
  * Uses axios (not fetch) to avoid Next.js 16 memory leak (issue #85914)
- * Single call to smry-fast with short timeout - falls back to URL-based metadata if slow/failed
  */
 async function fetchArticleForMetadata(url: string): Promise<Article | null> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    const response = await axios.get(`${apiUrl}/api/article`, {
+    const { data } = await axios.get(`${apiUrl}/api/article`, {
       params: { url, source: "smry-fast" },
-      timeout: 2000, // 2s timeout - don't block page load for metadata
     });
-
-    const data = response.data;
-    if (data?.article?.title) {
-      return {
-        title: data.article.title,
-        siteName: data.article.siteName || null,
-        length: data.article.length || 0,
-        byline: null,
-        dir: null,
-        lang: null,
-        content: "",
-        textContent: data.article.textContent?.slice(0, 200) || "",
-      } as Article;
-    }
-    return null;
+    return data?.article || null;
   } catch {
-    // Timeout or error - use URL-based fallback
     return null;
   }
 }
