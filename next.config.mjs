@@ -41,6 +41,22 @@ const nextConfig = {
   },
   serverExternalPackages: ["pino", "pino-pretty", "thread-stream"],
 
+  // Redirect auth routes to pricing page (sign-in modal is there)
+  async redirects() {
+    return [
+      {
+        source: "/sign-in",
+        destination: "/pricing",
+        permanent: false,
+      },
+      {
+        source: "/sign-up",
+        destination: "/pricing",
+        permanent: false,
+      },
+    ];
+  },
+
   // Proxy /api/* requests to Elysia server running on port 3001
   // This allows both servers to run in the same container with Railway
   // exposing only port 3000 (Next.js) publicly
