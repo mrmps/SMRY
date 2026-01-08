@@ -1,4 +1,5 @@
 import { createClient, ClickHouseClient } from "@clickhouse/client";
+import { env } from "./env";
 
 /**
  * Clickhouse Analytics Client
@@ -17,19 +18,34 @@ import { createClient, ClickHouseClient } from "@clickhouse/client";
 
 // Module-level singleton - created once at module load
 let client: ClickHouseClient | null = null;
+// Track if ClickHouse is unavailable (connection failed) to prevent repeated attempts
+let clickhouseDisabled = false;
+let lastConnectionAttempt = 0;
+const CONNECTION_RETRY_INTERVAL_MS = 60_000; // Retry connection check every 60 seconds
 
 function getClient(): ClickHouseClient | null {
   // Skip if Clickhouse not configured
-  if (!process.env.CLICKHOUSE_URL) {
+  if (!env.CLICKHOUSE_URL) {
     return null;
+  }
+
+  // Skip if we've determined ClickHouse is unavailable
+  // Allow retry after CONNECTION_RETRY_INTERVAL_MS
+  if (clickhouseDisabled) {
+    const now = Date.now();
+    if (now - lastConnectionAttempt < CONNECTION_RETRY_INTERVAL_MS) {
+      return null;
+    }
+    // Reset to allow retry
+    clickhouseDisabled = false;
   }
 
   if (!client) {
     client = createClient({
-      url: process.env.CLICKHOUSE_URL,
-      username: process.env.CLICKHOUSE_USER || "default",
-      password: process.env.CLICKHOUSE_PASSWORD,
-      database: process.env.CLICKHOUSE_DATABASE || "smry_analytics",
+      url: env.CLICKHOUSE_URL,
+      username: env.CLICKHOUSE_USER || "default",
+      password: env.CLICKHOUSE_PASSWORD,
+      database: env.CLICKHOUSE_DATABASE || "smry_analytics",
       request_timeout: 30_000,
       compression: {
         request: true,
@@ -42,6 +58,17 @@ function getClient(): ClickHouseClient | null {
     });
   }
   return client;
+}
+
+/**
+ * Mark ClickHouse as temporarily disabled due to connection failure
+ */
+function disableClickhouse(reason: string): void {
+  if (!clickhouseDisabled) {
+    console.warn(`[clickhouse] Disabled due to connection failure: ${reason}. Will retry in ${CONNECTION_RETRY_INTERVAL_MS / 1000}s`);
+    clickhouseDisabled = true;
+    lastConnectionAttempt = Date.now();
+  }
 }
 
 // Analytics event type matching our Clickhouse schema
@@ -152,7 +179,7 @@ async function ensureSchema(): Promise<void> {
   try {
     // Create database if not exists
     await clickhouse.command({
-      query: `CREATE DATABASE IF NOT EXISTS ${process.env.CLICKHOUSE_DATABASE || "smry_analytics"}`,
+      query: `CREATE DATABASE IF NOT EXISTS ${env.CLICKHOUSE_DATABASE || "smry_analytics"}`,
     });
 
     // Create main events table
@@ -226,11 +253,14 @@ async function ensureSchema(): Promise<void> {
     schemaMigrated = true;
     console.log("[clickhouse] Schema migration complete");
   } catch (error) {
-    // Log but don't throw - will retry on next flush
-    console.error(
-      "[clickhouse] Schema migration failed:",
-      error instanceof Error ? error.message : error
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    // Check for connection errors and disable to prevent spam
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
+      disableClickhouse(message);
+    } else {
+      // Log other errors but don't disable - might be transient
+      console.error("[clickhouse] Schema migration failed:", message);
+    }
   }
 }
 
@@ -257,11 +287,14 @@ async function flushEvents(): Promise<void> {
       format: "JSONEachRow",
     });
   } catch (error) {
-    // Log but NEVER throw - analytics must never break the app
-    console.error(
-      "[clickhouse] Flush failed:",
-      error instanceof Error ? error.message : error
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    // Check for connection errors and disable to prevent spam
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
+      disableClickhouse(message);
+    } else {
+      // Log other errors but don't disable - might be transient
+      console.error("[clickhouse] Flush failed:", message);
+    }
     // Don't push events back - prevents infinite memory growth on persistent errors
   }
 }
@@ -289,7 +322,7 @@ function scheduleFlush(): void {
  */
 export function trackEvent(event: Partial<AnalyticsEvent>): void {
   // Skip if Clickhouse not configured
-  if (!process.env.CLICKHOUSE_URL) return;
+  if (!env.CLICKHOUSE_URL) return;
 
   // Build full event with defaults
   // Convert ISO timestamp to Clickhouse-compatible format (remove 'T' and 'Z')
@@ -331,7 +364,7 @@ export function trackEvent(event: Partial<AnalyticsEvent>): void {
     heap_used_mb: event.heap_used_mb || 0,
     heap_total_mb: event.heap_total_mb || 0,
     rss_mb: event.rss_mb || 0,
-    env: event.env || process.env.NODE_ENV || "development",
+    env: event.env || env.NODE_ENV || "development",
     version: event.version || process.env.npm_package_version || "unknown",
   };
 
@@ -370,10 +403,13 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
     });
     return result.json<T>();
   } catch (error) {
-    console.error(
-      "[clickhouse] Query failed:",
-      error instanceof Error ? error.message : error
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    // Check for connection errors and disable to prevent spam
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
+      disableClickhouse(message);
+    } else {
+      console.error("[clickhouse] Query failed:", message);
+    }
     return [];
   } finally {
     // Always release the slot, even on error

@@ -15,6 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { getApiUrl } from "@/lib/api/config";
 
 // Dashboard data types
 interface RequestEvent {
@@ -202,7 +203,7 @@ function AnalyticsDashboardContent() {
   const { data, isLoading, error, refetch } = useQuery<DashboardData>({
     queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch],
     queryFn: async () => {
-      const res = await fetch(`/api/admin?${buildQueryString()}`);
+      const res = await fetch(getApiUrl(`/api/admin?${buildQueryString()}`));
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to fetch analytics");
@@ -1055,7 +1056,7 @@ function RequestDetails({ request }: { request: RequestEvent }) {
   const timings = [
     { label: "Cache Lookup", value: request.cache_lookup_ms, color: "bg-blue-500" },
     { label: "Fetch", value: request.fetch_ms, color: "bg-emerald-500" },
-    { label: "Cache Save", value: request.cache_save_ms, color: "bg-purple-500" },
+    { label: "Cache Save", value: request.cache_save_ms, color: "bg-cyan-500" },
   ].filter(t => t.value > 0);
 
   const accountedTime = timings.reduce((sum, t) => sum + t.value, 0);
@@ -1732,9 +1733,9 @@ function SuccessRateBadge({ rate }: { rate?: number }) {
 function SourceBadge({ source }: { source: string }) {
   const colors: Record<string, string> = {
     "smry-fast": "bg-blue-900/30 text-blue-400",
-    "smry-slow": "bg-purple-900/30 text-purple-400",
+    "smry-slow": "bg-cyan-900/30 text-cyan-400",
     "wayback": "bg-amber-900/30 text-amber-400",
-    "jina.ai": "bg-pink-900/30 text-pink-400",
+    "jina.ai": "bg-rose-900/30 text-rose-400",
   };
 
   return (

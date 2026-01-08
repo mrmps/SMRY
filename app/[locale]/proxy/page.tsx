@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { redis } from "@/lib/redis";
 import { normalizeUrl } from "@/lib/validation/url";
 import { createLogger } from "@/lib/logger";
+import { env } from "@/lib/env";
 
 const logger = createLogger("proxy");
 
@@ -206,7 +207,7 @@ export async function generateMetadata({
     openGraph: {
       title: title,
       description: description,
-      url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(normalizedUrl)}`,
+      url: `${env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(normalizedUrl)}`,
       siteName: "SMRY",
       type: "article",
       images: [

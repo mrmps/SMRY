@@ -59,7 +59,7 @@ function SupportLink() {
   return (
     <Link
       href="/pricing"
-      className="inline-flex items-center gap-1.5 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
     >
       No Ads
     </Link>
@@ -117,7 +117,7 @@ export default function Home() {
             <SignedOut>
               <Link
                 href="/pricing"
-                className="inline-flex items-center gap-1.5 text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-purple-500 hover:to-pink-500 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
               >
                 No Ads
               </Link>
@@ -164,7 +164,7 @@ export default function Home() {
             <div className={clsx(
               "flex overflow-hidden rounded-lg border shadow-sm transition-all duration-300",
               "bg-background",
-              "focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-200 focus-within:ring-offset-0",
+              "focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/20 focus-within:ring-offset-0",
               urlError ? "border-red-500 ring-red-200" : "border-input"
             )}>
               <input
@@ -205,7 +205,7 @@ export default function Home() {
                       "size-6 transition-transform duration-300 ease-in-out",
                       {
                         "text-foreground scale-110": isHovered,
-                        "text-purple-500": isUrlValid,
+                        "text-foreground/80": isUrlValid,
                         "text-muted-foreground": !isUrlValid,
                       }
                     )}

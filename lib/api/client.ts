@@ -1,5 +1,6 @@
 import { ArticleResponse, Source, ErrorResponse } from "@/types/api";
 import { DebugContext } from "@/lib/errors/types";
+import { getApiUrl } from "./config";
 
 /**
  * Custom error that includes debug context
@@ -31,7 +32,7 @@ export const articleAPI = {
       source,
     });
 
-    const response = await fetch(`/api/article?${params.toString()}`);
+    const response = await fetch(getApiUrl(`/api/article?${params.toString()}`));
 
     if (!response.ok) {
       const errorData: ErrorResponse = await response.json();

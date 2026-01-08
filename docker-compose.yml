@@ -1,5 +1,5 @@
-# Full local dev stack - run with: docker-compose up
-# Or use: bun run dev:docker (starts everything)
+# Local dev services - ClickHouse starts automatically with: bun run dev
+# For full Docker stack: bun run dev:docker
 
 services:
   # Clickhouse analytics database

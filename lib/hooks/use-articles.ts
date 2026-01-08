@@ -4,6 +4,7 @@ import { useQueries, useQuery, UseQueryResult } from "@tanstack/react-query";
 import { articleAPI } from "@/lib/api/client";
 import { ArticleResponse, Source } from "@/types/api";
 import { fetchJinaArticle } from "@/lib/api/jina";
+import { getApiUrl } from "@/lib/api/config";
 
 const SERVER_SOURCES = ["smry-fast", "smry-slow", "wayback"] as const satisfies readonly Source[];
 
@@ -21,7 +22,7 @@ function useJinaArticle(url: string): UseQueryResult<ArticleResponse, Error> {
       // Step 1: Check cache
       try {
         const cacheResponse = await fetch(
-          `/api/jina?${new URLSearchParams({ url }).toString()}`
+          getApiUrl(`/api/jina?${new URLSearchParams({ url }).toString()}`)
         );
 
         if (cacheResponse.ok) {
@@ -54,7 +55,7 @@ function useJinaArticle(url: string): UseQueryResult<ArticleResponse, Error> {
       };
 
       // Update cache in background (don't await)
-      fetch("/api/jina", {
+      fetch(getApiUrl("/api/jina"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

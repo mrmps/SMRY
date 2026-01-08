@@ -82,7 +82,7 @@ function SelectPopup({
         <span className="relative block h-full rounded-lg border bg-popover bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-lg dark:not-in-data-[slot=group]:bg-clip-border">
           <SelectPrimitive.List
             className={cn(
-              "max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto p-1",
+              "max-h-(--available-height) min-w-(--anchor-width) max-w-[calc(100vw-2rem)] overflow-y-auto p-1",
               className,
             )}
             data-slot="select-list"

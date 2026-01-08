@@ -1,6 +1,7 @@
 import { createLogger } from "./logger";
 import { randomUUID } from "crypto";
 import { trackEvent, ErrorSeverity } from "./clickhouse";
+import { env } from "./env";
 
 /**
  * Determine error severity based on error type
@@ -80,6 +81,7 @@ interface InitialContext {
   source?: string;
   ip?: string;
   userAgent?: string;
+  url?: string;
 }
 
 /**
@@ -95,7 +97,7 @@ export function createRequestContext(initial?: InitialContext): RequestContext {
     timestamp: new Date().toISOString(),
     service: "smry",
     version: process.env.npm_package_version || "unknown",
-    env: process.env.NODE_ENV || "development",
+    env: env.NODE_ENV,
     ...initial,
   };
 
