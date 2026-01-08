@@ -69,15 +69,15 @@ export function CustomPricingTable() {
             <div className="flex items-center gap-2 mb-1">
               <p className="text-sm font-medium text-muted-foreground">{t("yearly")}</p>
               <span className="text-xs font-semibold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
-                {t("save")} 20%
+                {t("save")} 50%
               </span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">$3.99</span>
+              <span className="text-3xl font-bold">$2.50</span>
               <span className="text-muted-foreground">/{t("perMonth").split(" ")[0]}</span>
               <span className="text-sm text-muted-foreground line-through">$4.99</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{t("billedYearly")} $47.88</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("billedYearly")} $30</p>
           </div>
 
           <ul className="space-y-2 mb-6 flex-1">
