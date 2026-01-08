@@ -45,6 +45,7 @@ COPY --chown=nextjs:nodejs --from=builder /app/.next/static ./.next/static
 COPY --chown=nextjs:nodejs --from=builder /app/server ./server
 COPY --chown=nextjs:nodejs --from=builder /app/lib ./lib
 COPY --chown=nextjs:nodejs --from=builder /app/types ./types
+COPY --chown=nextjs:nodejs --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --chown=nextjs:nodejs --from=prod-deps /app/node_modules ./node_modules
 
 # Copy entrypoint script
