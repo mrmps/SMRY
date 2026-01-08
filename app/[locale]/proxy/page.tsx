@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { ProxyContent } from "@/components/features/proxy-content";
 import type { Metadata } from "next";
-import { redis } from "@/lib/redis";
+import axios from "axios";
 import { normalizeUrl } from "@/lib/validation/url";
 import { createLogger } from "@/lib/logger";
 import { env } from "@/lib/env";
@@ -93,45 +93,34 @@ export type ResponseItem = {
 };
 
 /**
- * Fetch article metadata from cache only (no full API fetch)
- * PERF: Only checks metadata cache - saves 200-400ms by avoiding duplicate API calls
- * The page component will fetch the full article anyway, so we just need cached metadata for SEO
+ * Fetch article metadata from API for SEO
+ * Uses axios (not fetch) to avoid Next.js 16 memory leak (issue #85914)
+ * Single call to smry-fast with short timeout - falls back to URL-based metadata if slow/failed
  */
 async function fetchArticleForMetadata(url: string): Promise<Article | null> {
   try {
-    // Try sources in order: smry-fast, smry-slow, jina.ai, wayback
-    const sources = ["smry-fast", "smry-slow", "jina.ai", "wayback"];
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const response = await axios.get(`${apiUrl}/api/article`, {
+      params: { url, source: "smry-fast" },
+      timeout: 2000, // 2s timeout - don't block page load for metadata
+    });
 
-    // Only check lightweight metadata cache - no full API fetch
-    // Full article will be fetched by the page component anyway
-    for (const source of sources) {
-      try {
-        const cacheKey = source === 'jina.ai' ? `jina.ai:${url}` : `${source}:${url}`;
-        const metaKey = `meta:${cacheKey}`;
-        const meta = await redis.get<{ title: string; siteName: string; length: number }>(metaKey);
-
-        if (meta && meta.title) {
-          // Return minimal article object for metadata
-          return {
-            title: meta.title,
-            siteName: meta.siteName || null,
-            length: meta.length || 0,
-            byline: null,
-            dir: null,
-            lang: null,
-            content: "",
-            textContent: "",
-          } as Article;
-        }
-      } catch {
-        // Continue to next source if redis check fails
-      }
+    const data = response.data;
+    if (data?.article?.title) {
+      return {
+        title: data.article.title,
+        siteName: data.article.siteName || null,
+        length: data.article.length || 0,
+        byline: null,
+        dir: null,
+        lang: null,
+        content: "",
+        textContent: data.article.textContent?.slice(0, 200) || "",
+      } as Article;
     }
-
-    // No cached metadata found - return null and use URL-based fallback
-    // This is fine because the page will fetch the full article anyway
     return null;
   } catch {
+    // Timeout or error - use URL-based fallback
     return null;
   }
 }

@@ -41,6 +41,7 @@
     "@upstash/ratelimit": "^0.4.4",
     "@upstash/redis": "^1.35.6",
     "ai": "^5.0.82",
+    "axios": "^1.13.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "dompurify": "^3.3.1",
