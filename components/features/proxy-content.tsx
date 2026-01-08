@@ -125,7 +125,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
   const activeArticle = results[source]?.data?.article;
   const articleTitle = activeArticle?.title;
-  const articleImage = activeArticle?.image;
   const articleTextContent = activeArticle?.textContent;
 
   // Track if we've already saved to history for this URL
@@ -250,7 +249,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}
                 articleTitle={articleTitle}
-                articleImage={articleImage}
               />
 
               <CopyPageDropdown
@@ -358,7 +356,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}
                 articleTitle={articleTitle}
-                articleImage={articleImage}
                 triggerVariant="icon"
               />
 
