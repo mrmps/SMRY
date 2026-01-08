@@ -60,7 +60,7 @@ function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
       className={cn(
         "flex flex-1 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent font-medium text-sm outline-none transition-[color,background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-disabled:opacity-64 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         "hover:text-muted-foreground data-selected:text-foreground",
-        "gap-1.5 px-[calc(--spacing(2.5)-1px)] py-[calc(--spacing(1.5)-1px)]",
+        "gap-1.5 px-[calc(--spacing(2)-1px)] py-[calc(--spacing(1)-1px)]",
         "data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start",
         className,
       )}

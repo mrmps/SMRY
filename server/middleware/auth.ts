@@ -9,8 +9,47 @@ import { env } from "../../lib/env";
 const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
 
 // Cache billing status to avoid repeated API calls (5 min TTL)
+// MEMORY SAFETY: Bounded cache with periodic cleanup to prevent unbounded growth
 const billingCache = new Map<string, { isPremium: boolean; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CACHE_SIZE = 1000; // Maximum entries to prevent memory leak
+const CLEANUP_INTERVAL_MS = 60 * 1000; // Clean expired entries every minute
+
+// Periodic cleanup of expired entries to prevent memory leak
+let cleanupTimer: NodeJS.Timeout | null = null;
+
+function startCacheCleanup(): void {
+  if (cleanupTimer) return;
+  cleanupTimer = setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [userId, entry] of billingCache.entries()) {
+      if (entry.expiresAt <= now) {
+        billingCache.delete(userId);
+        cleaned++;
+      }
+    }
+    if (cleaned > 0 && env.NODE_ENV === "development") {
+      console.log(`[auth] Cleaned ${cleaned} expired cache entries, ${billingCache.size} remaining`);
+    }
+  }, CLEANUP_INTERVAL_MS);
+  cleanupTimer.unref(); // Don't keep process alive
+}
+
+// Start cleanup on module load
+startCacheCleanup();
+
+// Helper to evict oldest entries when cache is full
+function evictIfNeeded(): void {
+  if (billingCache.size >= MAX_CACHE_SIZE) {
+    const entriesToRemove = Math.floor(MAX_CACHE_SIZE * 0.1); // Remove 10%
+    const entries = Array.from(billingCache.entries());
+    entries.sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+    for (let i = 0; i < entriesToRemove; i++) {
+      billingCache.delete(entries[i][0]);
+    }
+  }
+}
 
 interface AuthInfo {
   isPremium: boolean;
@@ -39,14 +78,16 @@ async function checkBillingStatus(userId: string): Promise<boolean> {
       item => item.plan?.slug === "premium" && item.status === "active"
     ) ?? false;
 
-    // Cache the result
+    // Cache the result (with size limit to prevent memory leak)
+    evictIfNeeded();
     billingCache.set(userId, { isPremium, expiresAt: Date.now() + CACHE_TTL_MS });
     return isPremium;
   } catch (error) {
     if (env.NODE_ENV === "development") {
       console.log("[auth] Billing check error for", userId, error);
     }
-    // No subscription found = not premium
+    // No subscription found = not premium (still cache with size limit)
+    evictIfNeeded();
     billingCache.set(userId, { isPremium: false, expiresAt: Date.now() + CACHE_TTL_MS });
     return false;
   }

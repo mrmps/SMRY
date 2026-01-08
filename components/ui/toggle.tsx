@@ -14,9 +14,9 @@ const toggleVariants = cva(
     },
     variants: {
       size: {
-        default: "h-8 min-w-8 px-[calc(--spacing(2)-1px)]",
-        lg: "h-9 min-w-9 px-[calc(--spacing(2.5)-1px)]",
-        sm: "h-7 min-w-7 px-[calc(--spacing(1.5)-1px)]",
+        default: "h-7 min-w-7 px-[calc(--spacing(1.5)-1px)]",
+        lg: "h-8 min-w-8 px-[calc(--spacing(2)-1px)]",
+        sm: "h-6 min-w-6 px-[calc(--spacing(1)-1px)]",
       },
       variant: {
         default: "border-transparent",

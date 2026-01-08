@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 
 const ModeToggle = dynamic(
   () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
-  { ssr: false, loading: () => <div className="size-9" /> }
+  { ssr: false, loading: () => <div className="size-7" /> }
 );
 
 const TopBar = () => {
@@ -32,14 +32,14 @@ const TopBar = () => {
       className="absolute inset-x-0 top-0 z-50"
     >
       <div className="w-full border-b border-gray-200/50 bg-white/80 backdrop-blur-md dark:bg-zinc-950/80 dark:border-zinc-800/50">
-        <div className="mx-auto flex max-w-prose items-center justify-between p-4 sm:px-0">
+        <div className="mx-auto flex h-11 max-w-prose items-center justify-between px-3 sm:px-0">
           <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
             <Image
               src="/logo.svg"
               width={120}
               height={40}
               alt="smry logo"
-              className="h-8 w-auto sm:-ml-4 dark:invert"
+              className="h-6 w-auto sm:-ml-3 dark:invert"
               priority
             />
           </Link>
