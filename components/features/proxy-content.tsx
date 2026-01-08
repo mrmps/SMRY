@@ -181,7 +181,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
       </div>
       
       <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
+        <header className="z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
           {/* Left: Logo */}
           <div className="flex items-center gap-3 shrink-0">
             <Link
@@ -533,7 +533,7 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto bg-card pb-20 lg:pb-0">
+          <div className="h-full overflow-y-auto overscroll-y-none bg-card pb-20 lg:pb-0">
             <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-3.5rem)]">
               <ArrowTabs
                 url={url}

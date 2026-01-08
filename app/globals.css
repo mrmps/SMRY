@@ -120,8 +120,31 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /*
+   * Robust sticky header bounce prevention
+   *
+   * Safari's elastic/rubber-band scrolling occurs at the viewport compositor level.
+   * The fix: move scroll from <html> to <body>, then apply overscroll-behavior to body.
+   *
+   * Why this works:
+   * 1. html { overflow: hidden } prevents html from being the scroll container
+   * 2. body { overflow-y: auto } makes body the scroll container
+   * 3. body { overscroll-behavior-y: none } prevents bounce on the actual scroll container
+   * 4. For app-shell layouts (h-dvh), body won't scroll anyway (content fits viewport)
+   * 5. For traditional pages (min-h-screen), body scrolls but without bounce
+   */
+  html {
+    height: 100%;
+    overflow: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    /* -webkit-overflow-scrolling: touch still gives momentum, just no bounce */
   }
 }
 
