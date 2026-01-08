@@ -63,8 +63,8 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
     ctx.set("endpoint", "/api/summary");
 
     try {
-      // Extract content from request body
-      const content = body.content;
+      // Extract content from request body (support both content + prompt payloads)
+      const content = body.content ?? body.prompt;
 
       if (!content || content.length < 100) {
         ctx.error("Content too short", {
@@ -241,7 +241,8 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
   },
   {
     body: t.Object({
-      content: t.String({ minLength: 100 }),
+      content: t.Optional(t.String({ minLength: 100 })),
+      prompt: t.Optional(t.String({ minLength: 100 })),
       title: t.Optional(t.String()),
       url: t.Optional(t.String()),
       language: t.Optional(t.String()),

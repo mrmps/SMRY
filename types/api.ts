@@ -75,13 +75,19 @@ export const ErrorResponseSchema = z.object({
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
 // Summary request schema
-export const SummaryRequestSchema = z.object({
-  content: z.string().min(100, "Content must be at least 100 characters"),
-  title: z.string().optional(),
-  url: z.string().optional(),
-  ip: z.string().optional(),
-  language: z.string().optional().default("en"),
-});
+export const SummaryRequestSchema = z
+  .object({
+    content: z.string().min(100, "Content must be at least 100 characters").optional(),
+    prompt: z.string().min(100, "Prompt must be at least 100 characters").optional(),
+    title: z.string().optional(),
+    url: z.string().optional(),
+    ip: z.string().optional(),
+    language: z.string().optional().default("en"),
+  })
+  .refine((data) => Boolean(data.content || data.prompt), {
+    message: "Either content or prompt must be provided",
+    path: ["content"],
+  });
 export type SummaryRequest = z.infer<typeof SummaryRequestSchema>;
 
 // Summary response schema
