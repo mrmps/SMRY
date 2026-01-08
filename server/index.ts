@@ -62,4 +62,3 @@ const app = new Elysia()
 console.log(`🦊 Elysia API server running at http://localhost:${app.server?.port}`);
 
 export type App = typeof app;
-export default app;
