@@ -1,10 +1,11 @@
 /**
  * Summary Route - POST /api/summary
+ *
+ * Uses OpenRouter SDK directly for streaming with model fallbacks.
  */
 
 import { Elysia, t } from "elysia";
-import { streamText } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { OpenRouter } from "@openrouter/sdk";
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "../../lib/redis";
 import {
@@ -40,10 +41,12 @@ const minuteRateLimit = new Ratelimit({
   prefix: "ratelimit:summary:minute",
 });
 
-const openrouter = createOpenRouter({
+// Initialize OpenRouter SDK
+const openRouter = new OpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
 });
 
+// Primary model + fallbacks - OpenRouter will try next if one fails
 const MODELS = [
   "nvidia/nemotron-3-nano-30b-a3b:free",
   "arcee-ai/trinity-mini:free",
@@ -62,8 +65,9 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
     ctx.set("endpoint", "/api/summary");
 
     try {
-      // AI SDK useCompletion sends content as "prompt", support both
-      const content = body.prompt || body.content;
+      // Extract content from request body
+      const content = body.content;
+
       if (!content || content.length < 100) {
         ctx.error("Content too short", {
           error_type: "VALIDATION_ERROR",
@@ -74,6 +78,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
           createSummaryError("CONTENT_TOO_SHORT"),
         );
       }
+
       const { title, url, language = "en" } = body;
       ctx.merge({ content_length: content.length, language });
 
@@ -90,7 +95,6 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
 
       if (!isPremium) {
         const dailyResult = await dailyRateLimit.limit(rateLimitKey);
-        // remaining is how many are left AFTER this request (0 if denied)
         usageRemaining = dailyResult.remaining;
 
         if (!dailyResult.success) {
@@ -168,32 +172,61 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
         ? `Please summarize this article titled "${title}":\n\n${content.slice(0, 12000)}`
         : `Please summarize this article:\n\n${content.slice(0, 12000)}`;
 
-      const result = await streamText({
-        model: openrouter(MODELS[0]),
-        system: systemPrompt,
-        prompt: userPrompt,
-        onFinish: async ({ text, usage }) => {
-          ctx.merge({
-            cache_hit: false,
-            summary_length: text.length,
-            input_tokens: usage?.inputTokens || 0,
-            output_tokens: usage?.outputTokens || 0,
-            status_code: 200,
-          });
-          ctx.success();
+      // Use OpenRouter SDK with streaming
+      const result = await openRouter.chat.send({
+        model: MODELS[0],
+        // Fallback models - OpenRouter tries next if primary fails
+        models: MODELS,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: true,
+      });
 
-          if (text.length > 100) {
-            await redis.set(cacheKey, text, { ex: 60 * 60 * 24 * 7 });
+      // Create a readable stream from the async iterator
+      let fullText = "";
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            // Iterate over streaming chunks
+            for await (const chunk of result) {
+              const content = chunk.choices?.[0]?.delta?.content;
+              if (content) {
+                fullText += content;
+                controller.enqueue(new TextEncoder().encode(content));
+              }
+            }
+
+            // Cache the completed summary
+            if (fullText.length > 100) {
+              ctx.merge({
+                cache_hit: false,
+                summary_length: fullText.length,
+                status_code: 200,
+              });
+              ctx.success();
+              await redis.set(cacheKey, fullText, { ex: 60 * 60 * 24 * 7 });
+            }
+
+            controller.close();
+          } catch (error) {
+            ctx.error(error instanceof Error ? error : String(error), {
+              error_type: "STREAM_ERROR",
+              status_code: 500,
+            });
+            controller.error(error);
           }
         },
       });
 
-      // Return streaming response with usage headers
-      // Note: toTextStreamResponse() creates a new Response without our headers,
-      // so we manually construct the Response with the stream and headers
-      return new Response(result.textStream, {
+      return new Response(stream, {
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          "X-Accel-Buffering": "no",
+          Connection: "keep-alive",
           "X-Is-Premium": String(isPremium),
           "X-Usage-Remaining": String(usageRemaining),
           "X-Usage-Limit": String(isPremium ? -1 : dailyLimit),
@@ -212,9 +245,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
   },
   {
     body: t.Object({
-      // AI SDK useCompletion sends content as "prompt"
-      prompt: t.Optional(t.String({ minLength: 100 })),
-      content: t.Optional(t.String({ minLength: 100 })),
+      content: t.String({ minLength: 100 }),
       title: t.Optional(t.String()),
       url: t.Optional(t.String()),
       language: t.Optional(t.String()),

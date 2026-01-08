@@ -1,13 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useMemo,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
-import { useCompletion } from "@ai-sdk/react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { LANGUAGES, Source, ArticleResponse } from "@/types/api";
 import { Button } from "../ui/button";
@@ -20,13 +13,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { UseQueryResult } from "@tanstack/react-query";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
+import { useSummary, UsageData } from "@/lib/hooks/use-summary";
 import { Response } from "../ai/response";
 import { UpgradeModal } from "./upgrade-modal";
-import { getApiUrl } from "@/lib/api/config";
-import { parseSummaryError, SummaryError } from "@/lib/errors/summary";
+import { SummaryError } from "@/lib/errors/summary";
 import { Zap, AlertCircle } from "lucide-react";
 
-// RTL languages - summary direction is based on selected language, not article
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
 type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
@@ -45,7 +37,8 @@ const SUMMARY_SOURCES: Source[] = [
   "jina.ai",
 ];
 
-// Error display component for summary form
+const MIN_CHARS_FOR_SUMMARY = 400;
+
 function SummaryFormError({
   error,
   onRetry,
@@ -53,24 +46,23 @@ function SummaryFormError({
   error: SummaryError;
   onRetry: () => void;
 }) {
-  // Daily limit reached - prominent upgrade CTA
   if (error.code === "DAILY_LIMIT_REACHED") {
     return (
-      <div className="rounded-xl bg-card border border-border p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className="shrink-0 p-2 rounded-full bg-muted">
+          <div className="shrink-0 rounded-full bg-muted p-2">
             <Zap className="size-4 text-foreground" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold text-foreground">
               Daily limit reached
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               {error.userMessage}
             </p>
             <Link
               href="/pricing"
-              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Upgrade to Premium
             </Link>
@@ -80,10 +72,9 @@ function SummaryFormError({
     );
   }
 
-  // Rate limited - show wait message
   if (error.code === "RATE_LIMITED") {
     return (
-      <div className="rounded-xl bg-card border border-border p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Slow down
         </h3>
@@ -95,17 +86,16 @@ function SummaryFormError({
     );
   }
 
-  // Generic errors
   return (
-    <div className="rounded-xl bg-card border border-border p-4 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start gap-2.5">
-        <AlertCircle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
+        <AlertCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-foreground">{error.userMessage}</p>
           {error.code === "GENERATION_FAILED" && (
             <button
               onClick={onRetry}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mt-1.5"
+              className="mt-1.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
             >
               Try again
             </button>
@@ -126,21 +116,13 @@ interface SummaryFormProps {
 
 export default function SummaryForm({
   urlProp,
-  ipProp,
   articleResults,
   isOpen = true,
   usePortal = true,
 }: SummaryFormProps) {
-  // Minimum character threshold for summary eligibility
-  const MIN_CHARS_FOR_SUMMARY = 400;
-
-  // Usage tracking - updated from response headers
-  const [usageData, setUsageData] = useState<{
-    remaining: number;
-    limit: number;
-  } | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
-  const [hasLoadedUsage, setHasLoadedUsage] = useState(false);
+  const [usageData, setUsageData] = useState<UsageData | null>(null);
+  const isPremium = usageData?.isPremium ?? false;
+  const hasLoadedUsage = usageData !== null;
 
   const usageCount = usageData ? usageData.limit - usageData.remaining : 0;
   const showUsageCounter = hasLoadedUsage && !isPremium && usageData !== null;
@@ -151,25 +133,6 @@ export default function SummaryForm({
     usageCount < usageData.limit;
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Update usage from response headers
-  const handleResponse = useCallback((response: globalThis.Response) => {
-    const remaining = response.headers.get("X-Usage-Remaining");
-    const limit = response.headers.get("X-Usage-Limit");
-    const premium = response.headers.get("X-Is-Premium");
-
-    if (remaining !== null && limit !== null) {
-      const remainingNum = parseInt(remaining, 10);
-      const limitNum = parseInt(limit, 10);
-      setUsageData({ remaining: remainingNum, limit: limitNum });
-      setHasLoadedUsage(true);
-    }
-    if (premium !== null) {
-      setIsPremium(premium === "true");
-    }
-  }, []);
-
-  // Find the source with the longest content from already-loaded articles
-  // Only consider sources with at least MIN_CHARS_FOR_SUMMARY characters
   const longestAvailableSource = useMemo(() => {
     const sources: { source: Source; length: number }[] = SUMMARY_SOURCES.map(
       (source) => ({
@@ -178,59 +141,26 @@ export default function SummaryForm({
       }),
     ).filter((s) => s.length >= MIN_CHARS_FOR_SUMMARY);
 
-    // Sort by length and return the longest
     sources.sort((a, b) => b.length - a.length);
-    return sources[0]?.source || SUMMARY_SOURCES[0]; // Fallback to first source if none meet threshold
+    return sources[0]?.source || SUMMARY_SOURCES[0];
   }, [articleResults]);
 
-  // Allow manual source selection, but default to longest available
   const [manualSource, setManualSource] = useState<Source | null>(null);
   const selectedSource = manualSource || longestAvailableSource;
-
-  // Get the currently selected article data
   const selectedArticle = articleResults[selectedSource]?.data;
 
-  // Persist language preference
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage<string>(
     "summary-language",
     "en",
   );
 
-  // Custom fetch wrapper to extract usage headers
-  const customFetch = useCallback(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const response = await globalThis.fetch(input, init);
-      handleResponse(response);
-      return response;
-    },
-    [handleResponse],
-  ) as typeof fetch;
-
-  // Use AI SDK's useCompletion hook for streaming
-  const { completion, complete, isLoading, error } = useCompletion({
-    api: getApiUrl("/api/summary"),
-    streamProtocol: "text", // Use plain text streaming
-    body: {
-      title: selectedArticle?.article?.title,
-      url: urlProp,
-      ip: ipProp,
-      language: preferredLanguage,
-    },
-    fetch: customFetch,
+  // Use the streaming summary hook with caching
+  const { summary, isLoading, isStreaming, error, generate } = useSummary({
+    url: urlProp,
+    language: preferredLanguage,
+    onUsageUpdate: setUsageData,
   });
 
-  const handleRegenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedArticle?.article?.textContent) return;
-    await complete(selectedArticle.article.textContent);
-  };
-
-  const handleLanguageChange = (newLanguage: string) => {
-    setPreferredLanguage(newLanguage);
-    // Don't auto-regenerate - user must click Regenerate button
-  };
-
-  // Check if ANY article has loaded (not just if they're currently loading)
   const hasArticleData = Object.values(articleResults).some(
     (result) => result.data?.article?.textContent,
   );
@@ -239,7 +169,6 @@ export default function SummaryForm({
   );
   const shouldDisableSource = allArticlesLoading || !hasArticleData;
 
-  // Get content lengths for display
   const contentLengths = SUMMARY_SOURCES.reduce<Record<Source, number>>(
     (acc, source) => {
       acc[source] =
@@ -254,35 +183,50 @@ export default function SummaryForm({
     },
   );
 
-  // Track if we've auto-generated
-  const hasAutoGeneratedRef = useRef(false);
+  const hasTriggeredRef = useRef(false);
 
   // Auto-generate on mount when valid content is available and sidebar is open
   useEffect(() => {
     if (
       isOpen &&
-      !hasAutoGeneratedRef.current &&
-      !manualSource && // Only auto-generate if user hasn't manually selected a source
-      !completion &&
+      !hasTriggeredRef.current &&
+      !manualSource &&
+      !summary &&
       !isLoading &&
       selectedArticle?.article?.textContent &&
       contentLengths[selectedSource] >= MIN_CHARS_FOR_SUMMARY
     ) {
-      hasAutoGeneratedRef.current = true;
-      complete(selectedArticle.article.textContent);
+      hasTriggeredRef.current = true;
+      generate(
+        selectedArticle.article.textContent,
+        selectedArticle.article.title,
+      );
     }
   }, [
-    selectedArticle,
-    completion,
-    isLoading,
-    complete,
-    selectedSource,
-    contentLengths,
     isOpen,
     manualSource,
+    summary,
+    isLoading,
+    selectedArticle,
+    contentLengths,
+    selectedSource,
+    generate,
   ]);
 
-  // Helper to determine if a source should be disabled and why
+  const handleRegenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedArticle?.article?.textContent) return;
+    generate(
+      selectedArticle.article.textContent,
+      selectedArticle.article.title,
+    );
+  };
+
+  const handleLanguageChange = (newLanguage: string) => {
+    setPreferredLanguage(newLanguage);
+    hasTriggeredRef.current = false;
+  };
+
   const getSourceStatus = (source: Source) => {
     const result = articleResults[source];
     const length = contentLengths[source];
@@ -302,23 +246,20 @@ export default function SummaryForm({
     return { disabled: false, label: null };
   };
 
-  // Parse error into typed SummaryError
-  const parsedError = useMemo(() => {
-    if (!error) return null;
-    return parseSummaryError(error);
-  }, [error]);
-
   // Show upgrade modal when daily limit reached
   useEffect(() => {
-    if (parsedError?.code === "DAILY_LIMIT_REACHED" && !isPremium) {
+    if (error?.code === "DAILY_LIMIT_REACHED" && !isPremium) {
       const timer = setTimeout(() => setShowUpgradeModal(true), 0);
       return () => clearTimeout(timer);
     }
-  }, [parsedError, isPremium]);
+  }, [error, isPremium]);
 
   const handleRetry = () => {
     if (selectedArticle?.article?.textContent) {
-      complete(selectedArticle.article.textContent);
+      generate(
+        selectedArticle.article.textContent,
+        selectedArticle.article.title,
+      );
     }
   };
 
@@ -326,18 +267,16 @@ export default function SummaryForm({
     <div className="flex h-full flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-3 px-4 py-2">
-          {parsedError && (
-            <SummaryFormError error={parsedError} onRetry={handleRetry} />
-          )}
+          {error && <SummaryFormError error={error} onRetry={handleRetry} />}
 
           <UpgradeModal
             open={showUpgradeModal}
             onOpenChange={setShowUpgradeModal}
           />
 
-          {(completion || isLoading) && (
+          {(summary || isLoading) && (
             <div className="text-sm text-foreground">
-              {isLoading && !completion && (
+              {isLoading && !summary && (
                 <div className="space-y-3">
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-full" />
@@ -345,16 +284,16 @@ export default function SummaryForm({
                   <Skeleton className="h-4 w-[90%]" />
                 </div>
               )}
-              {completion && (
+              {summary && (
                 <>
                   <Response
                     dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                     lang={preferredLanguage}
                   >
-                    {completion}
+                    {summary}
                   </Response>
-                  {isLoading && (
-                    <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground mt-1"></span>
+                  {isStreaming && (
+                    <span className="mt-1 inline-block h-4 w-0.5 animate-pulse bg-foreground"></span>
                   )}
                 </>
               )}
@@ -385,13 +324,13 @@ export default function SummaryForm({
                   </SelectTrigger>
                   <SelectContent portal={usePortal}>
                     {SUMMARY_SOURCES.map((source) => {
-                      const status = getSourceStatus(source);
+                      const sourceStatus = getSourceStatus(source);
                       const length = contentLengths[source];
                       return (
                         <SelectItem
                           key={source}
                           value={source}
-                          disabled={status.disabled}
+                          disabled={sourceStatus.disabled}
                         >
                           <span className="flex flex-wrap items-center gap-2 whitespace-normal leading-snug">
                             <span>{SOURCE_LABELS[source]}</span>
@@ -400,13 +339,13 @@ export default function SummaryForm({
                                 • {length.toLocaleString()} chars
                               </span>
                             )}
-                            {status.label && (
+                            {sourceStatus.label && (
                               <span className="text-muted-foreground">
-                                • {status.label}
+                                • {sourceStatus.label}
                               </span>
                             )}
                             {longestAvailableSource === source &&
-                              !status.disabled && (
+                              !sourceStatus.disabled && (
                                 <span className="text-emerald-500">• Best</span>
                               )}
                           </span>
@@ -443,7 +382,7 @@ export default function SummaryForm({
 
               <Button
                 type="submit"
-                variant={completion ? "ghost" : "default"}
+                variant={summary ? "ghost" : "default"}
                 size="sm"
                 disabled={
                   isLoading ||
@@ -452,11 +391,7 @@ export default function SummaryForm({
                 }
                 className="h-9 shrink-0 px-4 text-sm font-medium transition-all active:scale-95"
               >
-                {isLoading
-                  ? "Generating..."
-                  : completion
-                    ? "Update"
-                    : "Generate"}
+                {isLoading ? "Generating..." : summary ? "Update" : "Generate"}
               </Button>
             </div>
           </div>
@@ -472,7 +407,7 @@ export default function SummaryForm({
                 {showSoftUpgrade && (
                   <Link
                     href="/pricing"
-                    className="text-muted-foreground hover:text-foreground ml-1"
+                    className="ml-1 text-muted-foreground hover:text-foreground"
                   >
                     · unlimited
                   </Link>
