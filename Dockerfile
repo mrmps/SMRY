@@ -37,22 +37,19 @@ RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
 
 # Copy Next.js standalone build (includes its own node_modules)
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --chown=nextjs:nodejs --from=builder /app/public ./public
+COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
+COPY --chown=nextjs:nodejs --from=builder /app/.next/static ./.next/static
 
 # Copy Elysia server source and runtime dependencies
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/types ./types
-COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs --from=builder /app/server ./server
+COPY --chown=nextjs:nodejs --from=builder /app/lib ./lib
+COPY --chown=nextjs:nodejs --from=builder /app/types ./types
+COPY --chown=nextjs:nodejs --from=prod-deps /app/node_modules ./node_modules
 
 # Copy entrypoint script
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --chown=nextjs:nodejs --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
-
-# Set ownership
-RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
