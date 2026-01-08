@@ -505,7 +505,9 @@ function ExpandedSummary({
 
         {!summary && !isLoading && !error && contentLength < MIN_CHARS && (
           <p className="text-sm text-muted-foreground">
-            Waiting for article content...
+            {contentLength === 0
+              ? "Loading article..."
+              : `Article too short for summary (${contentLength}/${MIN_CHARS} chars)`}
           </p>
         )}
       </div>

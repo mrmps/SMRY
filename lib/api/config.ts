@@ -1,14 +1,26 @@
 /**
  * API Configuration
  *
- * All API calls use relative URLs (e.g., /api/summary).
- * Next.js rewrites proxy these to the internal Elysia server (localhost:3001).
- *
- * This works identically in both dev and prod:
- * - Dev: Next.js dev server rewrites → localhost:3001
- * - Prod: Next.js standalone rewrites → localhost:3001
+ * Prefer hitting the API through NEXT_PUBLIC_API_URL so the frontend can talk to
+ * whichever backend host is actually running (Railway, local server, etc.).
+ * Falling back to relative URLs keeps the Next.js rewrite flow working during
+ * local development if the env var isn't set.
  */
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? null;
+let warnedAboutMissingApiBase = false;
+
 export function getApiUrl(path: string): string {
-  return path;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  if (API_BASE) {
+    return `${API_BASE}${normalizedPath}`;
+  }
+
+  if (!warnedAboutMissingApiBase && process.env.NODE_ENV === "production") {
+    console.warn("NEXT_PUBLIC_API_URL is not set; falling back to relative /api routes.");
+    warnedAboutMissingApiBase = true;
+  }
+
+  return normalizedPath;
 }
