@@ -208,11 +208,12 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
 
             controller.close();
           } catch (error) {
+            const summaryError = createSummaryError("GENERATION_FAILED");
             ctx.error(error instanceof Error ? error : String(error), {
               error_type: "STREAM_ERROR",
               status_code: 500,
             });
-            controller.error(error);
+            controller.error(new Error(JSON.stringify(summaryError)));
           }
         },
       });

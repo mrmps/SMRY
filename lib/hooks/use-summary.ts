@@ -12,7 +12,11 @@
 import { useState, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
-import type { SummaryError } from "@/lib/errors/summary";
+import {
+  createSummaryError,
+  parseSummaryError,
+  type SummaryError,
+} from "@/lib/errors/summary";
 
 export interface UsageData {
   remaining: number;
@@ -40,6 +44,22 @@ interface GenerateParams {
   title?: string;
   url: string;
   language: string;
+}
+
+export function normalizeSummaryError(errorInput: unknown): SummaryError {
+  if (typeof errorInput === "object" && errorInput && "code" in errorInput) {
+    return errorInput as SummaryError;
+  }
+
+  const parsed =
+    errorInput instanceof Error
+      ? parseSummaryError(errorInput)
+      : typeof errorInput === "string"
+        ? parseSummaryError(errorInput)
+        : null;
+
+  if (parsed) return parsed;
+  return createSummaryError("GENERATION_FAILED");
 }
 
 async function* streamSummary(
@@ -83,14 +103,18 @@ async function* streamSummary(
   }
 
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("No response body");
+  if (!reader) throw createSummaryError("GENERATION_FAILED");
 
   const decoder = new TextDecoder();
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    yield decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      yield decoder.decode(value, { stream: true });
+    }
+  } catch (error) {
+    throw normalizeSummaryError(error);
   }
 }
 
@@ -172,7 +196,7 @@ export function useSummary({
     summary: cachedSummary ?? "",
     isLoading: mutation.isPending,
     isStreaming,
-    error: mutation.error as SummaryError | null,
+    error: mutation.error ? normalizeSummaryError(mutation.error) : null,
     generate,
     stop,
   };
