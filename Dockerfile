@@ -16,6 +16,11 @@ COPY . .
 ENV SKIP_ENV_VALIDATION=1
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Set INTERNAL_API_URL for Next.js rewrites (build-time config)
+# In production on Railway, this points to the smry-api service
+ARG INTERNAL_API_URL=http://smry-api.railway.internal:3001
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
+
 RUN bun run build
 
 # Production image - Next.js only
