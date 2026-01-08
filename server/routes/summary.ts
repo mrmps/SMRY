@@ -21,22 +21,20 @@ import {
 import { getLanguagePrompt } from "../../types/api";
 import { env } from "../../lib/env";
 
+// Rate limits - single source of truth
+const DAILY_LIMIT = env.NODE_ENV === "development" ? 100 : 20;
+const MINUTE_LIMIT = env.NODE_ENV === "development" ? 60 : 12;
+
 const dailyRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(
-    env.NODE_ENV === "development" ? 100 : 20,
-    "24h",
-  ),
+  limiter: Ratelimit.slidingWindow(DAILY_LIMIT, "24h"),
   analytics: true,
   prefix: "ratelimit:summary:daily",
 });
 
 const minuteRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(
-    env.NODE_ENV === "development" ? 60 : 12,
-    "1m",
-  ),
+  limiter: Ratelimit.slidingWindow(MINUTE_LIMIT, "1m"),
   analytics: true,
   prefix: "ratelimit:summary:minute",
 });
@@ -88,10 +86,8 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       const clientIp = extractClientIp(request);
       const rateLimitKey = userId || clientIp;
 
-      const dailyLimit = env.NODE_ENV === "development" ? 100 : 20;
-
       // Track usage for headers - premium users get -1 (unlimited)
-      let usageRemaining = isPremium ? -1 : dailyLimit;
+      let usageRemaining = isPremium ? -1 : DAILY_LIMIT;
 
       if (!isPremium) {
         const dailyResult = await dailyRateLimit.limit(rateLimitKey);
@@ -106,13 +102,13 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
           set.status = 429;
           set.headers["Retry-After"] = String(retryAfter);
           set.headers["X-Usage-Remaining"] = "0";
-          set.headers["X-Usage-Limit"] = String(dailyLimit);
+          set.headers["X-Usage-Limit"] = String(DAILY_LIMIT);
           set.headers["X-Is-Premium"] = "false";
           return formatSummaryErrorResponse(
             createSummaryError("DAILY_LIMIT_REACHED", {
               retryAfter,
-              usage: dailyLimit - dailyResult.remaining,
-              limit: dailyLimit,
+              usage: DAILY_LIMIT - dailyResult.remaining,
+              limit: DAILY_LIMIT,
             }),
           );
         }
@@ -129,7 +125,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
           set.status = 429;
           set.headers["Retry-After"] = String(retryAfter);
           set.headers["X-Usage-Remaining"] = String(usageRemaining);
-          set.headers["X-Usage-Limit"] = String(dailyLimit);
+          set.headers["X-Usage-Limit"] = String(DAILY_LIMIT);
           set.headers["X-Is-Premium"] = "false";
           return formatSummaryErrorResponse(
             createSummaryError("RATE_LIMITED", { retryAfter }),
@@ -140,7 +136,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       // Set usage headers for all successful responses
       set.headers["X-Is-Premium"] = String(isPremium);
       set.headers["X-Usage-Remaining"] = String(usageRemaining);
-      set.headers["X-Usage-Limit"] = String(isPremium ? -1 : dailyLimit);
+      set.headers["X-Usage-Limit"] = String(isPremium ? -1 : DAILY_LIMIT);
 
       const cacheKey = url
         ? `summary:${language}:${url}`
@@ -160,7 +156,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
             "X-Cached": "true",
             "X-Is-Premium": String(isPremium),
             "X-Usage-Remaining": String(usageRemaining),
-            "X-Usage-Limit": String(isPremium ? -1 : dailyLimit),
+            "X-Usage-Limit": String(isPremium ? -1 : DAILY_LIMIT),
           },
         });
       }
@@ -229,7 +225,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
           Connection: "keep-alive",
           "X-Is-Premium": String(isPremium),
           "X-Usage-Remaining": String(usageRemaining),
-          "X-Usage-Limit": String(isPremium ? -1 : dailyLimit),
+          "X-Usage-Limit": String(isPremium ? -1 : DAILY_LIMIT),
         },
       });
     } catch (error) {

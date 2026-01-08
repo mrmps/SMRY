@@ -12,8 +12,8 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
     CLERK_SECRET_KEY: z.string().min(1),
 
-    // Optional - AI/API keys
-    OPENROUTER_API_KEY: z.string().min(1).optional(),
+    // Required - AI/API keys
+    OPENROUTER_API_KEY: z.string().min(1),
     DIFFBOT_API_KEY: z.string().min(1).optional(),
 
     // Optional - Database
