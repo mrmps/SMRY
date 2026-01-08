@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * useSummary - Streaming summary hook using TanStack Query
  *
@@ -17,6 +19,7 @@ import {
   parseSummaryError,
   type SummaryError,
 } from "@/lib/errors/summary";
+import { useAuth } from "@clerk/nextjs";
 
 export interface UsageData {
   remaining: number;
@@ -72,10 +75,19 @@ async function* streamSummary(
   params: GenerateParams,
   signal: AbortSignal,
   onUsageUpdate?: (usage: UsageData) => void,
+  authToken?: string,
 ): AsyncGenerator<string, void, unknown> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
   const response = await fetch(getApiUrl("/api/summary"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(params),
     signal,
     credentials: "include",
@@ -140,6 +152,7 @@ export function useSummary({
   language,
   onUsageUpdate,
 }: UseSummaryOptions): UseSummaryResult {
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const cacheKey = ["summary", url, language] as const;
 
@@ -174,11 +187,21 @@ export function useSummary({
       let fullText = "";
       setIsStreaming(true);
 
+      let authToken: string | undefined;
+      if (typeof getToken === "function") {
+        try {
+          authToken = (await getToken()) ?? undefined;
+        } catch (error) {
+          console.warn("Failed to retrieve auth token for summary request", error);
+        }
+      }
+
       try {
         for await (const chunk of streamSummary(
           { content, title, url, language },
           abortControllerRef.current.signal,
           onUsageUpdate,
+          authToken,
         )) {
           fullText += chunk;
           // Progressively update cache - this triggers re-renders
