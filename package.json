@@ -31,7 +31,6 @@
     "@elysiajs/cron": "^1.4.1",
     "@heroicons/react": "^2.1.1",
     "@mozilla/readability": "^0.4.4",
-    "@neondatabase/serverless": "^1.0.2",
     "@next/third-parties": "^16.1.1",
     "@openrouter/sdk": "^0.3.11",
     "@t3-oss/env-nextjs": "^0.13.10",

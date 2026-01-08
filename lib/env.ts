@@ -16,9 +16,6 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string().min(1),
     DIFFBOT_API_KEY: z.string().min(1).optional(),
 
-    // Optional - Database
-    DATABASE_URL: z.string().url().optional(),
-
     // Optional - Clickhouse Analytics
     CLICKHOUSE_URL: z.string().url().optional(),
     CLICKHOUSE_USER: z.string().default("default"),
@@ -61,7 +58,6 @@ export const env = createEnv({
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     DIFFBOT_API_KEY: process.env.DIFFBOT_API_KEY,
-    DATABASE_URL: process.env.DATABASE_URL,
     CLICKHOUSE_URL: process.env.CLICKHOUSE_URL,
     CLICKHOUSE_USER: process.env.CLICKHOUSE_USER,
     CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD,

@@ -15,7 +15,6 @@ import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 import { createRequestContext, extractClientIp } from "../../lib/request-context";
 import { getTextDirection } from "../../lib/rtl";
-import { storeArticleHtml } from "../../lib/db";
 
 const logger = createLogger("api:article");
 
@@ -290,7 +289,6 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
       }
 
       const { article, cacheURL } = result;
-      if (article.htmlContent) storeArticleHtml(url, article.htmlContent);
 
       try {
         const cacheStart = Date.now();
