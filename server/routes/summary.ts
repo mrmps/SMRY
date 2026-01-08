@@ -39,13 +39,10 @@ const minuteRateLimit = new Ratelimit({
   prefix: "ratelimit:summary:minute",
 });
 
-// Initialize OpenRouter SDK lazily (only when API key is available)
-function getOpenRouter() {
-  if (!env.OPENROUTER_API_KEY) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
-  }
-  return new OpenRouter({ apiKey: env.OPENROUTER_API_KEY });
-}
+// Initialize OpenRouter SDK
+const openRouter = new OpenRouter({
+  apiKey: env.OPENROUTER_API_KEY,
+});
 
 // Primary model + fallbacks - OpenRouter will try next if one fails
 const MODELS = [
@@ -172,7 +169,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
         : `Please summarize this article:\n\n${content.slice(0, 12000)}`;
 
       // Use OpenRouter SDK with streaming
-      const result = await getOpenRouter().chat.send({
+      const result = await openRouter.chat.send({
         model: MODELS[0],
         // Fallback models - OpenRouter tries next if primary fails
         models: MODELS,
