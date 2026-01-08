@@ -12,6 +12,7 @@ import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { safeFetch } from "@/lib/safe-fetch";
+import { env } from "@/lib/env";
 
 const logger = createLogger('lib:diffbot');
 
@@ -445,7 +446,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
 export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow'): ResultAsync<DiffbotArticle, AppError> {
   const debugContext = createDebugContext(url, source);
   
-  if (!process.env.DIFFBOT_API_KEY) {
+  if (!env.DIFFBOT_API_KEY) {
     logger.error({ hostname: new URL(url).hostname }, 'No Diffbot API key configured');
     addDebugStep(debugContext, 'init', 'error', 'No Diffbot API key configured');
     
@@ -470,7 +471,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
       try {
         // Use REST API directly to support fields parameter
         const apiUrl = new URL('https://api.diffbot.com/v3/article');
-        apiUrl.searchParams.set('token', process.env.DIFFBOT_API_KEY!);
+        apiUrl.searchParams.set('token', env.DIFFBOT_API_KEY!);
         apiUrl.searchParams.set('url', url);
         apiUrl.searchParams.set('fields', 'title,text,html,siteName,dom'); // Request both article data AND raw DOM
 

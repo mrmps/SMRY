@@ -1,11 +1,15 @@
 import { neon } from "@neondatabase/serverless";
+import { env } from "./env";
 
 let sql: ReturnType<typeof neon> | null = null;
 let tableCreated = false;
 
 function getDb() {
   if (!sql) {
-    sql = neon(process.env.DATABASE_URL!);
+    if (!env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not configured");
+    }
+    sql = neon(env.DATABASE_URL);
   }
   return sql;
 }

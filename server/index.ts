@@ -9,11 +9,12 @@ import { adminRoutes } from "./routes/admin";
 import { summaryRoutes } from "./routes/summary";
 import { jinaRoutes } from "./routes/jina";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
+import { env } from "../lib/env";
 
 startMemoryMonitor();
 
 const app = new Elysia()
-  .use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }))
+  .use(cors({ origin: env.CORS_ORIGIN ?? true, credentials: true }))
   .get("/", () => ({
     service: "smry-api",
     status: "running",
@@ -56,7 +57,7 @@ const app = new Elysia()
     set.status = 500;
     return { error: "Internal server error", type: "INTERNAL_ERROR" };
   })
-  .listen(process.env.API_PORT || 3001);
+  .listen(env.API_PORT);
 
 console.log(`🦊 Elysia API server running at http://localhost:${app.server?.port}`);
 

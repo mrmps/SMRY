@@ -21,6 +21,7 @@ import { ErrorDisplay } from "../shared/error-display";
 import { DebugPanel } from "../shared/debug-panel";
 import { ArticleFetchError } from "@/lib/api/client";
 import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
+import { Newspaper } from "lucide-react";
 
 export type { Source };
 
@@ -213,12 +214,21 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           >
             {/* Top Row: Favicon + Site Name */}
             <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`}
-                alt=""
-                className="size-5 rounded-sm dark:bg-white dark:p-0.5"
-              />
+              <div className="size-5 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://icons.duckduckgo.com/ip3/${new URL(url).hostname}.ico`}
+                  alt=""
+                  className="size-5 rounded-sm"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const sibling = target.nextElementSibling;
+                    if (sibling) sibling.classList.remove("hidden");
+                  }}
+                />
+                <Newspaper className="hidden size-5 text-muted-foreground" />
+              </div>
               <a
                 href={url}
                 target="_blank"

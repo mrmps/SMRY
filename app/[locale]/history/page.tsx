@@ -11,8 +11,8 @@ import {
   Search,
   X,
   Clock,
-  Globe,
-  BookOpen
+  Newspaper,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,36 +28,36 @@ import { normalizeUrl } from "@/lib/validation/url";
 function formatRelativeTime(date: Date): string {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) {
     return "just now";
   }
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
     return `${diffInMinutes}m ago`;
   }
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
     return `${diffInHours}h ago`;
   }
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) {
     return `${diffInDays}d ago`;
   }
-  
+
   const diffInWeeks = Math.floor(diffInDays / 7);
   if (diffInWeeks < 4) {
     return `${diffInWeeks}w ago`;
   }
-  
+
   const diffInMonths = Math.floor(diffInDays / 30);
   if (diffInMonths < 12) {
     return `${diffInMonths}mo ago`;
   }
-  
+
   const diffInYears = Math.floor(diffInDays / 365);
   return `${diffInYears}y ago`;
 }
@@ -74,9 +74,13 @@ function getDateGroup(date: Date): string {
   weekAgo.setDate(weekAgo.getDate() - 7);
   const monthAgo = new Date(today);
   monthAgo.setDate(monthAgo.getDate() - 30);
-  
-  const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+
+  const itemDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+
   if (itemDate >= today) {
     return "Today";
   } else if (itemDate >= yesterday) {
@@ -95,32 +99,33 @@ function getDateGroup(date: Date): string {
 function groupByDate(items: HistoryItem[]): Map<string, HistoryItem[]> {
   const groups = new Map<string, HistoryItem[]>();
   const order = ["Today", "Yesterday", "This Week", "This Month", "Earlier"];
-  
+
   // Initialize groups in order
-  order.forEach(group => groups.set(group, []));
-  
-  items.forEach(item => {
+  order.forEach((group) => groups.set(group, []));
+
+  items.forEach((item) => {
     const group = getDateGroup(new Date(item.accessedAt));
     const existing = groups.get(group) || [];
     existing.push(item);
     groups.set(group, existing);
   });
-  
+
   // Remove empty groups
-  order.forEach(group => {
+  order.forEach((group) => {
     if (groups.get(group)?.length === 0) {
       groups.delete(group);
     }
   });
-  
+
   return groups;
 }
 
 /**
- * Get favicon URL for a domain
+ * Get favicon URL for a domain using DuckDuckGo's icon service
+ * This is more reliable than Google's favicon service
  */
 function getFaviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
 }
 
 /**
@@ -136,25 +141,30 @@ function buildProxyUrlFromHistory(url: string): string {
   }
 }
 
-function HistoryItemCard({ 
-  item, 
+function HistoryItemCard({
+  item,
   onRemove,
-  index
-}: { 
-  item: HistoryItem; 
+  index,
+}: {
+  item: HistoryItem;
   onRemove: (id: string) => void;
   index: number;
 }) {
   return (
     <div
       className="group animate-in fade-in slide-in-from-bottom-2 duration-200"
-      style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'backwards' }}
+      style={{
+        animationDelay: `${index * 30}ms`,
+        animationFillMode: "backwards",
+      }}
     >
-      <div className={cn(
-        "relative flex items-start gap-3 rounded-xl p-3 transition-all duration-200",
-        "hover:bg-accent/50 dark:hover:bg-accent/30",
-        "border border-transparent hover:border-border/50"
-      )}>
+      <div
+        className={cn(
+          "relative flex items-start gap-3 rounded-xl p-3 transition-all duration-200",
+          "hover:bg-accent/50 dark:hover:bg-accent/30",
+          "border border-transparent hover:border-border/50",
+        )}
+      >
         {/* Favicon */}
         <div className="relative mt-0.5 shrink-0">
           <div className="size-8 rounded-lg bg-muted/50 p-1.5 ring-1 ring-border/50 overflow-hidden">
@@ -166,21 +176,18 @@ function HistoryItemCard({
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
+                target.style.display = "none";
                 const sibling = target.nextElementSibling;
-                if (sibling) sibling.classList.remove('hidden');
+                if (sibling) sibling.classList.remove("hidden");
               }}
             />
-            <Globe className="hidden size-full text-muted-foreground" />
+            <Newspaper className="hidden size-full text-muted-foreground" />
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <Link
-            href={buildProxyUrlFromHistory(item.url)}
-            className="block"
-          >
+          <Link href={buildProxyUrlFromHistory(item.url)} className="block">
             <h3 className="font-medium text-[15px] text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
               {item.title}
             </h3>
@@ -202,7 +209,7 @@ function HistoryItemCard({
             className={cn(
               "h-7 w-7 flex items-center justify-center rounded-md",
               "text-muted-foreground hover:text-foreground hover:bg-background",
-              "transition-colors"
+              "transition-colors",
             )}
             title="Open original"
           >
@@ -213,7 +220,7 @@ function HistoryItemCard({
             className={cn(
               "h-7 w-7 flex items-center justify-center rounded-md",
               "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-              "transition-colors"
+              "transition-colors",
             )}
             title="Remove"
           >
@@ -265,7 +272,9 @@ function NoSearchResults({ query }: { query: string }) {
       <div className="size-14 rounded-xl bg-muted/50 flex items-center justify-center mb-4">
         <Search className="size-6 text-muted-foreground/50" />
       </div>
-      <h3 className="text-base font-medium">No results for &ldquo;{query}&rdquo;</h3>
+      <h3 className="text-base font-medium">
+        No results for &ldquo;{query}&rdquo;
+      </h3>
       <p className="mt-1 text-sm text-muted-foreground">
         Try searching with different keywords
       </p>
@@ -273,40 +282,42 @@ function NoSearchResults({ query }: { query: string }) {
   );
 }
 
-function SearchBar({ 
-  value, 
-  onChange, 
-  onClear
-}: { 
-  value: string; 
+function SearchBar({
+  value,
+  onChange,
+  onClear,
+}: {
+  value: string;
   onChange: (value: string) => void;
   onClear: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  
+
   // Keyboard shortcut: Cmd/Ctrl + K to focus search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         inputRef.current?.focus();
       }
-      if (e.key === 'Escape' && document.activeElement === inputRef.current) {
+      if (e.key === "Escape" && document.activeElement === inputRef.current) {
         inputRef.current?.blur();
         onClear();
       }
     };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClear]);
-  
+
   return (
-    <div className={cn(
-      "flex items-center gap-2 rounded-xl border bg-card px-3 py-2",
-      "transition-all duration-200",
-      "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50"
-    )}>
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-xl border bg-card px-3 py-2",
+        "transition-all duration-200",
+        "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50",
+      )}
+    >
       <Search className="size-4 text-muted-foreground shrink-0" />
       <input
         ref={inputRef}
@@ -316,7 +327,7 @@ function SearchBar({
         placeholder="Search history..."
         className={cn(
           "flex-1 bg-transparent text-sm outline-none",
-          "placeholder:text-muted-foreground/60"
+          "placeholder:text-muted-foreground/60",
         )}
       />
       {value && (
@@ -334,47 +345,48 @@ function SearchBar({
   );
 }
 
-function ClearConfirmDialog({ 
-  open, 
-  onClose, 
-  onConfirm 
-}: { 
-  open: boolean; 
-  onClose: () => void; 
+function ClearConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
   onConfirm: () => void;
 }) {
   // Handle escape key
   useEffect(() => {
     if (!open) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
-  
+
   if (!open) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-150">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
       <div className="relative bg-card border rounded-2xl p-6 shadow-xl max-w-sm mx-4 animate-in zoom-in-95 duration-200">
         <h3 className="text-lg font-semibold">Clear all history?</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          This will permanently delete your entire reading history. This action cannot be undone.
+          This will permanently delete your entire reading history. This action
+          cannot be undone.
         </p>
         <div className="mt-6 flex gap-3 justify-end">
           <Button variant="outline" size="sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
-            variant="destructive" 
-            size="sm" 
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={() => {
               onConfirm();
               onClose();
@@ -391,36 +403,37 @@ function ClearConfirmDialog({
 function HistoryContent() {
   const { has, isLoaded } = useAuth();
   const isPremium = isLoaded && (has?.({ plan: "premium" }) ?? false);
-  
-  const { 
-    history, 
-    totalCount, 
-    hiddenCount, 
-    isLoaded: historyLoaded, 
-    removeFromHistory, 
-    clearHistory 
+
+  const {
+    history,
+    totalCount,
+    hiddenCount,
+    isLoaded: historyLoaded,
+    removeFromHistory,
+    clearHistory,
   } = useHistory(isPremium);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  
+
   // Filter history based on search
   const filteredHistory = useMemo(() => {
     if (!searchQuery.trim()) return history;
-    
+
     const query = searchQuery.toLowerCase();
-    return history.filter(item => 
-      item.title.toLowerCase().includes(query) ||
-      item.domain.toLowerCase().includes(query)
+    return history.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query) ||
+        item.domain.toLowerCase().includes(query),
     );
   }, [history, searchQuery]);
-  
+
   // Group filtered items by date
-  const groupedHistory = useMemo(() => 
-    groupByDate(filteredHistory), 
-    [filteredHistory]
+  const groupedHistory = useMemo(
+    () => groupByDate(filteredHistory),
+    [filteredHistory],
   );
-  
+
   const handleClearSearch = useCallback(() => setSearchQuery(""), []);
 
   if (!historyLoaded) {
@@ -447,7 +460,7 @@ function HistoryContent() {
       <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
         {/* Search bar column */}
         <div className="grid grid-rows-[auto_auto] gap-2">
-          <SearchBar 
+          <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
             onClear={handleClearSearch}
@@ -461,7 +474,7 @@ function HistoryContent() {
             )}
           </div>
         </div>
-        
+
         {/* Clear button column - aligned to search bar */}
         <div className="pt-0">
           <Button
@@ -478,9 +491,13 @@ function HistoryContent() {
 
       {/* Stats bar - fixed position, no conditional spacing */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span>{totalCount} {totalCount === 1 ? "article" : "articles"}</span>
+        <span>
+          {totalCount} {totalCount === 1 ? "article" : "articles"}
+        </span>
         {hiddenCount > 0 && (
-          <span className="text-amber-500">+{hiddenCount} hidden (free tier)</span>
+          <span className="text-amber-500">
+            +{hiddenCount} hidden (free tier)
+          </span>
         )}
       </div>
 
@@ -514,7 +531,8 @@ function HistoryContent() {
             </div>
             <div className="flex-1">
               <h4 className="font-semibold text-foreground">
-                {hiddenCount} more {hiddenCount === 1 ? "article" : "articles"} in your history
+                {hiddenCount} more {hiddenCount === 1 ? "article" : "articles"}{" "}
+                in your history
               </h4>
               <p className="mt-1 text-sm text-muted-foreground">
                 Support to unlock unlimited history & ad-free reading
@@ -529,8 +547,8 @@ function HistoryContent() {
           </div>
         </div>
       )}
-      
-      <ClearConfirmDialog 
+
+      <ClearConfirmDialog
         open={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}
         onConfirm={clearHistory}
@@ -549,12 +567,11 @@ function SignedOutContent() {
       </div>
       <h3 className="text-xl font-semibold">Sign in to view history</h3>
       <p className="mt-2 text-sm text-muted-foreground max-w-[300px]">
-        Create an account to save your reading history and access it from any device.
+        Create an account to save your reading history and access it from any
+        device.
       </p>
       <Link href="/pricing">
-        <Button className="mt-6">
-          Get started
-        </Button>
+        <Button className="mt-6">Get started</Button>
       </Link>
     </div>
   );
@@ -562,7 +579,7 @@ function SignedOutContent() {
 
 export default function HistoryPage() {
   const router = useRouter();
-  
+
   return (
     <main className="flex min-h-screen flex-col bg-background">
       {/* Header */}
@@ -577,11 +594,11 @@ export default function HistoryPage() {
           </button>
           <div className="flex items-center gap-4">
             <SignedIn>
-              <UserButton 
+              <UserButton
                 appearance={{
                   elements: {
-                    avatarBox: "size-8"
-                  }
+                    avatarBox: "size-8",
+                  },
                 }}
               />
             </SignedIn>

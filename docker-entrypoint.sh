@@ -1,6 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 # Docker entrypoint script
 # Runs both the Elysia API server (port 3001) and Next.js server (port 3000)
+# Note: Uses bash for `wait -n` which is not POSIX-compliant
 
 set -e
 

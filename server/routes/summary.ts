@@ -18,11 +18,12 @@ import {
   formatSummaryErrorResponse,
 } from "../../lib/errors/summary";
 import { getLanguagePrompt } from "../../types/api";
+import { env } from "../../lib/env";
 
 const dailyRateLimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(
-    process.env.NODE_ENV === "development" ? 100 : 20,
+    env.NODE_ENV === "development" ? 100 : 20,
     "24h",
   ),
   analytics: true,
@@ -32,7 +33,7 @@ const dailyRateLimit = new Ratelimit({
 const minuteRateLimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(
-    process.env.NODE_ENV === "development" ? 60 : 12,
+    env.NODE_ENV === "development" ? 60 : 12,
     "1m",
   ),
   analytics: true,
@@ -40,7 +41,7 @@ const minuteRateLimit = new Ratelimit({
 });
 
 const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: env.OPENROUTER_API_KEY,
 });
 
 const MODELS = [
@@ -82,7 +83,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       const clientIp = extractClientIp(request);
       const rateLimitKey = userId || clientIp;
 
-      const dailyLimit = process.env.NODE_ENV === "development" ? 100 : 20;
+      const dailyLimit = env.NODE_ENV === "development" ? 100 : 20;
 
       // Track usage for headers - premium users get -1 (unlimited)
       let usageRemaining = isPremium ? -1 : dailyLimit;
@@ -187,8 +188,17 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
         },
       });
 
-      set.headers["Content-Type"] = "text/plain; charset=utf-8";
-      return result.toTextStreamResponse();
+      // Return streaming response with usage headers
+      // Note: toTextStreamResponse() creates a new Response without our headers,
+      // so we manually construct the Response with the stream and headers
+      return new Response(result.textStream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Is-Premium": String(isPremium),
+          "X-Usage-Remaining": String(usageRemaining),
+          "X-Usage-Limit": String(isPremium ? -1 : dailyLimit),
+        },
+      });
     } catch (error) {
       ctx.error(error instanceof Error ? error : String(error), {
         error_type: "UNKNOWN_ERROR",

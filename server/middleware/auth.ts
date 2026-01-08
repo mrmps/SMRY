@@ -3,9 +3,10 @@
  */
 
 import { createClerkClient, verifyToken } from "@clerk/backend";
+import { env } from "../../lib/env";
 
 // Initialize Clerk client for billing API calls
-const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
 
 // Cache billing status to avoid repeated API calls (5 min TTL)
 const billingCache = new Map<string, { isPremium: boolean; expiresAt: number }>();
@@ -20,7 +21,7 @@ async function checkBillingStatus(userId: string): Promise<boolean> {
   // Check cache first
   const cached = billingCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) {
-    if (process.env.NODE_ENV === "development") {
+    if (env.NODE_ENV === "development") {
       console.log("[auth] Cache hit for", userId, "isPremium:", cached.isPremium);
     }
     return cached.isPremium;
@@ -29,7 +30,7 @@ async function checkBillingStatus(userId: string): Promise<boolean> {
   try {
     const subscription = await clerk.billing.getUserBillingSubscription(userId);
 
-    if (process.env.NODE_ENV === "development") {
+    if (env.NODE_ENV === "development") {
       console.log("[auth] Subscription for", userId, JSON.stringify(subscription, null, 2));
     }
 
@@ -42,7 +43,7 @@ async function checkBillingStatus(userId: string): Promise<boolean> {
     billingCache.set(userId, { isPremium, expiresAt: Date.now() + CACHE_TTL_MS });
     return isPremium;
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    if (env.NODE_ENV === "development") {
       console.log("[auth] Billing check error for", userId, error);
     }
     // No subscription found = not premium
@@ -67,7 +68,7 @@ export async function getAuthInfo(request: Request): Promise<AuthInfo> {
     if (!token) return { isPremium: false, userId: null };
 
     const result = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY!,
+      secretKey: env.CLERK_SECRET_KEY,
     });
 
     if (!result) return { isPremium: false, userId: null };
@@ -80,13 +81,13 @@ export async function getAuthInfo(request: Request): Promise<AuthInfo> {
     // Check billing status via Clerk API
     const isPremium = await checkBillingStatus(userId);
 
-    if (process.env.NODE_ENV === "development") {
+    if (env.NODE_ENV === "development") {
       console.log("[auth] User:", userId, "Premium:", isPremium);
     }
 
     return { isPremium, userId };
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
+    if (env.NODE_ENV === "development") {
       console.error("[auth] Error:", error);
     }
     return { isPremium: false, userId: null };

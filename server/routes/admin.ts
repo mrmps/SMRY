@@ -160,17 +160,19 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
       conditions.push(`hostname != ''`);
 
       if (includeFilters) {
+        // Escape backslashes first, then single quotes (order matters for SQL injection prevention)
+        const escapeForClickhouse = (str: string) => str.replace(/\\/g, "\\\\").replace(/'/g, "''");
         if (hostnameFilter) {
-          conditions.push(`hostname = '${hostnameFilter.replace(/'/g, "''")}'`);
+          conditions.push(`hostname = '${escapeForClickhouse(hostnameFilter)}'`);
         }
         if (sourceFilter) {
-          conditions.push(`source = '${sourceFilter.replace(/'/g, "''")}'`);
+          conditions.push(`source = '${escapeForClickhouse(sourceFilter)}'`);
         }
         if (outcomeFilter) {
-          conditions.push(`outcome = '${outcomeFilter.replace(/'/g, "''")}'`);
+          conditions.push(`outcome = '${escapeForClickhouse(outcomeFilter)}'`);
         }
         if (urlSearch) {
-          conditions.push(`url LIKE '%${urlSearch.replace(/'/g, "''").replace(/%/g, "\\%")}%'`);
+          conditions.push(`url LIKE '%${escapeForClickhouse(urlSearch).replace(/%/g, "\\%")}%'`);
         }
       }
 
