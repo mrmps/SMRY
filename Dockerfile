@@ -21,6 +21,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG INTERNAL_API_URL=http://smry-api.railway.internal:3001
 ENV INTERNAL_API_URL=$INTERNAL_API_URL
 
+# Set NEXT_PUBLIC_API_URL for client-side API calls (build-time config)
+# This makes the browser call the API directly, bypassing Next.js rewrites
+ARG NEXT_PUBLIC_API_URL=https://api.smry.ai
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN bun run build
 
 # Production image - Next.js only
