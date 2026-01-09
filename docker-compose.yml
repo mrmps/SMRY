@@ -12,6 +12,7 @@ services:
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - ./docs/clickhouse-schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./config/clickhouse-memory.xml:/etc/clickhouse-server/config.d/memory.xml:ro
     environment:
       CLICKHOUSE_DB: smry_analytics
       CLICKHOUSE_USER: default
@@ -21,6 +22,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    mem_limit: 512m
+    memswap_limit: 512m
     ulimits:
       nofile:
         soft: 262144

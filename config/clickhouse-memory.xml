@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!--
+  ClickHouse memory configuration for local development.
+  Limits memory to work within a 512MB container.
+-->
+<clickhouse>
+    <profiles>
+        <default>
+            <!-- Max memory per query: 300MB -->
+            <max_memory_usage>314572800</max_memory_usage>
+            <!-- Spill to disk for sorts over 100MB -->
+            <max_bytes_before_external_sort>104857600</max_bytes_before_external_sort>
+            <!-- Spill to disk for group by over 100MB -->
+            <max_bytes_before_external_group_by>104857600</max_bytes_before_external_group_by>
+        </default>
+    </profiles>
+
+    <!-- Index mark cache: 50MB -->
+    <mark_cache_size>52428800</mark_cache_size>
+
+    <!-- Uncompressed block cache: 50MB -->
+    <uncompressed_cache_size>52428800</uncompressed_cache_size>
+
+    <!-- Disable query cache to save memory -->
+    <query_cache>
+        <max_size_in_bytes>0</max_size_in_bytes>
+    </query_cache>
+
+    <!-- Limit background merges to reduce memory pressure -->
+    <background_pool_size>2</background_pool_size>
+    <background_schedule_pool_size>2</background_schedule_pool_size>
+</clickhouse>
