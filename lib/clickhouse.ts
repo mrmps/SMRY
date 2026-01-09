@@ -117,8 +117,9 @@ const FLUSH_INTERVAL_MS = 5000;
 
 // CONCURRENCY CONTROL: Limit concurrent queries to prevent thread exhaustion
 // ClickHouse has limited threads (typically 28), so we limit concurrent queries
-const MAX_CONCURRENT_QUERIES = 4;
-const QUERY_SLOT_TIMEOUT_MS = 30_000; // 30s timeout waiting for slot
+// Admin dashboard runs 13 queries in parallel, so we need at least ~7 slots
+const MAX_CONCURRENT_QUERIES = 8;
+const QUERY_SLOT_TIMEOUT_MS = 60_000; // 60s timeout waiting for slot
 let activeQueries = 0;
 const queryQueue: Array<{
   resolve: () => void;
@@ -385,10 +386,13 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
   const clickhouse = getClient();
   if (!clickhouse) return [];
 
-  // Acquire a query slot (may wait if at capacity)
-  await acquireQuerySlot();
+  let slotAcquired = false;
 
   try {
+    // Acquire a query slot (may wait if at capacity)
+    await acquireQuerySlot();
+    slotAcquired = true;
+
     const result = await clickhouse.query({
       query,
       format: "JSONEachRow",
@@ -399,13 +403,18 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
     // Check for connection errors and disable to prevent spam
     if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
       disableClickhouse(message);
+    } else if (message.includes("Query slot timeout")) {
+      // Log slot timeouts but don't disable - indicates too many concurrent queries
+      console.warn("[clickhouse] Query slot timeout - too many concurrent queries");
     } else {
       console.error("[clickhouse] Query failed:", message);
     }
     return [];
   } finally {
-    // Always release the slot, even on error
-    releaseQuerySlot();
+    // Only release the slot if we actually acquired one
+    if (slotAcquired) {
+      releaseQuerySlot();
+    }
   }
 }
 
