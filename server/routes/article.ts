@@ -15,6 +15,7 @@ import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 import { createRequestContext, extractClientIp } from "../../lib/request-context";
 import { getTextDirection } from "../../lib/rtl";
+import { abuseRateLimiter } from "../../lib/rate-limit-memory";
 
 const logger = createLogger("api:article");
 
@@ -204,13 +205,23 @@ const SourceEnum = t.Union([t.Literal("smry-fast"), t.Literal("smry-slow"), t.Li
 export const articleRoutes = new Elysia({ prefix: "/api" }).get(
   "/article",
   async ({ query, request, set }) => {
+    const clientIp = extractClientIp(request);
     const ctx = createRequestContext({
       method: "GET",
       path: "/api/article",
       url: request.url,
-      ip: extractClientIp(request),
+      ip: clientIp,
     });
     ctx.set("endpoint", "/api/article");
+
+    // Abuse prevention rate limit (high threshold)
+    const rateLimit = abuseRateLimiter.check(clientIp);
+    if (!rateLimit.success) {
+      ctx.error("Rate limit exceeded", { error_type: "RATE_LIMIT_ERROR", status_code: 429 });
+      set.status = 429;
+      set.headers["retry-after"] = String(Math.ceil((rateLimit.reset - Date.now()) / 1000));
+      return { error: "Too many requests", type: "RATE_LIMIT_ERROR" };
+    }
 
     try {
       const { url, source } = query;

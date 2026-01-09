@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import DOMPurify from "isomorphic-dompurify";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -117,31 +116,62 @@ const DOMPURIFY_CONFIG = {
     /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
 };
 
-// Configure DOMPurify hooks once at module load
-// Force safe attributes on links and images
-// Guard against multiple hook registrations
+// Lazy-loaded DOMPurify instance (client-side only)
+let DOMPurify: typeof import("dompurify").default | null = null;
 let hooksConfigured = false;
-function configureDOMPurifyHooks() {
-  if (hooksConfigured) return;
-  hooksConfigured = true;
-
-  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-    if (node.tagName === "A") {
-      node.setAttribute("target", "_blank");
-      node.setAttribute("rel", "noopener noreferrer");
-    }
-    if (node.tagName === "IMG") {
-      node.setAttribute("loading", "lazy");
-    }
-  });
-}
-configureDOMPurifyHooks();
 
 /**
- * Sanitize HTML content using our strict allowlist config
+ * Initialize DOMPurify on the client side only
  */
-function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, DOMPURIFY_CONFIG) as string;
+async function initDOMPurify() {
+  if (typeof window === "undefined") return null;
+  if (DOMPurify) return DOMPurify;
+
+  const mod = await import("dompurify");
+  DOMPurify = mod.default;
+
+  // Configure hooks once
+  if (!hooksConfigured) {
+    hooksConfigured = true;
+    DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+      if (node.tagName === "A") {
+        node.setAttribute("target", "_blank");
+        node.setAttribute("rel", "noopener noreferrer");
+      }
+      if (node.tagName === "IMG") {
+        node.setAttribute("loading", "lazy");
+      }
+    });
+  }
+
+  return DOMPurify;
+}
+
+/**
+ * Hook to get sanitized HTML content (client-side only)
+ */
+function useSanitizedHtml(html: string | undefined | null): string | null {
+  const [sanitized, setSanitized] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Skip if no content
+    if (!html) return;
+
+    let cancelled = false;
+
+    initDOMPurify().then((dp) => {
+      if (dp && !cancelled) {
+        setSanitized(dp.sanitize(html, DOMPURIFY_CONFIG) as string);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [html]);
+
+  // Return null when html is empty/null, otherwise return sanitized content
+  return html ? sanitized : null;
 }
 
 interface ArticleContentProps {
@@ -189,11 +219,8 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   const cacheURL = getCacheURL();
 
   // Sanitize article content for markdown view (prevents XSS)
-  const sanitizedArticleContent = useMemo(() => {
-    const content = data?.article?.content;
-    if (!content) return null;
-    return sanitizeHtml(content);
-  }, [data?.article?.content]);
+  // Uses client-side DOMPurify to avoid SSR issues with jsdom
+  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
 
   // Get the raw HTML content for the "Original" view
   // No sanitization needed - it's rendered in a sandboxed iframe which:

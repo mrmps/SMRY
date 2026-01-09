@@ -43,7 +43,7 @@
     "motion": "^11.15.0",
     "geist": "^1.2.2",
     "harden-react-markdown": "^1.1.5",
-    "isomorphic-dompurify": "^2.35.0",
+    "dompurify": "^3.2.3",
     "katex": "^0.16.25",
     "linkedom": "^0.18.12",
     "lucide-react": "^0.554.0",

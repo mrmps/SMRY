@@ -9,6 +9,7 @@ import { compressAsync, decompressAsync } from "../../lib/redis-compression";
 import { getTextDirection } from "../../lib/rtl";
 import { createRequestContext, extractClientIp } from "../../lib/request-context";
 import { isHardPaywall, getHardPaywallInfo } from "../../lib/hard-paywalls";
+import { abuseRateLimiter } from "../../lib/rate-limit-memory";
 
 const CachedArticleSchema = z.object({
   title: z.string(),
@@ -38,14 +39,24 @@ const ArticleSchema = t.Object({
 
 export const jinaRoutes = new Elysia({ prefix: "/api" })
   .get("/jina", async ({ query, request, set }) => {
+    const clientIp = extractClientIp(request);
     const ctx = createRequestContext({
       method: "GET",
       path: "/api/jina",
       url: request.url,
-      ip: extractClientIp(request),
+      ip: clientIp,
     });
     ctx.set("endpoint", "/api/jina");
     ctx.set("source", "jina.ai");
+
+    // Abuse prevention rate limit (high threshold)
+    const rateLimit = abuseRateLimiter.check(clientIp);
+    if (!rateLimit.success) {
+      ctx.error("Rate limit exceeded", { error_type: "RATE_LIMIT_ERROR", status_code: 429 });
+      set.status = 429;
+      set.headers["retry-after"] = String(Math.ceil((rateLimit.reset - Date.now()) / 1000));
+      return { error: "Too many requests", type: "RATE_LIMIT_ERROR" };
+    }
 
     try {
       const { url } = query;
@@ -114,14 +125,24 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
   }, { query: t.Object({ url: t.String() }) })
 
   .post("/jina", async ({ body, request, set }) => {
+    const clientIp = extractClientIp(request);
     const ctx = createRequestContext({
       method: "POST",
       path: "/api/jina",
       url: request.url,
-      ip: extractClientIp(request),
+      ip: clientIp,
     });
     ctx.set("endpoint", "/api/jina");
     ctx.set("source", "jina.ai");
+
+    // Abuse prevention rate limit (high threshold)
+    const rateLimit = abuseRateLimiter.check(clientIp);
+    if (!rateLimit.success) {
+      ctx.error("Rate limit exceeded", { error_type: "RATE_LIMIT_ERROR", status_code: 429 });
+      set.status = 429;
+      set.headers["retry-after"] = String(Math.ceil((rateLimit.reset - Date.now()) / 1000));
+      return { error: "Too many requests", type: "RATE_LIMIT_ERROR" };
+    }
 
     try {
       const { url, article } = body;
