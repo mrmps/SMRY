@@ -84,8 +84,15 @@
     },
     "clickhouse": {
       "name": "clickhouse",
-      "description": "Clickhouse analytics database",
-      "image": "clickhouse/clickhouse-server:24.8",
+      "description": "Clickhouse analytics database (memory-optimized)",
+      "source": {
+        "repo": "https://github.com/mrmps/SMRY"
+      },
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "docker/clickhouse/Dockerfile",
+        "buildContext": "docker/clickhouse"
+      },
       "variables": {
         "CLICKHOUSE_DB": {
           "value": "smry_analytics"

@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!--
+  ClickHouse memory configuration for production.
+  Reduces memory footprint from ~3GB to ~300-500MB.
+-->
+<clickhouse>
+    <!-- Server-level memory limits -->
+    <!-- Use only 20% of available RAM (instead of default ~90%) -->
+    <max_server_memory_usage_to_ram_ratio>0.2</max_server_memory_usage_to_ram_ratio>
+
+    <!-- Index cache: 32MB (default ~5GB) -->
+    <mark_cache_size>33554432</mark_cache_size>
+
+    <!-- Uncompressed block cache: 32MB (default ~5GB) -->
+    <uncompressed_cache_size>33554432</uncompressed_cache_size>
+
+    <!-- Compiled expression cache: 16MB -->
+    <compiled_expression_cache_size>16777216</compiled_expression_cache_size>
+
+    <!-- Disable query result cache -->
+    <query_cache>
+        <max_size_in_bytes>0</max_size_in_bytes>
+    </query_cache>
+
+    <!-- Reduce background thread pools -->
+    <background_pool_size>2</background_pool_size>
+    <background_schedule_pool_size>2</background_schedule_pool_size>
+    <background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>
+
+    <!-- Per-query limits -->
+    <profiles>
+        <default>
+            <!-- 200MB max per query -->
+            <max_memory_usage>209715200</max_memory_usage>
+            <!-- Spill to disk for sorts/aggregations over 50MB -->
+            <max_bytes_before_external_sort>52428800</max_bytes_before_external_sort>
+            <max_bytes_before_external_group_by>52428800</max_bytes_before_external_group_by>
+        </default>
+    </profiles>
+</clickhouse>

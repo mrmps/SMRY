@@ -2,9 +2,11 @@
 # For full Docker stack: bun run dev:docker
 
 services:
-  # Clickhouse analytics database
+  # Clickhouse analytics database (memory-optimized)
   clickhouse:
-    image: clickhouse/clickhouse-server:24.8
+    build:
+      context: ./docker/clickhouse
+      dockerfile: Dockerfile
     container_name: smry-clickhouse
     ports:
       - "8123:8123"
