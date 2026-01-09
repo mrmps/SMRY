@@ -1,7 +1,7 @@
 import { createLogger } from "./logger";
 import { randomUUID } from "crypto";
 import { trackEvent, ErrorSeverity } from "./clickhouse";
-import { env } from "./env";
+import { env } from "../server/env";
 
 /**
  * Determine error severity based on error type

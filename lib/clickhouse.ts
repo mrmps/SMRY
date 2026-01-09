@@ -1,5 +1,5 @@
 import { createClient, ClickHouseClient } from "@clickhouse/client";
-import { env } from "./env";
+import { env } from "../server/env";
 
 /**
  * Clickhouse Analytics Client

@@ -7,7 +7,7 @@
 
 import { Resend } from "resend";
 import { queryClickhouse } from "./clickhouse";
-import { env } from "./env";
+import { env } from "../server/env";
 
 // Alert configuration
 const ALERT_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes between alerts
@@ -129,7 +129,7 @@ Check the admin dashboard for more details.
 </p>
 <h3>Top errors:</h3>
 <ul>${htmlErrorList}</ul>
-<p><a href="${env.NEXT_PUBLIC_URL}/admin">View Admin Dashboard</a></p>
+<p><a href="${env.CORS_ORIGIN}/admin">View Admin Dashboard</a></p>
     `.trim(),
   });
 

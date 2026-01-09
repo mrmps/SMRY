@@ -11,7 +11,7 @@ import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { env } from "@/lib/env";
+import { env } from "../../server/env";
 
 const logger = createLogger('lib:diffbot');
 

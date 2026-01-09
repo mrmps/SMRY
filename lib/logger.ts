@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { env } from './env';
+import { env } from '../server/env';
 
 /**
  * Centralized logger using Pino
