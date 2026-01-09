@@ -15,7 +15,10 @@ import { env } from "../src/lib/env";
 
 startMemoryMonitor();
 
-const app = new Elysia()
+// Export the app definition without calling listen()
+// This allows TanStack Start to mount it directly
+// Note: Routes already have their own /api prefix, so don't add one here
+export const app = new Elysia()
   .use(cors({ origin: env.CORS_ORIGIN ?? true, credentials: true }))
   .use(
     cron({
@@ -65,9 +68,13 @@ const app = new Elysia()
     console.error(`[elysia] Error ${code}:`, error);
     set.status = 500;
     return { error: "Internal server error", type: "INTERNAL_ERROR" };
-  })
-  .listen(env.API_PORT);
+  });
 
-console.log(`🦊 Elysia API server running at http://localhost:${app.server?.port}`);
+// Only start standalone server if this file is run directly
+// (e.g., `bun run server/index.ts` for standalone API testing)
+if (import.meta.main) {
+  app.listen(env.API_PORT);
+  console.log(`🦊 Elysia API server running at http://localhost:${app.server?.port}`);
+}
 
 export type App = typeof app;

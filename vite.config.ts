@@ -8,12 +8,7 @@ import { nitro } from 'nitro/vite'
 export default defineConfig({
   server: {
     port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-    },
+    // Proxy removed - Elysia is now mounted inside TanStack Start via src/app/api.$.ts
   },
   envPrefix: ['NEXT_PUBLIC_', 'VITE_'],
   plugins: [
@@ -29,9 +24,7 @@ export default defineConfig({
     }),
     viteReact(),
     nitro({
-      routeRules: {
-        '/api/**': { proxy: 'http://localhost:3001/api/**' },
-      },
+      // Proxy removed - Elysia is now mounted inside TanStack Start
     }),
   ],
 })

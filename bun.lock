@@ -12,6 +12,7 @@
         "@clickhouse/client": "^1.15.0",
         "@elysiajs/cors": "^1.4.1",
         "@elysiajs/cron": "^1.4.1",
+        "@elysiajs/eden": "^1.4.6",
         "@heroicons/react": "^2.1.1",
         "@mozilla/readability": "^0.4.4",
         "@openrouter/sdk": "^0.3.11",
@@ -194,6 +195,8 @@
     "@elysiajs/cors": ["@elysiajs/cors@1.4.1", "", { "peerDependencies": { "elysia": ">= 1.4.0" } }, "sha512-lQfad+F3r4mNwsxRKbXyJB8Jg43oAOXjRwn7sKUL6bcOW3KjUqUimTS+woNpO97efpzjtDE0tEjGk9DTw8lqTQ=="],
 
     "@elysiajs/cron": ["@elysiajs/cron@1.4.1", "", { "dependencies": { "croner": "^6.0.3" }, "peerDependencies": { "elysia": ">= 1.4.0" } }, "sha512-Y+jqXtMJ+m17QzNWlWc09ugd1Fn1Wh7lqE+y9qSW8eiQZEqsRADXWmbLuXRSRaSC5dkfOyRSiwNCp6n8L/yuqA=="],
+
+    "@elysiajs/eden": ["@elysiajs/eden@1.4.6", "", { "peerDependencies": { "elysia": ">=1.4.19" } }, "sha512-Tsa4NwXEWg/u73vWiYZQ3L5/ecgZSxqiEjYwpS+4qBKXeTZqZKl2hcgHJSVBL+InEDMi35Xugct7qyAXE5oM4Q=="],
 
     "@emnapi/core": ["@emnapi/core@1.7.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.1.0", "tslib": "2.8.1" } }, "sha512-o1uhUASyo921r2XtHYOHy7gdkGLge8ghBEQHMWmyJFoXlpU58kIrhhN3w26lpQb6dspetweapMn2CSNwQ8I4wg=="],
 

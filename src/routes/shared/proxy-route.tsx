@@ -4,8 +4,7 @@ import { siteConfig } from "@/config/site";
 import { createLogger } from "@/lib/logger";
 import { normalizeUrl } from "@/lib/validation/url";
 import { ProxyContent } from "@/components/features/proxy-content";
-import { getApiUrl } from "@/lib/api/config";
-import axios from "axios";
+import { api } from "@/lib/eden";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { z } from "zod";
@@ -57,23 +56,18 @@ const DEFAULT_METADATA: ArticleMetadata = {
   siteName: "SMRY",
 };
 
-interface ArticleApiResponse {
-  article?: {
-    title?: string;
-    textContent?: string;
-    siteName?: string;
-  };
-}
-
 async function fetchArticleMetadata(url: string): Promise<ArticleMetadata | null> {
   try {
-    const apiUrl = getApiUrl("/api/article");
-    const { data } = await axios.get<ArticleApiResponse>(apiUrl, {
-      params: { url, source: "smry-fast" },
+    // Use Eden Treaty - on server, calls Elysia directly (no HTTP overhead)
+    // On client, makes HTTP request to /api/article
+    const client = await api();
+    const { data, error } = await client.api.article.get({
+      query: { url, source: "smry-fast" },
     });
-    const article = data?.article;
-    if (!article) return null;
 
+    if (error || !data?.article) return null;
+
+    const article = data.article;
     const description = article.textContent
       ? `${article.textContent.slice(0, 160).trim()}...`
       : DEFAULT_METADATA.description;

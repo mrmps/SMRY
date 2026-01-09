@@ -18,6 +18,7 @@ import { Route as LocaleRouteImport } from './app/$locale'
 import { Route as SplatRouteImport } from './app/$'
 import { Route as IndexRouteImport } from './app/index'
 import { Route as LocaleIndexRouteImport } from './app/$locale/index'
+import { Route as ApiSplatRouteImport } from './app/api.$'
 import { Route as LocaleProxyRouteImport } from './app/$locale/proxy'
 import { Route as LocalePricingRouteImport } from './app/$locale/pricing'
 import { Route as LocaleHistoryRouteImport } from './app/$locale/history'
@@ -69,6 +70,11 @@ const LocaleIndexRoute = LocaleIndexRouteImport.update({
   path: '/',
   getParentRoute: () => LocaleRoute,
 } as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LocaleProxyRoute = LocaleProxyRouteImport.update({
   id: '/proxy',
   path: '/proxy',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/$locale/history': typeof LocaleHistoryRoute
   '/$locale/pricing': typeof LocalePricingRoute
   '/$locale/proxy': typeof LocaleProxyRoute
+  '/api/$': typeof ApiSplatRoute
   '/$locale/': typeof LocaleIndexRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/$locale/history': typeof LocaleHistoryRoute
   '/$locale/pricing': typeof LocalePricingRoute
   '/$locale/proxy': typeof LocaleProxyRoute
+  '/api/$': typeof ApiSplatRoute
   '/$locale': typeof LocaleIndexRoute
 }
 export interface FileRoutesById {
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/$locale/history': typeof LocaleHistoryRoute
   '/$locale/pricing': typeof LocalePricingRoute
   '/$locale/proxy': typeof LocaleProxyRoute
+  '/api/$': typeof ApiSplatRoute
   '/$locale/': typeof LocaleIndexRoute
 }
 export interface FileRouteTypes {
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/$locale/history'
     | '/$locale/pricing'
     | '/$locale/proxy'
+    | '/api/$'
     | '/$locale/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/$locale/history'
     | '/$locale/pricing'
     | '/$locale/proxy'
+    | '/api/$'
     | '/$locale'
   id:
     | '__root__'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/$locale/history'
     | '/$locale/pricing'
     | '/$locale/proxy'
+    | '/api/$'
     | '/$locale/'
   fileRoutesById: FileRoutesById
 }
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   PricingRoute: typeof PricingRoute
   ProxyRoute: typeof ProxyRoute
+  ApiSplatRoute: typeof ApiSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -268,6 +281,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$locale/'
       preLoaderRoute: typeof LocaleIndexRouteImport
       parentRoute: typeof LocaleRoute
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/$locale/proxy': {
       id: '/$locale/proxy'
@@ -337,6 +357,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   PricingRoute: PricingRoute,
   ProxyRoute: ProxyRoute,
+  ApiSplatRoute: ApiSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

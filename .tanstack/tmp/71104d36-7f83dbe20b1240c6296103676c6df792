@@ -1,0 +1,22 @@
+import { createFileRoute } from "@tanstack/react-router"
+/**
+ * API Catch-all Route
+ *
+ * Mounts the Elysia server inside TanStack Start.
+ * All requests to /api/* are handled by Elysia.
+ */
+
+import { createAPIFileRoute } from "@tanstack/react-start/api";
+import { app } from "../../server/index";
+
+const handler = ({ request }: { request: Request }) => app.fetch(request);
+
+export const Route = createAPIFileRoute("/api/$")({
+  GET: handler,
+  POST: handler,
+  PUT: handler,
+  DELETE: handler,
+  PATCH: handler,
+  HEAD: handler,
+  OPTIONS: handler,
+});

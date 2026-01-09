@@ -126,34 +126,34 @@ export function ProxyContent({ url }: ProxyContentProps) {
   const handleViewModeChange = React.useCallback(
     (mode: ViewMode) => {
       void navigate({
-        to: ".",
-        search: (prev: Record<string, unknown>) => ({ ...prev, view: mode }),
+        to: "/proxy",
+        search: { url, source, view: mode, sidebar: sidebarOpen },
         replace: true,
       });
     },
-    [navigate]
+    [navigate, url, source, sidebarOpen]
   );
 
   const handleSidebarChange = React.useCallback(
     (next: boolean) => {
       void navigate({
-        to: ".",
-        search: (prev: Record<string, unknown>) => ({ ...prev, sidebar: next || undefined }),
+        to: "/proxy",
+        search: { url, source, view: viewMode, sidebar: next },
         replace: true,
       });
     },
-    [navigate]
+    [navigate, url, source, viewMode]
   );
 
   const handleSourceChange = React.useCallback(
     (next: Source) => {
       void navigate({
-        to: ".",
-        search: (prev: Record<string, unknown>) => ({ ...prev, source: next }),
+        to: "/proxy",
+        search: { url, source: next, view: viewMode, sidebar: sidebarOpen },
         replace: true,
       });
     },
-    [navigate]
+    [navigate, url, viewMode, sidebarOpen]
   );
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);

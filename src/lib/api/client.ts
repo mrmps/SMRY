@@ -1,6 +1,6 @@
 import { ArticleResponse, Source, ErrorResponse } from "@/types/api";
 import { DebugContext } from "@/lib/errors/types";
-import { getApiUrl } from "./config";
+import { api } from "@/lib/eden";
 
 /**
  * Custom error that includes debug context
@@ -21,30 +21,27 @@ export class ArticleFetchError extends Error {
 
 /**
  * Type-safe API client for fetching articles
+ * Uses Eden Treaty - isomorphic client that works on both server and client
  */
 export const articleAPI = {
   /**
    * Fetch article from a specific source
    */
   async getArticle(url: string, source: Source): Promise<ArticleResponse> {
-    const params = new URLSearchParams({
-      url,
-      source,
+    const client = await api();
+    const { data, error } = await client.api.article.get({
+      query: { url, source },
     });
 
-    const response = await fetch(getApiUrl(`/api/article?${params.toString()}`));
-
-    if (!response.ok) {
-      const errorData = (await response.json()) as ErrorResponse;
-      // Throw custom error that preserves debug context
+    if (error) {
+      const errorData = error as unknown as ErrorResponse;
       throw new ArticleFetchError(
-        errorData.error ?? `HTTP error! status: ${response.status}`,
+        errorData?.error ?? `Failed to fetch article`,
         errorData
       );
     }
 
-    const data = (await response.json()) as ArticleResponse;
-    return data;
+    return data as ArticleResponse;
   },
 };
 
