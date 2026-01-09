@@ -93,13 +93,12 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
 
 interface ProxyContentProps {
   url: string;
-  ip: string;
   initialSource?: Source;
   initialViewMode?: "markdown" | "html" | "iframe";
   initialSidebarOpen?: boolean;
 }
 
-export function ProxyContent({ url, ip }: ProxyContentProps) {
+export function ProxyContent({ url }: ProxyContentProps) {
   const { results } = useArticles(url);
   const { theme, setTheme } = useTheme();
   const { isPremium, isLoading } = useIsPremium();
@@ -537,7 +536,6 @@ export function ProxyContent({ url, ip }: ProxyContentProps) {
             <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-3.5rem)]">
               <ArrowTabs
                 url={url}
-                ip={ip}
                 articleResults={results}
                 viewMode={viewMode}
                 activeSource={source}

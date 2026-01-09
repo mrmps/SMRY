@@ -234,7 +234,6 @@ function SummaryErrorDisplay({
 
 interface InlineSummaryProps {
   urlProp: string;
-  ipProp: string;
   articleResults: ArticleResults;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -276,7 +275,6 @@ function ExpandedSummary({
   onCollapse,
 }: {
   urlProp: string;
-  ipProp: string;
   articleResults: ArticleResults;
   onCollapse: () => void;
 }) {
@@ -567,7 +565,6 @@ function ExpandedSummary({
 
 export function InlineSummary({
   urlProp,
-  ipProp,
   articleResults,
   isOpen,
   onOpenChange,
@@ -589,7 +586,6 @@ export function InlineSummary({
     <ExpandedSummary
       key={`${urlProp}-expanded`}
       urlProp={urlProp}
-      ipProp={ipProp}
       articleResults={articleResults}
       onCollapse={() => onOpenChange(false)}
     />

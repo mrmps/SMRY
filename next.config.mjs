@@ -28,6 +28,15 @@ const nextConfig = {
   },
   // Disable in-memory cache to reduce memory usage
   cacheMaxMemorySize: 0,
+  // Use memory-only webpack cache (not filesystem) to prevent cache accumulation
+  webpack: (config, { dev }) => {
+    if (config.cache && !dev) {
+      config.cache = Object.freeze({
+        type: "memory",
+      });
+    }
+    return config;
+  },
   images: {
     minimumCacheTTL: 2678400, // 31 days
     remotePatterns: [
@@ -45,7 +54,7 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["pino", "pino-pretty", "thread-stream", "undici"],
+  serverExternalPackages: ["pino", "pino-pretty", "thread-stream", "undici", "node-fetch"],
 
   // Redirect auth routes to pricing page (sign-in modal is there)
   async redirects() {

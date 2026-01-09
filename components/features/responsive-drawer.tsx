@@ -55,7 +55,7 @@ export function ResponsiveDrawer({
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)", {
     defaultValue: false,
-    initializeWithValue: true,
+    initializeWithValue: false,
   });
   const contentId = React.useId();
 

@@ -133,9 +133,7 @@ function parseIncompleteMarkdown(text: string): string {
 
   if (inlineCodeMatch) {
     // Check if we're dealing with a code block (triple backticks)
-    const _hasCodeBlockStart = result.includes('```');
     const codeBlockPattern = /```[\s\S]*?```/g;
-    const _completeCodeBlocks = (result.match(codeBlockPattern) || []).length;
     const allTripleBackticks = (result.match(/```/g) || []).length;
 
     // If we have an odd number of ``` sequences, we're inside an incomplete code block
