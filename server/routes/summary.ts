@@ -19,7 +19,7 @@ import {
   formatSummaryErrorResponse,
 } from "../../lib/errors/summary";
 import { getLanguagePrompt } from "../../types/api";
-import { env } from "../../lib/env";
+import { env } from "../env";
 
 // Rate limits - single source of truth
 const DAILY_LIMIT = env.NODE_ENV === "development" ? 100 : 20;

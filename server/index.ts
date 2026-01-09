@@ -11,7 +11,7 @@ import { summaryRoutes } from "./routes/summary";
 import { jinaRoutes } from "./routes/jina";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
 import { checkErrorRateAndAlert } from "../lib/alerting";
-import { env } from "../lib/env";
+import { env } from "./env";
 
 startMemoryMonitor();
 

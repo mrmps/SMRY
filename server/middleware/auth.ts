@@ -3,7 +3,7 @@
  */
 
 import { createClerkClient, verifyToken } from "@clerk/backend";
-import { env } from "../../lib/env";
+import { env } from "../env";
 
 // Initialize Clerk client for billing API calls
 const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
