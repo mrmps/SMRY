@@ -307,6 +307,7 @@ function ExpandedSummary({
   const { summary, isLoading, isStreaming, error, generate } = useSummary({
     url: urlProp,
     language: preferredLanguage,
+    source: selectedSource,
     onUsageUpdate: setUsageData,
   });
 
@@ -330,20 +331,17 @@ function ExpandedSummary({
     }
   }, [summary, isLoading, contentLength, selectedArticle, generate]);
 
-  // Reset trigger when language changes
+  // Reset trigger when language or source changes
   useEffect(() => {
     hasTriggeredRef.current = false;
-  }, [preferredLanguage]);
+  }, [preferredLanguage, selectedSource]);
 
   const handleSourceChange = useCallback(
     (newSource: Source) => {
       setSelectedSource(newSource);
-      const article = articleResults[newSource]?.data?.article;
-      if (article?.textContent && article.textContent.length >= MIN_CHARS) {
-        generate(article.textContent, article.title);
-      }
+      // Auto-generate effect will handle generation if no cached summary exists
     },
-    [articleResults, generate],
+    [],
   );
 
   const handleLanguageChange = useCallback(

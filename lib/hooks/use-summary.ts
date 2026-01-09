@@ -30,6 +30,7 @@ export interface UsageData {
 export interface UseSummaryOptions {
   url: string;
   language: string;
+  source: string;
   onUsageUpdate?: (usage: UsageData) => void;
 }
 
@@ -150,11 +151,12 @@ async function* streamSummary(
 export function useSummary({
   url,
   language,
+  source,
   onUsageUpdate,
 }: UseSummaryOptions): UseSummaryResult {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  const cacheKey = ["summary", url, language] as const;
+  const cacheKey = ["summary", url, language, source] as const;
 
   // Track streaming state separately (mutation isPending doesn't capture streaming phase)
   const [isStreaming, setIsStreaming] = useState(false);

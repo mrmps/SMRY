@@ -157,6 +157,7 @@ export default function SummaryForm({
   const { summary, isLoading, isStreaming, error, generate } = useSummary({
     url: urlProp,
     language: preferredLanguage,
+    source: selectedSource,
     onUsageUpdate: setUsageData,
   });
 
@@ -211,6 +212,11 @@ export default function SummaryForm({
     selectedSource,
     generate,
   ]);
+
+  // Reset trigger when source changes to allow auto-generate for new source
+  useEffect(() => {
+    hasTriggeredRef.current = false;
+  }, [selectedSource]);
 
   const handleRegenerate = async (e: React.FormEvent) => {
     e.preventDefault();
