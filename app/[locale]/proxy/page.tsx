@@ -1,8 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { ProxyPageContent } from '@/components/pages/proxy-content';
 
-// Force static generation - URL parsing happens client-side
-export const dynamic = 'force-static';
+// Dynamic rendering - page depends on URL query parameters
+export const dynamic = 'force-dynamic';
 
 type Props = {
   params: Promise<{ locale: string }>;
