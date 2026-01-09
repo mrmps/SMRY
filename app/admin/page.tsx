@@ -155,10 +155,30 @@ interface DashboardData {
 
 type TabType = "overview" | "requests" | "live" | "errors";
 
+const ADMIN_TOKEN_KEY = "smry_admin_token";
+
 function AnalyticsDashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const range = searchParams.get("range") || "24h";
+
+  // Auth state - lazy initialize from localStorage
+  const [adminToken, setAdminToken] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(ADMIN_TOKEN_KEY);
+    }
+    return null;
+  });
+  const [tokenInput, setTokenInput] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Track when component is mounted (for SSR hydration)
+  // This is intentional for hydration - the initial render on client must match server
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -201,15 +221,27 @@ function AnalyticsDashboardContent() {
   }, [router, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch]);
 
   const { data, isLoading, error, refetch } = useQuery<DashboardData>({
-    queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch],
+    queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch, adminToken],
     queryFn: async () => {
-      const res = await fetch(getApiUrl(`/api/admin?${buildQueryString()}`));
+      if (!adminToken) throw new Error("Not authenticated");
+      const res = await fetch(getApiUrl(`/api/admin?${buildQueryString()}`), {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+      if (res.status === 401) {
+        // Invalid token - clear it
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        setAdminToken(null);
+        throw new Error("Invalid token");
+      }
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || "Failed to fetch analytics");
       }
       return res.json();
     },
+    enabled: !!adminToken, // Only fetch when authenticated
     refetchInterval: liveStreamEnabled ? 5000 : 30000, // 5s when live stream enabled
   });
 
@@ -240,6 +272,89 @@ function AnalyticsDashboardContent() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+
+    if (tokenInput.length < 32) {
+      setAuthError("Token must be at least 32 characters");
+      return;
+    }
+
+    // Test the token
+    try {
+      const res = await fetch(getApiUrl("/api/admin?range=1h"), {
+        headers: {
+          Authorization: `Bearer ${tokenInput}`,
+        },
+      });
+
+      if (res.status === 401) {
+        setAuthError("Invalid token");
+        return;
+      }
+
+      if (res.ok) {
+        localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput);
+        setAdminToken(tokenInput);
+        setTokenInput("");
+      }
+    } catch {
+      setAuthError("Failed to connect");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    setAdminToken(null);
+  };
+
+  // Wait for hydration to avoid SSR mismatch
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="text-zinc-100">Loading...</div>
+      </div>
+    );
+  }
+
+  // Login UI
+  if (!adminToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="w-full max-w-md p-8">
+          <h1 className="text-2xl font-bold text-zinc-100 mb-2 text-center">SMRY Admin</h1>
+          <p className="text-zinc-500 text-sm text-center mb-8">Enter your admin token to continue</p>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                placeholder="Admin token"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                autoFocus
+              />
+            </div>
+
+            {authError && (
+              <p className="text-red-400 text-sm text-center">{authError}</p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-emerald-600 text-white py-3 rounded-md font-medium hover:bg-emerald-700 transition-colors"
+            >
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   // Loading state
   if (isLoading) {
@@ -286,7 +401,7 @@ function AnalyticsDashboardContent() {
               Buffer: {data.bufferStats.size}/{data.bufferStats.maxSize}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             {/* Time range selector */}
             {["1h", "24h", "7d"].map((r) => (
               <button
@@ -301,6 +416,13 @@ function AnalyticsDashboardContent() {
                 {r}
               </button>
             ))}
+            <div className="w-px h-6 bg-zinc-700 mx-2" />
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 rounded-md text-sm text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </div>
 

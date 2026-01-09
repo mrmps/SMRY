@@ -1,10 +1,26 @@
 /**
  * Admin Route - GET /api/admin
  * Full analytics dashboard with 12 queries
+ * Protected by ADMIN_SECRET token
  */
 
 import { Elysia, t } from "elysia";
+import { timingSafeEqual } from "crypto";
 import { queryClickhouse, getBufferStats } from "../../lib/clickhouse";
+import { env } from "../env";
+
+/**
+ * Timing-safe comparison to prevent timing attacks
+ */
+function verifyAdminSecret(provided: string): boolean {
+  const expected = env.ADMIN_SECRET;
+  if (provided.length !== expected.length) {
+    // Still do a comparison to maintain constant time
+    timingSafeEqual(Buffer.from(expected), Buffer.from(expected));
+    return false;
+  }
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+}
 
 // Dashboard data types
 interface HostnameStats {
@@ -134,7 +150,16 @@ interface SourceErrorRateTimeSeries {
 
 export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
-  async ({ query, set }) => {
+  async ({ query, set, headers }) => {
+    // Auth check - require Bearer token
+    const authHeader = headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    if (!token || !verifyAdminSecret(token)) {
+      set.status = 401;
+      return { error: "Unauthorized" };
+    }
+
     // Parse time range
     const timeRange = query.range || "24h";
     const hours = timeRange === "7d" ? 168 : timeRange === "1h" ? 1 : 24;

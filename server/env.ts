@@ -29,6 +29,9 @@ export const env = createEnv({
     RESEND_API_KEY: z.string().min(1),
     ALERT_EMAIL: z.string().email(),
 
+    // Admin auth
+    ADMIN_SECRET: z.string().min(32),
+
     // Server config
     CORS_ORIGIN: z.string().min(1),
     API_PORT: z.coerce.number().default(3001),
