@@ -11,6 +11,7 @@ RUN npm install -g bun
 FROM base AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
+# Cache bust: 2026-01-09 - force clean install to remove stale jsdom
 RUN bun install --frozen-lockfile
 
 # Build the Next.js application
