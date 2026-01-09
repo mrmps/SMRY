@@ -38,9 +38,6 @@ ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_URL=https://smry.ai
 ENV NEXT_PUBLIC_URL=$NEXT_PUBLIC_URL
 
-# Skip env validation during build - secrets validated at runtime startup
-ENV SKIP_ENV_VALIDATION=1
-
 RUN bun run build
 
 # Production image - Node.js 20.18+ for memory leak fix

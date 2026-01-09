@@ -78,10 +78,10 @@ export const env = createEnv({
   },
 
   /**
-   * Skip validation during Docker build (secrets not available).
+   * Skip validation during Next.js build (secrets not available in Docker).
    * Pre-commit hook validates locally, runtime validates on startup.
    */
-  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
+  skipValidation: process.env.NEXT_PHASE === "phase-production-build",
 
   /**
    * Treat empty strings as undefined for optional fields.
