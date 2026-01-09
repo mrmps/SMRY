@@ -33,6 +33,14 @@ ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ARG NEXT_PUBLIC_API_URL=https://api.smry.ai
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# Clerk publishable key for static page generation (public key, safe to expose)
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+# App URL for static generation
+ARG NEXT_PUBLIC_URL=https://smry.ai
+ENV NEXT_PUBLIC_URL=$NEXT_PUBLIC_URL
+
 RUN bun run build
 
 # Production image - Node.js 20.18+ for memory leak fix
