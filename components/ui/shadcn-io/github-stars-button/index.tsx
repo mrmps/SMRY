@@ -1,15 +1,11 @@
 'use client';
- 
+
 import * as React from 'react';
 import { Star } from 'lucide-react';
-import {
-  motion,
-  type HTMLMotionProps,
-} from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
- 
+
 import { cn } from '@/lib/utils';
- 
+
 function formatNumber(num: number, formatted: boolean): string {
   if (formatted) {
     if (num < 1000) {
@@ -27,13 +23,13 @@ function formatNumber(num: number, formatted: boolean): string {
     return num.toLocaleString('en-US');
   }
 }
- 
-type GitHubStarsButtonProps = HTMLMotionProps<'a'> & {
+
+type GitHubStarsButtonProps = React.ComponentPropsWithoutRef<'a'> & {
   username: string;
   repo: string;
   formatted?: boolean;
 };
- 
+
 function GitHubStarsButton({
   username,
   repo,
@@ -58,26 +54,26 @@ function GitHubStarsButton({
           return stars;
         }
       }
-      
+
       // Fetch from API
       const response = await fetch(`https://api.github.com/repos/${username}/${repo}`);
       const data = await response.json();
       const starCount = data.stargazers_count as number;
-      
+
       // Save to localStorage
       localStorage.setItem(
         `github-stars-${username}-${repo}`,
         JSON.stringify({ stars: starCount, timestamp: Date.now() })
       );
-      
+
       return starCount;
     },
     staleTime: 1000 * 60 * 60 * 24 * 5,  // Revalidate every 5 days
     gcTime: 1000 * 60 * 60 * 24 * 5, // Keep in cache for 5 days
   });
- 
+
   const formattedStars = formatNumber(stars ?? 0, formatted);
- 
+
   const handleClick = React.useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault();
@@ -85,17 +81,15 @@ function GitHubStarsButton({
     },
     [repoUrl],
   );
- 
+
   return (
-    <motion.a
+    <a
       href={repoUrl}
       rel="noopener noreferrer"
       target="_blank"
-      whileTap={{ scale: 0.98 }}
-      whileHover={{ scale: 1.02 }}
       onClick={handleClick}
       className={cn(
-        "flex items-center gap-2 text-sm bg-background/80 text-foreground border border-border rounded-lg px-4 py-2 h-10 has-[>svg]:px-3 cursor-pointer whitespace-nowrap font-medium transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[18px] shrink-0 [&_svg]:shrink-0 outline-none shadow-sm",
+        "flex items-center gap-2 text-sm bg-background/80 text-foreground border border-border rounded-lg px-4 py-2 h-10 has-[>svg]:px-3 cursor-pointer whitespace-nowrap font-medium transition-all duration-150 hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[18px] shrink-0 [&_svg]:shrink-0 outline-none shadow-sm",
         className,
       )}
       {...props}
@@ -116,8 +110,8 @@ function GitHubStarsButton({
           {formattedStars}
         </span>
       )}
-    </motion.a>
+    </a>
   );
 }
- 
+
 export { GitHubStarsButton, type GitHubStarsButtonProps };
