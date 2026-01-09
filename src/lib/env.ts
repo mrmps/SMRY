@@ -1,16 +1,8 @@
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
-const isServerRuntime =
-  typeof process !== "undefined" && typeof process.env !== "undefined";
-
-const runtimeEnv = isServerRuntime
-  ? {
-      ...process.env,
-    }
-  : {
-      ...import.meta.env,
-    };
+// For Vite, client env vars MUST be statically referenced as import.meta.env.VARNAME
+// They cannot be dynamically accessed or Vite won't replace them at build time.
 
 export const env = createEnv({
   /**
@@ -66,39 +58,40 @@ export const env = createEnv({
 
   /**
    * Runtime environment variables.
-   * Due to how Next.js bundles env vars, we need to destructure them manually.
+   * Vite requires STATIC references to import.meta.env.* for client vars.
+   * Server vars can use process.env.* dynamically.
    */
   runtimeEnv: {
-    // Server
-    UPSTASH_REDIS_REST_URL: runtimeEnv.UPSTASH_REDIS_REST_URL,
-    UPSTASH_REDIS_REST_TOKEN: runtimeEnv.UPSTASH_REDIS_REST_TOKEN,
-    CLERK_SECRET_KEY: runtimeEnv.CLERK_SECRET_KEY,
-    OPENROUTER_API_KEY: runtimeEnv.OPENROUTER_API_KEY,
-    DIFFBOT_API_KEY: runtimeEnv.DIFFBOT_API_KEY,
-    CLICKHOUSE_URL: runtimeEnv.CLICKHOUSE_URL,
-    CLICKHOUSE_USER: runtimeEnv.CLICKHOUSE_USER,
-    CLICKHOUSE_PASSWORD: runtimeEnv.CLICKHOUSE_PASSWORD,
-    CLICKHOUSE_DATABASE: runtimeEnv.CLICKHOUSE_DATABASE,
-    ANALYTICS_SECRET_KEY: runtimeEnv.ANALYTICS_SECRET_KEY,
-    CORS_ORIGIN: runtimeEnv.CORS_ORIGIN,
-    API_PORT: runtimeEnv.API_PORT,
-    LOG_LEVEL: runtimeEnv.LOG_LEVEL,
-    NODE_ENV: runtimeEnv.NODE_ENV,
-    RESEND_API_KEY: runtimeEnv.RESEND_API_KEY,
-    ALERT_EMAIL: runtimeEnv.ALERT_EMAIL,
+    // Server (only available server-side via process.env)
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    DIFFBOT_API_KEY: process.env.DIFFBOT_API_KEY,
+    CLICKHOUSE_URL: process.env.CLICKHOUSE_URL,
+    CLICKHOUSE_USER: process.env.CLICKHOUSE_USER,
+    CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD,
+    CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE,
+    ANALYTICS_SECRET_KEY: process.env.ANALYTICS_SECRET_KEY,
+    CORS_ORIGIN: process.env.CORS_ORIGIN,
+    API_PORT: process.env.API_PORT,
+    LOG_LEVEL: process.env.LOG_LEVEL,
+    NODE_ENV: process.env.NODE_ENV,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    ALERT_EMAIL: process.env.ALERT_EMAIL,
 
-    // Client
-    NEXT_PUBLIC_URL: runtimeEnv.NEXT_PUBLIC_URL,
-    NEXT_PUBLIC_LOGODEV_TOKEN: runtimeEnv.NEXT_PUBLIC_LOGODEV_TOKEN,
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: runtimeEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_STRIPE_AD_CHECKOUT_URL: runtimeEnv.NEXT_PUBLIC_STRIPE_AD_CHECKOUT_URL,
+    // Client (Vite replaces these STATIC references at build time)
+    NEXT_PUBLIC_URL: import.meta.env.NEXT_PUBLIC_URL,
+    NEXT_PUBLIC_LOGODEV_TOKEN: import.meta.env.NEXT_PUBLIC_LOGODEV_TOKEN,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_STRIPE_AD_CHECKOUT_URL: import.meta.env.NEXT_PUBLIC_STRIPE_AD_CHECKOUT_URL,
   },
 
   /**
    * Skip validation in certain environments.
    * Set SKIP_ENV_VALIDATION=1 to skip (useful for Docker builds).
    */
-  skipValidation: !!runtimeEnv.SKIP_ENV_VALIDATION,
+  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 
   /**
    * Treat empty strings as undefined for optional fields.

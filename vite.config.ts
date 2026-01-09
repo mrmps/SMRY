@@ -8,6 +8,12 @@ import { nitro } from 'nitro/vite'
 export default defineConfig({
   server: {
     port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
   envPrefix: ['NEXT_PUBLIC_', 'VITE_'],
   plugins: [
@@ -22,6 +28,10 @@ export default defineConfig({
       },
     }),
     viteReact(),
-    nitro(),
+    nitro({
+      routeRules: {
+        '/api/**': { proxy: 'http://localhost:3001/api/**' },
+      },
+    }),
   ],
 })

@@ -15,7 +15,6 @@ import { defaultLocale } from '@/i18n/config'
 import defaultMessages from '@/messages/en.json'
 import appCss from '@/styles/app.css?url'
 import { siteConfig } from '@/config/site'
-import { NuqsAdapter } from 'nuqs/adapters/tanstack-router'
 
 const baseMessages = defaultMessages as Messages
 const publishableKey = env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -81,11 +80,9 @@ function RootComponent() {
         <body className="bg-background text-foreground" suppressHydrationWarning>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <QueryProvider>
-              <NuqsAdapter>
-                <IntlProvider locale={defaultLocale} messages={baseMessages}>
-                  <Outlet />
-                </IntlProvider>
-              </NuqsAdapter>
+              <IntlProvider locale={defaultLocale} messages={baseMessages}>
+                <Outlet />
+              </IntlProvider>
             </QueryProvider>
           </ThemeProvider>
           <Scripts />
