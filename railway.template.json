@@ -30,10 +30,6 @@
           "description": "Public URL of your deployment (e.g., https://smry.ai)",
           "required": true
         },
-        "SKIP_ENV_VALIDATION": {
-          "value": "1",
-          "description": "Skip env validation during Docker build"
-        },
         "CLICKHOUSE_URL": {
           "value": "http://${{clickhouse.RAILWAY_PRIVATE_DOMAIN}}:8123"
         },
@@ -68,12 +64,12 @@
           "required": false
         },
         "CLERK_SECRET_KEY": {
-          "description": "Clerk secret key",
-          "required": false
+          "description": "Clerk secret key for authentication",
+          "required": true
         },
         "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": {
-          "description": "Clerk publishable key",
-          "required": false
+          "description": "Clerk publishable key (must also be passed as build arg)",
+          "required": true
         }
       },
       "networking": {

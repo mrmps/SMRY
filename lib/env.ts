@@ -78,12 +78,6 @@ export const env = createEnv({
   },
 
   /**
-   * Skip validation in certain environments.
-   * Set SKIP_ENV_VALIDATION=1 to skip (useful for Docker builds).
-   */
-  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-
-  /**
    * Treat empty strings as undefined for optional fields.
    */
   emptyStringAsUndefined: true,

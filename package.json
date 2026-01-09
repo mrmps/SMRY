@@ -20,7 +20,8 @@
     "pages:build": "bunx @cloudflare/next-on-pages",
     "pages:dev": "bunx wrangler pages dev .vercel/output/static --compatibility-flags=nodejs_compat",
     "pages:deploy": "bunx wrangler pages deploy .vercel/output/static",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "check-env": "bun scripts/check-env.ts"
   },
   "dependencies": {
     "@base-ui-components/react": "1.0.0-beta.6",

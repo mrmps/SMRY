@@ -20,8 +20,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Skip env validation during build (vars not available at build time)
-ENV SKIP_ENV_VALIDATION=1
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Set INTERNAL_API_URL for Next.js rewrites (build-time config)
@@ -34,13 +32,22 @@ ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ARG NEXT_PUBLIC_API_URL=https://api.smry.ai
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-# Clerk publishable key for static page generation (public key, safe to expose)
+# Public vars (inlined into client bundle)
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-
-# App URL for static generation
 ARG NEXT_PUBLIC_URL=https://smry.ai
 ENV NEXT_PUBLIC_URL=$NEXT_PUBLIC_URL
+
+# Server vars required for t3-env validation at build time
+# These are validated by pre-commit hook locally, Railway validates before build
+ARG CLERK_SECRET_KEY
+ENV CLERK_SECRET_KEY=$CLERK_SECRET_KEY
+ARG UPSTASH_REDIS_REST_URL
+ENV UPSTASH_REDIS_REST_URL=$UPSTASH_REDIS_REST_URL
+ARG UPSTASH_REDIS_REST_TOKEN
+ENV UPSTASH_REDIS_REST_TOKEN=$UPSTASH_REDIS_REST_TOKEN
+ARG OPENROUTER_API_KEY
+ENV OPENROUTER_API_KEY=$OPENROUTER_API_KEY
 
 RUN bun run build
 

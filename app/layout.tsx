@@ -5,7 +5,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SafeClerkProvider } from "@/components/providers/clerk-provider";
+import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from 'next-intl/server';
 
 export const metadata: Metadata = {
@@ -46,7 +46,7 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <SafeClerkProvider>
+    <ClerkProvider>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <body
           className={`${GeistSans.className} bg-background text-foreground`}
@@ -66,6 +66,6 @@ export default async function RootLayout({
           </ThemeProvider>
         </body>
       </html>
-    </SafeClerkProvider>
+    </ClerkProvider>
   );
 }
