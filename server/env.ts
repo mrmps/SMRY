@@ -30,7 +30,7 @@ export const env = createEnv({
     ALERT_EMAIL: z.string().email(),
 
     // Admin auth
-    ADMIN_SECRET: z.string().min(32),
+    ADMIN_SECRET: z.string().min(1),
 
     // Server config
     CORS_ORIGIN: z.string().min(1),

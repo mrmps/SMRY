@@ -278,8 +278,8 @@ function AnalyticsDashboardContent() {
     e.preventDefault();
     setAuthError("");
 
-    if (tokenInput.length < 32) {
-      setAuthError("Token must be at least 32 characters");
+    if (!tokenInput) {
+      setAuthError("Password required");
       return;
     }
 
