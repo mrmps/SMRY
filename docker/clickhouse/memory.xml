@@ -1,40 +1,42 @@
 <?xml version="1.0"?>
 <!--
   ClickHouse memory configuration for production.
-  Reduces memory footprint from ~3GB to ~300-500MB.
+  Aggressive memory reduction: targets ~100-150MB footprint.
 -->
 <clickhouse>
     <!-- Server-level memory limits -->
-    <!-- Use only 20% of available RAM (instead of default ~90%) -->
-    <max_server_memory_usage_to_ram_ratio>0.2</max_server_memory_usage_to_ram_ratio>
+    <!-- Hard limit: 150MB max server memory -->
+    <max_server_memory_usage>157286400</max_server_memory_usage>
+    <!-- Use only 15% of available RAM as secondary limit -->
+    <max_server_memory_usage_to_ram_ratio>0.15</max_server_memory_usage_to_ram_ratio>
 
-    <!-- Index cache: 32MB (default ~5GB) -->
-    <mark_cache_size>33554432</mark_cache_size>
+    <!-- Index cache: 8MB (default ~5GB) -->
+    <mark_cache_size>8388608</mark_cache_size>
 
-    <!-- Uncompressed block cache: 32MB (default ~5GB) -->
-    <uncompressed_cache_size>33554432</uncompressed_cache_size>
+    <!-- Uncompressed block cache: 8MB (default ~5GB) -->
+    <uncompressed_cache_size>8388608</uncompressed_cache_size>
 
-    <!-- Compiled expression cache: 16MB -->
-    <compiled_expression_cache_size>16777216</compiled_expression_cache_size>
+    <!-- Compiled expression cache: 4MB -->
+    <compiled_expression_cache_size>4194304</compiled_expression_cache_size>
 
     <!-- Disable query result cache -->
     <query_cache>
         <max_size_in_bytes>0</max_size_in_bytes>
     </query_cache>
 
-    <!-- Reduce background thread pools -->
-    <background_pool_size>2</background_pool_size>
-    <background_schedule_pool_size>2</background_schedule_pool_size>
+    <!-- Minimize background thread pools -->
+    <background_pool_size>1</background_pool_size>
+    <background_schedule_pool_size>1</background_schedule_pool_size>
     <background_merges_mutations_concurrency_ratio>1</background_merges_mutations_concurrency_ratio>
 
     <!-- Per-query limits -->
     <profiles>
         <default>
-            <!-- 200MB max per query -->
-            <max_memory_usage>209715200</max_memory_usage>
-            <!-- Spill to disk for sorts/aggregations over 50MB -->
-            <max_bytes_before_external_sort>52428800</max_bytes_before_external_sort>
-            <max_bytes_before_external_group_by>52428800</max_bytes_before_external_group_by>
+            <!-- 64MB max per query -->
+            <max_memory_usage>67108864</max_memory_usage>
+            <!-- Spill to disk for sorts/aggregations over 16MB -->
+            <max_bytes_before_external_sort>16777216</max_bytes_before_external_sort>
+            <max_bytes_before_external_group_by>16777216</max_bytes_before_external_group_by>
         </default>
     </profiles>
 </clickhouse>

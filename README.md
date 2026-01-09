@@ -238,28 +238,35 @@ Return summary
 
 ## Environment Variables
 
-Required:
-```bash
-# OpenRouter API (for AI summaries)
-# Get your API key from https://openrouter.ai/settings/keys
-OPENROUTER_API_KEY=
+All variables are required. The app will fail to start if any are missing.
 
-# Upstash Redis (for caching)
-# Get these from https://console.upstash.com
+```bash
+# Auth - https://clerk.com
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+
+# AI/API
+OPENROUTER_API_KEY=        # https://openrouter.ai/settings/keys
+DIFFBOT_API_KEY=           # https://diffbot.com
+
+# Cache - https://console.upstash.com
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 
-# Base URL (used for OpenRouter attribution)
-NEXT_PUBLIC_SITE_URL=https://your-domain.com
+# Analytics - ClickHouse (use docker-compose for local dev)
+CLICKHOUSE_URL=http://localhost:8123
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_DATABASE=smry_analytics
 
-# Logo.dev (for company logos - get your publishable key from dashboard)
-NEXT_PUBLIC_LOGODEV_TOKEN=
+# Alerting - https://resend.com
+RESEND_API_KEY=
+ALERT_EMAIL=
+
+# Server config
+CORS_ORIGIN=http://localhost:3000
+NEXT_PUBLIC_URL=http://localhost:3000
 ```
-
-Optional (but recommended):
-```bash
-# Diffbot (required for direct and wayback sources)
-DIFFBOT_API_KEY=
 
 ## Setup
 
@@ -269,10 +276,9 @@ pnpm install
 ```
 
 2. **Set up environment variables**:
-   - Create an Upstash Redis database at https://console.upstash.com
-   - Get an OpenRouter API key at https://openrouter.ai/settings/keys
-   - Get your Logo.dev publishable key (pk_) from https://www.logo.dev/dashboard
-   - Copy `.env.example` to `.env.local` and fill in values
+   - Copy `.env.example` to `.env.local`
+   - Get API keys from: Clerk, OpenRouter, Diffbot, Upstash, Resend
+   - Run `docker-compose up -d clickhouse` for local analytics
 
 3. **Run development server**:
 ```bash

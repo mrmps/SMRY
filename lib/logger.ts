@@ -12,7 +12,7 @@ import { env } from './env';
  * pipe the output through pino-pretty CLI: `npm run dev | pino-pretty`
  */
 const logger = pino({
-  level: env.LOG_LEVEL ?? (env.NODE_ENV === 'production' ? 'info' : 'debug'),
+  level: env.LOG_LEVEL,
 
   // Base fields included in every log
   base: {

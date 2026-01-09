@@ -90,11 +90,6 @@ async function getTopRecentErrors(): Promise<TopError[]> {
  * Send alert email via Resend
  */
 async function sendAlertEmail(stats: ErrorRateStats, topErrors: TopError[]): Promise<void> {
-  if (!env.RESEND_API_KEY || !env.ALERT_EMAIL) {
-    console.warn("[alerting] Cannot send alert: RESEND_API_KEY or ALERT_EMAIL not configured");
-    return;
-  }
-
   const resend = new Resend(env.RESEND_API_KEY);
 
   const recentPct = (stats.recent_error_rate * 100).toFixed(1);
@@ -145,16 +140,6 @@ Check the admin dashboard for more details.
  * Main check function - called by cron job
  */
 export async function checkErrorRateAndAlert(): Promise<void> {
-  // Skip if alerting not configured
-  if (!env.RESEND_API_KEY || !env.ALERT_EMAIL) {
-    return;
-  }
-
-  // Skip if ClickHouse not configured
-  if (!env.CLICKHOUSE_URL) {
-    return;
-  }
-
   try {
     const stats = await getErrorRateStats();
     if (!stats) {

@@ -1,4 +1,4 @@
-import { ResultAsync, errAsync } from "neverthrow";
+import { ResultAsync } from "neverthrow";
 import {
   AppError,
   createDiffbotError,
@@ -444,21 +444,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
  */
 export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow'): ResultAsync<DiffbotArticle, AppError> {
   const debugContext = createDebugContext(url, source);
-  
-  if (!env.DIFFBOT_API_KEY) {
-    logger.error({ hostname: new URL(url).hostname }, 'No Diffbot API key configured');
-    addDebugStep(debugContext, 'init', 'error', 'No Diffbot API key configured');
-    
-    return errAsync(
-      createDiffbotError(
-        'No Diffbot API key configured in environment variables',
-        url,
-        undefined,
-        debugContext
-      )
-    );
-  }
-  
+
   logger.info({ hostname: new URL(url).hostname }, 'Attempting Diffbot article extraction');
   addDebugStep(debugContext, 'init', 'info', 'Starting Diffbot extraction');
 
@@ -470,7 +456,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
       try {
         // Use REST API directly to support fields parameter
         const apiUrl = new URL('https://api.diffbot.com/v3/article');
-        apiUrl.searchParams.set('token', env.DIFFBOT_API_KEY!);
+        apiUrl.searchParams.set('token', env.DIFFBOT_API_KEY);
         apiUrl.searchParams.set('url', url);
         apiUrl.searchParams.set('fields', 'title,text,html,siteName,dom'); // Request both article data AND raw DOM
 

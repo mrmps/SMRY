@@ -24,11 +24,6 @@ let lastConnectionAttempt = 0;
 const CONNECTION_RETRY_INTERVAL_MS = 60_000; // Retry connection check every 60 seconds
 
 function getClient(): ClickHouseClient | null {
-  // Skip if Clickhouse not configured
-  if (!env.CLICKHOUSE_URL) {
-    return null;
-  }
-
   // Skip if we've determined ClickHouse is unavailable
   // Allow retry after CONNECTION_RETRY_INTERVAL_MS
   if (clickhouseDisabled) {
@@ -43,9 +38,9 @@ function getClient(): ClickHouseClient | null {
   if (!client) {
     client = createClient({
       url: env.CLICKHOUSE_URL,
-      username: env.CLICKHOUSE_USER || "default",
+      username: env.CLICKHOUSE_USER,
       password: env.CLICKHOUSE_PASSWORD,
-      database: env.CLICKHOUSE_DATABASE || "smry_analytics",
+      database: env.CLICKHOUSE_DATABASE,
       request_timeout: 30_000,
       compression: {
         request: true,
@@ -179,7 +174,7 @@ async function ensureSchema(): Promise<void> {
   try {
     // Create database if not exists
     await clickhouse.command({
-      query: `CREATE DATABASE IF NOT EXISTS ${env.CLICKHOUSE_DATABASE || "smry_analytics"}`,
+      query: `CREATE DATABASE IF NOT EXISTS ${env.CLICKHOUSE_DATABASE}`,
     });
 
     // Create main events table
@@ -227,7 +222,7 @@ async function ensureSchema(): Promise<void> {
         ENGINE = MergeTree()
         PARTITION BY toYYYYMM(timestamp)
         ORDER BY (hostname, source, timestamp, request_id)
-        TTL toDateTime(timestamp) + INTERVAL 90 DAY
+        TTL toDateTime(timestamp) + INTERVAL 30 DAY
         SETTINGS index_granularity = 8192
       `,
     });
@@ -321,9 +316,6 @@ function scheduleFlush(): void {
  * - No promise rejection
  */
 export function trackEvent(event: Partial<AnalyticsEvent>): void {
-  // Skip if Clickhouse not configured
-  if (!env.CLICKHOUSE_URL) return;
-
   // Build full event with defaults
   // Convert ISO timestamp to Clickhouse-compatible format (remove 'T' and 'Z')
   const rawTimestamp = event.timestamp || new Date().toISOString();
@@ -364,7 +356,7 @@ export function trackEvent(event: Partial<AnalyticsEvent>): void {
     heap_used_mb: event.heap_used_mb || 0,
     heap_total_mb: event.heap_total_mb || 0,
     rss_mb: event.rss_mb || 0,
-    env: event.env || env.NODE_ENV || "development",
+    env: event.env || env.NODE_ENV,
     version: event.version || process.env.npm_package_version || "unknown",
   };
 
