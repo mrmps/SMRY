@@ -110,7 +110,6 @@ type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
 interface TabProps {
   url: string;
-  ip: string;
   articleResults: ArticleResults;
   viewMode: "markdown" | "html" | "iframe";
   activeSource: Source;
@@ -121,7 +120,6 @@ interface TabProps {
 
 const ArrowTabs: React.FC<TabProps> = ({
   url,
-  ip,
   articleResults,
   viewMode,
   activeSource,
@@ -179,7 +177,6 @@ const ArrowTabs: React.FC<TabProps> = ({
         {/* Inline Summary - between tabs and content */}
         <InlineSummary
           urlProp={url}
-          ipProp={ip}
           articleResults={results}
           isOpen={summaryOpen}
           onOpenChange={onSummaryOpenChange}

@@ -108,7 +108,6 @@ function SummaryFormError({
 
 interface SummaryFormProps {
   urlProp: string;
-  ipProp: string;
   articleResults: ArticleResults;
   isOpen?: boolean;
   usePortal?: boolean;

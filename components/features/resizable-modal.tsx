@@ -25,7 +25,6 @@ type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
 interface ResizableModalProps {
   url: string;
-  ip: string;
   articleResults: ArticleResults;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -34,7 +33,6 @@ interface ResizableModalProps {
 
 export function ResizableModal({
   url,
-  ip,
   articleResults,
   sidebarOpen,
   setSidebarOpen,
@@ -136,8 +134,7 @@ export function ResizableModal({
                >
                     <SummaryForm 
                       urlProp={url} 
-                      ipProp={ip}
-                      articleResults={articleResults}
+                                            articleResults={articleResults}
                       isOpen={sidebarOpen || false}
                     />
                </div>
@@ -166,8 +163,7 @@ export function ResizableModal({
             <div className="remove-all h-full">
               <SummaryForm
                 urlProp={url}
-                ipProp={ip}
-                articleResults={articleResults}
+                                articleResults={articleResults}
                 isOpen={sidebarOpen || false}
                 usePortal={false}
               />

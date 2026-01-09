@@ -1,6 +1,10 @@
 import { Link } from "@/i18n/navigation";
 import { ArrowLeft, Lock, Unlock, AlertTriangle, Users, FileText, Share2 } from "lucide-react";
 import { getSitesGroupedByCategory, CATEGORY_INFO, type PaywallCategory } from "@/lib/hard-paywalls";
+import { setRequestLocale } from 'next-intl/server';
+
+// Force static generation for this page
+export const dynamic = 'force-static';
 
 export const metadata = {
   title: "Hard Paywalls vs Soft Paywalls | SMRY",
@@ -73,7 +77,14 @@ function BlockedSitesSection() {
   );
 }
 
-export default function HardPaywallsPage() {
+type Props = {
+  params: Promise<{ locale: string }>;
+};
+
+export default async function HardPaywallsPage({ params }: Props) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="max-w-3xl mx-auto px-4 py-12">

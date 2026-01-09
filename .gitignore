@@ -36,3 +36,9 @@ yarn-error.log*
 next-env.d.ts
 
 .env
+
+# debug artifacts
+artifacts/
+scripts/mem/
+*.heapprofile
+*.heapsnapshot
