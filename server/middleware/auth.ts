@@ -3,7 +3,7 @@
  */
 
 import { createClerkClient, verifyToken } from "@clerk/backend";
-import { env } from "../../lib/env";
+import { env } from "../../src/lib/env";
 
 // Initialize Clerk client for billing API calls
 const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
@@ -16,7 +16,7 @@ const MAX_CACHE_SIZE = 1000; // Maximum entries to prevent memory leak
 const CLEANUP_INTERVAL_MS = 60 * 1000; // Clean expired entries every minute
 
 // Periodic cleanup of expired entries to prevent memory leak
-let cleanupTimer: NodeJS.Timeout | null = null;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 function startCacheCleanup(): void {
   if (cleanupTimer) return;
@@ -102,7 +102,7 @@ export async function getAuthInfo(request: Request): Promise<AuthInfo> {
     if (authHeader?.startsWith("Bearer ")) {
       token = authHeader.slice(7);
     } else if (cookieHeader) {
-      const match = cookieHeader.match(/__session=([^;]+)/);
+      const match = /__session=([^;]+)/.exec(cookieHeader);
       if (match) token = match[1];
     }
 

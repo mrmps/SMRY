@@ -4,7 +4,7 @@
  */
 
 import { Elysia, t } from "elysia";
-import { queryClickhouse, getBufferStats } from "../../lib/clickhouse";
+import { queryClickhouse, getBufferStats } from "../../src/lib/clickhouse";
 
 // Dashboard data types
 interface HostnameStats {
@@ -136,14 +136,14 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
   async ({ query, set }) => {
     // Parse time range
-    const timeRange = query.range || "24h";
+    const timeRange = query.range ?? "24h";
     const hours = timeRange === "7d" ? 168 : timeRange === "1h" ? 1 : 24;
 
     // Parse filters
-    const hostnameFilter = query.hostname || "";
-    const sourceFilter = query.source || "";
-    const outcomeFilter = query.outcome || "";
-    const urlSearch = query.urlSearch || "";
+    const hostnameFilter = query.hostname ?? "";
+    const sourceFilter = query.source ?? "";
+    const outcomeFilter = query.outcome ?? "";
+    const urlSearch = query.urlSearch ?? "";
 
     // Build WHERE clause for filtered queries
     const buildWhereClause = (options: {

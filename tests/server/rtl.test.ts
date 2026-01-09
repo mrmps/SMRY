@@ -8,7 +8,7 @@ import {
   detectTextDirection,
   getTextDirection,
   getDirectionAttributes,
-} from "../../lib/rtl";
+} from "../../src/lib/rtl";
 
 describe("RTL Language Detection", () => {
   describe("isRTLLanguage", () => {

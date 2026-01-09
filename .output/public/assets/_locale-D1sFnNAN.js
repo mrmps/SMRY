@@ -1,0 +1,1 @@
+import{n as o,o as n,p as r,r as c,j as s,I as l,O as u}from"./main-DnDeSBrj.js";function d(){const t=o.useLoaderData(),e=t?.locale??n,a=t?.messages??r;return c.useEffect(()=>{document.documentElement.setAttribute("lang",e)},[e]),s.jsx(l,{locale:e,messages:a,children:s.jsx(u,{})})}export{d as component};
