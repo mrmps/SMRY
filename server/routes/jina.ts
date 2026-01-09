@@ -4,11 +4,11 @@
 
 import { Elysia, t } from "elysia";
 import { z } from "zod";
-import { redis } from "../../lib/redis";
-import { compressAsync, decompressAsync } from "../../lib/redis-compression";
-import { getTextDirection } from "../../lib/rtl";
-import { createRequestContext, extractClientIp } from "../../lib/request-context";
-import { isHardPaywall, getHardPaywallInfo } from "../../lib/hard-paywalls";
+import { redis } from "../../src/lib/redis";
+import { compressAsync, decompressAsync } from "../../src/lib/redis-compression";
+import { getTextDirection } from "../../src/lib/rtl";
+import { createRequestContext, extractClientIp } from "../../src/lib/request-context";
+import { isHardPaywall, getHardPaywallInfo } from "../../src/lib/hard-paywalls";
 
 const CachedArticleSchema = z.object({
   title: z.string(),
@@ -56,7 +56,7 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
 
       if (isHardPaywall(hostname)) {
         const paywallInfo = getHardPaywallInfo(hostname);
-        const siteName = paywallInfo?.name || hostname;
+        const siteName = paywallInfo?.name ?? hostname;
 
         ctx.error(`Hard paywall site: ${siteName}`, { error_type: "PAYWALL_ERROR", status_code: 403 });
         set.status = 403;
@@ -72,7 +72,7 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
       try {
         const cacheStart = Date.now();
         const rawCachedArticle = await redis.get(cacheKey);
-        const cachedArticle = await decompressAsync(rawCachedArticle);
+        const cachedArticle = await decompressAsync(rawCachedArticle) as CachedArticle | null;
         ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
         if (cachedArticle) {
@@ -87,10 +87,10 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
               cacheURL: `https://r.jina.ai/${url}`,
               article: {
                 ...article,
-                byline: article.byline || null,
-                dir: article.dir || getTextDirection(article.lang, article.textContent),
-                lang: article.lang || "",
-                publishedTime: article.publishedTime || null,
+                byline: article.byline ?? null,
+                dir: article.dir ?? getTextDirection(article.lang, article.textContent),
+                lang: article.lang ?? "",
+                publishedTime: article.publishedTime ?? null,
                 htmlContent: article.content,
               },
               status: "success",
@@ -133,7 +133,7 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
       try {
         const cacheStart = Date.now();
         const rawExistingArticle = await redis.get(cacheKey);
-        const existingArticle = await decompressAsync(rawExistingArticle);
+        const existingArticle = await decompressAsync(rawExistingArticle) as CachedArticle | null;
         ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
         let validatedExisting: CachedArticle | null = null;
@@ -174,10 +174,10 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
             cacheURL: `https://r.jina.ai/${url}`,
             article: {
               ...articleWithDir,
-              byline: article.byline || null,
+              byline: article.byline ?? null,
               dir: articleDir,
               lang: "",
-              publishedTime: article.publishedTime || null,
+              publishedTime: article.publishedTime ?? null,
               htmlContent: article.content,
             },
             status: "success",
@@ -191,10 +191,10 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
             cacheURL: `https://r.jina.ai/${url}`,
             article: {
               ...validatedExisting,
-              byline: validatedExisting.byline || null,
-              dir: validatedExisting.dir || getTextDirection(validatedExisting.lang, validatedExisting.textContent),
-              lang: validatedExisting.lang || "",
-              publishedTime: validatedExisting.publishedTime || null,
+              byline: validatedExisting.byline ?? null,
+              dir: validatedExisting.dir ?? getTextDirection(validatedExisting.lang, validatedExisting.textContent),
+              lang: validatedExisting.lang ?? "",
+              publishedTime: validatedExisting.publishedTime ?? null,
               htmlContent: validatedExisting.content,
             },
             status: "success",
@@ -210,10 +210,10 @@ export const jinaRoutes = new Elysia({ prefix: "/api" })
           cacheURL: `https://r.jina.ai/${url}`,
           article: {
             ...article,
-            byline: article.byline || null,
+            byline: article.byline ?? null,
             dir: articleDir,
             lang: "",
-            publishedTime: article.publishedTime || null,
+            publishedTime: article.publishedTime ?? null,
             htmlContent: article.content,
           },
           status: "success",

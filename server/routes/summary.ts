@@ -7,19 +7,19 @@
 import { Elysia, t } from "elysia";
 import { OpenRouter } from "@openrouter/sdk";
 import { Ratelimit } from "@upstash/ratelimit";
-import { redis } from "../../lib/redis";
+import { redis } from "../../src/lib/redis";
 import {
   createRequestContext,
   extractClientIp,
-} from "../../lib/request-context";
+} from "../../src/lib/request-context";
 import { getAuthInfo } from "../middleware/auth";
 import { createHash } from "crypto";
 import {
   createSummaryError,
   formatSummaryErrorResponse,
-} from "../../lib/errors/summary";
-import { getLanguagePrompt } from "../../types/api";
-import { env } from "../../lib/env";
+} from "../../src/lib/errors/summary";
+import { getLanguagePrompt } from "../../src/types/api";
+import { env } from "../../src/lib/env";
 
 // Rate limits - single source of truth
 const DAILY_LIMIT = env.NODE_ENV === "development" ? 100 : 20;
@@ -84,7 +84,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       ctx.set("is_premium", isPremium);
 
       const clientIp = extractClientIp(request);
-      const rateLimitKey = userId || clientIp;
+      const rateLimitKey = userId ?? clientIp;
 
       // Track usage for headers - premium users get -1 (unlimited)
       let usageRemaining = isPremium ? -1 : DAILY_LIMIT;

@@ -1,0 +1,422 @@
+/**
+ * Upstream error info for debugging proxy chains
+ * Captures which service/host actually caused the error
+ */
+export interface UpstreamErrorInfo {
+  hostname: string;        // Which host returned the error (e.g., "web.archive.org", "api.diffbot.com")
+  statusCode?: number;     // HTTP status from that host (e.g., 429, 403, 500)
+  errorCode?: string;      // API-specific error code if available
+  message: string;         // Original error message from upstream
+}
+
+/**
+ * Debug context for troubleshooting extraction issues
+ * Captures all intermediate data and steps in the extraction pipeline
+ */
+export interface DebugContext {
+  timestamp: string;
+  url: string;
+  source: string;
+  steps: DebugStep[];
+}
+
+export interface DebugStep {
+  step: string;
+  timestamp: string;
+  status: 'success' | 'error' | 'warning' | 'info';
+  message: string;
+  data?: {
+    htmlLength?: number;
+    htmlPreview?: string; // First 500 chars
+    diffbotResponse?: Record<string, unknown>;
+    readabilityResult?: Record<string, unknown>;
+    extractedTitle?: string;
+    extractedTextLength?: number;
+    extractedHtmlLength?: number;
+    errorDetails?: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Comprehensive error types for the application
+ * These errors are type-safe and can be used with neverthrow's Result types
+ */
+
+export type AppError =
+  | NetworkError
+  | ProxyError
+  | DiffbotError
+  | ParseError
+  | TimeoutError
+  | RateLimitError
+  | CacheError
+  | ValidationError
+  | PaywallError
+  | UnknownError;
+
+// Network-related errors
+export interface NetworkError {
+  type: "NETWORK_ERROR";
+  message: string;
+  statusCode?: number;
+  url: string;
+  upstream?: UpstreamErrorInfo;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Proxy-related errors
+export interface ProxyError {
+  type: "PROXY_ERROR";
+  message: string;
+  url: string;
+  upstream?: UpstreamErrorInfo;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Diffbot API errors
+export interface DiffbotError {
+  type: "DIFFBOT_ERROR";
+  message: string;
+  url: string;
+  upstream?: UpstreamErrorInfo;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// HTML/Content parsing errors
+export interface ParseError {
+  type: "PARSE_ERROR";
+  message: string;
+  source: string;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Timeout errors
+export interface TimeoutError {
+  type: "TIMEOUT_ERROR";
+  message: string;
+  url: string;
+  timeoutMs: number;
+  upstream?: UpstreamErrorInfo;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Rate limiting errors
+export interface RateLimitError {
+  type: "RATE_LIMIT_ERROR";
+  message: string;
+  statusCode: 429;
+  url: string;
+  retryAfter?: number;
+  upstream?: UpstreamErrorInfo;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Cache-related errors
+export interface CacheError {
+  type: "CACHE_ERROR";
+  message: string;
+  operation: "read" | "write";
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Validation errors
+export interface ValidationError {
+  type: "VALIDATION_ERROR";
+  message: string;
+  field?: string;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Hard paywall errors - sites that require paid subscriptions
+export interface PaywallError {
+  type: "PAYWALL_ERROR";
+  message: string;
+  hostname: string;
+  siteName?: string;
+  learnMoreUrl: string;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Unknown/unexpected errors
+export interface UnknownError {
+  type: "UNKNOWN_ERROR";
+  message: string;
+  originalError?: string;
+  debugContext?: DebugContext;
+}
+
+// Error factory functions for easy creation
+export const createNetworkError = (
+  message: string,
+  url: string,
+  statusCode?: number,
+  originalError?: unknown,
+  debugContext?: DebugContext,
+  upstream?: UpstreamErrorInfo
+): NetworkError => ({
+  type: "NETWORK_ERROR",
+  message,
+  url,
+  statusCode,
+  upstream,
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+  debugContext,
+});
+
+export const createProxyError = (
+  message: string,
+  url: string,
+  originalError?: unknown,
+  debugContext?: DebugContext,
+  upstream?: UpstreamErrorInfo
+): ProxyError => ({
+  type: "PROXY_ERROR",
+  message,
+  url,
+  upstream,
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+  debugContext,
+});
+
+export const createDiffbotError = (
+  message: string,
+  url: string,
+  originalError?: unknown,
+  debugContext?: DebugContext,
+  upstream?: UpstreamErrorInfo
+): DiffbotError => ({
+  type: "DIFFBOT_ERROR",
+  message,
+  url,
+  upstream,
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+  debugContext,
+});
+
+export const createParseError = (
+  message: string,
+  source: string,
+  originalError?: unknown
+): ParseError => ({
+  type: "PARSE_ERROR",
+  message,
+  source,
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+});
+
+function stringifyError(originalError: unknown): string | undefined {
+  if (originalError == null) return undefined;
+  if (originalError instanceof Error) return originalError.message;
+  if (typeof originalError === 'string') return originalError;
+  if (typeof originalError === 'number' || typeof originalError === 'boolean') return String(originalError);
+  // For objects, try to get a meaningful string representation
+  try {
+    return JSON.stringify(originalError);
+  } catch {
+    return '[Unknown Error]';
+  }
+}
+
+export const createTimeoutError = (
+  url: string,
+  timeoutMs: number,
+  originalError?: unknown,
+  upstream?: UpstreamErrorInfo
+): TimeoutError => ({
+  type: "TIMEOUT_ERROR",
+  message: `Request timed out after ${timeoutMs}ms`,
+  url,
+  timeoutMs,
+  upstream,
+  originalError: stringifyError(originalError),
+});
+
+export const createRateLimitError = (
+  url: string,
+  retryAfter?: number,
+  originalError?: unknown,
+  upstream?: UpstreamErrorInfo
+): RateLimitError => ({
+  type: "RATE_LIMIT_ERROR",
+  message: "Rate limit exceeded. Please try again later.",
+  statusCode: 429,
+  url,
+  retryAfter,
+  upstream,
+  originalError: stringifyError(originalError),
+});
+
+export const createCacheError = (
+  message: string,
+  operation: "read" | "write",
+  originalError?: unknown
+): CacheError => ({
+  type: "CACHE_ERROR",
+  message,
+  operation,
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+});
+
+export const createValidationError = (
+  message: string,
+  field?: string,
+  originalError?: unknown
+): ValidationError => ({
+  type: "VALIDATION_ERROR",
+  message,
+  field,
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+});
+
+export const createPaywallError = (
+  hostname: string,
+  siteName?: string
+): PaywallError => ({
+  type: "PAYWALL_ERROR",
+  message: `${siteName ?? hostname} uses a hard paywall that cannot be bypassed. This site requires a paid subscription to access content.`,
+  hostname,
+  siteName,
+  learnMoreUrl: "/hard-paywalls",
+});
+
+export const createUnknownError = (originalError?: unknown): UnknownError => ({
+  type: "UNKNOWN_ERROR",
+  message: "An unexpected error occurred",
+  originalError: originalError instanceof Error ? originalError.message : String(originalError),
+});
+
+// User-friendly error messages for frontend display
+export const getErrorMessage = (error: AppError): string => {
+  switch (error.type) {
+    case "NETWORK_ERROR":
+      if (error.statusCode === 404) {
+        return "The requested page was not found. The article may have been removed or the URL is incorrect.";
+      }
+      if (error.statusCode === 403) {
+        return "Access to this content is forbidden. The site may be blocking our requests.";
+      }
+      if (error.statusCode && error.statusCode >= 500) {
+        return "The source server is experiencing issues. Please try again later or use a different source.";
+      }
+      // Check for "All fetch methods exhausted" case
+      if (error.message.includes("All fetch methods exhausted")) {
+        return "Unable to retrieve content from this source. All extraction methods failed. Please try a different source tab above.";
+      }
+      return `Network error: ${error.message}`;
+
+    case "PROXY_ERROR":
+      return "Proxy connection failed. Please try a different source or try again later.";
+
+    case "DIFFBOT_ERROR":
+      if (error.message.includes("404") || error.message.includes("not found") || error.message.includes("could not download page")) {
+        return "We couldn't retrieve the content from this page. Try viewing it directly or using a different source tab.";
+      }
+      if (error.message.includes("403") || error.message.includes("forbidden")) {
+        return "Access to this content is restricted. The site appears to be blocking access to this page.";
+      }
+      if (error.message.includes("Rate limit") || error.message.includes("429")) {
+        return "We've hit our request limit for now. Please try again in a few moments, or try using a different source tab.";
+      }
+      if (error.message.includes("500") || error.message.includes("502") || error.message.includes("503") || error.message.includes("Server error")) {
+        return "The page's server is having issues right now. This is temporary—try again in a moment or use a different source tab.";
+      }
+      if (error.message.includes("timeout")) {
+        return "The request took too long to complete. The page may be slow to load—try again or use a different source tab.";
+      }
+      if (error.message.includes("No Diffbot API key")) {
+        return "Content extraction is not configured. Please contact support.";
+      }
+      if (error.message.includes("Incomplete article data")) {
+        return "We couldn't extract the full article content from this page. Try viewing the page directly to see if it's available.";
+      }
+      return "We couldn't retrieve the content from this page. Try viewing it directly or using a different source tab.";
+
+    case "PARSE_ERROR":
+      return "Failed to parse the article content. The page format may not be supported.";
+
+    case "TIMEOUT_ERROR":
+      return "The source took too long to respond. This might be a temporary issue—try refreshing or using a different source.";
+
+    case "RATE_LIMIT_ERROR":
+      return error.retryAfter
+        ? `Rate limit exceeded. Please wait ${error.retryAfter} seconds before trying again.`
+        : "Rate limit exceeded. Please wait a moment before trying again.";
+
+    case "CACHE_ERROR":
+      return "Cache operation failed, but we'll try to fetch fresh content.";
+
+    case "VALIDATION_ERROR":
+      return error.field
+        ? `Validation error in ${error.field}: ${error.message}`
+        : `Validation error: ${error.message}`;
+
+    case "PAYWALL_ERROR":
+      return error.message;
+
+    case "UNKNOWN_ERROR":
+      return "An unexpected error occurred. Please try again or use a different source.";
+
+    default:
+      return "An error occurred while processing your request.";
+  }
+};
+
+// Get a short error title for display
+export const getErrorTitle = (error: AppError): string => {
+  // specific check for 404s across types
+  if (
+    (error.type === "DIFFBOT_ERROR" || error.type === "NETWORK_ERROR") && 
+    (error.message.includes("404") || error.message.toLowerCase().includes("not found"))
+  ) {
+    return "Not Found";
+  }
+
+  switch (error.type) {
+    case "NETWORK_ERROR":
+      return "Network Error";
+    case "PROXY_ERROR":
+      return "Proxy Error";
+    case "DIFFBOT_ERROR":
+      return "Unavailable";
+    case "PARSE_ERROR":
+      return "Parsing Error";
+    case "TIMEOUT_ERROR":
+      return "Timed Out";
+    case "RATE_LIMIT_ERROR":
+      return "Rate Limited";
+    case "CACHE_ERROR":
+      return "Cache Error";
+    case "VALIDATION_ERROR":
+      return "Validation Error";
+    case "PAYWALL_ERROR":
+      return "Hard Paywall";
+    case "UNKNOWN_ERROR":
+      return "Unknown Error";
+    default:
+      return "Error";
+  }
+};
+
+// Check if error is retryable
+export const isRetryableError = (error: AppError): boolean => {
+  switch (error.type) {
+    case "TIMEOUT_ERROR":
+    case "NETWORK_ERROR":
+      return true;
+    case "RATE_LIMIT_ERROR":
+      return true; // But should wait before retrying
+    default:
+      return false;
+  }
+};
+

@@ -54,6 +54,7 @@ describe("HTML stripping regex patterns", () => {
     unwantedAttrs: /\s+(style|data-[\w-]+|on\w+)\s*=\s*["'][^"']*["']/gi,
     whitespace: /\s+/g,
     // Remove null bytes, lone surrogates, and control characters
+    // eslint-disable-next-line no-control-regex
     invalidUtf8: /[\x00\uD800-\uDFFF\x01-\x08\x0B\x0C\x0E-\x1F]/g,
   };
 

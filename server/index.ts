@@ -9,9 +9,9 @@ import { articleRoutes } from "./routes/article";
 import { adminRoutes } from "./routes/admin";
 import { summaryRoutes } from "./routes/summary";
 import { jinaRoutes } from "./routes/jina";
-import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
-import { checkErrorRateAndAlert } from "../lib/alerting";
-import { env } from "../lib/env";
+import { startMemoryMonitor, getCurrentMemory } from "../src/lib/memory-monitor";
+import { checkErrorRateAndAlert } from "../src/lib/alerting";
+import { env } from "../src/lib/env";
 
 startMemoryMonitor();
 

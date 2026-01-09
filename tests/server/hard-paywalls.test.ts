@@ -9,7 +9,7 @@ import {
   getHardPaywallError,
   HARD_PAYWALL_SITES,
   CATEGORY_INFO,
-} from "../../lib/hard-paywalls";
+} from "../../src/lib/hard-paywalls";
 
 describe("Hard Paywall Detection", () => {
   describe("isHardPaywall", () => {

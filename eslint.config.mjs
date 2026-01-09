@@ -1,62 +1,82 @@
-import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
-// import tailwindcss from "eslint-plugin-tailwindcss";
-import reactHooks from "eslint-plugin-react-hooks";
-import unusedImports from "eslint-plugin-unused-imports";
+import js from '@eslint/js'
+import tsParser from '@typescript-eslint/parser'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import reactHooks from 'eslint-plugin-react-hooks'
+import unusedImports from 'eslint-plugin-unused-imports'
+import globals from 'globals'
 
-const eslintConfig = [
+const baseRules = {
+  ...js.configs.recommended.rules,
+  ...tsPlugin.configs['recommended-type-checked'].rules,
+  ...tsPlugin.configs['stylistic-type-checked'].rules,
+}
+
+export default [
   {
-    ignores: [".cursor/**/*"],
+    ignores: ['.cursor/**/*', '.output/**/*', '.next/**/*', 'node_modules', 'dist', 'coverage']
   },
-  ...nextCoreWebVitals,
-  // ...tailwindcss.configs["flat/recommended"],
   {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        React: 'readonly',
+        NodeJS: 'readonly',
+      },
+    },
     plugins: {
-      "react-hooks": reactHooks,
-      "unused-imports": unusedImports,
+      '@typescript-eslint': tsPlugin,
+      'react-hooks': reactHooks,
+      'unused-imports': unusedImports,
     },
     rules: {
-      // React Hooks rules
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-      
-      // Unused imports rules
-      "no-unused-vars": "off", // Turn off base rule to avoid conflicts
-      "@typescript-eslint/no-unused-vars": "off", // Turn off TypeScript rule to avoid conflicts
-      "unused-imports/no-unused-imports": "error",
-      "unused-imports/no-unused-vars": [
-        "warn",
+      ...baseRules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      'unused-imports/no-unused-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
         {
-          vars: "all",
-          varsIgnorePattern: "^_",
-          args: "after-used",
-          argsIgnorePattern: "^_",
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
         },
       ],
-      "no-restricted-syntax": [
-        "error",
+      'unused-imports/no-unused-vars': [
+        'warn',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
         {
           selector: "JSXAttribute[name.name='asChild']",
           message:
-            "Radix's `asChild` prop is not allowed. We standardize on Base UI (@base-ui-components/react); use its parts + `render={...}` polymorphism (e.g. `<Dialog.Trigger render={<Button variant=\"primary\" />} />`) instead of wrapping children with Radix Slot. See `.cursor/rules` (Base UI quick start) and `DESIGN_PHILOSOPHY.md` for guidance.",
+            'Radix\'s `asChild` prop is not allowed. We standardize on Base UI (@base-ui-components/react); use its render prop polymorphism instead. See DESIGN_PHILOSOPHY.md for guidance.',
         },
       ],
     },
-    settings: {
-      tailwindcss: {
-        whitelist: [
-          "transition-border",
-          "animate-fade-in",
-          "tokens",
-          "justify-left",
-          "article-skeleton",
-          "article-content",
-          "overflow-wrap",
-          "remove-all",
-          "pb-safe",
-        ],
-      },
+  },
+  // Relaxed rules for test files
+  {
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
-];
-
-export default eslintConfig;
+]

@@ -5,16 +5,16 @@
 import { Elysia, t } from "elysia";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { fetchArticleWithDiffbot, extractDateFromDom, extractImageFromDom } from "../../lib/api/diffbot";
-import { redis } from "../../lib/redis";
-import { compressAsync, decompressAsync } from "../../lib/redis-compression";
-import { AppError, createNetworkError, createParseError } from "../../lib/errors";
-import { isHardPaywall, getHardPaywallInfo } from "../../lib/hard-paywalls";
-import { createLogger } from "../../lib/logger";
+import { fetchArticleWithDiffbot, extractDateFromDom, extractImageFromDom } from "../../src/lib/api/diffbot";
+import { redis } from "../../src/lib/redis";
+import { compressAsync, decompressAsync } from "../../src/lib/redis-compression";
+import { AppError, createNetworkError, createParseError } from "../../src/lib/errors";
+import { isHardPaywall, getHardPaywallInfo } from "../../src/lib/hard-paywalls";
+import { createLogger } from "../../src/lib/logger";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
-import { createRequestContext, extractClientIp } from "../../lib/request-context";
-import { getTextDirection } from "../../lib/rtl";
+import { createRequestContext, extractClientIp } from "../../src/lib/request-context";
+import { getTextDirection } from "../../src/lib/rtl";
 
 const logger = createLogger("api:article");
 
@@ -69,7 +69,7 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
     let cachedData = existing;
     if (cachedData === undefined) {
       const raw = await redis.get(key);
-      cachedData = await decompressAsync(raw);
+      cachedData = await decompressAsync(raw) as CachedArticle | null;
     }
 
     if (cachedData) {
@@ -85,8 +85,8 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
         return validated;
       }
       // Prefer article with longer htmlContent (fixes old truncated cache entries)
-      const existingHtmlLen = existingArticle.htmlContent?.length || 0;
-      const newHtmlLen = validated.htmlContent?.length || 0;
+      const existingHtmlLen = existingArticle.htmlContent?.length ?? 0;
+      const newHtmlLen = validated.htmlContent?.length ?? 0;
       if (newHtmlLen > existingHtmlLen) {
         await saveToCache(validated);
         return validated;
@@ -130,11 +130,11 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
     const reader = new Readability(document);
     const parsed = reader.parse();
 
-    if (!parsed || !parsed.content || !parsed.textContent) {
+    if (!parsed?.content || !parsed.textContent) {
       return { error: createParseError("Failed to extract article content", "smry-fast") };
     }
 
-    const htmlLang = document.documentElement.getAttribute("lang") || parsed.lang || null;
+    const htmlLang = document.documentElement.getAttribute("lang") ?? parsed.lang ?? null;
     const textDir = getTextDirection(htmlLang, parsed.textContent);
 
     const articleCandidate: CachedArticle = {
@@ -144,8 +144,8 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
       length: parsed.textContent.length,
       siteName: (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })(),
       byline: parsed.byline,
-      publishedTime: extractDateFromDom(document) || null,
-      image: extractImageFromDom(document) || null,
+      publishedTime: extractDateFromDom(document) ?? null,
+      image: extractImageFromDom(document) ?? null,
       htmlContent: html,
       lang: htmlLang,
       dir: textDir,
@@ -227,7 +227,7 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
 
       if (isHardPaywall(hostname)) {
         const paywallInfo = getHardPaywallInfo(hostname);
-        const siteName = paywallInfo?.name || hostname;
+        const siteName = paywallInfo?.name ?? hostname;
         ctx.error(`Hard paywall site: ${siteName}`, { error_type: "PAYWALL_ERROR", status_code: 403 });
         set.status = 403;
         return { error: `${siteName} uses a hard paywall.`, type: "PAYWALL_ERROR", hostname, siteName, learnMoreUrl: "/hard-paywalls" };
@@ -244,7 +244,7 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         const rawCachedArticle = await redis.get(cacheKey);
         ctx.set("cache_lookup_ms", Date.now() - cacheStart);
 
-        const cachedArticle = await decompressAsync(rawCachedArticle);
+        const cachedArticle = await decompressAsync(rawCachedArticle) as CachedArticle | null;
         if (cachedArticle) {
           const validation = CachedArticleSchema.safeParse(cachedArticle);
           if (validation.success) {
@@ -262,11 +262,11 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
               return {
                 source, cacheURL: urlWithSource,
                 article: {
-                  title: article.title, byline: article.byline || null,
-                  dir: article.dir || getTextDirection(article.lang, article.textContent),
-                  lang: article.lang || "", content: article.content, textContent: article.textContent,
+                  title: article.title, byline: article.byline ?? null,
+                  dir: article.dir ?? getTextDirection(article.lang, article.textContent),
+                  lang: article.lang ?? "", content: article.content, textContent: article.textContent,
                   length: article.length, siteName: article.siteName,
-                  publishedTime: article.publishedTime || null, image: article.image || null,
+                  publishedTime: article.publishedTime ?? null, image: article.image ?? null,
                   htmlContent: article.htmlContent,
                 },
                 status: "success",
@@ -300,11 +300,11 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         return {
           source, cacheURL,
           article: {
-            title: savedArticle.title, byline: savedArticle.byline || null,
-            dir: savedArticle.dir || getTextDirection(savedArticle.lang, savedArticle.textContent),
-            lang: savedArticle.lang || "", content: savedArticle.content, textContent: savedArticle.textContent,
+            title: savedArticle.title, byline: savedArticle.byline ?? null,
+            dir: savedArticle.dir ?? getTextDirection(savedArticle.lang, savedArticle.textContent),
+            lang: savedArticle.lang ?? "", content: savedArticle.content, textContent: savedArticle.textContent,
             length: savedArticle.length, siteName: savedArticle.siteName,
-            publishedTime: savedArticle.publishedTime || null, image: savedArticle.image || null,
+            publishedTime: savedArticle.publishedTime ?? null, image: savedArticle.image ?? null,
             htmlContent: savedArticle.htmlContent,
           },
           status: "success",
@@ -316,11 +316,11 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         return {
           source, cacheURL,
           article: {
-            title: article.title, byline: article.byline || null,
-            dir: article.dir || getTextDirection(article.lang, article.textContent),
-            lang: article.lang || "", content: article.content, textContent: article.textContent,
+            title: article.title, byline: article.byline ?? null,
+            dir: article.dir ?? getTextDirection(article.lang, article.textContent),
+            lang: article.lang ?? "", content: article.content, textContent: article.textContent,
             length: article.length, siteName: article.siteName,
-            publishedTime: article.publishedTime || null, image: article.image || null,
+            publishedTime: article.publishedTime ?? null, image: article.image ?? null,
             htmlContent: article.htmlContent,
           },
           status: "success",
