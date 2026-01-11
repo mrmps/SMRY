@@ -2,7 +2,8 @@
  * Memory Monitor - Periodic memory usage logging for leak detection
  *
  * Logs memory stats every 30 seconds to help identify memory leaks.
- * Also triggers garbage collection before logging (if --expose-gc flag is set).
+ * Triggers Bun's garbage collection to help mitigate known fetch memory leak.
+ * See: https://github.com/oven-sh/bun/issues/20912
  *
  * CRITICAL FEATURE: If RSS exceeds threshold, logs emergency info to ClickHouse
  * before forcing a restart. This captures debug info for post-mortem analysis.
@@ -13,6 +14,24 @@ import { trackEvent } from "./clickhouse";
 const INTERVAL_MS = 30_000; // 30 seconds
 const CRITICAL_RSS_MB = 1500; // 1.5GB - force restart above this
 const CRITICAL_RSS_SPIKE_MB = 400; // 400MB spike in 30s is suspicious
+
+/**
+ * Force garbage collection using Bun's native GC or V8's if available.
+ * Bun has a known fetch memory leak (issue #20912) where response bodies
+ * aren't properly collected. Forcing GC helps mitigate this.
+ */
+function forceGC(): void {
+  // Bun's native GC - more aggressive than V8's
+  if (typeof Bun !== "undefined" && typeof Bun.gc === "function") {
+    // Bun.gc(true) = synchronous, full GC
+    Bun.gc(true);
+    return;
+  }
+  // Fallback to V8's GC if running under Node.js (requires --expose-gc)
+  if (typeof global.gc === "function") {
+    global.gc();
+  }
+}
 let intervalId: NodeJS.Timeout | null = null;
 let lastHeapUsed = 0;
 let lastRss = 0;
@@ -53,10 +72,9 @@ function getMemorySnapshot(): MemorySnapshot {
 }
 
 function logMemory(): void {
-  // Try to trigger GC if available (requires --expose-gc flag)
-  if (typeof global.gc === "function") {
-    global.gc();
-  }
+  // Force GC before measuring to get accurate readings
+  // This also helps mitigate Bun's fetch memory leak (issue #20912)
+  forceGC();
 
   const snapshot = getMemorySnapshot();
 
