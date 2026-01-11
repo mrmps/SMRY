@@ -54,7 +54,8 @@
     "hostedOn": "托管于",
     "sourceCode": "源代码可在以下位置获取",
     "reportBug": "报告错误 / 反馈",
-    "logosBy": "Logo由Logo.dev提供"
+    "logosBy": "Logo由Logo.dev提供",
+    "changelog": "更新日志"
   },
   "foundersLetter": {
     "label": "开发者的一封信",
@@ -196,6 +197,12 @@
   "common": {
     "premium": "高级版",
     "smryLogo": "smry标志"
+  },
+  "changelog": {
+    "title": "更新日志",
+    "description": "SMRY的新功能、错误修复和改进。我们定期发布更新以改善您的阅读体验。",
+    "backToSmry": "返回SMRY",
+    "footerNote": "想了解即将推出的功能？请关注"
   },
   "ads": {
     "advertise": "投放广告",

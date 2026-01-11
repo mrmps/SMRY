@@ -54,7 +54,8 @@
     "hostedOn": "Gehost op",
     "sourceCode": "De broncode is beschikbaar op",
     "reportBug": "Bug Melden / Feedback",
-    "logosBy": "Logo's geleverd door Logo.dev"
+    "logosBy": "Logo's geleverd door Logo.dev",
+    "changelog": "Wijzigingslogboek"
   },
   "foundersLetter": {
     "label": "Een bericht van de ontwikkelaar",
@@ -196,6 +197,12 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry logo"
+  },
+  "changelog": {
+    "title": "Wijzigingslogboek",
+    "description": "Nieuwe functies, bugfixes en verbeteringen aan SMRY. We brengen regelmatig updates uit om je leeservaring te verbeteren.",
+    "backToSmry": "Terug naar SMRY",
+    "footerNote": "Wil je zien wat er komt? Volg de ontwikkeling op"
   },
   "ads": {
     "advertise": "Adverteren",

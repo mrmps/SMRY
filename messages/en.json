@@ -54,7 +54,8 @@
     "hostedOn": "Hosted on",
     "sourceCode": "The source code is available on",
     "reportBug": "Report Bug / Feedback",
-    "logosBy": "Logos provided by Logo.dev"
+    "logosBy": "Logos provided by Logo.dev",
+    "changelog": "Changelog"
   },
   "foundersLetter": {
     "label": "A note from the developer",
@@ -99,6 +100,8 @@
     "articlesInHistory": "articles in history",
     "searchHistory": "Search history",
     "adFreeReading": "Ad-free reading",
+    "bypassIndicator": "Bypass indicator",
+    "bypassIndicatorDesc": "See instantly if each source got the full article",
     "pro": "Pro",
     "forPowerReaders": "For power readers",
     "perMonth": "per month",
@@ -196,6 +199,12 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry logo"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "description": "New features, bug fixes, and improvements to SMRY. We ship updates regularly to make your reading experience better.",
+    "backToSmry": "Back to SMRY",
+    "footerNote": "Want to see what's coming next? Follow development on"
   },
   "ads": {
     "advertise": "Advertise",

@@ -14,6 +14,10 @@ import {
   TooltipPopup,
 } from "@/components/ui/tooltip";
 import { InlineSummary } from "@/components/features/inline-summary";
+import { PaywallIndicator } from "./paywall-indicator";
+import { useBypassDetection } from "@/lib/hooks/use-bypass-detection";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
+import type { BypassStatus } from "@/types/api";
 
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
@@ -34,7 +38,11 @@ const EnhancedTabsList: React.FC<{
   counts: Record<Source, number | undefined>;
   loadingStates: Record<Source, boolean>;
   errorStates: Record<Source, boolean>;
-}> = ({ sources, counts, loadingStates, errorStates }) => {
+  isPremium: boolean;
+  bypassStatuses: Record<Source, BypassStatus | null>;
+  bypassLoadingStates: Record<Source, boolean>;
+  bypassErrorStates: Record<Source, boolean>;
+}> = ({ sources, counts, loadingStates, errorStates, isPremium, bypassStatuses, bypassLoadingStates, bypassErrorStates }) => {
 
   // Helper to format word count minimally
   const formatWordCount = (count: number | undefined): string | null => {
@@ -73,15 +81,6 @@ const EnhancedTabsList: React.FC<{
 
               {isLoading ? (
                 <Skeleton className="h-4 w-8 sm:h-5 sm:w-10 rounded-md sm:rounded-lg" />
-              ) : wordCount ? (
-                <span
-                  className={cn(
-                    "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
-                    "bg-muted text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary",
-                  )}
-                >
-                  {wordCount}
-                </span>
               ) : hasError ? (
                 <Tooltip>
                   <TooltipTrigger
@@ -97,6 +96,21 @@ const EnhancedTabsList: React.FC<{
                     <p>Failed to load content</p>
                   </TooltipPopup>
                 </Tooltip>
+              ) : isPremium && (bypassStatuses[source] || bypassLoadingStates[source] || bypassErrorStates[source]) ? (
+                <PaywallIndicator
+                  status={bypassStatuses[source]}
+                  isLoading={bypassLoadingStates[source]}
+                  hasError={bypassErrorStates[source]}
+                />
+              ) : wordCount ? (
+                <span
+                  className={cn(
+                    "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                    "bg-muted text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary",
+                  )}
+                >
+                  {wordCount}
+                </span>
               ) : null}
             </TabsPrimitive.Tab>
           );
@@ -129,6 +143,7 @@ const ArrowTabs: React.FC<TabProps> = ({
 }) => {
   const results = articleResults;
   const tabsId = React.useId();
+  const { isPremium } = useIsPremium();
 
   const counts: Record<Source, number | undefined> = {
     "smry-fast": results["smry-fast"].data?.article?.length,
@@ -151,6 +166,53 @@ const ArrowTabs: React.FC<TabProps> = ({
     "jina.ai": results["jina.ai"].isError,
   };
 
+  // Bypass detection for premium users - run for all sources so user can compare
+  const bypassFast = useBypassDetection({
+    url,
+    source: "smry-fast",
+    article: results["smry-fast"].data?.article,
+    enabled: isPremium && !results["smry-fast"].isLoading && !!results["smry-fast"].data?.article,
+  });
+  const bypassSlow = useBypassDetection({
+    url,
+    source: "smry-slow",
+    article: results["smry-slow"].data?.article,
+    enabled: isPremium && !results["smry-slow"].isLoading && !!results["smry-slow"].data?.article,
+  });
+  const bypassWayback = useBypassDetection({
+    url,
+    source: "wayback",
+    article: results.wayback.data?.article,
+    enabled: isPremium && !results.wayback.isLoading && !!results.wayback.data?.article,
+  });
+  const bypassJina = useBypassDetection({
+    url,
+    source: "jina.ai",
+    article: results["jina.ai"].data?.article,
+    enabled: isPremium && !results["jina.ai"].isLoading && !!results["jina.ai"].data?.article,
+  });
+
+  const bypassStatuses: Record<Source, BypassStatus | null> = {
+    "smry-fast": bypassFast.result?.status ?? null,
+    "smry-slow": bypassSlow.result?.status ?? null,
+    "wayback": bypassWayback.result?.status ?? null,
+    "jina.ai": bypassJina.result?.status ?? null,
+  };
+
+  const bypassLoadingStates: Record<Source, boolean> = {
+    "smry-fast": bypassFast.isLoading,
+    "smry-slow": bypassSlow.isLoading,
+    "wayback": bypassWayback.isLoading,
+    "jina.ai": bypassJina.isLoading,
+  };
+
+  const bypassErrorStates: Record<Source, boolean> = {
+    "smry-fast": !!bypassFast.error,
+    "smry-slow": !!bypassSlow.error,
+    "wayback": !!bypassWayback.error,
+    "jina.ai": !!bypassJina.error,
+  };
+
   return (
     <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
       <Tabs
@@ -171,6 +233,10 @@ const ArrowTabs: React.FC<TabProps> = ({
             counts={counts}
             loadingStates={loadingStates}
             errorStates={errorStates}
+            isPremium={isPremium}
+            bypassStatuses={bypassStatuses}
+            bypassLoadingStates={bypassLoadingStates}
+            bypassErrorStates={bypassErrorStates}
           />
         </div>
 

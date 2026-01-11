@@ -6,6 +6,7 @@ import { siteConfig } from "@/app/config/site";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
   const t = useTranslations("footer");
@@ -54,6 +55,11 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
           </p>
         </div>
         <div className="flex flex-col items-center gap-2 text-center md:flex-row md:justify-end md:gap-4 md:text-right">
+          <Link href="/changelog">
+            <Button variant="ghost" size="sm">
+              {t("changelog")}
+            </Button>
+          </Link>
           <a
             href="https://smryai.userjot.com/"
             target="_blank"

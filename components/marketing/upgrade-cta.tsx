@@ -63,7 +63,7 @@ export function UpgradeCTA({ className }: UpgradeCTAProps) {
 
           {/* Subtext */}
           <p className="mt-2 max-w-md text-sm text-white/70 sm:text-base">
-            Go Pro for unlimited articles, ad-free reading, and full history search.
+            Know instantly if you got the full article. Plus unlimited access, ad-free reading, and full history.
           </p>
 
           {/* Price highlight */}

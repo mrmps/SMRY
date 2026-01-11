@@ -44,11 +44,18 @@ const openRouter = new OpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
 });
 
-// Primary model + fallbacks - OpenRouter will try next if one fails
-const MODELS = [
+// Free tier models - used for non-premium users
+const FREE_MODELS = [
   "nvidia/nemotron-3-nano-30b-a3b:free",
   "arcee-ai/trinity-mini:free",
   "qwen/qwen3-4b:free",
+];
+
+// Premium tier models - higher quality, no rate competition with free users
+const PREMIUM_MODELS = [
+  "anthropic/claude-3.5-haiku",
+  "google/gemini-3-flash-preview",
+  "openai/gpt-5-mini",
 ];
 
 export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
@@ -138,9 +145,11 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
       set.headers["X-Usage-Remaining"] = String(usageRemaining);
       set.headers["X-Usage-Limit"] = String(isPremium ? -1 : DAILY_LIMIT);
 
+      // Include tier in cache key so premium users always get premium-quality summaries
+      const tier = isPremium ? "premium" : "free";
       const cacheKey = url
-        ? `summary:${language}:${url}`
-        : `summary:${language}:${createHash("md5").update(content).digest("hex")}`;
+        ? `summary:${tier}:${language}:${url}`
+        : `summary:${tier}:${language}:${createHash("md5").update(content).digest("hex")}`;
 
       const cachedSummary = await redis.get(cacheKey);
       if (cachedSummary && typeof cachedSummary === "string") {
@@ -168,11 +177,16 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
         ? `Please summarize this article titled "${title}":\n\n${content.slice(0, 12000)}`
         : `Please summarize this article:\n\n${content.slice(0, 12000)}`;
 
+      // Select models based on premium status
+      const models = isPremium ? PREMIUM_MODELS : FREE_MODELS;
+      ctx.set("model_tier", isPremium ? "premium" : "free");
+      ctx.set("primary_model", models[0]);
+
       // Use OpenRouter SDK with streaming
       const result = await openRouter.chat.send({
-        model: MODELS[0],
+        model: models[0],
         // Fallback models - OpenRouter tries next if primary fails
-        models: MODELS,
+        models: models,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

@@ -76,6 +76,7 @@ export function PricingContent() {
     { name: t("aiSummariesPerDay"), free: "20", premium: t("unlimitedAiSummaries") },
     { name: t("articlesInHistory"), free: "30", premium: t("unlimitedHistory") },
     { name: t("searchHistory"), free: false, premium: true },
+    { name: t("bypassIndicator"), free: false, premium: true },
     { name: t("adFreeReading"), free: false, premium: true },
   ];
 
@@ -260,6 +261,10 @@ export function PricingContent() {
               </li>
               <li className="flex items-center gap-3 text-sm text-muted-foreground/50">
                 <X className="size-4 shrink-0" />
+                <span>{t("bypassIndicator")}</span>
+              </li>
+              <li className="flex items-center gap-3 text-sm text-muted-foreground/50">
+                <X className="size-4 shrink-0" />
                 <span>{t("adFreeReading")}</span>
               </li>
             </ul>
@@ -340,6 +345,10 @@ export function PricingContent() {
               <li className="flex items-center gap-3 text-sm">
                 <Check className="size-4 shrink-0 text-muted-foreground" />
                 <span>{t("searchAllPastArticles")}</span>
+              </li>
+              <li className="flex items-center gap-3 text-sm">
+                <Check className="size-4 shrink-0 text-muted-foreground" />
+                <span>{t("bypassIndicator")}</span>
               </li>
               <li className="flex items-center gap-3 text-sm">
                 <Check className="size-4 shrink-0 text-muted-foreground" />

@@ -54,7 +54,8 @@
     "hostedOn": "Hospedado em",
     "sourceCode": "O código fonte está disponível no",
     "reportBug": "Reportar Bug / Feedback",
-    "logosBy": "Logos fornecidos por Logo.dev"
+    "logosBy": "Logos fornecidos por Logo.dev",
+    "changelog": "Registro de alterações"
   },
   "foundersLetter": {
     "label": "Uma nota do desenvolvedor",
@@ -196,6 +197,12 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "logo smry"
+  },
+  "changelog": {
+    "title": "Registro de alterações",
+    "description": "Novos recursos, correções de bugs e melhorias no SMRY. Enviamos atualizações regularmente para melhorar sua experiência de leitura.",
+    "backToSmry": "Voltar ao SMRY",
+    "footerNote": "Quer ver o que vem a seguir? Acompanhe o desenvolvimento no"
   },
   "ads": {
     "advertise": "Anunciar",

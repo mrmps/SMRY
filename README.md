@@ -1,6 +1,8 @@
 # 13ft / SMRY.ai
 
-SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered summaries by fetching content from multiple sources simultaneously. It is the spiritual successor to 12ft: type `http://smry.ai/` in front of any article URL and you’ll land on a distraction-free reader with the summary builder already loaded.
+SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered summaries by fetching content from multiple sources simultaneously. It is the spiritual successor to 12ft: type `http://smry.ai/` in front of any article URL and you'll land on a distraction-free reader with the summary builder already loaded.
+
+**[View Changelog →](https://smry.ai/changelog)**
 
 ## Why SMRY Exists
 

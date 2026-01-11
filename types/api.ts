@@ -31,6 +31,10 @@ export const DebugContextSchema = z.object({
 export const PaywallBypassStatusSchema = z.enum(["success", "blocked"]);
 export type PaywallBypassStatus = z.infer<typeof PaywallBypassStatusSchema>;
 
+// Bypass detection status (attached to article for instant results on reload)
+export const BypassStatusSchema = z.enum(["bypassed", "blocked", "uncertain"]);
+export type BypassStatus = z.infer<typeof BypassStatusSchema>;
+
 // Article schema
 export const ArticleSchema = z.object({
   title: z.string(),
@@ -44,6 +48,8 @@ export const ArticleSchema = z.object({
   publishedTime: z.string().nullable().optional(),
   image: z.string().nullable().optional(), // Preview image URL
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
+  // Bypass detection (cached with article for instant results on reload)
+  bypassStatus: BypassStatusSchema.optional(),
 });
 export type Article = z.infer<typeof ArticleSchema>;
 

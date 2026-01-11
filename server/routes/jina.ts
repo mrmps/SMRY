@@ -22,6 +22,7 @@ const CachedArticleSchema = z.object({
   htmlContent: z.string().optional(),
   lang: z.string().optional().nullable(),
   dir: z.enum(["rtl", "ltr"]).optional().nullable(),
+  bypassStatus: z.enum(["bypassed", "blocked", "uncertain"]).optional(),
 });
 
 type CachedArticle = z.infer<typeof CachedArticleSchema>;

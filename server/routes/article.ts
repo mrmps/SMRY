@@ -31,6 +31,8 @@ const CachedArticleSchema = z.object({
   htmlContent: z.string().optional(),
   lang: z.string().optional().nullable(),
   dir: z.enum(["rtl", "ltr"]).optional().nullable(),
+  // Bypass detection status (cached for instant results on reload)
+  bypassStatus: z.enum(["bypassed", "blocked", "uncertain"]).optional(),
 });
 
 const DiffbotArticleSchema = z.object({

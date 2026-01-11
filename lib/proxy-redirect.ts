@@ -21,6 +21,7 @@ export const APP_ROUTES = [
   "/hard-paywalls",
   "/sign-in",
   "/sign-up",
+  "/changelog",
 ];
 
 /**
