@@ -15,22 +15,54 @@ const INTERVAL_MS = 30_000; // 30 seconds
 const CRITICAL_RSS_MB = 1500; // 1.5GB - force restart above this
 const CRITICAL_RSS_SPIKE_MB = 400; // 400MB spike in 30s is suspicious
 
+// Track GC stats for monitoring
+let gcRunCount = 0;
+let totalGcTimeMs = 0;
+
+// Only force GC if memory grew significantly since last check
+const GC_THRESHOLD_MB = 100; // Only GC if RSS grew by 100MB+
+
 /**
  * Force garbage collection using Bun's native GC or V8's if available.
  * Bun has a known fetch memory leak (issue #20912) where response bodies
  * aren't properly collected. Forcing GC helps mitigate this.
+ *
+ * CAUTION: Bun.gc(true) is synchronous and blocks the event loop.
+ * We only call it when memory has grown significantly to avoid
+ * unnecessary latency spikes on requests.
+ *
+ * @returns Object with GC stats, or null if GC was skipped
  */
-function forceGC(): void {
+function maybeForceGC(currentRssMb: number): { durationMs: number; freedMb: number } | null {
+  // Skip GC if memory hasn't grown much since last check
+  const rssDelta = currentRssMb - lastRss;
+  if (rssDelta < GC_THRESHOLD_MB && currentRssMb < 500) {
+    return null; // Memory is stable and low, skip GC
+  }
+
+  const beforeRss = currentRssMb;
+  const startTime = performance.now();
+
   // Bun's native GC - more aggressive than V8's
   if (typeof Bun !== "undefined" && typeof Bun.gc === "function") {
     // Bun.gc(true) = synchronous, full GC
     Bun.gc(true);
-    return;
-  }
-  // Fallback to V8's GC if running under Node.js (requires --expose-gc)
-  if (typeof global.gc === "function") {
+  } else if (typeof global.gc === "function") {
+    // Fallback to V8's GC if running under Node.js (requires --expose-gc)
     global.gc();
+  } else {
+    return null; // No GC available
   }
+
+  const durationMs = Math.round(performance.now() - startTime);
+  const afterRss = Math.round(process.memoryUsage().rss / 1024 / 1024);
+  const freedMb = beforeRss - afterRss;
+
+  // Update stats
+  gcRunCount++;
+  totalGcTimeMs += durationMs;
+
+  return { durationMs, freedMb };
 }
 let intervalId: NodeJS.Timeout | null = null;
 let lastHeapUsed = 0;
@@ -72,9 +104,45 @@ function getMemorySnapshot(): MemorySnapshot {
 }
 
 function logMemory(): void {
-  // Force GC before measuring to get accurate readings
-  // This also helps mitigate Bun's fetch memory leak (issue #20912)
-  forceGC();
+  // Get current memory first (before potential GC)
+  const currentRss = Math.round(process.memoryUsage().rss / 1024 / 1024);
+
+  // Maybe force GC if memory is growing (helps mitigate Bun fetch leak #20912)
+  // Only runs if RSS grew by 100MB+ or is above 500MB
+  const gcResult = maybeForceGC(currentRss);
+
+  // Log GC stats if it ran
+  if (gcResult) {
+    console.log(
+      JSON.stringify({
+        level: "info",
+        message: "gc_forced",
+        gc_duration_ms: gcResult.durationMs,
+        gc_freed_mb: gcResult.freedMb,
+        gc_total_runs: gcRunCount,
+        gc_total_time_ms: totalGcTimeMs,
+        gc_effective: gcResult.freedMb > 10, // Did GC actually help?
+        rss_before_mb: currentRss,
+        rss_after_mb: currentRss - gcResult.freedMb,
+      })
+    );
+
+    // Log to ClickHouse for analysis
+    trackEvent({
+      request_id: `gc_${Date.now()}`,
+      endpoint: "/internal/gc",
+      path: "/internal/gc",
+      method: "INTERNAL",
+      outcome: gcResult.freedMb > 10 ? "success" : "error",
+      error_type: gcResult.freedMb <= 10 ? "GC_INEFFECTIVE" : "",
+      error_message: gcResult.freedMb <= 10 ? `GC only freed ${gcResult.freedMb}MB` : "",
+      error_severity: gcResult.freedMb <= 10 ? "degraded" : "",
+      duration_ms: gcResult.durationMs,
+      heap_used_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      heap_total_mb: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      rss_mb: currentRss - gcResult.freedMb,
+    });
+  }
 
   const snapshot = getMemorySnapshot();
 
