@@ -26,8 +26,13 @@ export const env = createEnv({
     CLICKHOUSE_DATABASE: z.string().min(1),
 
     // Alerting
-    RESEND_API_KEY: z.string().min(1),
     ALERT_EMAIL: z.string().email(),
+
+    // Email (inbound.new)
+    INBOUND_API_KEY: z.string().min(1),
+
+    // Clerk Webhooks
+    CLERK_WEBHOOK_SECRET: z.string().min(1),
 
     // Admin auth
     ADMIN_SECRET: z.string().min(1),

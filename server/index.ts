@@ -9,6 +9,7 @@ import { articleRoutes } from "./routes/article";
 import { adminRoutes } from "./routes/admin";
 import { summaryRoutes } from "./routes/summary";
 import { jinaRoutes } from "./routes/jina";
+import { webhookRoutes } from "./routes/webhooks";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
 import { checkErrorRateAndAlert } from "../lib/alerting";
 import { env } from "./env";
@@ -45,6 +46,7 @@ const app = new Elysia()
   .use(adminRoutes)
   .use(summaryRoutes)
   .use(jinaRoutes)
+  .use(webhookRoutes)
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
