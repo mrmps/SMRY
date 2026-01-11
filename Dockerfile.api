@@ -1,9 +1,4 @@
-# Use Node.js instead of Bun to avoid JSC memory management issues
-# Bun's process.memoryUsage() doesn't accurately report actual container memory
-FROM node:20.15.1-alpine AS base
-
-# Install bun for faster package installation
-RUN npm install -g bun
+FROM oven/bun:1 AS base
 
 # Install production dependencies only
 FROM base AS deps
@@ -12,30 +7,29 @@ COPY package.json bun.lock ./
 # Skip Husky prepare script (not needed in production)
 RUN HUSKY=0 bun install --frozen-lockfile --production
 
-# Production image - Elysia API with Node.js runtime
+# Production image - Elysia API only
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
 # Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nodejs
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs elysia
 
 # Copy Elysia server source and dependencies
-COPY --chown=nodejs:nodejs --from=deps /app/node_modules ./node_modules
-COPY --chown=nodejs:nodejs server ./server
-COPY --chown=nodejs:nodejs lib ./lib
-COPY --chown=nodejs:nodejs types ./types
-COPY --chown=nodejs:nodejs package.json ./package.json
-COPY --chown=nodejs:nodejs tsconfig.json ./tsconfig.json
+COPY --chown=elysia:nodejs --from=deps /app/node_modules ./node_modules
+COPY --chown=elysia:nodejs server ./server
+COPY --chown=elysia:nodejs lib ./lib
+COPY --chown=elysia:nodejs types ./types
+COPY --chown=elysia:nodejs package.json ./package.json
+COPY --chown=elysia:nodejs tsconfig.json ./tsconfig.json
 
-USER nodejs
+USER elysia
 
 EXPOSE 3001
 
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
-# Use Node.js with tsx for TypeScript execution (Elysia works with both)
-CMD ["npx", "tsx", "server/index.ts"]
+CMD ["bun", "run", "server/index.ts"]
