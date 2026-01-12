@@ -135,6 +135,13 @@ export function PricingContent() {
 
       {/* Hero */}
       <div className="flex flex-col items-center px-4 pt-16 pb-8">
+        {/* Discount Banner */}
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-amber-100 dark:bg-amber-900/30 px-4 py-1.5 text-sm text-amber-800 dark:text-amber-200">
+          <span className="font-semibold">Launch pricing</span>
+          <span className="text-amber-600 dark:text-amber-400">·</span>
+          <span>Ends February 15th</span>
+        </div>
+
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-center">
           {t("readWithoutLimits")}
         </h1>
