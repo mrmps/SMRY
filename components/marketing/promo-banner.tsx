@@ -34,7 +34,7 @@ export function PromoBanner() {
   if (isPremium || isDismissed) return null;
 
   return (
-    <div className="relative w-full bg-foreground/5 border-b border-border">
+    <div className="relative z-40 w-full shrink-0 bg-foreground/5 border-b border-border">
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
         <span className="font-medium text-foreground">No ads, faster loads, extra domains</span>
         <span className="mx-1.5">·</span>

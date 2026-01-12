@@ -26,6 +26,7 @@ import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import ArrowTabs from "@/components/article/tabs";
+import { PromoBanner } from "@/components/marketing/promo-banner";
 import {
   Drawer,
   DrawerContent,
@@ -169,6 +170,9 @@ export function ProxyContent({ url }: ProxyContentProps) {
 
   return (
     <div className="flex h-dvh flex-col bg-background">
+      {/* Promo Banner - above everything */}
+      <PromoBanner />
+
       {/* Desktop Ad Spot - Left sidebar */}
       <div className="hidden xl:block fixed left-4 top-20 z-40">
         <AdSpotSidebar hidden={isLoading || isPremium} />

@@ -18,7 +18,6 @@ import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
-import { PromoBanner } from "@/components/marketing/promo-banner";
 import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -100,7 +99,6 @@ export function HomeContent() {
 
   return (
     <>
-      <PromoBanner />
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
         {isClient && (
           <>
