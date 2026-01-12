@@ -36,11 +36,11 @@ export function PromoBanner() {
   return (
     <div className="relative z-40 w-full shrink-0 bg-foreground/5 border-b border-border">
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">No ads, faster loads, extra domains</span>
+        <span className="font-medium text-foreground">No ads, instant bypass check, faster AI</span>
         <span className="mx-1.5">·</span>
         <span>$4.99/mo or $30/yr</span>
         <span className="mx-1.5">·</span>
-        <span>Ends Feb 15</span>
+        <span>Deal ends Feb 15</span>
         <span className="mx-1.5">·</span>
         <Link
           href="/pricing"

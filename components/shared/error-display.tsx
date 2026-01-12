@@ -1,8 +1,9 @@
 "use client";
 
 import { AppError, getErrorMessage, getErrorTitle, isRetryableError } from "@/lib/errors";
-import { AlertCircle, RefreshCw, XCircle, ExternalLink, FileQuestion, Clock, Ban, FileWarning } from "lucide-react";
+import { AlertCircle, RefreshCw, XCircle, ExternalLink, FileQuestion, Clock, Ban, FileWarning, BookOpen } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 interface ErrorDisplayProps {
   error: AppError;
@@ -16,7 +17,7 @@ interface ErrorDisplayProps {
  * A comprehensive error display component that shows user-friendly error messages
  * with optional retry functionality
  */
-export function ErrorDisplay({ error, onRetry, compact = false, source, originalUrl }: ErrorDisplayProps) {
+export function ErrorDisplay({ error, onRetry, compact = false, source: _source, originalUrl }: ErrorDisplayProps) {
   const [isRetrying, setIsRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -60,30 +61,6 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
   // Determine the actual URL to display (prefer originalUrl prop, fallback to error.url if it exists)
   const errorUrl = 'url' in error ? error.url : undefined;
   const displayUrl = originalUrl || errorUrl;
-  
-  // Check if we should show the proxy link (not for smry-fast or smry-slow)
-  const showProxyLink = source && source !== "smry-fast" && source !== "smry-slow";
-  
-  // Get the external service URL based on source
-  const getExternalUrl = (src: string, url: string) => {
-    switch (src) {
-      case "wayback": 
-        return `https://web.archive.org/web/2/${encodeURIComponent(url)}`;
-      case "jina.ai": 
-        return `https://r.jina.ai/${url}`;
-      default: 
-        return undefined;
-    }
-  };
-  
-  // Get source-specific labels
-  const getSourceLabel = (src: string) => {
-    switch (src) {
-      case "wayback": return "Try archived version (archive.org)";
-      case "jina.ai": return "Try reader view (jina.ai)";
-      default: return "Try cached version";
-    }
-  };
 
   // Compact mode for inline display
   if (compact) {
@@ -122,45 +99,60 @@ export function ErrorDisplay({ error, onRetry, compact = false, source, original
             {message}
           </p>
 
-          {/* Links section */}
+          {/* Alternatives section */}
           {displayUrl && (
-            <div className="mt-3 flex flex-col gap-2">
-              {/* Original page link - always show if we have a URL */}
-              <a
-                href={displayUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Open original page directly
-                <ExternalLink className="size-3.5" />
-              </a>
-
-              {/* Proxy/cache link - only for wayback and jina.ai */}
-              {showProxyLink && source && displayUrl && getExternalUrl(source, displayUrl) && (
+            <div className="mt-4">
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
+                Couldn&apos;t get this article? Try:
+              </p>
+              <div className="flex flex-col gap-2">
+                {/* Archive.is - primary recommendation */}
                 <a
-                  href={getExternalUrl(source, displayUrl)}
+                  href={`https://archive.is/newest/${displayUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center gap-1.5 text-sm text-emerald-600 transition-colors hover:text-emerald-700 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                >
+                  Try archive.is
+                  <span className="text-xs text-zinc-500">(often works best)</span>
+                  <ExternalLink className="size-3.5" />
+                </a>
+
+                {/* Wayback Machine direct */}
+                <a
+                  href={`https://web.archive.org/web/*/${displayUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                 >
-                  {getSourceLabel(source)}
+                  Browse Wayback Machine
                   <ExternalLink className="size-3.5" />
                 </a>
-              )}
 
-              {/* Archive.is recommendation - always show as alternative */}
-              <a
-                href={`https://archive.is/newest/${displayUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Try archive.is
-                <ExternalLink className="size-3.5" />
-              </a>
+                {/* Original page link */}
+                <a
+                  href={displayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center gap-1.5 text-sm text-zinc-600 transition-colors hover:text-zinc-700 hover:underline dark:text-zinc-400 dark:hover:text-zinc-300"
+                >
+                  Open original page
+                  <ExternalLink className="size-3.5" />
+                </a>
+              </div>
             </div>
           )}
+
+          {/* Guide link */}
+          <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <Link
+              href="/guide"
+              className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 transition-colors"
+            >
+              <BookOpen className="size-3.5" />
+              Read our guide on bypassing paywalls
+            </Link>
+          </div>
 
           {/* Retry button */}
           {canRetry && (
