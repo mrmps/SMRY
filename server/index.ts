@@ -18,7 +18,11 @@ import { env } from "./env";
 startMemoryMonitor();
 
 const app = new Elysia()
-  .use(cors({ origin: env.CORS_ORIGIN, credentials: true }))
+  .use(cors({
+    origin: env.CORS_ORIGIN,
+    credentials: true,
+    exposeHeaders: ["X-Usage-Remaining", "X-Usage-Limit", "X-Is-Premium", "X-Model"],
+  }))
   .use(
     cron({
       name: "error-rate-alerting",
