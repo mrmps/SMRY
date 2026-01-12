@@ -438,7 +438,7 @@ export function PricingContent() {
           {/* Header */}
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-              200,000+ {t("activeUsers")}
+              260,000+ {t("activeUsers")}
             </p>
             <h2 className="text-2xl font-bold tracking-tight">{t("lovedByReaders")}</h2>
           </div>

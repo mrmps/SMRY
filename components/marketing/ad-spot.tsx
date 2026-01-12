@@ -460,7 +460,7 @@ export function AdSpotSidebar({
         <AdvertiseModal
           open={advertiseOpen}
           onOpenChange={setAdvertiseOpen}
-          trigger={<AdvertiseTrigger label="Advertise to 200k users" />}
+          trigger={<AdvertiseTrigger label="Advertise to 260k users" />}
           nativeButton
         />
       </div>
@@ -543,7 +543,7 @@ export function AdSpotMobileBar({
         <ResponsiveDrawer
           open={advertiseOpen}
           onOpenChange={setAdvertiseOpen}
-          trigger={<AdvertiseTrigger label="Advertise to 200k" />}
+          trigger={<AdvertiseTrigger label="Advertise to 260k" />}
           title={t("modal.title")}
           scrollable
           showCloseButton
