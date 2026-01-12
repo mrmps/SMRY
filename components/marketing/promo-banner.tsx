@@ -7,10 +7,8 @@ import { useIsPremium } from "@/lib/hooks/use-is-premium";
 
 const STORAGE_KEY = "promo-banner-dismissed";
 
-// Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
 
-// Hook to detect client-side hydration safely
 function useIsClient() {
   return useSyncExternalStore(
     emptySubscribe,
@@ -32,33 +30,32 @@ export function PromoBanner() {
     localStorage.setItem(STORAGE_KEY, "true");
   };
 
-  // Don't render on server or while loading
   if (!isClient || isLoading) return null;
-
-  // Don't show for premium users or if dismissed
   if (isPremium || isDismissed) return null;
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] bg-glow text-white">
-      <div className="flex items-center justify-center px-4 py-2 text-center text-sm">
-        <p className="flex flex-wrap items-center justify-center gap-x-1">
-          <span className="font-medium">Go Premium for $4.99/mo or $30/year</span>
-          <span className="opacity-80">— deal ends February 15th.</span>
-          <Link
-            href="/pricing"
-            className="ml-2 inline-flex items-center rounded-full bg-white/20 px-3 py-0.5 text-xs font-medium transition-colors hover:bg-white/30"
-          >
-            Try it now
-          </Link>
-        </p>
-        <button
-          onClick={handleDismiss}
-          className="ml-4 rounded-full p-1 transition-colors hover:bg-white/20"
-          aria-label="Dismiss banner"
+    <div className="relative w-full bg-foreground/5 border-b border-border">
+      <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">No ads, faster loads, extra domains</span>
+        <span className="mx-1.5">·</span>
+        <span>$4.99/mo or $30/yr</span>
+        <span className="mx-1.5">·</span>
+        <span>Ends Feb 15</span>
+        <span className="mx-1.5">·</span>
+        <Link
+          href="/pricing"
+          className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
         >
-          <X className="size-4" />
-        </button>
+          Try it
+        </Link>
       </div>
+      <button
+        onClick={handleDismiss}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Dismiss"
+      >
+        <X className="size-3.5" />
+      </button>
     </div>
   );
 }
