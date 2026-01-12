@@ -492,7 +492,7 @@ function ExpandedSummary({
               <span
                 className={cn(
                   "inline-block h-4 w-0.5 animate-pulse bg-foreground",
-                  RTL_LANGUAGES.has(preferredLanguage) ? "mr-0.5" : "ml-0.5",
+                  RTL_LANGUAGES.has(preferredLanguage) ? "mr-0.5" : "ml-0.5"
                 )}
               />
             )}
@@ -510,6 +510,12 @@ function ExpandedSummary({
 
       {/* Footer - always show collapse when expanded */}
       <div className="border-t border-border px-3 py-2 text-center">
+        {isPremium && summary && !isStreaming && usageData?.model && (
+          <div className="text-[10px] text-muted-foreground/60">
+            <Zap className="mr-1 inline-block size-2.5" />
+            {usageData.model}
+          </div>
+        )}
         {!isPremium && showUsageCounter && usageData && (
           <div
             className={cn(
@@ -520,28 +526,21 @@ function ExpandedSummary({
             {isLoading && (
               <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
             )}
+            {usageData.model && <>{usageData.model} · </>}
             {usageData.remaining > 0 ? (
-              <>{usageData.remaining} left today</>
+              <>{usageData.remaining} left</>
             ) : (
               <>
-                {usageData.limit - usageData.remaining} / {usageData.limit} used
+                {usageData.limit - usageData.remaining}/{usageData.limit}
               </>
             )}
-            {isSignedIn ? (
-              <Link
-                href="/pricing"
-                className="ml-1 text-muted-foreground hover:text-foreground"
-              >
-                · go unlimited
-              </Link>
-            ) : (
-              <Link
-                href="/sign-in"
-                className="ml-1 text-muted-foreground hover:text-foreground"
-              >
-                · sign in for more
-              </Link>
-            )}
+            <span className="mx-1">·</span>
+            <Link
+              href="/pricing"
+              className="font-medium text-primary hover:underline"
+            >
+              Upgrade for faster, smarter AI
+            </Link>
           </div>
         )}
 

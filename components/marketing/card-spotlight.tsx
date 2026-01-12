@@ -47,26 +47,26 @@ export const CardSpotlight = ({ heading, body, icon }: CardSpotlightProps) => {
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative max-w-xs rounded-lg border-[.5px] border-zinc-200 bg-stone-100 p-8 shadow-sm"
+      className="relative max-w-xs rounded-lg border border-border/50 bg-surface-2 p-8 shadow-sm"
     >
       <div
         className="pointer-events-none absolute -inset-px rounded-lg transition duration-500"
         style={{
           opacity,
-          background: `radial-gradient(circle at ${position.x}px ${position.y}px, rgba(0, 0, 0, .25), transparent 40%)`,
+          background: `radial-gradient(circle at ${position.x}px ${position.y}px, oklch(from var(--foreground) l c h / 0.12), transparent 40%)`,
         }}
       />
       <div className="flex flex-row gap-3">
       <div className="mb-4">
-      <div className="rounded-md border border-stone-300 bg-stone-200 p-2">
-        {icon} {/* Render the passed icon here */}
+      <div className="rounded-md border border-border bg-surface-3 p-2">
+        {icon}
         </div>
       </div>
-      <h3 className="mt-1 font-medium tracking-tight text-neutral-800">
+      <h3 className="mt-1 font-medium tracking-tight text-foreground">
         {heading}
       </h3>
       </div>
-      <p className="text-sm text-neutral-600">{body}</p>
+      <p className="text-sm text-muted-foreground">{body}</p>
     </div>
   );
 };

@@ -25,6 +25,7 @@ export interface UsageData {
   remaining: number;
   limit: number;
   isPremium: boolean;
+  model?: string;
 }
 
 export interface UseSummaryOptions {
@@ -98,12 +99,14 @@ async function* streamSummary(
   const remaining = response.headers.get("X-Usage-Remaining");
   const limit = response.headers.get("X-Usage-Limit");
   const premium = response.headers.get("X-Is-Premium");
+  const model = response.headers.get("X-Model");
 
   if (remaining !== null && limit !== null && onUsageUpdate) {
     onUsageUpdate({
       remaining: parseInt(remaining, 10),
       limit: parseInt(limit, 10),
       isPremium: premium === "true",
+      model: model ?? undefined,
     });
   }
 
@@ -206,7 +209,7 @@ export function useSummary({
           authToken,
         )) {
           fullText += chunk;
-          // Progressively update cache - this triggers re-renders
+          // Update cache directly - React will batch renders naturally
           queryClient.setQueryData(cacheKey, fullText);
         }
       } finally {

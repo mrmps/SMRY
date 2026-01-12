@@ -52,18 +52,18 @@ export function UpgradeCTA({ className }: UpgradeCTAProps) {
               alt=""
               width={72}
               height={72}
-              className="drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+              className="drop-shadow-[0_0_20px_rgba(94,105,209,0.5)]"
             />
           </div>
 
           {/* Headline */}
           <h3 className="text-xl font-semibold text-white sm:text-2xl">
-            Enjoying smry?
+            Stop guessing.
           </h3>
 
           {/* Subtext */}
           <p className="mt-2 max-w-md text-sm text-white/70 sm:text-base">
-            Know instantly if you got the full article. Plus unlimited access, ad-free reading, and full history.
+            See exactly which sources got the full article. Plus faster summaries with premium AI.
           </p>
 
           {/* Price highlight */}

@@ -74,6 +74,7 @@ export function PricingContent() {
   const features = [
     { name: t("articlesPerDay"), free: "20", premium: t("unlimitedArticles") },
     { name: t("aiSummariesPerDay"), free: "20", premium: t("unlimitedAiSummaries") },
+    { name: t("premiumAiModels"), free: false, premium: true },
     { name: t("articlesInHistory"), free: "30", premium: t("unlimitedHistory") },
     { name: t("searchHistory"), free: false, premium: true },
     { name: t("bypassIndicator"), free: false, premium: true },
@@ -257,6 +258,10 @@ export function PricingContent() {
               </li>
               <li className="flex items-center gap-3 text-sm text-muted-foreground/50">
                 <X className="size-4 shrink-0" />
+                <span>{t("premiumAiModels")}</span>
+              </li>
+              <li className="flex items-center gap-3 text-sm text-muted-foreground/50">
+                <X className="size-4 shrink-0" />
                 <span>{t("searchHistory")}</span>
               </li>
               <li className="flex items-center gap-3 text-sm text-muted-foreground/50">
@@ -338,6 +343,13 @@ export function PricingContent() {
                 <Check className="size-4 shrink-0 text-muted-foreground" />
                 <span>{t("unlimitedAiSummaries")}</span>
               </li>
+              <li className="flex items-start gap-3 text-sm">
+                <Check className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+                <div>
+                  <span className="font-medium">{t("premiumAiModels")}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("premiumAiModelsDesc")}</p>
+                </div>
+              </li>
               <li className="flex items-center gap-3 text-sm">
                 <Check className="size-4 shrink-0 text-muted-foreground" />
                 <span>{t("unlimitedHistory")}</span>
@@ -346,9 +358,12 @@ export function PricingContent() {
                 <Check className="size-4 shrink-0 text-muted-foreground" />
                 <span>{t("searchAllPastArticles")}</span>
               </li>
-              <li className="flex items-center gap-3 text-sm">
-                <Check className="size-4 shrink-0 text-muted-foreground" />
-                <span>{t("bypassIndicator")}</span>
+              <li className="flex items-start gap-3 text-sm">
+                <Check className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+                <div>
+                  <span className="font-medium">{t("bypassIndicator")}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("bypassIndicatorDesc")}</p>
+                </div>
               </li>
               <li className="flex items-center gap-3 text-sm">
                 <Check className="size-4 shrink-0 text-muted-foreground" />

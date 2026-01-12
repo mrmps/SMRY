@@ -164,13 +164,14 @@ export function HomeContent() {
                 "flex overflow-hidden rounded-lg border shadow-sm transition-all duration-300",
                 "bg-background",
                 "focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/20 focus-within:ring-offset-0",
-                urlError ? "border-red-500 ring-red-200" : "border-input"
+                urlError ? "border-destructive ring-destructive/20" : "border-input"
               )}
             >
               <input
                 className="w-full bg-transparent p-4 py-3 text-lg placeholder:text-muted-foreground focus:outline-none"
                 name="url"
                 placeholder={t("placeholder")}
+                aria-label={t("placeholder")}
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
@@ -184,6 +185,7 @@ export function HomeContent() {
                 className="rounded-none border-0 px-4 font-mono transition-all duration-300 ease-in-out hover:bg-transparent"
                 type="submit"
                 variant="ghost"
+                aria-label={t("submitUrl")}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
               >

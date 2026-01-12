@@ -41,13 +41,12 @@ const openRouter = new OpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
 });
 
-// Free models first, paid fallback
-const FREE_MODELS = [
-  "nvidia/nemotron-3-nano-30b-a3b:free",
-  "arcee-ai/trinity-mini:free",
-  "qwen/qwen3-4b:free",
+// Premium models - used for premium users (bypass detection is premium-only anyway)
+const PREMIUM_MODELS = [
+  "anthropic/claude-3.5-haiku",
+  "google/gemini-3-flash-preview",
+  "openai/gpt-5-mini",
 ];
-const PAID_FALLBACK = "openai/gpt-5-nano";
 
 // Helper to extract string content from OpenRouter response
 function extractContent(content: unknown): string | null {
@@ -279,13 +278,13 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
       // Build the prompt
       const userPrompt = buildUserPrompt(analysis, url);
 
-      // Try free models first
+      // Use premium models (bypass detection is premium-only)
       let aiResponse: string | null = null;
 
       try {
         const result = await openRouter.chat.send({
-          model: FREE_MODELS[0],
-          models: FREE_MODELS,
+          model: PREMIUM_MODELS[0],
+          models: PREMIUM_MODELS,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -294,33 +293,17 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
         });
 
         aiResponse = extractContent(result.choices?.[0]?.message?.content);
-      } catch (freeError) {
-        ctx.merge({ free_models_failed: true });
-
-        // Try paid fallback
-        try {
-          const fallbackResult = await openRouter.chat.send({
-            model: PAID_FALLBACK,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-            stream: false,
-          });
-
-          aiResponse = extractContent(fallbackResult.choices?.[0]?.message?.content);
-          ctx.merge({ used_paid_fallback: true });
-        } catch (paidError) {
-          ctx.error(
-            paidError instanceof Error ? paidError : String(paidError),
-            {
-              error_type: "AI_ERROR",
-              status_code: 500,
-            }
-          );
-          set.status = 500;
-          return createBypassDetectionError("DETECTION_FAILED");
-        }
+        ctx.merge({ model_used: PREMIUM_MODELS[0] });
+      } catch (aiError) {
+        ctx.error(
+          aiError instanceof Error ? aiError : String(aiError),
+          {
+            error_type: "AI_ERROR",
+            status_code: 500,
+          }
+        );
+        set.status = 500;
+        return createBypassDetectionError("DETECTION_FAILED");
       }
 
       if (!aiResponse) {

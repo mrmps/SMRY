@@ -20,7 +20,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         <div className="p-6 text-center">
           <DialogTitle className="text-lg">You&apos;ve hit your daily limit</DialogTitle>
           <DialogDescription className="mt-2">
-            Upgrade for unlimited summaries and see which sources got the full article.
+            Go unlimited and stop guessing—see exactly which sources got the full article.
             <span className="block text-xs mt-1 text-muted-foreground/60">
               $3.99/mo billed yearly · Cancel anytime
             </span>

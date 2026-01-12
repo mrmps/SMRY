@@ -17,7 +17,8 @@
     "toAnyUrl": "voor elke URL te zetten.",
     "bookmarkletTip": "Voor snelle toegang, sla deze",
     "bookmarkletInstructions": "Sleep het naar je bladwijzerbalk, klik er dan op elke pagina op om deze in SMRY te openen.",
-    "validationError": "Voer een geldige URL in."
+    "validationError": "Voer een geldige URL in.",
+    "submitUrl": "URL verzenden"
   },
   "banner": {
     "heading": "Spring over deze betaalmuren:"
@@ -100,6 +101,8 @@
     "articlesInHistory": "artikelen in geschiedenis",
     "searchHistory": "Geschiedenis doorzoeken",
     "adFreeReading": "Advertentievrij lezen",
+    "bypassIndicator": "Bypass-indicator",
+    "bypassIndicatorDesc": "Stop met gissen. Weet direct of je het volledige artikel hebt of dat inhoud is afgekapt.",
     "pro": "Pro",
     "forPowerReaders": "Voor intensieve lezers",
     "perMonth": "per maand",

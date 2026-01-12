@@ -31,7 +31,7 @@ const TopBar = () => {
     <div
       className="absolute inset-x-0 top-0 z-50"
     >
-      <div className="w-full border-b border-gray-200/50 bg-white/80 backdrop-blur-md dark:bg-zinc-950/80 dark:border-zinc-800/50">
+      <div className="w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-11 max-w-prose items-center justify-between px-3 sm:px-0">
           <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
             <Image
@@ -49,7 +49,7 @@ const TopBar = () => {
         {/* Scroll Progress - fixed at the top of the screen for reader view */}
         {isReaderView && (
           <ProgressDiv 
-            className="fixed left-0 top-0 z-100 h-[2px] w-full origin-left bg-[#595959] dark:bg-zinc-400"
+            className="fixed left-0 top-0 z-100 h-[2px] w-full origin-left bg-foreground-muted"
             style={{ scaleX } as any}
           />
         )}

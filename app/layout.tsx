@@ -55,6 +55,7 @@ export default async function RootLayout({
             attribute="class"
             defaultTheme="system"
             enableSystem
+            themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "system"]}
             disableTransitionOnChange
           >
             <GoogleAnalytics gaId="G-RFC55FX414" />

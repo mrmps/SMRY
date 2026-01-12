@@ -69,13 +69,13 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
               {t("reportBug")}
             </Button>
           </a>
-          <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 md:text-right">
+          <p className="text-center text-xs text-foreground-faint md:text-right">
             <a
               href="https://logo.dev"
               target="_blank"
               rel="noreferrer"
               title="Logo API"
-              className="hover:text-zinc-500 dark:hover:text-zinc-500"
+              className="hover:text-foreground-muted"
             >
               {t("logosBy")}
             </a>

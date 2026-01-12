@@ -17,7 +17,8 @@
     "toAnyUrl": "antes de cualquier URL.",
     "bookmarkletTip": "Para acceso rápido, guarda este",
     "bookmarkletInstructions": "Arrástralo a tu barra de marcadores, luego haz clic en cualquier página para abrirla en SMRY.",
-    "validationError": "Por favor, introduce una URL válida."
+    "validationError": "Por favor, introduce una URL válida.",
+    "submitUrl": "Enviar URL"
   },
   "banner": {
     "heading": "Salta estos muros de pago:"
@@ -100,6 +101,8 @@
     "articlesInHistory": "artículos en historial",
     "searchHistory": "Buscar historial",
     "adFreeReading": "Lectura sin anuncios",
+    "bypassIndicator": "Indicador de bypass",
+    "bypassIndicatorDesc": "Deja de adivinar. Sabe al instante si obtuviste el artículo completo o si el contenido fue cortado.",
     "pro": "Pro",
     "forPowerReaders": "Para lectores intensivos",
     "perMonth": "por mes",

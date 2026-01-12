@@ -13,6 +13,7 @@ export function CustomPricingTable() {
 
   const features = [
     t("unlimitedAiSummaries"),
+    t("premiumAiModels"),
     t("bypassIndicator"),
     t("fullHistory"),
     t("searchAllPastArticles"),

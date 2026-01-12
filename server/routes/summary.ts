@@ -44,16 +44,18 @@ const openRouter = new OpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
 });
 
-// Free tier models - used for non-premium users
+/**
+ * ⚠️  DO NOT CHANGE THESE MODELS WITHOUT EXPLICIT USER DIRECTION  ⚠️
+ * These models were carefully selected. Do not "optimize", "update",
+ * or "improve" them unless the user specifically provides new model names.
+ */
 const FREE_MODELS = [
   "nvidia/nemotron-3-nano-30b-a3b:free",
   "arcee-ai/trinity-mini:free",
   "qwen/qwen3-4b:free",
 ];
 
-// Premium tier models - higher quality, no rate competition with free users
 const PREMIUM_MODELS = [
-  "anthropic/claude-3.5-haiku",
   "google/gemini-3-flash-preview",
   "openai/gpt-5-mini",
 ];
@@ -151,6 +153,11 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
         ? `summary:${tier}:${language}:${url}`
         : `summary:${tier}:${language}:${createHash("md5").update(content).digest("hex")}`;
 
+      // Select models based on premium status
+      const models = isPremium ? PREMIUM_MODELS : FREE_MODELS;
+      // Extract model name from "provider/model:variant" and remove :free suffix
+      const modelName = (models[0].split("/")[1] || models[0]).replace(/:free$/, "");
+
       const cachedSummary = await redis.get(cacheKey);
       if (cachedSummary && typeof cachedSummary === "string") {
         ctx.merge({
@@ -166,19 +173,28 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
             "X-Is-Premium": String(isPremium),
             "X-Usage-Remaining": String(usageRemaining),
             "X-Usage-Limit": String(isPremium ? -1 : DAILY_LIMIT),
+            "X-Model": modelName,
           },
         });
       }
 
-      const languagePrompt = getLanguagePrompt(language);
-      const systemPrompt =
-        `You are a helpful assistant that summarizes articles. Provide a clear, concise summary of the main points in 3-5 paragraphs. ${languagePrompt}`.trim();
-      const userPrompt = title
-        ? `Please summarize this article titled "${title}":\n\n${content.slice(0, 12000)}`
-        : `Please summarize this article:\n\n${content.slice(0, 12000)}`;
+      const languageInstruction = language && language !== "auto"
+        ? `Respond in ${getLanguagePrompt(language)}.`
+        : "Respond in the article's language.";
 
-      // Select models based on premium status
-      const models = isPremium ? PREMIUM_MODELS : FREE_MODELS;
+      const systemPrompt = `Expert summarizer. Create a 100-150 word summary.
+
+Rules:
+- Lead with the main point immediately
+- Never start with "This article..." or "The author..."
+- 2-3 short paragraphs max
+- Active voice, concrete language
+- ${languageInstruction}`;
+
+      const userPrompt = title
+        ? `Summarize this article titled "${title}":\n\n${content.slice(0, 12000)}`
+        : `Summarize this article:\n\n${content.slice(0, 12000)}`;
+
       ctx.set("model_tier", isPremium ? "premium" : "free");
       ctx.set("primary_model", models[0]);
 
@@ -241,6 +257,7 @@ export const summaryRoutes = new Elysia({ prefix: "/api" }).post(
           "X-Is-Premium": String(isPremium),
           "X-Usage-Remaining": String(usageRemaining),
           "X-Usage-Limit": String(isPremium ? -1 : DAILY_LIMIT),
+          "X-Model": modelName,
         },
       });
     } catch (error) {
