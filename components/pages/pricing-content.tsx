@@ -376,7 +376,7 @@ export function PricingContent() {
                     <p className="font-medium text-sm">{item.name}</p>
                     <p className="text-xs text-muted-foreground">{item.handle}</p>
                   </div>
-                  <svg className="size-4 ml-auto text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="size-4 ml-auto text-muted-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                 </div>
@@ -400,7 +400,8 @@ export function PricingContent() {
                 >
                   <span className="text-sm font-medium">{faq.q}</span>
                   <ChevronDown
-                    className={`size-4 text-muted-foreground transition-transform ${
+                    aria-hidden="true"
+                    className={`size-4 text-muted-foreground transition-transform motion-reduce:transition-none ${
                       openFaq === i ? "rotate-180" : ""
                     }`}
                   />

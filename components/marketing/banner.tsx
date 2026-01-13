@@ -234,7 +234,7 @@ export function Banner() {
         {t("heading")}
       </h2>
       <div
-        className="mx-auto flex space-x-4"
+        className="mx-auto flex space-x-4 motion-reduce:animate-none"
         style={{ maxWidth: "1000px", animation: "scroll 60s linear infinite" }}
       >
         {repeatedOutlets.map((outlet, index) => (
@@ -255,6 +255,8 @@ const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
         <img
           alt={name}
           src={logoUrl}
+          width={48}
+          height={48}
           className="size-12 rounded-full"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -263,7 +265,7 @@ const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
             if (sibling) sibling.classList.remove("hidden");
           }}
         />
-        <Newspaper className="hidden size-12 text-muted-foreground" />
+        <Newspaper className="hidden size-12 text-muted-foreground" aria-hidden="true" />
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ export default async function GuidePage({ params }: Props) {
             </h2>
             <div className="space-y-6">
               <div className="flex gap-4">
-                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
                 <div>
                   <p className="font-medium mb-1">Soft paywalls</p>
                   <p className="text-[15px] text-muted-foreground leading-relaxed">
@@ -85,7 +85,7 @@ export default async function GuidePage({ params }: Props) {
                 </div>
               </div>
               <div className="flex gap-4">
-                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden="true" />
                 <div>
                   <p className="font-medium mb-1">Hard paywalls</p>
                   <p className="text-[15px] text-muted-foreground leading-relaxed">

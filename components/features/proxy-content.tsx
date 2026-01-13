@@ -202,11 +202,13 @@ export function ProxyContent({ url }: ProxyContentProps) {
             </Link>
 
             {/* View Mode Pills - Desktop: more visible with solid background */}
-            <div className="hidden md:flex items-center p-1 bg-muted rounded-xl">
+            <div className="hidden md:flex items-center p-1 bg-muted rounded-xl" role="group" aria-label="View mode">
               <button
                 onClick={() => handleViewModeChange("markdown")}
+                aria-label="Reader view mode"
+                aria-pressed={viewMode === "markdown"}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
                   viewMode === "markdown"
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
@@ -216,8 +218,10 @@ export function ProxyContent({ url }: ProxyContentProps) {
               </button>
               <button
                 onClick={() => handleViewModeChange("html")}
+                aria-label="Original HTML view mode"
+                aria-pressed={viewMode === "html"}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
                   viewMode === "html"
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
@@ -227,8 +231,10 @@ export function ProxyContent({ url }: ProxyContentProps) {
               </button>
               <button
                 onClick={() => handleViewModeChange("iframe")}
+                aria-label="Iframe view mode"
+                aria-pressed={viewMode === "iframe"}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
                   viewMode === "iframe"
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
@@ -303,7 +309,8 @@ export function ProxyContent({ url }: ProxyContentProps) {
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       >
-                        <MoreHorizontal className="size-4" />
+                        <MoreHorizontal className="size-4" aria-hidden="true" />
+                        <span className="sr-only">More options</span>
                       </Button>
                     );
                   }}

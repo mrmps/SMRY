@@ -35,6 +35,15 @@ function useIsClient() {
   );
 }
 
+// Hook to detect if device is desktop (for autoFocus)
+function useIsDesktop() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => window.matchMedia("(min-width: 768px)").matches,
+    () => true // Assume desktop on server
+  );
+}
+
 const urlSchema = z.object({
   url: NormalizedUrlSchema,
 });
@@ -70,6 +79,7 @@ export function HomeContent() {
   const t = useTranslations("home");
   const tCommon = useTranslations("common");
   const isClient = useIsClient();
+  const isDesktop = useIsDesktop();
 
   const router = useRouter();
 
@@ -161,7 +171,7 @@ export function HomeContent() {
           <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div
               className={clsx(
-                "flex overflow-hidden rounded-lg border shadow-sm transition-all duration-300",
+                "flex overflow-hidden rounded-lg border shadow-sm transition-colors duration-300",
                 "bg-background",
                 "focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/20 focus-within:ring-offset-0",
                 urlError ? "border-destructive ring-destructive/20" : "border-input"
@@ -177,12 +187,12 @@ export function HomeContent() {
                   setUrl(e.target.value);
                   if (urlError) setUrlError(null);
                 }}
-                autoFocus
+                autoFocus={isDesktop}
                 autoComplete="off"
                 aria-invalid={Boolean(urlError)}
               />
               <Button
-                className="rounded-none border-0 px-4 font-mono transition-all duration-300 ease-in-out hover:bg-transparent"
+                className="rounded-none border-0 px-4 font-mono transition-colors duration-300 ease-in-out hover:bg-transparent"
                 type="submit"
                 variant="ghost"
                 aria-label={t("submitUrl")}
@@ -191,8 +201,9 @@ export function HomeContent() {
               >
                 <div className="hidden sm:block">
                   <CornerDownLeft
+                    aria-hidden="true"
                     className={clsx(
-                      "size-5 transition-transform duration-300 ease-in-out",
+                      "size-5 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
                       {
                         "text-foreground scale-110": isHovered,
                         "text-foreground/80": isUrlValid,
@@ -203,8 +214,9 @@ export function HomeContent() {
                 </div>
                 <div className="sm:hidden">
                   <PaperAirplaneIcon
+                    aria-hidden="true"
                     className={clsx(
-                      "size-6 transition-transform duration-300 ease-in-out",
+                      "size-6 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
                       {
                         "text-foreground scale-110": isHovered,
                         "text-foreground/80": isUrlValid,

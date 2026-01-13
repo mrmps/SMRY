@@ -48,8 +48,8 @@ const TopBar = () => {
         
         {/* Scroll Progress - fixed at the top of the screen for reader view */}
         {isReaderView && (
-          <ProgressDiv 
-            className="fixed left-0 top-0 z-100 h-[2px] w-full origin-left bg-foreground-muted"
+          <ProgressDiv
+            className="fixed left-0 top-0 z-100 h-[2px] w-full origin-left bg-foreground-muted motion-reduce:hidden"
             style={{ scaleX } as any}
           />
         )}

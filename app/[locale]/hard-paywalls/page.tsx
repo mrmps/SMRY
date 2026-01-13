@@ -58,7 +58,7 @@ export default async function HardPaywallsPage({ params }: Props) {
               Soft paywalls
             </h2>
             <div className="flex gap-4">
-              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
               <div className="space-y-4 text-[15px] leading-relaxed">
                 <p>
                   Soft paywalls limit access while still allowing some free views. The article
@@ -84,7 +84,7 @@ export default async function HardPaywallsPage({ params }: Props) {
               Hard paywalls
             </h2>
             <div className="flex gap-4">
-              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-red-500" />
+              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden="true" />
               <div className="space-y-4 text-[15px] leading-relaxed">
                 <p>
                   Hard paywalls require payment before any content is delivered. The article

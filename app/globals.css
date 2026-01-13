@@ -562,7 +562,7 @@
   border-radius: 0.5rem;
   font-weight: 500;
   font-size: 0.875rem;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .checkout-btn-primary button {
