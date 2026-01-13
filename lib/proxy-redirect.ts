@@ -73,6 +73,13 @@ function isAppRouteWithoutLocale(pathname: string): boolean {
     if (pathname.startsWith(`${route}/`)) return true;
   }
 
+  // Check if pathname is just a locale (e.g., /es, /nl) - this happens during locale switching
+  // Path like /nl/es should be treated as locale switch to root, not a URL to proxy
+  const pathWithoutSlash = pathname.substring(1);
+  if ((LOCALES as readonly string[]).includes(pathWithoutSlash)) {
+    return true;
+  }
+
   return false;
 }
 
