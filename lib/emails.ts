@@ -17,6 +17,7 @@ const inbound = new Inbound({ apiKey: env.INBOUND_API_KEY });
 const FROM_EMAIL = "michael@smry.ai";
 const FROM_NAME = "Michael from Smry";
 const FORWARD_REPLIES_TO = "miryaboy@gmail.com";
+const OWNER_EMAIL = "miryaboy@gmail.com";
 
 interface SendWelcomeEmailParams {
   to: string;
@@ -222,6 +223,226 @@ ${body}
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[emails] Error forwarding email:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send notification to owner when someone completes checkout
+ */
+export async function sendCheckoutNotification({
+  customerEmail,
+  customerName,
+  plan,
+}: {
+  customerEmail: string;
+  customerName?: string;
+  plan?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const displayName = customerName || "Unknown";
+  const planName = plan || "Premium";
+  const timestamp = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  try {
+    const result = await inbound.emails.send({
+      from: `Smry Notifications <notifications@smry.ai>`,
+      to: OWNER_EMAIL,
+      subject: `💰 New subscriber: ${displayName}`,
+      text: `
+New paid subscriber!
+
+Customer: ${displayName}
+Email: ${customerEmail}
+Plan: ${planName}
+Time: ${timestamp}
+
+---
+Smry Notifications
+      `.trim(),
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f5f5f5;">
+  <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="margin: 0 0 16px 0; color: #10b981;">💰 New Subscriber!</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280; width: 80px;">Customer</td>
+        <td style="padding: 8px 0; font-weight: 500;">${displayName}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Email</td>
+        <td style="padding: 8px 0;"><a href="mailto:${customerEmail}" style="color: #3b82f6;">${customerEmail}</a></td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Plan</td>
+        <td style="padding: 8px 0;">${planName}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Time</td>
+        <td style="padding: 8px 0;">${timestamp}</td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+      `.trim(),
+    });
+
+    console.log(`[emails] Checkout notification sent (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending checkout notification:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send notification to owner when someone clicks the buy button
+ */
+export async function sendBuyClickNotification({
+  userEmail,
+  userName,
+  plan,
+  isSignedIn,
+}: {
+  userEmail?: string;
+  userName?: string;
+  plan: "monthly" | "annual";
+  isSignedIn: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  const timestamp = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const userInfo = isSignedIn
+    ? `${userName || "Unknown"} (${userEmail || "no email"})`
+    : "Anonymous visitor";
+
+  try {
+    const result = await inbound.emails.send({
+      from: `Smry Notifications <notifications@smry.ai>`,
+      to: OWNER_EMAIL,
+      subject: `🛒 Buy button clicked: ${plan}`,
+      text: `
+Someone clicked the buy button!
+
+User: ${userInfo}
+Plan: ${plan}
+Signed in: ${isSignedIn ? "Yes" : "No"}
+Time: ${timestamp}
+
+---
+Smry Notifications
+      `.trim(),
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f5f5f5;">
+  <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="margin: 0 0 16px 0; color: #3b82f6;">🛒 Buy Button Clicked</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280; width: 80px;">User</td>
+        <td style="padding: 8px 0; font-weight: 500;">${userInfo}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Plan</td>
+        <td style="padding: 8px 0;">${plan}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Signed in</td>
+        <td style="padding: 8px 0;">${isSignedIn ? "Yes" : "No"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Time</td>
+        <td style="padding: 8px 0;">${timestamp}</td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+      `.trim(),
+    });
+
+    console.log(`[emails] Buy click notification sent (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending buy click notification:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send notification to owner when a new user signs up (free)
+ */
+export async function sendSignupNotification({
+  userEmail,
+  userName,
+}: {
+  userEmail: string;
+  userName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const timestamp = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  try {
+    const result = await inbound.emails.send({
+      from: `Smry Notifications <notifications@smry.ai>`,
+      to: OWNER_EMAIL,
+      subject: `👋 New signup: ${userName || userEmail}`,
+      text: `
+New user signed up!
+
+Name: ${userName || "Not provided"}
+Email: ${userEmail}
+Time: ${timestamp}
+
+---
+Smry Notifications
+      `.trim(),
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f5f5f5;">
+  <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="margin: 0 0 16px 0; color: #8b5cf6;">👋 New Signup</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280; width: 80px;">Name</td>
+        <td style="padding: 8px 0; font-weight: 500;">${userName || "Not provided"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Email</td>
+        <td style="padding: 8px 0;"><a href="mailto:${userEmail}" style="color: #3b82f6;">${userEmail}</a></td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Time</td>
+        <td style="padding: 8px 0;">${timestamp}</td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+      `.trim(),
+    });
+
+    console.log(`[emails] Signup notification sent (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending signup notification:", message);
     return { success: false, error: message };
   }
 }

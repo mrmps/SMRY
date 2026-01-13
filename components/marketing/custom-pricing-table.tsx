@@ -1,15 +1,37 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/nextjs";
 import { CheckoutButton } from "@clerk/nextjs/experimental";
 import { Check } from "lucide-react";
 
 // Clerk plan ID from dashboard
 const PATRON_PLAN_ID = "cplan_36Vi5qaiHA0417wdNSZjHSJrjxI";
 
+// Track buy button clicks
+function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
+  fetch("/api/webhooks/track/buy-click", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      plan,
+      userEmail: user?.email,
+      userName: user?.name,
+      isSignedIn: !!user,
+    }),
+  }).catch(() => {
+    // Silent fail - tracking shouldn't break the UI
+  });
+}
+
 export function CustomPricingTable() {
   const t = useTranslations("pricing");
+  const { user } = useUser();
+
+  const userInfo = user ? {
+    email: user.primaryEmailAddress?.emailAddress,
+    name: user.firstName || undefined,
+  } : undefined;
 
   const features = [
     t("unlimitedAiSummaries"),
@@ -43,7 +65,7 @@ export function CustomPricingTable() {
           </ul>
 
           <SignedIn>
-            <div className="checkout-btn-secondary">
+            <div className="checkout-btn-secondary" onClick={() => trackBuyClick("monthly", userInfo)}>
               <CheckoutButton planId={PATRON_PLAN_ID} planPeriod="month">
                 {t("startFreeTrial")}
               </CheckoutButton>
@@ -92,7 +114,7 @@ export function CustomPricingTable() {
           </ul>
 
           <SignedIn>
-            <div className="checkout-btn-primary">
+            <div className="checkout-btn-primary" onClick={() => trackBuyClick("annual", userInfo)}>
               <CheckoutButton planId={PATRON_PLAN_ID} planPeriod="annual">
                 {t("startFreeTrial")}
               </CheckoutButton>

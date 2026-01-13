@@ -9,7 +9,13 @@
 import { Elysia, t } from "elysia";
 import { Webhook } from "svix";
 import { createClerkClient } from "@clerk/backend";
-import { sendWelcomeEmail, forwardEmailReply } from "../../lib/emails";
+import {
+  sendWelcomeEmail,
+  forwardEmailReply,
+  sendCheckoutNotification,
+  sendSignupNotification,
+  sendBuyClickNotification,
+} from "../../lib/emails";
 import { env } from "../env";
 
 // Initialize Clerk client for fetching user details
@@ -131,14 +137,25 @@ async function handleBillingEvent(event: ClerkBillingEvent): Promise<void> {
 
   console.log(`[webhooks] New paid subscriber: ${userDetails.email} (${userDetails.firstName || "no name"})`);
 
-  // Send welcome email
-  const result = await sendWelcomeEmail({
+  // Send welcome email to customer
+  const welcomeResult = await sendWelcomeEmail({
     to: userDetails.email,
     firstName: userDetails.firstName,
   });
 
-  if (!result.success) {
-    console.error(`[webhooks] Failed to send welcome email to ${userDetails.email}:`, result.error);
+  if (!welcomeResult.success) {
+    console.error(`[webhooks] Failed to send welcome email to ${userDetails.email}:`, welcomeResult.error);
+  }
+
+  // Send notification to owner
+  const notifyResult = await sendCheckoutNotification({
+    customerEmail: userDetails.email,
+    customerName: userDetails.firstName,
+    plan: "Premium",
+  });
+
+  if (!notifyResult.success) {
+    console.error(`[webhooks] Failed to send checkout notification:`, notifyResult.error);
   }
 }
 
@@ -187,9 +204,30 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
           break;
 
         case "user.created": {
-          // Log new user signup - could send different email to free users
+          // Send signup notification to owner
           const userEvent = event as ClerkUserCreatedEvent;
-          console.log(`[webhooks] New user signed up: ${userEvent.data.id}`);
+          const primaryEmailId = userEvent.data.primary_email_address_id;
+          const primaryEmail = userEvent.data.email_addresses.find(
+            (e) => e.id === primaryEmailId
+          );
+          const email = primaryEmail?.email_address || userEvent.data.email_addresses[0]?.email_address;
+
+          if (email) {
+            const fullName = [userEvent.data.first_name, userEvent.data.last_name]
+              .filter(Boolean)
+              .join(" ") || undefined;
+
+            console.log(`[webhooks] New user signed up: ${email}`);
+
+            const signupResult = await sendSignupNotification({
+              userEmail: email,
+              userName: fullName,
+            });
+
+            if (!signupResult.success) {
+              console.error(`[webhooks] Failed to send signup notification:`, signupResult.error);
+            }
+          }
           break;
         }
 
@@ -248,5 +286,34 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
         html: t.Optional(t.String()),
         date: t.Optional(t.String()),
       }, { additionalProperties: true }),
+    }
+  )
+  // Track buy button clicks
+  .post(
+    "/track/buy-click",
+    async ({ body }) => {
+      const { plan, userEmail, userName, isSignedIn } = body;
+
+      console.log(`[webhooks] Buy button clicked: ${plan} (signed in: ${isSignedIn})`);
+
+      // Send notification email (fire and forget)
+      sendBuyClickNotification({
+        plan: plan as "monthly" | "annual",
+        userEmail,
+        userName,
+        isSignedIn,
+      }).catch((error) => {
+        console.error(`[webhooks] Failed to send buy click notification:`, error);
+      });
+
+      return { tracked: true };
+    },
+    {
+      body: t.Object({
+        plan: t.String(),
+        userEmail: t.Optional(t.String()),
+        userName: t.Optional(t.String()),
+        isSignedIn: t.Boolean(),
+      }),
     }
   );

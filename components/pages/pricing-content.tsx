@@ -2,12 +2,28 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CheckoutButton, useSubscription, SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
 import { Check, ChevronDown, ArrowLeft, Crown } from "lucide-react";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
+
+// Track buy button clicks
+function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
+  fetch("/api/webhooks/track/buy-click", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      plan,
+      userEmail: user?.email,
+      userName: user?.name,
+      isSignedIn: !!user,
+    }),
+  }).catch(() => {
+    // Silent fail - tracking shouldn't break the UI
+  });
+}
 
 const testimonials = [
   {
@@ -60,6 +76,13 @@ export function PricingContent() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { data: _subscription } = useSubscription();
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
+  const { user } = useUser();
+
+  // User info for tracking
+  const userInfo = user ? {
+    email: user.primaryEmailAddress?.emailAddress,
+    name: user.firstName || undefined,
+  } : undefined;
 
   // Derive user state for UI (only used within SignedIn blocks)
   const isProUser = isPremium && !isPremiumLoading;
@@ -229,7 +252,10 @@ export function PricingContent() {
                   </button>
                 </SubscriptionDetailsButton>
               ) : (
-                <div className="checkout-btn-primary">
+                <div
+                  className="checkout-btn-primary"
+                  onClick={() => trackBuyClick(billingPeriod, userInfo)}
+                >
                   <CheckoutButton
                     planId={PATRON_PLAN_ID}
                     planPeriod={billingPeriod === "annual" ? "annual" : "month"}
