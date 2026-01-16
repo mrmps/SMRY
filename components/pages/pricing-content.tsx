@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CheckoutButton, useSubscription, SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
-import { Check, ChevronDown, ArrowLeft, Crown } from "lucide-react";
+import { Check, ChevronDown, ArrowLeft, Crown, CheckCircle } from "lucide-react";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getAndClearReturnUrl, storeReturnUrl } from "@/lib/hooks/use-return-url";
 
 // Track buy button clicks
 function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
@@ -72,11 +74,40 @@ const publications = [
 
 export function PricingContent() {
   const t = useTranslations("pricing");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   const { data: _subscription } = useSubscription();
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
   const { user } = useUser();
+
+  // Get return URL from query params or sessionStorage
+  const returnUrlFromParams = searchParams.get("returnUrl");
+
+  // Auto-hide success toast after 3 seconds
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => setShowSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess]);
+
+  // Redirect premium users back to their original page
+  useEffect(() => {
+    if (isPremium && !isPremiumLoading && user) {
+      // Get return URL from params or sessionStorage
+      const returnUrl = returnUrlFromParams || getAndClearReturnUrl();
+      if (returnUrl && returnUrl !== "/" && returnUrl !== "/pricing") {
+        // Small delay to let the success toast show if it's visible
+        const timer = setTimeout(() => {
+          router.push(returnUrl);
+        }, showSuccess ? 1500 : 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isPremium, isPremiumLoading, user, returnUrlFromParams, router, showSuccess]);
 
   // User info for tracking
   const userInfo = user ? {
@@ -102,6 +133,16 @@ export function PricingContent() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top fade-in duration-300">
+          <div className="flex items-center gap-2 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg">
+            <CheckCircle className="size-5" />
+            <span className="font-medium">Welcome to Pro! Redirecting...</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-background">
         <div className="mx-auto flex flex-col items-center px-6 pt-6">
@@ -259,6 +300,7 @@ export function PricingContent() {
                   <CheckoutButton
                     planId={PATRON_PLAN_ID}
                     planPeriod={billingPeriod === "annual" ? "annual" : "month"}
+                    onSubscriptionComplete={() => setShowSuccess(true)}
                   >
                     Start free for 7 days
                   </CheckoutButton>
@@ -266,8 +308,11 @@ export function PricingContent() {
               )}
             </SignedIn>
             <SignedOut>
-              <SignInButton mode="modal">
-                <button className="w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors">
+              <SignInButton mode="modal" fallbackRedirectUrl="/pricing">
+                <button
+                  onClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
+                  className="w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors"
+                >
                   Start free for 7 days
                 </button>
               </SignInButton>

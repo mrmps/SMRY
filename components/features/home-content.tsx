@@ -6,13 +6,11 @@ import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { z } from "zod";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button";
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
 import { AdSpot } from "@/components/marketing/ad-spot";
-import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 import { FAQ } from "@/components/marketing/faq";
@@ -22,18 +20,10 @@ import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { AuthBar, UpgradeLink } from "@/components/shared/auth-bar";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
-
-// Hook to detect client-side hydration safely
-function useIsClient() {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => true, // Client snapshot
-    () => false // Server snapshot
-  );
-}
 
 // Hook to detect if device is desktop (for autoFocus)
 function useIsDesktop() {
@@ -53,32 +43,11 @@ const ModeToggle = dynamic(
   { ssr: false, loading: () => <div className="size-9" /> }
 );
 
-// Shows "Go Pro" link only for non-premium signed-in users
-function SupportLink() {
-  const { isPremium, isLoading } = useIsPremium();
-
-  // Don't show while loading to prevent flash
-  if (isLoading) return null;
-
-  // Don't show for premium users (they're already supporters!)
-  if (isPremium) return null;
-
-  return (
-    <Link
-      href="/pricing"
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
-    >
-      No Ads
-    </Link>
-  );
-}
-
 export function HomeContent() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const t = useTranslations("home");
   const tCommon = useTranslations("common");
-  const isClient = useIsClient();
   const isDesktop = useIsDesktop();
 
   const router = useRouter();
@@ -110,28 +79,8 @@ export function HomeContent() {
   return (
     <>
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
-        {isClient && (
-          <>
-            <SignedIn>
-              <SupportLink />
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: "size-9",
-                  },
-                }}
-              />
-            </SignedIn>
-            <SignedOut>
-              <Link
-                href="/pricing"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-muted-foreground transition-colors"
-              >
-                No Ads
-              </Link>
-            </SignedOut>
-          </>
-        )}
+        <UpgradeLink />
+        <AuthBar showUpgrade={false} />
         <LanguageSwitcher />
         <ModeToggle />
       </div>

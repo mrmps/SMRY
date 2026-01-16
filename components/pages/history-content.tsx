@@ -1,7 +1,8 @@
 "use client";
 
 import { useHistory, type HistoryItem } from "@/lib/hooks/use-history";
-import { SignedIn, SignedOut, UserButton, useAuth } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton, UserButton, useAuth } from "@clerk/nextjs";
+import { storeReturnUrl } from "@/lib/hooks/use-return-url";
 import {
   ArrowLeft,
   History,
@@ -570,9 +571,19 @@ function SignedOutContent() {
         Create an account to save your reading history and access it from any
         device.
       </p>
-      <Link href="/pricing">
-        <Button className="mt-6">Get started</Button>
-      </Link>
+      <div className="flex items-center gap-3 mt-6">
+        <SignInButton mode="modal" fallbackRedirectUrl="/history">
+          <Button
+            variant="outline"
+            onClick={() => storeReturnUrl("/history")}
+          >
+            Sign In
+          </Button>
+        </SignInButton>
+        <Link href="/pricing?returnUrl=/history">
+          <Button>Get Pro</Button>
+        </Link>
+      </div>
     </div>
   );
 }

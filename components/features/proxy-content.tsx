@@ -6,7 +6,8 @@ import { useArticles } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
 import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
-import { useAuth, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import { AuthBar } from "@/components/shared/auth-bar";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import {
   Bug as BugIcon,
@@ -276,25 +277,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
               <ModeToggle />
 
               {/* User Section */}
-              <div className="flex items-center gap-1.5 ml-1">
-                <SignedIn>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: "size-7"
-                      }
-                    }}
-                  />
-                </SignedIn>
-                <SignedOut>
-                  <Link
-                    href="/pricing"
-                    className="px-3 py-1 text-sm font-medium rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors"
-                  >
-                    Get Pro
-                  </Link>
-                </SignedOut>
-              </div>
+              <AuthBar variant="compact" showUpgrade={false} className="ml-1" />
 
               {/* Overflow Menu for less common actions */}
               <Menu>
@@ -381,25 +364,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
               <HistoryButton variant="mobile" />
 
               {/* User Section */}
-              <div className="flex items-center">
-                <SignedIn>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: "size-7"
-                      }
-                    }}
-                  />
-                </SignedIn>
-                <SignedOut>
-                  <Link
-                    href="/pricing"
-                    className="px-2.5 py-0.5 text-xs font-medium rounded-full border border-border bg-background text-foreground"
-                  >
-                    Pro
-                  </Link>
-                </SignedOut>
-              </div>
+              <AuthBar variant="compact" showUpgrade={false} />
               
               <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <DrawerTrigger
