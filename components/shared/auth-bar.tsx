@@ -82,7 +82,7 @@ export function AuthBar({
         {/* Sign In button - stores return URL before opening modal */}
         <SignInButton
           mode="modal"
-          fallbackRedirectUrl="/pricing"
+          fallbackRedirectUrl="/"
         >
           <button
             onClick={() => storeReturnUrl()}

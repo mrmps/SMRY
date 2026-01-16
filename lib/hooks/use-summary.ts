@@ -33,6 +33,7 @@ export interface UseSummaryOptions {
   language: string;
   source: string;
   onUsageUpdate?: (usage: UsageData) => void;
+  onComplete?: (summary: string) => void;
 }
 
 export interface UseSummaryResult {
@@ -156,6 +157,7 @@ export function useSummary({
   language,
   source,
   onUsageUpdate,
+  onComplete,
 }: UseSummaryOptions): UseSummaryResult {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
@@ -164,6 +166,10 @@ export function useSummary({
   // Track streaming state separately (mutation isPending doesn't capture streaming phase)
   const [isStreaming, setIsStreaming] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Use ref for onComplete to always call latest callback (avoids stale closure in useMutation)
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   // Read cached summary
   const { data: cachedSummary } = useQuery({
@@ -217,6 +223,9 @@ export function useSummary({
       }
 
       return fullText;
+    },
+    onSuccess: (summary) => {
+      onCompleteRef.current?.(summary);
     },
     onError: () => {
       setIsStreaming(false);

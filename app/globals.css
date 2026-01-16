@@ -473,9 +473,77 @@
 
 @theme inline {
   @keyframes skeleton {
-  to {
-    background-position: -200% 0;
+    to {
+      background-position: -200% 0;
     }
+  }
+
+  @keyframes loader-wave {
+    0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.5;
+    }
+    30% {
+      transform: translateY(-5px);
+      opacity: 0.9;
+    }
+  }
+
+  @keyframes loader-focus {
+    from {
+      opacity: 0;
+      filter: blur(8px);
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes loader-dot {
+    from {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+/* Loading animation utilities */
+@layer utilities {
+  .loader-logo {
+    will-change: opacity, filter, transform;
+    backface-visibility: hidden;
+    animation: loader-focus 450ms ease-out forwards;
+  }
+
+  .loader-dot-base {
+    will-change: opacity, transform;
+    backface-visibility: hidden;
+    opacity: 0;
+  }
+
+  .loader-dot-1 {
+    animation:
+      loader-dot 280ms ease-out 300ms forwards,
+      loader-wave 1.1s ease-in-out 720ms infinite;
+  }
+
+  .loader-dot-2 {
+    animation:
+      loader-dot 280ms ease-out 370ms forwards,
+      loader-wave 1.1s ease-in-out 790ms infinite;
+  }
+
+  .loader-dot-3 {
+    animation:
+      loader-dot 280ms ease-out 440ms forwards,
+      loader-wave 1.1s ease-in-out 860ms infinite;
   }
 }
 

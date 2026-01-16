@@ -20,7 +20,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UseQueryResult } from "@tanstack/react-query";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useSummary, UsageData } from "@/lib/hooks/use-summary";
+import { useGravityAd, type GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 import { Response } from "../ai/response";
+import { GravityAd } from "../ads/gravity-ad";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import {
   ChevronDown,
   ChevronUp,
@@ -29,6 +32,7 @@ import {
   AlertCircle,
   Zap,
   Infinity,
+  PanelRightClose,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SummaryError } from "@/lib/errors/summary";
@@ -237,6 +241,7 @@ interface InlineSummaryProps {
   articleResults: ArticleResults;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  variant?: "inline" | "sidebar";
 }
 
 function CollapsedSummary({
@@ -273,10 +278,22 @@ function ExpandedSummary({
   urlProp,
   articleResults,
   onCollapse,
+  gravityAd,
+  fetchAd,
+  fireImpression,
+  isAdLoading,
+  hasFetchedAdRef,
+  variant = "inline",
 }: {
   urlProp: string;
   articleResults: ArticleResults;
   onCollapse: () => void;
+  gravityAd: GravityAdType | null;
+  fetchAd: (params: { title: string; url: string; summary: string }) => void;
+  fireImpression: (impUrl: string) => void;
+  isAdLoading: boolean;
+  hasFetchedAdRef: React.MutableRefObject<string | null>;
+  variant?: "inline" | "sidebar";
 }) {
   const { isSignedIn } = useAuth();
 
@@ -310,6 +327,27 @@ function ExpandedSummary({
     source: selectedSource,
     onUsageUpdate: setUsageData,
   });
+
+  // Fetch ad immediately when we have article title (don't wait for summary)
+  // This reduces perceived latency - ad loads in parallel with summary
+  const adKey = urlProp;
+  useEffect(() => {
+    if (
+      !isPremium &&
+      !gravityAd &&
+      !isAdLoading &&
+      selectedArticle?.article?.title &&
+      hasFetchedAdRef.current !== adKey
+    ) {
+      hasFetchedAdRef.current = adKey;
+      fetchAd({
+        title: selectedArticle.article.title,
+        url: urlProp,
+        // Use article excerpt as context instead of waiting for summary
+        summary: selectedArticle.article.textContent?.slice(0, 500) || selectedArticle.article.title,
+      });
+    }
+  }, [isPremium, gravityAd, isAdLoading, selectedArticle, adKey, urlProp, fetchAd, hasFetchedAdRef]);
 
   // Track if we've auto-triggered using a ref to avoid setState in effect
   const hasTriggeredRef = useRef(false);
@@ -378,20 +416,25 @@ function ExpandedSummary({
   return (
     <div
       className={cn(
-        "mb-6 overflow-hidden rounded-xl",
+        "overflow-hidden rounded-xl",
         "border border-border bg-card shadow-sm",
+        variant === "sidebar" ? "h-full w-full flex flex-col" : "mb-6",
       )}
     >
       {/* Header - always has collapse button */}
       <div className="flex items-center justify-between gap-2 overflow-hidden border-b border-border bg-muted/50 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <button
-            onClick={onCollapse}
-            className="flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
-          >
-            <span>TL;DR</span>
-            <ChevronUp className="size-4" />
-          </button>
+          {variant === "sidebar" ? (
+            <span className="text-sm font-semibold text-foreground">TL;DR</span>
+          ) : (
+            <button
+              onClick={onCollapse}
+              className="flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
+            >
+              <span>TL;DR</span>
+              <ChevronUp className="size-4" />
+            </button>
+          )}
           {isPremium && (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               <Infinity className="size-2.5" />
@@ -458,11 +501,24 @@ function ExpandedSummary({
               ))}
             </SelectContent>
           </Select>
+
+          {variant === "sidebar" && (
+            <button
+              onClick={onCollapse}
+              className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Collapse sidebar"
+            >
+              <PanelRightClose className="size-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-3 py-3 sm:px-4 sm:py-4">
+      <div className={cn(
+        "px-3 py-3 sm:px-4 sm:py-4",
+        variant === "sidebar" && "flex-1 overflow-y-auto"
+      )}>
         {error && (
           <SummaryErrorDisplay
             error={error}
@@ -496,6 +552,14 @@ function ExpandedSummary({
                 )}
               />
             )}
+
+            {/* Gravity Ad - shown to free users after summary completes */}
+            {gravityAd && !isPremium && !isStreaming && (
+              <GravityAd
+                ad={gravityAd}
+                onVisible={() => fireImpression(gravityAd.impUrl)}
+              />
+            )}
           </div>
         )}
 
@@ -508,8 +572,11 @@ function ExpandedSummary({
         )}
       </div>
 
-      {/* Footer - always show collapse when expanded */}
-      <div className="border-t border-border px-3 py-2 text-center">
+      {/* Footer */}
+      <div className={cn(
+        "border-t border-border px-3 py-2 text-center",
+        variant === "sidebar" && "shrink-0"
+      )}>
         {isPremium && summary && !isStreaming && usageData?.model && (
           <div className="text-[10px] text-muted-foreground/60">
             <Zap className="mr-1 inline-block size-2.5" />
@@ -526,7 +593,6 @@ function ExpandedSummary({
             {isLoading && (
               <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
             )}
-            {usageData.model && <>{usageData.model} · </>}
             {usageData.remaining > 0 ? (
               <>{usageData.remaining} left</>
             ) : (
@@ -539,22 +605,24 @@ function ExpandedSummary({
               href="/pricing"
               className="font-medium text-primary hover:underline"
             >
-              Upgrade for faster, smarter AI
+              No ads + faster AI
             </Link>
           </div>
         )}
 
-        {/* Collapse button - always visible when expanded */}
-        <button
-          onClick={onCollapse}
-          className={cn(
-            "flex w-full items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground",
-            !isPremium && showUsageCounter && "mt-1",
-          )}
-        >
-          <ChevronUp className="size-3.5" />
-          <span>Collapse</span>
-        </button>
+        {/* Collapse button - only show in inline mode */}
+        {variant !== "sidebar" && (
+          <button
+            onClick={onCollapse}
+            className={cn(
+              "flex w-full items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground",
+              !isPremium && showUsageCounter && "mt-1",
+            )}
+          >
+            <ChevronUp className="size-3.5" />
+            <span>Collapse</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -565,18 +633,43 @@ export function InlineSummary({
   articleResults,
   isOpen,
   onOpenChange,
+  variant = "inline",
 }: InlineSummaryProps) {
   const hasArticleData = Object.values(articleResults).some(
     (r) => r.data?.article?.textContent,
   );
+  const { isPremium } = useIsPremium();
 
-  if (!isOpen) {
+  // Lift ad state to persist across collapse/expand
+  const { ad: gravityAd, fetchAd, fireImpression, isLoading: isAdLoading } = useGravityAd();
+  const hasFetchedAdRef = useRef<string | null>(null);
+
+  if (!isOpen && variant === "inline") {
     return (
-      <CollapsedSummary
-        onExpand={() => onOpenChange(true)}
-        disabled={!hasArticleData}
-      />
+      <>
+        {/* Mobile: show collapsed summary button */}
+        <div className="lg:hidden">
+          <CollapsedSummary
+            onExpand={() => onOpenChange(true)}
+            disabled={!hasArticleData}
+          />
+        </div>
+        {/* Desktop: show ad if exists (non-premium only), otherwise nothing */}
+        {gravityAd && !isPremium && (
+          <div className="hidden lg:block mb-6">
+            <GravityAd
+              ad={gravityAd}
+              onVisible={() => fireImpression(gravityAd.impUrl)}
+            />
+          </div>
+        )}
+      </>
     );
+  }
+
+  // In sidebar mode, always show expanded (no collapsed state)
+  if (!isOpen && variant === "sidebar") {
+    return null;
   }
 
   return (
@@ -585,6 +678,12 @@ export function InlineSummary({
       urlProp={urlProp}
       articleResults={articleResults}
       onCollapse={() => onOpenChange(false)}
+      gravityAd={gravityAd}
+      fetchAd={fetchAd}
+      fireImpression={fireImpression}
+      isAdLoading={isAdLoading}
+      hasFetchedAdRef={hasFetchedAdRef}
+      variant={variant}
     />
   );
 }

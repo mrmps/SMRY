@@ -152,6 +152,7 @@ export function CopyPageDropdown({
     return (
       <Menu>
         <MenuTrigger
+          id="copy-page-icon-menu-trigger"
           render={(props) => {
             const { key, ...rest } = props as typeof props & { key?: React.Key };
             return (
@@ -301,6 +302,7 @@ export function CopyPageDropdown({
         {/* Dropdown Trigger */}
         <Menu>
           <MenuTrigger
+            id="copy-page-menu-trigger"
             render={(props) => {
               const { key, ...rest } = props as typeof props & { key?: React.Key };
               return (

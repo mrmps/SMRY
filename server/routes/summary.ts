@@ -225,7 +225,6 @@ Rules:
               }
             }
 
-            // Cache the completed summary
             if (fullText.length > 100) {
               ctx.merge({
                 cache_hit: false,

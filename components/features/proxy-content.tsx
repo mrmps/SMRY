@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
+// TODO: Re-enable ad spots when ready
+// import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
 import { useAuth } from "@clerk/nextjs";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
@@ -18,6 +19,7 @@ import {
   MoreHorizontal,
   ExternalLink,
   MessageSquare,
+  PanelRightOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -27,6 +29,7 @@ import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import ArrowTabs from "@/components/article/tabs";
+import { InlineSummary } from "@/components/features/inline-summary";
 import { PromoBanner } from "@/components/marketing/promo-banner";
 import {
   Drawer,
@@ -49,6 +52,12 @@ import {
   parseAsString,
 } from "nuqs";
 import { Source, SOURCES } from "@/types/api";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { ImperativePanelHandle } from "react-resizable-panels";
 
 const ModeToggle = dynamic(
   () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
@@ -100,7 +109,7 @@ interface ProxyContentProps {
   initialSidebarOpen?: boolean;
 }
 
-export function ProxyContent({ url }: ProxyContentProps) {
+export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentProps) {
   const { results } = useArticles(url);
   const { theme, setTheme } = useTheme();
   const { isPremium, isLoading } = useIsPremium();
@@ -112,7 +121,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
       url: parseAsString.withDefault(url),
       source: parseAsStringLiteral(SOURCES).withDefault("smry-fast"),
       view: parseAsStringLiteral(viewModes).withDefault("markdown"),
-      sidebar: parseAsBoolean.withDefault(false),
+      sidebar: parseAsBoolean.withDefault(initialSidebarOpen),
     },
     {
       history: "replace",
@@ -128,23 +137,31 @@ export function ProxyContent({ url }: ProxyContentProps) {
   const articleTitle = activeArticle?.title;
   const articleTextContent = activeArticle?.textContent;
 
-  // Track if we've already saved to history for this URL
-  const savedToHistoryRef = useRef<string | null>(null);
+  // Track initialization state per URL
+  const initializedUrlRef = useRef<string | null>(null);
 
-  // Save to history when first article is successfully loaded
-  useEffect(() => {
-    // Find the first successful source
-    const firstSuccess = Object.entries(results).find(
+  // Find first successful article result
+  const firstSuccessfulArticle = useMemo(() => {
+    const entry = Object.entries(results).find(
       ([, result]) => result.isSuccess && result.data?.article?.title
     );
+    return entry ? entry[1].data?.article : null;
+  }, [results]);
 
-    if (firstSuccess && savedToHistoryRef.current !== url) {
-      const [, result] = firstSuccess;
-      const title = result.data?.article?.title || "Untitled Article";
-      addArticleToHistory(url, title);
-      savedToHistoryRef.current = url;
+  // Handle article load: save to history + auto-expand for free users
+  useEffect(() => {
+    if (!firstSuccessfulArticle || initializedUrlRef.current === url) return;
+
+    initializedUrlRef.current = url;
+
+    // Save to history
+    addArticleToHistory(url, firstSuccessfulArticle.title || "Untitled Article");
+
+    // Auto-expand sidebar for free users (after premium status loads)
+    if (!isLoading && !isPremium && !sidebarOpen) {
+      setQuery({ sidebar: true });
     }
-  }, [results, url]);
+  }, [firstSuccessfulArticle, url, isLoading, isPremium, sidebarOpen, setQuery]);
 
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
@@ -169,20 +186,61 @@ export function ProxyContent({ url }: ProxyContentProps) {
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
+  // Resizable panel state
+  const summaryPanelRef = useRef<ImperativePanelHandle>(null);
+  const [isAnimating, setIsAnimating] = React.useState(false);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync panel state with sidebarOpen
+  useEffect(() => {
+    const panel = summaryPanelRef.current;
+    if (!panel) return;
+
+    const isExpanded = panel.getSize() > 0;
+    if (sidebarOpen === isExpanded) return;
+
+    // Clear any existing timeout
+    if (animationTimeoutRef.current) {
+      clearTimeout(animationTimeoutRef.current);
+    }
+
+    // Use RAF to batch DOM updates and avoid synchronous state in effect
+    const rafId = requestAnimationFrame(() => {
+      setIsAnimating(true);
+      if (sidebarOpen) {
+        panel.expand(25);
+      } else {
+        panel.collapse();
+      }
+
+      animationTimeoutRef.current = setTimeout(() => {
+        setIsAnimating(false);
+        animationTimeoutRef.current = null;
+      }, 300);
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, [sidebarOpen]);
+
   return (
     <div className="flex h-dvh flex-col bg-background">
       {/* Promo Banner - above everything */}
       <PromoBanner />
 
-      {/* Desktop Ad Spot - Left sidebar */}
+      {/* TODO: Re-enable ad spots
       <div className="hidden xl:block fixed left-4 top-20 z-40">
         <AdSpotSidebar hidden={isLoading || isPremium} />
       </div>
 
-      {/* Mobile Ad Spot - Bottom bar */}
       <div className="xl:hidden">
         <AdSpotMobileBar hidden={isLoading || isPremium} />
       </div>
+      */}
       
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
@@ -282,6 +340,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
               {/* Overflow Menu for less common actions */}
               <Menu>
                 <MenuTrigger
+                  id="proxy-more-options-menu"
                   render={(props) => {
                     const { key, ...rest } = props as typeof props & { key?: React.Key };
                     return (
@@ -368,6 +427,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
               
               <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
                 <DrawerTrigger
+                  id="settings-drawer-trigger"
                   render={(renderProps) => {
                     const { className, ...triggerProps } = renderProps;
                     const { key, ...restProps } = triggerProps as typeof triggerProps & {
@@ -508,8 +568,86 @@ export function ProxyContent({ url }: ProxyContentProps) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto overscroll-y-none bg-card pb-20 lg:pb-0">
-            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-3.5rem)]">
+          {/* Desktop: Resizable panels */}
+          <div className="hidden lg:block h-full relative">
+            {/* Collapsed sidebar expand button */}
+            {!sidebarOpen && (
+              <button
+                onClick={() => handleSidebarChange(true)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-6 h-12 bg-muted/80 hover:bg-muted border border-border border-r-0 rounded-l-md text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Open summary sidebar"
+              >
+                <PanelRightOpen className="size-4" />
+              </button>
+            )}
+            <ResizablePanelGroup
+              direction="horizontal"
+              className="h-full w-full"
+            >
+              <ResizablePanel defaultSize={70} minSize={40}>
+                <div className="h-full overflow-y-auto bg-card">
+                  <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
+                    <ArrowTabs
+                      url={url}
+                      articleResults={results}
+                      viewMode={viewMode}
+                      activeSource={source}
+                      onSourceChange={handleSourceChange}
+                      summaryOpen={sidebarOpen}
+                      onSummaryOpenChange={handleSidebarChange}
+                    />
+                  </div>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle
+                withHandle
+                className={cn(
+                  "transition-opacity duration-200",
+                  !sidebarOpen && "opacity-0 pointer-events-none w-0"
+                )}
+              />
+
+              <ResizablePanel
+                ref={summaryPanelRef}
+                defaultSize={sidebarOpen ? 25 : 0}
+                minSize={20}
+                maxSize={50}
+                collapsible
+                collapsedSize={0}
+                className={cn(
+                  "bg-card overflow-hidden",
+                  "transition-[flex-grow,flex-basis] duration-300 ease-out",
+                  !sidebarOpen && "pointer-events-none"
+                )}
+                onCollapse={() => {
+                  if (sidebarOpen) handleSidebarChange(false);
+                }}
+                onExpand={() => {
+                  if (!sidebarOpen) handleSidebarChange(true);
+                }}
+              >
+                <div
+                  className="h-full overflow-y-auto border-l border-border p-4"
+                  style={{
+                    minWidth: !sidebarOpen || isAnimating ? "280px" : "100%"
+                  }}
+                >
+                  <InlineSummary
+                    urlProp={url}
+                    articleResults={results}
+                    isOpen={sidebarOpen}
+                    onOpenChange={handleSidebarChange}
+                    variant="sidebar"
+                  />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+
+          {/* Mobile: Simple scrollable layout */}
+          <div className="lg:hidden h-full bg-card pb-20 overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6">
               <ArrowTabs
                 url={url}
                 articleResults={results}

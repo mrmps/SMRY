@@ -10,8 +10,8 @@ const Menu = MenuPrimitive.Root;
 
 const MenuPortal = MenuPrimitive.Portal;
 
-function MenuTrigger(props: MenuPrimitive.Trigger.Props) {
-  return <MenuPrimitive.Trigger data-slot="menu-trigger" {...props} />;
+function MenuTrigger({ id, ...props }: MenuPrimitive.Trigger.Props & { id?: string }) {
+  return <MenuPrimitive.Trigger id={id} data-slot="menu-trigger" {...props} />;
 }
 
 function MenuPopup({

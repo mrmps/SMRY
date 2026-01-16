@@ -55,8 +55,8 @@ const EnhancedTabsList: React.FC<{
   };
 
   return (
-    <div className="w-full overflow-x-auto pb-2 pt-1 pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <TabsPrimitive.List className="flex h-auto w-max min-w-full items-center justify-start gap-1 bg-accent p-0.5 rounded-[14px]">
+    <div className="w-full flex justify-center overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <TabsPrimitive.List className="flex h-auto w-auto items-center justify-center gap-1 bg-accent p-0.5 rounded-[14px]">
         {sources.map((source, index) => {
           const count = counts[source];
           const wordCount = formatWordCount(count);
@@ -66,6 +66,7 @@ const EnhancedTabsList: React.FC<{
           return (
             <TabsPrimitive.Tab
               key={index}
+              id={`article-tab-${source}`}
               value={source}
               className={cn(
                 "group flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 rounded-xl px-1 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors outline-none",
@@ -142,7 +143,6 @@ const ArrowTabs: React.FC<TabProps> = ({
   onSummaryOpenChange,
 }) => {
   const results = articleResults;
-  const tabsId = React.useId();
   const { isPremium } = useIsPremium();
 
   const counts: Record<Source, number | undefined> = {
@@ -216,18 +216,12 @@ const ArrowTabs: React.FC<TabProps> = ({
   return (
     <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
       <Tabs
-        id={tabsId}
+        id="article-source-tabs"
         value={activeSource}
         onValueChange={(value) => onSourceChange(value as Source)}
       >
         {/* Tabs List - Responsive (Scrollable on mobile) */}
-        <div
-          className={cn(
-            "sticky top-0 z-20 mb-4 -mx-4 px-4 py-2 sm:mx-0 sm:rounded-xl sm:px-2",
-            "bg-background/80 backdrop-blur-xl transition-all supports-backdrop-filter:bg-background/60",
-            "border-b border-border/40 sm:border-0"
-          )}
-        >
+        <div className="sticky top-0 z-20 mb-4 pb-4 bg-gradient-to-b from-background from-70% to-transparent">
           <EnhancedTabsList
             sources={SOURCES}
             counts={counts}
@@ -240,41 +234,44 @@ const ArrowTabs: React.FC<TabProps> = ({
           />
         </div>
 
-        {/* Inline Summary - between tabs and content */}
-        <InlineSummary
-          urlProp={url}
-          articleResults={results}
-          isOpen={summaryOpen}
-          onOpenChange={onSummaryOpenChange}
-        />
+        {/* Inline Summary - shows on mobile always, on desktop only when sidebar closed */}
+        <div className={cn(summaryOpen && "lg:hidden")}>
+          <InlineSummary
+            urlProp={url}
+            articleResults={results}
+            isOpen={summaryOpen}
+            onOpenChange={onSummaryOpenChange}
+            variant="inline"
+          />
+        </div>
 
-        <TabsContent value={"smry-fast"}>
-          <ArticleContent 
-            query={results["smry-fast"]} 
+        <TabsContent id="article-panel-smry-fast" value={"smry-fast"} keepMounted>
+          <ArticleContent
+            query={results["smry-fast"]}
             source="smry-fast"
             url={url}
             viewMode={viewMode}
           />
         </TabsContent>
-        <TabsContent value={"smry-slow"}>
-          <ArticleContent 
-            query={results["smry-slow"]} 
+        <TabsContent id="article-panel-smry-slow" value={"smry-slow"} keepMounted>
+          <ArticleContent
+            query={results["smry-slow"]}
             source="smry-slow"
             url={url}
             viewMode={viewMode}
           />
         </TabsContent>
-        <TabsContent value={"wayback"}>
-          <ArticleContent 
-            query={results.wayback} 
+        <TabsContent id="article-panel-wayback" value={"wayback"} keepMounted>
+          <ArticleContent
+            query={results.wayback}
             source="wayback"
             url={url}
             viewMode={viewMode}
           />
         </TabsContent>
-        <TabsContent value={"jina.ai"}>
-          <ArticleContent 
-            query={results["jina.ai"]} 
+        <TabsContent id="article-panel-jina" value={"jina.ai"} keepMounted>
+          <ArticleContent
+            query={results["jina.ai"]}
             source="jina.ai"
             url={url}
             viewMode={viewMode}

@@ -192,7 +192,7 @@ export function PricingContent() {
         </h1>
         <p className="mt-4 text-lg text-muted-foreground text-center max-w-md">
           {t("fullAccessFrom")}{" "}
-          <span className="text-foreground font-medium">$0.08 {t("perDay")}</span> — {t("cancelAnytime")}.
+          <span className="text-foreground font-medium">$0.10 {t("perDay")}</span> — {t("cancelAnytime")}.
         </p>
       </div>
 

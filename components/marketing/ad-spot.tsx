@@ -397,11 +397,13 @@ function AdvertiseModal({
   onOpenChange,
   trigger,
   nativeButton = true,
+  triggerId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger: React.ReactElement<Record<string, unknown>>;
   nativeButton?: boolean;
+  triggerId?: string;
 }) {
   const t = useTranslations("ads");
   return (
@@ -413,6 +415,7 @@ function AdvertiseModal({
       scrollable
       showCloseButton
       nativeButton={nativeButton}
+      triggerId={triggerId}
     >
       <AdDrawerContent />
     </ResponsiveDrawer>
@@ -462,6 +465,7 @@ export function AdSpotSidebar({
           onOpenChange={setAdvertiseOpen}
           trigger={<AdvertiseTrigger label="Advertise to 260k users" />}
           nativeButton
+          triggerId="advertise-sidebar-trigger"
         />
       </div>
     </div>
@@ -547,6 +551,7 @@ export function AdSpotMobileBar({
           title={t("modal.title")}
           scrollable
           showCloseButton
+          triggerId="advertise-mobile-trigger"
         >
           <AdDrawerContent />
         </ResponsiveDrawer>
