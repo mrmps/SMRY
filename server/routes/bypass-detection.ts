@@ -368,7 +368,7 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
       url: t.String(),
       source: t.String(),
       textContent: t.String({ minLength: 100 }),
-      articleLength: t.Number(),
+      articleLength: t.Optional(t.Number()),
       htmlContent: t.Optional(t.String()),
     }),
   }

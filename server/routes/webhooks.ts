@@ -246,9 +246,14 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
   // inbound.new webhooks for incoming emails
   .post(
     "/inbound",
-    async ({ body, headers: _headers, set }) => {
-      // Note: Webhook token verification could be added here if needed
-      // const webhookToken = _headers["x-webhook-verification-token"];
+    async ({ body, headers, set }) => {
+      // Verify webhook token (inbound.new sends this in header)
+      const webhookToken = headers["x-webhook-verification-token"];
+      if (!webhookToken || webhookToken !== env.INBOUND_WEBHOOK_TOKEN) {
+        console.warn(`[webhooks] Invalid or missing webhook token for inbound email`);
+        set.status = 401;
+        return { error: "Invalid webhook token" };
+      }
 
       // Log the incoming webhook for debugging
       console.log(`[webhooks] Received inbound.new email webhook`);

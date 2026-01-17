@@ -19,7 +19,7 @@ import {
   MessageSquare,
   PanelRightOpen,
   X,
-  Sparkles,
+  Zap,
   LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -515,7 +515,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                               "w-full gap-2"
                             )}
                           >
-                            <Sparkles className="size-4" />
+                            <Zap className="size-4" />
                             Get Pro
                           </Link>
                         </div>

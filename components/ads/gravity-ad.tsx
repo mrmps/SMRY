@@ -24,6 +24,12 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
 
+  // Reset impression tracking when ad changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
+    setHasTrackedImpression(false);
+  }, [ad.clickUrl]);
+
   // Fire impression when ad is 50% visible
   useEffect(() => {
     if (hasTrackedImpression || !adRef.current) return;

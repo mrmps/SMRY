@@ -33,6 +33,7 @@ export const env = createEnv({
 
     // Email (inbound.new)
     INBOUND_API_KEY: z.string().min(1),
+    INBOUND_WEBHOOK_TOKEN: z.string().min(1),
 
     // Clerk Webhooks
     CLERK_WEBHOOK_SECRET: z.string().min(1),

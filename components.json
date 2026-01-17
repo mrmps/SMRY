@@ -16,6 +16,6 @@
   },
   "registries": {
     "@coss": "https://coss.com/ui/r/{name}.json",
-    "@basecn": "https://basecn.dev/r/{name}"
+    "@basecn": "https://basecn.dev/r/{name}.json"
   }
 }

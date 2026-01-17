@@ -17,11 +17,12 @@ const useLocalStorage = <T>(
 
   // Read initial value from localStorage
   // Note: setState in effect is intentional here for SSR hydration to avoid mismatches
+  /* eslint-disable react-hooks/set-state-in-effect -- SSR hydration pattern requires effect-based state sync */
   useEffect(() => {
+    setHasLoaded(false);
     try {
       const item = window.localStorage.getItem(key);
       if (item) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR hydration pattern
         setStoredValue(JSON.parse(item));
       }
     } catch (error) {
@@ -29,6 +30,7 @@ const useLocalStorage = <T>(
     }
     setHasLoaded(true);
   }, [key]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Listen for changes from other components/tabs
   useEffect(() => {
