@@ -72,10 +72,17 @@ const ModeToggle = dynamic(
 // History button that links to /history for signed-in users, /pricing for signed-out
 function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
   const { isSignedIn, isLoaded } = useAuth();
-  
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard mounted detection pattern for hydration
+    setMounted(true);
+  }, []);
+
   const isDesktop = variant === "desktop";
   const href = isSignedIn ? "/history" : "/pricing";
-  const showBadge = isLoaded && !isSignedIn;
+  // Only show badge after mount to avoid hydration mismatch (auth state is client-only)
+  const showBadge = mounted && isLoaded && !isSignedIn;
   
   return (
     <Link
@@ -91,7 +98,6 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
       <HistoryIcon className="size-4" />
       {!isDesktop && <span className="sr-only">History</span>}
       {/* Premium badge for non-signed-in users - always reserve space to prevent shift */}
-      {/* suppressHydrationWarning: auth state differs between server/client */}
       <span
         className={cn(
           "absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm transition-opacity",
@@ -100,7 +106,6 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
             : "opacity-0 pointer-events-none"
         )}
         aria-hidden={!showBadge}
-        suppressHydrationWarning
       >
         ★
       </span>
