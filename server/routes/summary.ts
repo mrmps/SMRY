@@ -51,13 +51,12 @@ const openRouter = new OpenRouter({
  */
 const FREE_MODELS = [
   "nvidia/nemotron-3-nano-30b-a3b:free",
-  "arcee-ai/trinity-mini:free",
   "qwen/qwen3-4b:free",
 ];
 
 const PREMIUM_MODELS = [
+  "qwen/qwen3-30b-a3b",
   "google/gemini-3-flash-preview",
-  "openai/gpt-5-mini",
 ];
 
 export const summaryRoutes = new Elysia({ prefix: "/api" }).post(

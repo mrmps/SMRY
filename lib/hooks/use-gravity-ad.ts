@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
 import { useAuth, useUser } from "@clerk/nextjs";
 
@@ -23,12 +23,6 @@ export interface GravityAd {
   url?: string;
   favicon?: string;
   cta?: string;
-}
-
-interface FetchAdParams {
-  title: string;
-  url: string;
-  summary: string;
 }
 
 interface DeviceInfo {
@@ -96,23 +90,27 @@ function collectDeviceInfo(): DeviceInfo {
   };
 }
 
+export interface UseGravityAdOptions {
+  /** URL of the article - triggers immediate ad fetch */
+  url: string;
+  /** Whether the user is premium (skips ad fetch) */
+  isPremium?: boolean;
+}
+
 export interface UseGravityAdResult {
   ad: GravityAd | null;
   isLoading: boolean;
-  fetchAd: (params: FetchAdParams) => void;
   fireImpression: (impUrl: string) => void;
 }
 
-export function useGravityAd(): UseGravityAdResult {
+export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): UseGravityAdResult {
   const { getToken } = useAuth();
   const { user } = useUser();
   const [sessionId, setSessionId] = useState<string>("");
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
 
   // Initialize session ID and device info on client
-  // Using lazy initialization pattern to avoid setState in effect lint warning
   useEffect(() => {
-    // Use RAF to defer state updates and avoid synchronous setState in effect
     const rafId = requestAnimationFrame(() => {
       setSessionId(getOrCreateSessionId());
       setDeviceInfo(collectDeviceInfo());
@@ -129,8 +127,9 @@ export function useGravityAd(): UseGravityAdResult {
     };
   }, [user]);
 
-  const mutation = useMutation({
-    mutationFn: async (params: FetchAdParams): Promise<GravityAd | null> => {
+  const query = useQuery({
+    queryKey: ["gravity-ad", url, sessionId],
+    queryFn: async (): Promise<GravityAd | null> => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -151,7 +150,9 @@ export function useGravityAd(): UseGravityAdResult {
         method: "POST",
         headers,
         body: JSON.stringify({
-          ...params,
+          url,
+          title: "", // API will extract from URL
+          summary: "",
           sessionId,
           device: deviceInfo,
           user: userInfo,
@@ -170,15 +171,15 @@ export function useGravityAd(): UseGravityAdResult {
 
       return response.json();
     },
+    // Never cache - always fetch fresh ads
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
+    // Only fetch when we have session info and user is not premium
+    enabled: !!sessionId && !!deviceInfo && !isPremium && !!url,
+    retry: false,
   });
-
-  const fetchAd = useCallback(
-    (params: FetchAdParams) => {
-      if (!sessionId || !deviceInfo) return;
-      mutation.mutate(params);
-    },
-    [mutation, sessionId, deviceInfo]
-  );
 
   const fireImpression = useCallback((impUrl: string) => {
     // Fire impression beacon - required for Gravity payment tracking
@@ -190,9 +191,8 @@ export function useGravityAd(): UseGravityAdResult {
   }, []);
 
   return {
-    ad: mutation.data ?? null,
-    isLoading: mutation.isPending,
-    fetchAd,
+    ad: query.data ?? null,
+    isLoading: query.isLoading,
     fireImpression,
   };
 }

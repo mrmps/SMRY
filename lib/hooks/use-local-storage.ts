@@ -11,23 +11,23 @@ interface StorageEventDetail<T> {
 const useLocalStorage = <T>(
   key: string,
   initialValue: T,
-): [T, (value: T) => void] => {
+): [T, (value: T) => void, boolean] => {
   const [storedValue, setStoredValue] = useState(initialValue);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Read initial value from localStorage
+  // Note: setState in effect is intentional here for SSR hydration to avoid mismatches
   useEffect(() => {
-    // Use a timeout to avoid setting state synchronously
-    const timer = setTimeout(() => {
-      try {
-        const item = window.localStorage.getItem(key);
-        if (item) {
-          setStoredValue(JSON.parse(item));
-        }
-      } catch (error) {
-        console.warn(`Error reading localStorage key "${key}":`, error);
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR hydration pattern
+        setStoredValue(JSON.parse(item));
       }
-    }, 0);
-    return () => clearTimeout(timer);
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${key}":`, error);
+    }
+    setHasLoaded(true);
   }, [key]);
 
   // Listen for changes from other components/tabs
@@ -72,7 +72,7 @@ const useLocalStorage = <T>(
       console.warn(`Error setting localStorage key "${key}":`, error);
     }
   };
-  return [storedValue, setValue];
+  return [storedValue, setValue, hasLoaded];
 };
 
 export default useLocalStorage;

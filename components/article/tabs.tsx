@@ -131,6 +131,8 @@ interface TabProps {
   onSourceChange: (source: Source) => void;
   summaryOpen: boolean;
   onSummaryOpenChange: (open: boolean) => void;
+  /** Whether to render InlineSummary inside this component. Set false when parent handles summary (e.g., sidebar). */
+  showInlineSummary?: boolean;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
@@ -141,6 +143,7 @@ const ArrowTabs: React.FC<TabProps> = ({
   onSourceChange,
   summaryOpen,
   onSummaryOpenChange,
+  showInlineSummary = true,
 }) => {
   const results = articleResults;
   const { isPremium } = useIsPremium();
@@ -234,8 +237,8 @@ const ArrowTabs: React.FC<TabProps> = ({
           />
         </div>
 
-        {/* Inline Summary - shows on mobile always, on desktop only when sidebar closed */}
-        <div className={cn(summaryOpen && "lg:hidden")}>
+        {/* Inline Summary - only rendered when showInlineSummary is true */}
+        {showInlineSummary && (
           <InlineSummary
             urlProp={url}
             articleResults={results}
@@ -243,7 +246,7 @@ const ArrowTabs: React.FC<TabProps> = ({
             onOpenChange={onSummaryOpenChange}
             variant="inline"
           />
-        </div>
+        )}
 
         <TabsContent id="article-panel-smry-fast" value={"smry-fast"} keepMounted>
           <ArticleContent

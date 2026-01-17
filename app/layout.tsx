@@ -1,3 +1,5 @@
+// ReactScan must be the top-most import (before React)
+import { ReactScan } from "@/components/shared/react-scan";
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
@@ -48,6 +50,7 @@ export default async function RootLayout({
   return (
     <ClerkProvider>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
+        <ReactScan />
         <body
           className={`${GeistSans.className} bg-background text-foreground`}
         >

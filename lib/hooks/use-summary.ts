@@ -192,10 +192,8 @@ export function useSummary({
       abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
 
-      // Clear existing cache for this key
-      queryClient.setQueryData(cacheKey, "");
-
       let fullText = "";
+      let isFirstChunk = true;
       setIsStreaming(true);
 
       let authToken: string | undefined;
@@ -214,8 +212,13 @@ export function useSummary({
           onUsageUpdate,
           authToken,
         )) {
-          fullText += chunk;
-          // Update cache directly - React will batch renders naturally
+          if (isFirstChunk) {
+            // Replace old content on first chunk (avoids flash from clearing cache early)
+            fullText = chunk;
+            isFirstChunk = false;
+          } else {
+            fullText += chunk;
+          }
           queryClient.setQueryData(cacheKey, fullText);
         }
       } finally {

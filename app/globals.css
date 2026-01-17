@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@source "node_modules/streamdown/dist/*.js";
 
 /*
  * Multi-theme support
@@ -478,74 +479,8 @@
     }
   }
 
-  @keyframes loader-wave {
-    0%, 60%, 100% {
-      transform: translateY(0);
-      opacity: 0.5;
-    }
-    30% {
-      transform: translateY(-5px);
-      opacity: 0.9;
-    }
-  }
-
-  @keyframes loader-focus {
-    from {
-      opacity: 0;
-      filter: blur(8px);
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      filter: blur(0);
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes loader-dot {
-    from {
-      opacity: 0;
-      transform: scale(0.5);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
 }
 
-/* Loading animation utilities */
-@layer utilities {
-  .loader-logo {
-    will-change: opacity, filter, transform;
-    backface-visibility: hidden;
-    animation: loader-focus 450ms ease-out forwards;
-  }
-
-  .loader-dot-base {
-    will-change: opacity, transform;
-    backface-visibility: hidden;
-    opacity: 0;
-  }
-
-  .loader-dot-1 {
-    animation:
-      loader-dot 280ms ease-out 300ms forwards,
-      loader-wave 1.1s ease-in-out 720ms infinite;
-  }
-
-  .loader-dot-2 {
-    animation:
-      loader-dot 280ms ease-out 370ms forwards,
-      loader-wave 1.1s ease-in-out 790ms infinite;
-  }
-
-  .loader-dot-3 {
-    animation:
-      loader-dot 280ms ease-out 440ms forwards,
-      loader-wave 1.1s ease-in-out 860ms infinite;
-  }
-}
 
 @layer components {
   /* Remove all SVGs in article content */
@@ -745,4 +680,19 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
 
 .tweet-card-minimal time {
   color: var(--muted-foreground) !important;
+}
+
+/*
+ ---break---
+ */
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
