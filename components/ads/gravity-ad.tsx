@@ -62,6 +62,8 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
           rel="sponsored noopener"
           className="group flex items-start gap-3 rounded-lg p-2.5 -mx-2.5 transition-colors hover:bg-muted/40"
         >
+          {/* Favicon from external ad provider - unoptimized to avoid Next.js image optimization
+            for external domains that aren't in our allowlist */}
           {ad.favicon && (
             <Image
               src={ad.favicon}
@@ -103,7 +105,8 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
       </p>
 
       <div className="flex items-start gap-3">
-        {/* Favicon */}
+        {/* Favicon from external ad provider - unoptimized to avoid Next.js image optimization
+            for external domains that aren't in our allowlist */}
         {ad.favicon && (
           <Image
             src={ad.favicon}

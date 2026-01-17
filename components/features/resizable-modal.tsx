@@ -45,13 +45,11 @@ export function ResizableModal({
   const drawerContentId = React.useId();
   
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const [_isAnimating, setIsAnimating] = React.useState(false);
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const rafRef = React.useRef<number | null>(null);
-  
+
   React.useEffect(() => {
     if (!isDesktop) return;
-    
+
     const panel = summaryPanelRef.current;
     if (panel) {
       // Guard to prevent unnecessary animations during resize/drag
@@ -59,12 +57,9 @@ export function ResizableModal({
       const isExpanded = panel.getSize() > 0;
       if (sidebarOpen === isExpanded) return;
 
-      // Clear any existing timeouts
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      // Clear any existing RAF
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
-      setIsAnimating(true);
-      
       rafRef.current = requestAnimationFrame(() => {
         if (sidebarOpen) {
           panel.expand(25);
@@ -72,15 +67,9 @@ export function ResizableModal({
           panel.collapse();
         }
       });
-
-      timeoutRef.current = setTimeout(() => {
-        setIsAnimating(false);
-        timeoutRef.current = null;
-      }, 500); // Matches duration-500
     }
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [sidebarOpen, isDesktop]);
@@ -104,6 +93,7 @@ export function ResizableModal({
               )}
             />
 
+            {/* Summary sidebar panel - fixed at 25% width for consistent layout in this modal variant */}
             <ResizablePanel
               ref={summaryPanelRef}
               defaultSize={sidebarOpen ? 25 : 0}
@@ -122,7 +112,7 @@ export function ResizableModal({
                  if (!sidebarOpen) setSidebarOpen(true);
               }}
             >
-               <div className="h-full overflow-y-auto flex flex-col p-4 w-[25vw]">
+               <div className="h-full overflow-y-auto flex flex-col p-4">
                     <InlineSummary
                       urlProp={url}
                       articleResults={articleResults}

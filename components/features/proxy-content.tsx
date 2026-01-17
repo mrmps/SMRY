@@ -5,8 +5,6 @@ import dynamic from "next/dynamic";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-// TODO: Re-enable ad spots when ready
-// import { AdSpotSidebar, AdSpotMobileBar } from "@/components/marketing/ad-spot";
 import { useAuth, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
@@ -236,16 +234,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       {/* Promo Banner - above everything */}
       <PromoBanner />
 
-      {/* TODO: Re-enable ad spots
-      <div className="hidden xl:block fixed left-4 top-20 z-40">
-        <AdSpotSidebar hidden={isLoading || isPremium} />
-      </div>
-
-      <div className="xl:hidden">
-        <AdSpotMobileBar hidden={isLoading || isPremium} />
-      </div>
-      */}
-      
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
           {/* Left: Logo */}
@@ -690,7 +678,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 />
 
-                {/* Sidebar panel */}
+                {/* Summary sidebar panel - resizable between 18-40% for flexibility.
+                    Unlike resizable-modal which uses fixed 25%, this allows users to adjust based on content. */}
                 <ResizablePanel
                   ref={summaryPanelRef}
                   defaultSize={sidebarOpen ? 25 : 0}
@@ -768,6 +757,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         className="group flex flex-1 items-start gap-3 min-w-0"
                         ref={mobileAdRef}
                       >
+                        {/* Favicon from external ad provider - unoptimized for external domains */}
                         {gravityAd.favicon && (
                           <Image
                             src={gravityAd.favicon}
