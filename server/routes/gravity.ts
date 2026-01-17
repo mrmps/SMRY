@@ -112,7 +112,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" }).post(
         messages,
         sessionId,
         placements: [{ placement: "below_response", placement_id: "smry-summary-bottom" }],
-        testAd: USE_TEST_ADS,
+        // Only include testAd in development - never send false in production
+        ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0.3, // Allow somewhat relevant ads
         device: gravityDevice,
         user: gravityUser,
