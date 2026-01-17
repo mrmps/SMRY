@@ -50,7 +50,7 @@ export function CustomPricingTable() {
           <div className="mb-4">
             <p className="text-sm font-medium text-muted-foreground mb-1">{t("monthly")}</p>
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-bold">$4.99</span>
+              <span className="text-3xl font-bold">$6</span>
               <span className="text-muted-foreground">/{t("perMonth").split(" ")[0]}</span>
             </div>
           </div>
@@ -97,11 +97,11 @@ export function CustomPricingTable() {
               </span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">$2.50</span>
+              <span className="text-3xl font-bold">$3</span>
               <span className="text-muted-foreground">/{t("perMonth").split(" ")[0]}</span>
-              <span className="text-sm text-muted-foreground line-through">$4.99</span>
+              <span className="text-sm text-muted-foreground line-through">$6</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{t("billedYearly")} $30</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("billedYearly")} $36</p>
           </div>
 
           <ul className="space-y-2 mb-6 flex-1">

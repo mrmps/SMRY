@@ -193,7 +193,7 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
     ctx.set("endpoint", "/api/bypass-detection");
 
     try {
-      const { url, source, textContent, articleLength, htmlContent } = body;
+      const { url, source, textContent, htmlContent } = body;
 
       // Check premium status - this is a premium-only feature
       const { isPremium, userId } = await getAuthInfo(request);
@@ -345,7 +345,7 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
             ctx.merge({ article_cache_updated: true });
           }
         }
-      } catch (cacheError) {
+      } catch {
         // Non-fatal: log but don't fail the request
         ctx.merge({ article_cache_update_failed: true });
       }
@@ -368,7 +368,7 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
       url: t.String(),
       source: t.String(),
       textContent: t.String({ minLength: 100 }),
-      articleLength: t.Number(),
+      articleLength: t.Optional(t.Number()),
       htmlContent: t.Optional(t.String()),
     }),
   }

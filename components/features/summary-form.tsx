@@ -290,17 +290,13 @@ export default function SummaryForm({
                 </div>
               )}
               {summary && (
-                <>
-                  <Response
-                    dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
-                    lang={preferredLanguage}
-                  >
-                    {summary}
-                  </Response>
-                  {isStreaming && (
-                    <span className="mt-1 inline-block h-4 w-0.5 animate-pulse bg-foreground"></span>
-                  )}
-                </>
+                <Response
+                  dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
+                  lang={preferredLanguage}
+                  isAnimating={isStreaming}
+                >
+                  {summary}
+                </Response>
               )}
             </div>
           )}

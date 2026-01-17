@@ -248,7 +248,20 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
     "/inbound",
     async ({ body, headers, set }) => {
       // Verify webhook token (inbound.new sends this in header)
-      const webhookToken = headers["x-webhook-verification-token"];
+      if (env.INBOUND_WEBHOOK_TOKEN) {
+        const webhookToken = headers["x-webhook-verification-token"];
+        if (!webhookToken || webhookToken !== env.INBOUND_WEBHOOK_TOKEN) {
+          console.warn(`[webhooks] Invalid or missing webhook token for inbound email`);
+          set.status = 401;
+          return { error: "Invalid webhook token" };
+        }
+      } else if (env.NODE_ENV === "production") {
+        console.error(`[webhooks] INBOUND_WEBHOOK_TOKEN not configured in production!`);
+        set.status = 500;
+        return { error: "Webhook verification not configured" };
+      } else {
+        console.warn(`[webhooks] INBOUND_WEBHOOK_TOKEN not set - skipping verification in dev`);
+      }
 
       // Log the incoming webhook for debugging
       console.log(`[webhooks] Received inbound.new email webhook`);

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@source "node_modules/streamdown/dist/*.js";
 
 /*
  * Multi-theme support
@@ -473,11 +474,13 @@
 
 @theme inline {
   @keyframes skeleton {
-  to {
-    background-position: -200% 0;
+    to {
+      background-position: -200% 0;
     }
   }
+
 }
+
 
 @layer components {
   /* Remove all SVGs in article content */
@@ -677,4 +680,19 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
 
 .tweet-card-minimal time {
   color: var(--muted-foreground) !important;
+}
+
+/*
+ ---break---
+ */
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }

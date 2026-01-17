@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "usehooks-ts";
 import { ImperativePanelHandle } from "react-resizable-panels";
-import SummaryForm from "@/components/features/summary-form";
+import { InlineSummary } from "@/components/features/inline-summary";
 import { ArticleResponse, Source } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -45,13 +45,11 @@ export function ResizableModal({
   const drawerContentId = React.useId();
   
   const summaryPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const [isAnimating, setIsAnimating] = React.useState(false);
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const rafRef = React.useRef<number | null>(null);
-  
+
   React.useEffect(() => {
     if (!isDesktop) return;
-    
+
     const panel = summaryPanelRef.current;
     if (panel) {
       // Guard to prevent unnecessary animations during resize/drag
@@ -59,28 +57,19 @@ export function ResizableModal({
       const isExpanded = panel.getSize() > 0;
       if (sidebarOpen === isExpanded) return;
 
-      // Clear any existing timeouts
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      // Clear any existing RAF
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
-      setIsAnimating(true);
-      
       rafRef.current = requestAnimationFrame(() => {
         if (sidebarOpen) {
-          panel.expand(30);
+          panel.expand(25);
         } else {
           panel.collapse();
         }
       });
-
-      timeoutRef.current = setTimeout(() => {
-        setIsAnimating(false);
-        timeoutRef.current = null;
-      }, 500); // Matches duration-500
     }
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [sidebarOpen, isDesktop]);
@@ -97,25 +86,24 @@ export function ResizableModal({
               {children}
             </ResizablePanel>
             
-            <ResizableHandle 
-              withHandle 
+            <ResizableHandle
               className={cn(
-                "transition-opacity duration-300 group-active/panels:pointer-events-none!",
+                "transition-opacity duration-300",
                 !sidebarOpen && "opacity-0 pointer-events-none w-0"
-              )} 
+              )}
             />
-            
-            <ResizablePanel 
+
+            {/* Summary sidebar panel - fixed at 25% width for consistent layout in this modal variant */}
+            <ResizablePanel
               ref={summaryPanelRef}
-              defaultSize={sidebarOpen ? 30 : 0} 
-              minSize={20} 
-              maxSize={40} 
-              collapsible={true} 
-              collapsedSize={0} 
+              defaultSize={sidebarOpen ? 25 : 0}
+              minSize={25}
+              maxSize={25}
+              collapsible={true}
+              collapsedSize={0}
               className={cn(
                 "bg-accent/5 overflow-hidden",
-                "transition-[flex-grow,flex-basis] duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
-                "group-active/panels:transition-none"
+                "transition-[flex-grow,flex-basis] duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
               )}
               onCollapse={() => {
                  if (sidebarOpen) setSidebarOpen(false);
@@ -124,18 +112,13 @@ export function ResizableModal({
                  if (!sidebarOpen) setSidebarOpen(true);
               }}
             >
-               <div 
-                 className="h-full overflow-y-auto flex flex-col"
-                 style={{
-                   // During animation or when closed, fix width to prevents text reflow.
-                   // When open and static, allow full fluid width (100%) to avoid clipping.
-                   minWidth: !sidebarOpen || isAnimating ? "30vw" : "100%"
-                 }}
-               >
-                    <SummaryForm 
-                      urlProp={url} 
-                                            articleResults={articleResults}
-                      isOpen={sidebarOpen || false}
+               <div className="h-full overflow-y-auto flex flex-col p-4">
+                    <InlineSummary
+                      urlProp={url}
+                      articleResults={articleResults}
+                      isOpen={sidebarOpen}
+                      onOpenChange={setSidebarOpen}
+                      variant="sidebar"
                     />
                </div>
             </ResizablePanel>
@@ -158,16 +141,15 @@ export function ResizableModal({
           className="flex h-[85vh] flex-col bg-zinc-50 dark:bg-zinc-900 md:hidden"
           overlayClassName="md:hidden"
         >
-          <DrawerTitle className="sr-only">Generate Summary</DrawerTitle>
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="remove-all h-full">
-              <SummaryForm
-                urlProp={url}
-                                articleResults={articleResults}
-                isOpen={sidebarOpen || false}
-                usePortal={false}
-              />
-            </div>
+          <DrawerTitle className="sr-only">Article Summary</DrawerTitle>
+          <div className="flex min-h-0 flex-1 flex-col p-4">
+            <InlineSummary
+              urlProp={url}
+              articleResults={articleResults}
+              isOpen={sidebarOpen}
+              onOpenChange={setSidebarOpen}
+              variant="inline"
+            />
           </div>
           <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">
             <DrawerClose

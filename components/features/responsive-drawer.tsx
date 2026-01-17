@@ -30,6 +30,7 @@ interface ResponsiveDrawerProps {
   showCloseButton?: boolean;
   contentClassName?: string;
   nativeButton?: boolean;
+  triggerId?: string;
 }
 
 const DefaultTrigger = React.memo(function DefaultTrigger() {
@@ -51,6 +52,7 @@ export function ResponsiveDrawer({
   showCloseButton = true,
   contentClassName,
   nativeButton = true,
+  triggerId,
 }: ResponsiveDrawerProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)", {
@@ -75,7 +77,7 @@ export function ResponsiveDrawer({
     return (
       <Drawer open={open} onOpenChange={handleOpenChange}>
         <div className="relative inline-block">
-          <DrawerTrigger nativeButton={nativeButton} render={triggerElement} />
+          <DrawerTrigger id={triggerId} nativeButton={nativeButton} render={triggerElement} />
         </div>
         <DrawerContent
           id={contentId}
@@ -114,7 +116,7 @@ export function ResponsiveDrawer({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <div className="relative inline-block">
-        <DialogTrigger nativeButton={nativeButton} render={triggerElement} />
+        <DialogTrigger id={triggerId} nativeButton={nativeButton} render={triggerElement} />
       </div>
       <DialogContent
         id={contentId}

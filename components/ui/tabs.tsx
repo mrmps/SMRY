@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 
 type TabsVariant = "default" | "underline";
 
-function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
+function Tabs({ className, id, ...props }: TabsPrimitive.Root.Props & { id?: string }) {
   return (
     <TabsPrimitive.Root
+      id={id}
       className={cn(
         "flex flex-col gap-2 data-[orientation=vertical]:flex-row",
         className,
@@ -54,9 +55,10 @@ function TabsList({
   );
 }
 
-function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
+function TabsTab({ className, id, ...props }: TabsPrimitive.Tab.Props & { id?: string }) {
   return (
     <TabsPrimitive.Tab
+      id={id}
       className={cn(
         "flex flex-1 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent font-medium text-sm outline-none transition-[color,background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-disabled:opacity-64 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         "hover:text-muted-foreground data-selected:text-foreground",
@@ -70,9 +72,10 @@ function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
   );
 }
 
-function TabsPanel({ className, ...props }: TabsPrimitive.Panel.Props) {
+function TabsPanel({ className, id, ...props }: TabsPrimitive.Panel.Props & { id?: string }) {
   return (
     <TabsPrimitive.Panel
+      id={id}
       className={cn("flex-1 outline-none", className)}
       data-slot="tabs-content"
       {...props}

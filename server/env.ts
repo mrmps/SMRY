@@ -28,8 +28,12 @@ export const env = createEnv({
     // Alerting
     ALERT_EMAIL: z.string().email(),
 
+    // Gravity Ads
+    GRAVITY_API_KEY: z.string().min(1),
+
     // Email (inbound.new)
     INBOUND_API_KEY: z.string().min(1),
+    INBOUND_WEBHOOK_TOKEN: z.string().optional(),
 
     // Clerk Webhooks
     CLERK_WEBHOOK_SECRET: z.string().min(1),

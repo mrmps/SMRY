@@ -67,7 +67,7 @@ export function ModeToggle() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={buttonVariants({ variant: "outline", size: "icon" })}>
+      <DropdownMenuTrigger id="theme-menu-trigger" className={buttonVariants({ variant: "outline", size: "icon" })}>
         <Sun className={cn("h-4 w-4 transition-transform", isDark ? "scale-0" : "scale-100")} />
         <Moon className={cn("absolute h-4 w-4 transition-transform", isDark ? "scale-100" : "scale-0")} />
         <span className="sr-only">Toggle theme</span>

@@ -1,16 +1,18 @@
 import { setRequestLocale } from 'next-intl/server';
 import { ProxyPageContent } from '@/components/pages/proxy-content';
 
-// Force static generation - URL parsing happens client-side
-export const dynamic = 'force-static';
-
 type Props = {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ sidebar?: string }>;
 };
 
-export default async function ProxyPage({ params }: Props) {
+export default async function ProxyPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const { sidebar } = await searchParams;
   setRequestLocale(locale);
 
-  return <ProxyPageContent />;
+  // Parse sidebar param on server to prevent layout shift
+  const initialSidebarOpen = sidebar === 'true';
+
+  return <ProxyPageContent initialSidebarOpen={initialSidebarOpen} />;
 }

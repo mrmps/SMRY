@@ -29,9 +29,12 @@ import {
   AlertCircle,
   Zap,
   Infinity,
+  PanelRightClose,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SummaryError } from "@/lib/errors/summary";
+import { GravityAd } from "@/components/ads/gravity-ad";
+import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
@@ -237,6 +240,11 @@ interface InlineSummaryProps {
   articleResults: ArticleResults;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  variant?: "inline" | "sidebar";
+  /** Ad to display in sidebar mode */
+  ad?: GravityAdType | null;
+  /** Callback when ad becomes visible */
+  onAdVisible?: () => void;
 }
 
 function CollapsedSummary({
@@ -273,10 +281,16 @@ function ExpandedSummary({
   urlProp,
   articleResults,
   onCollapse,
+  variant = "inline",
+  ad,
+  onAdVisible,
 }: {
   urlProp: string;
   articleResults: ArticleResults;
   onCollapse: () => void;
+  variant?: "inline" | "sidebar";
+  ad?: GravityAdType | null;
+  onAdVisible?: () => void;
 }) {
   const { isSignedIn } = useAuth();
 
@@ -298,7 +312,7 @@ function ExpandedSummary({
   const selectedArticle = articleResults[selectedSource]?.data;
   const contentLength = selectedArticle?.article?.textContent?.length || 0;
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
+  const [preferredLanguage, setPreferredLanguage, hasLoaded] = useLocalStorage(
     "summary-language",
     "en",
   );
@@ -311,12 +325,15 @@ function ExpandedSummary({
     onUsageUpdate: setUsageData,
   });
 
+  // Note: Ad fetching is now handled in ProxyContent for consistent display across layouts
+
   // Track if we've auto-triggered using a ref to avoid setState in effect
   const hasTriggeredRef = useRef(false);
 
-  // Auto-generate on mount when valid content is available
+  // Auto-generate on mount when valid content is available (wait for language to load from storage)
   useEffect(() => {
     if (
+      hasLoaded &&
       !hasTriggeredRef.current &&
       !summary &&
       !isLoading &&
@@ -329,7 +346,7 @@ function ExpandedSummary({
         selectedArticle.article.title,
       );
     }
-  }, [summary, isLoading, contentLength, selectedArticle, generate]);
+  }, [hasLoaded, summary, isLoading, contentLength, selectedArticle, generate]);
 
   // Reset trigger when language or source changes
   useEffect(() => {
@@ -378,20 +395,29 @@ function ExpandedSummary({
   return (
     <div
       className={cn(
-        "mb-6 overflow-hidden rounded-xl",
-        "border border-border bg-card shadow-sm",
+        "overflow-hidden",
+        variant === "sidebar"
+          ? "h-full w-full flex flex-col"
+          : "rounded-xl border border-border bg-card shadow-sm mb-6",
       )}
     >
       {/* Header - always has collapse button */}
-      <div className="flex items-center justify-between gap-2 overflow-hidden border-b border-border bg-muted/50 px-3 py-2.5">
+      <div className={cn(
+        "flex items-center justify-between gap-2 overflow-hidden px-3 py-2.5",
+        variant === "sidebar" ? "border-b border-border" : "border-b border-border bg-muted/50"
+      )}>
         <div className="flex items-center gap-2">
-          <button
-            onClick={onCollapse}
-            className="flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
-          >
-            <span>TL;DR</span>
-            <ChevronUp className="size-4" />
-          </button>
+          {variant === "sidebar" ? (
+            <span className="text-sm font-semibold text-foreground">TL;DR</span>
+          ) : (
+            <button
+              onClick={onCollapse}
+              className="flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground"
+            >
+              <span>TL;DR</span>
+              <ChevronUp className="size-4" />
+            </button>
+          )}
           {isPremium && (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               <Infinity className="size-2.5" />
@@ -458,11 +484,24 @@ function ExpandedSummary({
               ))}
             </SelectContent>
           </Select>
+
+          {variant === "sidebar" && (
+            <button
+              onClick={onCollapse}
+              className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Collapse sidebar"
+            >
+              <PanelRightClose className="size-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-3 py-3 sm:px-4 sm:py-4">
+      <div className={cn(
+        "px-3 py-3 sm:px-4 sm:py-4",
+        variant === "sidebar" && "flex-1 overflow-y-auto"
+      )}>
         {error && (
           <SummaryErrorDisplay
             error={error}
@@ -485,17 +524,11 @@ function ExpandedSummary({
             <Response
               dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
               lang={preferredLanguage}
+              isAnimating={isStreaming}
             >
               {summary}
             </Response>
-            {isStreaming && (
-              <span
-                className={cn(
-                  "inline-block h-4 w-0.5 animate-pulse bg-foreground",
-                  RTL_LANGUAGES.has(preferredLanguage) ? "mr-0.5" : "ml-0.5"
-                )}
-              />
-            )}
+
           </div>
         )}
 
@@ -508,54 +541,67 @@ function ExpandedSummary({
         )}
       </div>
 
-      {/* Footer - always show collapse when expanded */}
-      <div className="border-t border-border px-3 py-2 text-center">
-        {isPremium && summary && !isStreaming && usageData?.model && (
-          <div className="text-[10px] text-muted-foreground/60">
-            <Zap className="mr-1 inline-block size-2.5" />
-            {usageData.model}
-          </div>
-        )}
-        {!isPremium && showUsageCounter && usageData && (
-          <div
-            className={cn(
-              "text-[10px] transition-colors",
-              isLoading ? "text-muted-foreground" : "text-muted-foreground/60",
-            )}
-          >
-            {isLoading && (
-              <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
-            )}
-            {usageData.model && <>{usageData.model} · </>}
-            {usageData.remaining > 0 ? (
-              <>{usageData.remaining} left</>
-            ) : (
-              <>
-                {usageData.limit - usageData.remaining}/{usageData.limit}
-              </>
-            )}
-            <span className="mx-1">·</span>
-            <Link
-              href="/pricing"
-              className="font-medium text-primary hover:underline"
-            >
-              Upgrade for faster, smarter AI
-            </Link>
-          </div>
-        )}
+      {/* Sidebar ad - above footer to prevent layout shift */}
+      {variant === "sidebar" && ad && onAdVisible && (
+        <div className="shrink-0 border-t border-border p-3">
+          <GravityAd ad={ad} onVisible={onAdVisible} className="!mt-0" />
+        </div>
+      )}
 
-        {/* Collapse button - always visible when expanded */}
-        <button
-          onClick={onCollapse}
-          className={cn(
-            "flex w-full items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground",
-            !isPremium && showUsageCounter && "mt-1",
+      {/* Footer - only render if there's content to show */}
+      {(isPremium || showUsageCounter || variant !== "sidebar") && (
+        <div className={cn(
+          "border-t border-border px-3 py-2 text-center",
+          variant === "sidebar" && "shrink-0"
+        )}>
+          {isPremium && summary && !isStreaming && usageData?.model && (
+            <div className="text-[10px] text-muted-foreground/60">
+              <Zap className="mr-1 inline-block size-2.5" />
+              {usageData.model}
+            </div>
           )}
-        >
-          <ChevronUp className="size-3.5" />
-          <span>Collapse</span>
-        </button>
-      </div>
+          {!isPremium && showUsageCounter && usageData && (
+            <div
+              className={cn(
+                "text-[10px] transition-colors",
+                isLoading ? "text-muted-foreground" : "text-muted-foreground/60",
+              )}
+            >
+              {isLoading && (
+                <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
+              )}
+              {usageData.remaining > 0 ? (
+                <>{usageData.remaining} left</>
+              ) : (
+                <>
+                  {usageData.limit - usageData.remaining}/{usageData.limit}
+                </>
+              )}
+              <span className="mx-1">·</span>
+              <Link
+                href="/pricing"
+                className="font-medium text-primary hover:underline"
+              >
+                No ads + faster AI
+              </Link>
+            </div>
+          )}
+
+          {/* Collapse button - only show in inline mode */}
+          {variant !== "sidebar" && (
+            <button
+              onClick={onCollapse}
+              className={cn(
+                "flex w-full items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground",
+                !isPremium && showUsageCounter && "mt-1",
+              )}
+            >
+              <ChevronUp className="size-3.5" />
+              <span>Collapse</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -565,12 +611,16 @@ export function InlineSummary({
   articleResults,
   isOpen,
   onOpenChange,
+  variant = "inline",
+  ad,
+  onAdVisible,
 }: InlineSummaryProps) {
   const hasArticleData = Object.values(articleResults).some(
     (r) => r.data?.article?.textContent,
   );
 
-  if (!isOpen) {
+  // Mobile collapsed state: just show the button (ad handled by parent)
+  if (!isOpen && variant === "inline") {
     return (
       <CollapsedSummary
         onExpand={() => onOpenChange(true)}
@@ -579,12 +629,20 @@ export function InlineSummary({
     );
   }
 
+  // Sidebar closed: render nothing (ad handled by parent)
+  if (!isOpen && variant === "sidebar") {
+    return null;
+  }
+
   return (
     <ExpandedSummary
       key={`${urlProp}-expanded`}
       urlProp={urlProp}
       articleResults={articleResults}
       onCollapse={() => onOpenChange(false)}
+      variant={variant}
+      ad={ad}
+      onAdVisible={onAdVisible}
     />
   );
 }
