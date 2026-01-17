@@ -91,14 +91,16 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
       <HistoryIcon className="size-4" />
       {!isDesktop && <span className="sr-only">History</span>}
       {/* Premium badge for non-signed-in users - always reserve space to prevent shift */}
-      <span 
+      {/* suppressHydrationWarning: auth state differs between server/client */}
+      <span
         className={cn(
           "absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm transition-opacity",
-          showBadge 
-            ? "bg-linear-to-r from-amber-400 to-orange-500 opacity-100" 
+          showBadge
+            ? "bg-linear-to-r from-amber-400 to-orange-500 opacity-100"
             : "opacity-0 pointer-events-none"
         )}
         aria-hidden={!showBadge}
+        suppressHydrationWarning
       >
         ★
       </span>
