@@ -182,11 +182,14 @@ export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): U
   });
 
   const fireImpression = useCallback((impUrl: string) => {
-    // Fire impression beacon - required for Gravity payment tracking
+    // Fire impression via our proxy to avoid ad blockers
+    // The proxy forwards the request to Gravity server-side
+    const proxyUrl = getApiUrl(`/api/track-impression?url=${encodeURIComponent(impUrl)}`);
+
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-      navigator.sendBeacon(impUrl);
+      navigator.sendBeacon(proxyUrl);
     } else {
-      fetch(impUrl, { method: "GET", mode: "no-cors" }).catch(() => {});
+      fetch(proxyUrl, { method: "GET" }).catch(() => {});
     }
   }, []);
 

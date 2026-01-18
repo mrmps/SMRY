@@ -65,7 +65,52 @@ export interface GravityAdResponse {
   cta?: string;
 }
 
-export const gravityRoutes = new Elysia({ prefix: "/api" }).post(
+export const gravityRoutes = new Elysia({ prefix: "/api" })
+  .get(
+    "/track-impression",
+    async ({ query, set }) => {
+      const { url } = query;
+
+      if (!url) {
+        set.status = 400;
+        return { error: "Missing url parameter" };
+      }
+
+      // Validate URL is from Gravity
+      try {
+        const parsedUrl = new URL(url);
+        if (!parsedUrl.hostname.endsWith("trygravity.ai")) {
+          set.status = 400;
+          return { error: "Invalid impression URL" };
+        }
+      } catch {
+        set.status = 400;
+        return { error: "Invalid URL format" };
+      }
+
+      // Forward the impression request to Gravity
+      try {
+        await fetch(url, {
+          method: "GET",
+          headers: {
+            "User-Agent": "13ft-impression-proxy/1.0",
+          },
+        });
+      } catch {
+        // Silently fail - impression tracking is best-effort
+      }
+
+      // Return 204 No Content - the client doesn't need a response
+      set.status = 204;
+      return;
+    },
+    {
+      query: t.Object({
+        url: t.String(),
+      }),
+    }
+  )
+  .post(
   "/gravity-ad",
   async ({ body, request, set }) => {
     try {
