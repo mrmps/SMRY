@@ -189,7 +189,7 @@ export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): U
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
       navigator.sendBeacon(proxyUrl);
     } else {
-      fetch(proxyUrl, { method: "GET" }).catch(() => {});
+      fetch(proxyUrl, { method: "POST" }).catch(() => {});
     }
   }, []);
 

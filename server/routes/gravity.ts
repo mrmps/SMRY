@@ -69,10 +69,10 @@ export interface GravityAdResponse {
 }
 
 export const gravityRoutes = new Elysia({ prefix: "/api" })
-  .get(
+  .post(
     "/track-impression",
     async ({ query, set }) => {
-      const { url } = query;
+      const url = query.url;
 
       if (!url) {
         set.status = 400;
