@@ -9,6 +9,9 @@ import { Elysia, t } from "elysia";
 import { getAuthInfo } from "../middleware/auth";
 import { env } from "../env";
 import { extractClientIp } from "../../lib/request-context";
+import { createLogger } from "../../lib/logger";
+
+const logger = createLogger("api:gravity");
 
 const GRAVITY_API_URL = "https://server.trygravity.ai/api/v1/ad";
 const GRAVITY_TIMEOUT_MS = 3000;
@@ -90,13 +93,18 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
       // Forward the impression request to Gravity
       try {
-        await fetch(url, {
+        logger.info({ impUrl: url }, "Forwarding impression to Gravity");
+        const response = await fetch(url, {
           method: "GET",
           headers: {
             "User-Agent": "13ft-impression-proxy/1.0",
           },
         });
-      } catch {
+        // Consume body to release connection resources
+        await response.text().catch(() => {});
+        logger.info({ impUrl: url, status: response.status }, "Impression forwarded successfully");
+      } catch (error) {
+        logger.warn({ impUrl: url, error: String(error) }, "Failed to forward impression");
         // Silently fail - impression tracking is best-effort
       }
 
@@ -164,6 +172,15 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         user: gravityUser,
       };
 
+      // Log the request being sent to Gravity
+      logger.info({
+        url,
+        sessionId,
+        hasDevice: !!gravityDevice,
+        hasUser: !!gravityUser,
+        testAd: USE_TEST_ADS,
+      }, "Sending ad request to Gravity");
+
       // Call Gravity API with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
@@ -183,15 +200,14 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         // No matching ad
         if (response.status === 204) {
+          logger.info({ url, status: 204 }, "No matching ad from Gravity");
           set.status = 204;
           return;
         }
 
         if (!response.ok) {
-          if (env.NODE_ENV === "development") {
-            const errorBody = await response.text().catch(() => "");
-            console.warn(`[gravity] API error ${response.status}:`, errorBody);
-          }
+          const errorBody = await response.text().catch(() => "");
+          logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
           set.status = 204;
           return;
         }
@@ -199,23 +215,21 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         const ads = (await response.json()) as GravityAdResponse[];
 
         if (ads && ads.length > 0) {
+          logger.info({ url, brandName: ads[0].brandName }, "Ad received from Gravity");
           return ads[0];
         }
 
+        logger.info({ url }, "Empty ad array from Gravity");
         set.status = 204;
         return;
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        if (env.NODE_ENV === "development") {
-          console.warn("[gravity] Fetch error:", fetchError);
-        }
+        logger.warn({ error: String(fetchError) }, "Gravity fetch error");
         set.status = 204;
         return;
       }
     } catch (error) {
-      if (env.NODE_ENV === "development") {
-        console.error("[gravity] Unexpected error:", error);
-      }
+      logger.error({ error: String(error) }, "Unexpected error in gravity-ad");
       set.status = 204;
       return;
     }
