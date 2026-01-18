@@ -31,10 +31,12 @@ interface GravityPlacement {
 
 interface GravityDevice {
   ip?: string;
+  os?: string;
   timezone?: string;
   locale?: string;
   language?: string;
   ua?: string;
+  browser?: string;
   device_type?: "desktop" | "mobile" | "tablet";
   screen_width?: number;
   screen_height?: number;
@@ -144,10 +146,12 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const clientIp = extractClientIp(request);
       const gravityDevice: GravityDevice | undefined = device ? {
         ip: clientIp,
+        os: device.os,
         timezone: device.timezone,
         locale: device.locale,
         language: device.language,
         ua: device.ua,
+        browser: device.browser,
         device_type: device.deviceType,
         screen_width: device.screenWidth,
         screen_height: device.screenHeight,
@@ -245,6 +249,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         locale: t.Optional(t.String()),
         language: t.Optional(t.String()),
         ua: t.Optional(t.String()),
+        os: t.Optional(t.String()),
+        browser: t.Optional(t.String()),
         deviceType: t.Optional(t.Union([
           t.Literal("desktop"),
           t.Literal("mobile"),

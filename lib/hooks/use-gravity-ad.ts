@@ -30,6 +30,8 @@ interface DeviceInfo {
   locale: string;
   language: string;
   ua: string;
+  os: string;
+  browser: string;
   deviceType: "desktop" | "mobile" | "tablet";
   screenWidth: number;
   screenHeight: number;
@@ -62,6 +64,44 @@ function getDeviceType(): "desktop" | "mobile" | "tablet" {
   return "desktop";
 }
 
+function getOS(): string {
+  if (typeof window === "undefined") return "unknown";
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return "windows";
+  if (/Mac OS X|Macintosh/i.test(ua)) return "macos";
+  if (/Linux/i.test(ua) && !/Android/i.test(ua)) return "linux";
+  if (/Android/i.test(ua)) return "android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/CrOS/i.test(ua)) return "chromeos";
+  return "unknown";
+}
+
+function getBrowser(): string {
+  if (typeof window === "undefined") return "unknown";
+
+  // Use modern userAgentData API if available (Chrome 90+, Edge 90+, Opera 76+)
+  const uaData = (navigator as Navigator & { userAgentData?: { brands?: Array<{ brand: string }> } }).userAgentData;
+  if (uaData?.brands) {
+    const dominated = ["Google Chrome", "Microsoft Edge", "Opera", "Brave"];
+    for (const { brand } of uaData.brands) {
+      if (dominated.includes(brand)) {
+        return brand.split(" ").pop()?.toLowerCase() || "unknown";
+      }
+    }
+  }
+
+  // Fallback to UA string parsing
+  const ua = navigator.userAgent;
+  // Order matters - check more specific browsers first
+  if (/Edg\//i.test(ua)) return "edge";
+  if (/OPR\//i.test(ua) || /Opera/i.test(ua)) return "opera";
+  if (/Firefox/i.test(ua)) return "firefox";
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) return "chrome";
+  if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return "safari";
+  if (/MSIE|Trident/i.test(ua)) return "ie";
+  return "unknown";
+}
+
 function collectDeviceInfo(): DeviceInfo {
   if (typeof window === "undefined") {
     return {
@@ -69,6 +109,8 @@ function collectDeviceInfo(): DeviceInfo {
       locale: "en-US",
       language: "en",
       ua: "",
+      os: "unknown",
+      browser: "unknown",
       deviceType: "desktop",
       screenWidth: 1920,
       screenHeight: 1080,
@@ -82,6 +124,8 @@ function collectDeviceInfo(): DeviceInfo {
     locale: navigator.language || "en-US",
     language: navigator.language?.split("-")[0] || "en",
     ua: navigator.userAgent,
+    os: getOS(),
+    browser: getBrowser(),
     deviceType: getDeviceType(),
     screenWidth: window.screen.width,
     screenHeight: window.screen.height,
