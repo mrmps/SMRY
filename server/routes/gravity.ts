@@ -1,8 +1,9 @@
 /**
- * Gravity Ad Route - POST /api/gravity-ad
+ * Gravity Context Routes - POST /api/context, POST /api/px
  *
- * Fetches contextual ads from Gravity AI for free users.
- * Passes device/user info for better targeting and higher CPMs.
+ * Fetches contextual content from Gravity AI for free users.
+ * Passes device/user info for better targeting.
+ * Endpoint names are neutral to avoid content blockers.
  */
 
 import { Elysia, t } from "elysia";
@@ -72,7 +73,7 @@ export interface GravityAdResponse {
 
 export const gravityRoutes = new Elysia({ prefix: "/api" })
   .post(
-    "/track-impression",
+    "/px",
     async ({ query, set }) => {
       const url = query.url;
 
@@ -121,7 +122,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
     }
   )
   .post(
-  "/gravity-ad",
+  "/context",
   async ({ body, request, set }) => {
     try {
       // Check premium status - return 204 for premium users
@@ -233,7 +234,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         return;
       }
     } catch (error) {
-      logger.error({ error: String(error) }, "Unexpected error in gravity-ad");
+      logger.error({ error: String(error) }, "Unexpected error in context route");
       set.status = 204;
       return;
     }

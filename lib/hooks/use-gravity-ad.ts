@@ -137,6 +137,10 @@ function collectDeviceInfo(): DeviceInfo {
 export interface UseGravityAdOptions {
   /** URL of the article - triggers immediate ad fetch */
   url: string;
+  /** Article title for better ad targeting */
+  title?: string;
+  /** Article text content for better ad targeting */
+  textContent?: string;
   /** Whether the user is premium (skips ad fetch) */
   isPremium?: boolean;
 }
@@ -147,7 +151,7 @@ export interface UseGravityAdResult {
   fireImpression: (impUrl: string) => void;
 }
 
-export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): UseGravityAdResult {
+export function useGravityAd({ url, title = "", textContent = "", isPremium = false }: UseGravityAdOptions): UseGravityAdResult {
   const { getToken } = useAuth();
   const { user } = useUser();
   const [sessionId, setSessionId] = useState<string>("");
@@ -172,7 +176,7 @@ export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): U
   }, [user]);
 
   const query = useQuery({
-    queryKey: ["gravity-ad", url, sessionId],
+    queryKey: ["context", url, sessionId, title],
     queryFn: async (): Promise<GravityAd | null> => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -190,13 +194,16 @@ export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): U
         }
       }
 
-      const response = await fetch(getApiUrl("/api/gravity-ad"), {
+      // Truncate textContent to ~2000 chars for summary (enough context without being too large)
+      const summary = textContent ? textContent.slice(0, 2000) : "";
+
+      const response = await fetch(getApiUrl("/api/context"), {
         method: "POST",
         headers,
         body: JSON.stringify({
           url,
-          title: "", // API will extract from URL
-          summary: "",
+          title,
+          summary,
           sessionId,
           device: deviceInfo,
           user: userInfo,
@@ -226,9 +233,9 @@ export function useGravityAd({ url, isPremium = false }: UseGravityAdOptions): U
   });
 
   const fireImpression = useCallback((impUrl: string) => {
-    // Fire impression via our proxy to avoid ad blockers
+    // Fire impression via our proxy to avoid blockers
     // The proxy forwards the request to Gravity server-side
-    const proxyUrl = getApiUrl(`/api/track-impression?url=${encodeURIComponent(impUrl)}`);
+    const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(impUrl)}`);
 
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
       navigator.sendBeacon(proxyUrl);

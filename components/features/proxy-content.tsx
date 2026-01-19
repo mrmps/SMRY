@@ -127,9 +127,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const { isPremium } = useIsPremium();
   const isDesktop = useIsDesktop();
 
-  // Fetch ad immediately - never cached
-  const { ad: gravityAd, fireImpression } = useGravityAd({ url, isPremium });
-
   const viewModes = ["markdown", "html", "iframe"] as const;
 
   const [query, setQuery] = useQueryStates(
@@ -163,6 +160,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     );
     return entry ? entry[1].data?.article : null;
   }, [results]);
+
+  // Fetch ad - pass article data for better targeting
+  const { ad: gravityAd, fireImpression } = useGravityAd({
+    url,
+    title: firstSuccessfulArticle?.title,
+    textContent: firstSuccessfulArticle?.textContent,
+    isPremium,
+  });
 
   // Handle article load: save to history
   useEffect(() => {
