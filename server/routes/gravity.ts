@@ -132,14 +132,14 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         return;
       }
 
-      const { title, url, summary, sessionId, device, user } = body;
+      const { title, url, articleContent, sessionId, device, user } = body;
 
       // Build conversation context for Gravity
       // Include article content as context for better ad matching
       const messages: GravityMessage[] = [
         {
           role: "user",
-          content: `I'm reading this article:\n\nTitle: ${title}\nURL: ${url}\n\nContent preview:\n${summary}`,
+          content: `I'm reading this article:\n\nTitle: ${title}\nURL: ${url}\n\nArticle content:\n${articleContent}`,
         },
       ];
 
@@ -182,7 +182,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         url,
         sessionId,
         titleLength: title?.length || 0,
-        summaryLength: summary?.length || 0,
+        articleContentLength: articleContent?.length || 0,
         hasDevice: !!gravityDevice,
         hasUser: !!gravityUser,
         testAd: USE_TEST_ADS,
@@ -243,9 +243,9 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   },
   {
     body: t.Object({
-      title: t.String(),
       url: t.String(),
-      summary: t.String(),
+      title: t.String(),
+      articleContent: t.String(), // The actual article text (truncated to ~2000 chars)
       sessionId: t.String(),
       device: t.Optional(t.Object({
         timezone: t.Optional(t.String()),

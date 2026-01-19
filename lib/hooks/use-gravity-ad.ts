@@ -11,33 +11,12 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
 import { useAuth, useUser } from "@clerk/nextjs";
+import type { ContextAd, ContextDevice, ContextRequest } from "@/types/api";
 
 const SESSION_ID_KEY = "gravity-session-id";
 
-export interface GravityAd {
-  adText: string;
-  title: string;
-  clickUrl: string;
-  impUrl: string;
-  brandName: string;
-  url?: string;
-  favicon?: string;
-  cta?: string;
-}
-
-interface DeviceInfo {
-  timezone: string;
-  locale: string;
-  language: string;
-  ua: string;
-  os: string;
-  browser: string;
-  deviceType: "desktop" | "mobile" | "tablet";
-  screenWidth: number;
-  screenHeight: number;
-  viewportWidth: number;
-  viewportHeight: number;
-}
+// Re-export for consumers
+export type { ContextAd as GravityAd };
 
 function generateSessionId(): string {
   return crypto.randomUUID();
@@ -102,7 +81,7 @@ function getBrowser(): string {
   return "unknown";
 }
 
-function collectDeviceInfo(): DeviceInfo {
+function collectDeviceInfo(): ContextDevice {
   if (typeof window === "undefined") {
     return {
       timezone: "UTC",
@@ -146,7 +125,7 @@ export interface UseGravityAdOptions {
 }
 
 export interface UseGravityAdResult {
-  ad: GravityAd | null;
+  ad: ContextAd | null;
   isLoading: boolean;
   fireImpression: (impUrl: string) => void;
 }
@@ -155,7 +134,7 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
   const { getToken } = useAuth();
   const { user } = useUser();
   const [sessionId, setSessionId] = useState<string>("");
-  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [deviceInfo, setDeviceInfo] = useState<ContextDevice | null>(null);
 
   // Initialize session ID and device info on client
   useEffect(() => {
@@ -177,7 +156,7 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
 
   const query = useQuery({
     queryKey: ["context", url, sessionId, title],
-    queryFn: async (): Promise<GravityAd | null> => {
+    queryFn: async (): Promise<ContextAd | null> => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -194,20 +173,22 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
         }
       }
 
-      // Truncate textContent to ~2000 chars for summary (enough context without being too large)
-      const summary = textContent ? textContent.slice(0, 2000) : "";
+      // Truncate textContent to ~2000 chars (enough context without being too large)
+      const articleContent = textContent ? textContent.slice(0, 2000) : "";
+
+      const requestBody: ContextRequest = {
+        url,
+        title,
+        articleContent,
+        sessionId,
+        device: deviceInfo ?? undefined,
+        user: userInfo,
+      };
 
       const response = await fetch(getApiUrl("/api/context"), {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          url,
-          title,
-          summary,
-          sessionId,
-          device: deviceInfo,
-          user: userInfo,
-        }),
+        body: JSON.stringify(requestBody),
         credentials: "include",
       });
 

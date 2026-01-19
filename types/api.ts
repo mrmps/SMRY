@@ -154,3 +154,54 @@ export type LanguageCode = (typeof LANGUAGES)[number]["code"];
 export function getLanguagePrompt(code: string): string {
   return LANGUAGES.find((l) => l.code === code)?.prompt ?? "";
 }
+
+// =============================================================================
+// Context API (ad serving) - POST /api/context
+// =============================================================================
+
+// Device info for ad targeting
+export const ContextDeviceSchema = z.object({
+  timezone: z.string().optional(),
+  locale: z.string().optional(),
+  language: z.string().optional(),
+  ua: z.string().optional(),
+  os: z.string().optional(),
+  browser: z.string().optional(),
+  deviceType: z.enum(["desktop", "mobile", "tablet"]).optional(),
+  screenWidth: z.number().optional(),
+  screenHeight: z.number().optional(),
+  viewportWidth: z.number().optional(),
+  viewportHeight: z.number().optional(),
+});
+export type ContextDevice = z.infer<typeof ContextDeviceSchema>;
+
+// User info for ad targeting
+export const ContextUserSchema = z.object({
+  id: z.string().optional(),
+  email: z.string().optional(),
+});
+export type ContextUser = z.infer<typeof ContextUserSchema>;
+
+// Request body for /api/context
+export const ContextRequestSchema = z.object({
+  url: z.string(),
+  title: z.string(),
+  articleContent: z.string(), // The actual article text (truncated to ~2000 chars)
+  sessionId: z.string(),
+  device: ContextDeviceSchema.optional(),
+  user: ContextUserSchema.optional(),
+});
+export type ContextRequest = z.infer<typeof ContextRequestSchema>;
+
+// Response from /api/context (ad data from Gravity)
+export const ContextAdSchema = z.object({
+  adText: z.string(),
+  title: z.string(),
+  clickUrl: z.string(),
+  impUrl: z.string(),
+  brandName: z.string(),
+  url: z.string().optional(),
+  favicon: z.string().optional(),
+  cta: z.string().optional(),
+});
+export type ContextAd = z.infer<typeof ContextAdSchema>;
