@@ -227,8 +227,9 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
     gcTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    // Only fetch when we have session info and user is not premium
-    enabled: !!sessionId && !!deviceInfo && !isPremium && !!url,
+    // Only fetch when we have session info, article content, and user is not premium
+    // Wait for title to avoid wasting a request before article loads
+    enabled: !!sessionId && !!deviceInfo && !isPremium && !!url && !!title,
     retry: false,
   });
 
