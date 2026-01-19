@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
 import { useAuth, useUser } from "@clerk/nextjs";
-import type { ContextAd, ContextDevice, ContextRequest } from "@/types/api";
+import type { ContextAd, ContextDevice, ContextRequest, ContextResponse } from "@/types/api";
 
 const SESSION_ID_KEY = "gravity-session-id";
 
@@ -192,16 +192,20 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
         credentials: "include",
       });
 
-      // 204 means no ad available (premium user or no match)
-      if (response.status === 204) {
-        return null;
-      }
-
       if (!response.ok) {
+        console.warn("[useGravityAd] Request failed:", response.status);
         return null;
       }
 
-      return response.json();
+      const data: ContextResponse = await response.json();
+
+      // Log the response status for debugging
+      if (data.status !== "filled") {
+        console.log("[useGravityAd] No ad:", data.status, data.debug);
+      }
+
+      // Only return ad if status is "filled"
+      return data.status === "filled" ? data.ad ?? null : null;
     },
     // Never cache - always fetch fresh ads
     staleTime: 0,

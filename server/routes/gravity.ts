@@ -123,19 +123,17 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   )
   .post(
   "/context",
-  async ({ body, request, set }) => {
+  async ({ body, request }) => {
     try {
-      // Check premium status - return 204 for premium users
+      // Check premium status
       const { isPremium, userId } = await getAuthInfo(request);
       if (isPremium) {
-        set.status = 204;
-        return;
+        return { status: "premium_user" as const };
       }
 
       const { title, url, articleContent, sessionId, device, user } = body;
 
       // Build conversation context for Gravity
-      // Include article content as context for better ad matching
       const messages: GravityMessage[] = [
         {
           role: "user",
@@ -170,9 +168,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         messages,
         sessionId,
         placements: [{ placement: "below_response", placement_id: "smry-summary-bottom" }],
-        // Only include testAd in development - never send false in production
         ...(USE_TEST_ADS && { testAd: true }),
-        relevancy: 0.3, // Allow somewhat relevant ads
+        relevancy: 0.3,
         device: gravityDevice,
         user: gravityUser,
       };
@@ -205,40 +202,58 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         clearTimeout(timeoutId);
 
-        // No matching ad
+        // No matching ad from Gravity
         if (response.status === 204) {
           logger.info({ url, status: 204 }, "No matching ad from Gravity");
-          set.status = 204;
-          return;
+          return {
+            status: "no_fill" as const,
+            debug: { gravityStatus: 204 },
+          };
         }
 
+        // Gravity API error
         if (!response.ok) {
           const errorBody = await response.text().catch(() => "");
           logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
-          set.status = 204;
-          return;
+          return {
+            status: "gravity_error" as const,
+            debug: { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200) },
+          };
         }
 
         const ads = (await response.json()) as GravityAdResponse[];
 
         if (ads && ads.length > 0) {
           logger.info({ url, brandName: ads[0].brandName }, "Ad received from Gravity");
-          return ads[0];
+          return {
+            status: "filled" as const,
+            ad: ads[0],
+          };
         }
 
+        // Empty array from Gravity
         logger.info({ url }, "Empty ad array from Gravity");
-        set.status = 204;
-        return;
+        return {
+          status: "no_fill" as const,
+          debug: { gravityStatus: 200, errorMessage: "Empty ad array" },
+        };
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        logger.warn({ error: String(fetchError) }, "Gravity fetch error");
-        set.status = 204;
-        return;
+        const errorMsg = String(fetchError);
+        const isTimeout = errorMsg.includes("abort");
+        logger.warn({ error: errorMsg, isTimeout }, "Gravity fetch error");
+        return {
+          status: isTimeout ? "timeout" as const : "gravity_error" as const,
+          debug: { errorMessage: errorMsg.slice(0, 200) },
+        };
       }
     } catch (error) {
-      logger.error({ error: String(error) }, "Unexpected error in context route");
-      set.status = 204;
-      return;
+      const errorMsg = String(error);
+      logger.error({ error: errorMsg }, "Unexpected error in context route");
+      return {
+        status: "error" as const,
+        debug: { errorMessage: errorMsg.slice(0, 200) },
+      };
     }
   },
   {

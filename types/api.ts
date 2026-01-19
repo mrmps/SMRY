@@ -193,7 +193,7 @@ export const ContextRequestSchema = z.object({
 });
 export type ContextRequest = z.infer<typeof ContextRequestSchema>;
 
-// Response from /api/context (ad data from Gravity)
+// Ad data from Gravity
 export const ContextAdSchema = z.object({
   adText: z.string(),
   title: z.string(),
@@ -205,3 +205,26 @@ export const ContextAdSchema = z.object({
   cta: z.string().optional(),
 });
 export type ContextAd = z.infer<typeof ContextAdSchema>;
+
+// Response status for /api/context - tells client WHY there's no ad
+export const ContextResponseStatusSchema = z.enum([
+  "filled",        // Ad was returned successfully
+  "no_fill",       // Gravity had no matching ad
+  "premium_user",  // User is premium, no ads shown
+  "gravity_error", // Gravity API returned an error
+  "timeout",       // Request to Gravity timed out
+  "error",         // Unexpected error on our end
+]);
+export type ContextResponseStatus = z.infer<typeof ContextResponseStatusSchema>;
+
+// Full response from /api/context
+export const ContextResponseSchema = z.object({
+  status: ContextResponseStatusSchema,
+  ad: ContextAdSchema.optional(),
+  // Debug info (only included when no ad)
+  debug: z.object({
+    gravityStatus: z.number().optional(),
+    errorMessage: z.string().optional(),
+  }).optional(),
+});
+export type ContextResponse = z.infer<typeof ContextResponseSchema>;
