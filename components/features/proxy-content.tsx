@@ -154,11 +154,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const initializedUrlRef = useRef<string | null>(null);
 
   // Find first successful article result
+  // Prefer Readability-based sources (smry-fast, smry-slow, wayback) over Jina
+  // because Jina returns full page markdown including navigation
   const firstSuccessfulArticle = useMemo(() => {
-    const entry = Object.entries(results).find(
-      ([, result]) => result.isSuccess && result.data?.article?.title
-    );
-    return entry ? entry[1].data?.article : null;
+    // Preferred order: Readability sources first, then Jina as fallback
+    const preferredOrder: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
+
+    for (const source of preferredOrder) {
+      const result = results[source];
+      if (result?.isSuccess && result.data?.article?.title) {
+        return result.data.article;
+      }
+    }
+    return null;
   }, [results]);
 
   // Fetch ad - pass article data for better targeting

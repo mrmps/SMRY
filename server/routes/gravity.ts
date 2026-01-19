@@ -181,6 +181,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       logger.info({
         url,
         sessionId,
+        titleLength: title?.length || 0,
+        summaryLength: summary?.length || 0,
         hasDevice: !!gravityDevice,
         hasUser: !!gravityUser,
         testAd: USE_TEST_ADS,
