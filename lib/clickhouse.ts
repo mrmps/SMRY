@@ -110,6 +110,195 @@ export interface AnalyticsEvent {
   version: string;
 }
 
+// =============================================================================
+// Ad Event Tracking
+// =============================================================================
+
+// Ad event status - matches ContextResponseStatus in types/api.ts
+export type AdEventStatus = "filled" | "no_fill" | "premium_user" | "gravity_error" | "timeout" | "error";
+
+export interface AdEvent {
+  event_id: string;
+  timestamp: string;
+  // Request context
+  url: string;
+  hostname: string;
+  article_title: string;
+  article_content_length: number;
+  session_id: string;
+  // User context
+  user_id: string;
+  is_premium: number;
+  // Device context
+  device_type: string;
+  os: string;
+  browser: string;
+  // Response
+  status: AdEventStatus;
+  gravity_status_code: number;
+  error_message: string;
+  // Ad data (when filled)
+  brand_name: string;
+  ad_title: string;
+  // Performance
+  duration_ms: number;
+  // Environment
+  env: string;
+}
+
+// Separate buffer for ad events
+const adEventBuffer: AdEvent[] = [];
+let adFlushTimer: NodeJS.Timeout | null = null;
+let adSchemaMigrated = false;
+
+/**
+ * Ensure ad_events table exists
+ */
+async function ensureAdSchema(): Promise<void> {
+  if (adSchemaMigrated) return;
+
+  const clickhouse = getClient();
+  if (!clickhouse) return;
+
+  try {
+    await clickhouse.command({
+      query: `
+        CREATE TABLE IF NOT EXISTS ad_events
+        (
+            event_id String,
+            timestamp DateTime64(3) DEFAULT now64(3),
+            -- Request context
+            url String,
+            hostname LowCardinality(String),
+            article_title String DEFAULT '',
+            article_content_length UInt32 DEFAULT 0,
+            session_id String,
+            -- User context
+            user_id String DEFAULT '',
+            is_premium UInt8 DEFAULT 0,
+            -- Device context
+            device_type LowCardinality(String) DEFAULT '',
+            os LowCardinality(String) DEFAULT '',
+            browser LowCardinality(String) DEFAULT '',
+            -- Response
+            status LowCardinality(String),
+            gravity_status_code UInt16 DEFAULT 0,
+            error_message String DEFAULT '',
+            -- Ad data (when filled)
+            brand_name LowCardinality(String) DEFAULT '',
+            ad_title String DEFAULT '',
+            -- Performance
+            duration_ms UInt32 DEFAULT 0,
+            -- Environment
+            env LowCardinality(String) DEFAULT 'production'
+        )
+        ENGINE = MergeTree()
+        PARTITION BY toYYYYMM(timestamp)
+        ORDER BY (hostname, status, timestamp, event_id)
+        TTL toDateTime(timestamp) + INTERVAL 90 DAY
+        SETTINGS index_granularity = 8192
+      `,
+    });
+
+    adSchemaMigrated = true;
+    console.log("[clickhouse] Ad events schema migration complete");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
+      disableClickhouse(message);
+    } else {
+      console.error("[clickhouse] Ad schema migration failed:", message);
+    }
+  }
+}
+
+/**
+ * Flush ad events to ClickHouse
+ */
+async function flushAdEvents(): Promise<void> {
+  if (adEventBuffer.length === 0) return;
+
+  const clickhouse = getClient();
+  if (!clickhouse) return;
+
+  await ensureAdSchema();
+
+  const events = adEventBuffer.splice(0, adEventBuffer.length);
+
+  try {
+    await clickhouse.insert({
+      table: "ad_events",
+      values: events,
+      format: "JSONEachRow",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT")) {
+      disableClickhouse(message);
+    } else {
+      console.error("[clickhouse] Ad events flush failed:", message);
+    }
+  }
+}
+
+/**
+ * Schedule ad events flush
+ */
+function scheduleAdFlush(): void {
+  if (adFlushTimer) return;
+  adFlushTimer = setTimeout(async () => {
+    adFlushTimer = null;
+    await flushAdEvents();
+  }, FLUSH_INTERVAL_MS);
+  adFlushTimer.unref();
+}
+
+/**
+ * Track an ad event
+ */
+export function trackAdEvent(event: Partial<AdEvent>): void {
+  const rawTimestamp = event.timestamp || new Date().toISOString();
+  const clickhouseTimestamp = rawTimestamp.replace("T", " ").replace("Z", "");
+
+  const fullEvent: AdEvent = {
+    event_id: event.event_id || crypto.randomUUID(),
+    timestamp: clickhouseTimestamp,
+    url: event.url || "",
+    hostname: event.hostname || "",
+    article_title: (event.article_title || "").slice(0, 500),
+    article_content_length: event.article_content_length || 0,
+    session_id: event.session_id || "",
+    user_id: event.user_id || "",
+    is_premium: event.is_premium || 0,
+    device_type: event.device_type || "",
+    os: event.os || "",
+    browser: event.browser || "",
+    status: event.status || "error",
+    gravity_status_code: event.gravity_status_code || 0,
+    error_message: (event.error_message || "").slice(0, 500),
+    brand_name: event.brand_name || "",
+    ad_title: (event.ad_title || "").slice(0, 500),
+    duration_ms: event.duration_ms || 0,
+    env: event.env || env.NODE_ENV,
+  };
+
+  if (adEventBuffer.length >= MAX_BUFFER_SIZE) {
+    adEventBuffer.shift();
+  }
+
+  adEventBuffer.push(fullEvent);
+
+  if (adEventBuffer.length >= BATCH_SIZE) {
+    flushAdEvents().catch(() => {});
+  } else {
+    scheduleAdFlush();
+  }
+}
+
+// =============================================================================
+// Request Event Tracking
+// =============================================================================
+
 // MEMORY SAFETY: Bounded buffer with strict max size
 const MAX_BUFFER_SIZE = 500;
 const BATCH_SIZE = 50;
@@ -446,7 +635,11 @@ export async function closeClickhouse(): Promise<void> {
     clearTimeout(flushTimer);
     flushTimer = null;
   }
-  await flushEvents();
+  if (adFlushTimer) {
+    clearTimeout(adFlushTimer);
+    adFlushTimer = null;
+  }
+  await Promise.all([flushEvents(), flushAdEvents()]);
   if (client) {
     await client.close();
     client = null;

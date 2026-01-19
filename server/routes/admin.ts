@@ -148,6 +148,82 @@ interface SourceErrorRateTimeSeries {
   error_rate: number;
 }
 
+// =============================================================================
+// Ad Analytics Types
+// =============================================================================
+
+interface AdHealthMetrics {
+  total_requests: number;
+  filled_count: number;
+  no_fill_count: number;
+  premium_count: number;
+  error_count: number;
+  timeout_count: number;
+  fill_rate: number;
+  avg_duration_ms: number;
+  unique_sessions: number;
+  unique_brands: number;
+}
+
+interface AdStatusBreakdown {
+  status: string;
+  count: number;
+  percentage: number;
+  avg_duration_ms: number;
+}
+
+interface AdHostnameStats {
+  hostname: string;
+  total_requests: number;
+  filled_count: number;
+  fill_rate: number;
+  top_brand: string;
+}
+
+interface AdDeviceStats {
+  device_type: string;
+  os: string;
+  browser: string;
+  total_requests: number;
+  filled_count: number;
+  fill_rate: number;
+}
+
+interface AdBrandStats {
+  brand_name: string;
+  impressions: number;
+  unique_hostnames: number;
+  unique_sessions: number;
+  avg_article_length: number;
+}
+
+interface AdHourlyTraffic {
+  hour: string;
+  total_requests: number;
+  filled_count: number;
+  no_fill_count: number;
+  fill_rate: number;
+}
+
+interface AdErrorBreakdown {
+  status: string;
+  gravity_status_code: number;
+  error_message: string;
+  count: number;
+  latest_timestamp: string;
+}
+
+interface AdRecentEvent {
+  event_id: string;
+  event_time: string;
+  hostname: string;
+  article_title: string;
+  status: string;
+  brand_name: string;
+  duration_ms: number;
+  device_type: string;
+}
+
 export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
   async ({ query, set, headers }) => {
@@ -226,6 +302,15 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         hourlyEndpointTraffic,
         universallyBroken,
         sourceErrorRateTimeSeries,
+        // Ad analytics
+        adHealthMetrics,
+        adStatusBreakdown,
+        adHostnameStats,
+        adDeviceStats,
+        adBrandStats,
+        adHourlyTraffic,
+        adErrorBreakdown,
+        adRecentEvents,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
         queryClickhouse<HostnameStats>(`
@@ -452,6 +537,139 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           GROUP BY time_bucket, source
           ORDER BY time_bucket, source
         `),
+
+        // =============================================================================
+        // Ad Analytics Queries (from ad_events table)
+        // =============================================================================
+
+        // 13. Ad health metrics - overall fill rate and performance
+        queryClickhouse<AdHealthMetrics>(`
+          SELECT
+            count() AS total_requests,
+            countIf(status = 'filled') AS filled_count,
+            countIf(status = 'no_fill') AS no_fill_count,
+            countIf(status = 'premium_user') AS premium_count,
+            countIf(status = 'error' OR status = 'gravity_error') AS error_count,
+            countIf(status = 'timeout') AS timeout_count,
+            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate,
+            round(avg(duration_ms)) AS avg_duration_ms,
+            uniq(session_id) AS unique_sessions,
+            uniqIf(brand_name, brand_name != '') AS unique_brands
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+        `).catch(() => [] as AdHealthMetrics[]),
+
+        // 14. Ad status breakdown
+        queryClickhouse<AdStatusBreakdown>(`
+          SELECT
+            status,
+            count() AS count,
+            round(count() / (SELECT count() FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR) * 100, 2) AS percentage,
+            round(avg(duration_ms)) AS avg_duration_ms
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY status
+          ORDER BY count DESC
+        `).catch(() => [] as AdStatusBreakdown[]),
+
+        // 15. Ad fill rate by hostname
+        queryClickhouse<AdHostnameStats>(`
+          SELECT
+            hostname,
+            count() AS total_requests,
+            countIf(status = 'filled') AS filled_count,
+            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate,
+            anyIf(brand_name, brand_name != '') AS top_brand
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND hostname != ''
+          GROUP BY hostname
+          HAVING countIf(status != 'premium_user') > 0
+          ORDER BY total_requests DESC
+          LIMIT 100
+        `).catch(() => [] as AdHostnameStats[]),
+
+        // 16. Ad fill rate by device/browser/OS
+        queryClickhouse<AdDeviceStats>(`
+          SELECT
+            device_type,
+            os,
+            browser,
+            count() AS total_requests,
+            countIf(status = 'filled') AS filled_count,
+            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND device_type != ''
+          GROUP BY device_type, os, browser
+          HAVING countIf(status != 'premium_user') > 0
+          ORDER BY total_requests DESC
+          LIMIT 50
+        `).catch(() => [] as AdDeviceStats[]),
+
+        // 17. Top brands by impressions
+        queryClickhouse<AdBrandStats>(`
+          SELECT
+            brand_name,
+            count() AS impressions,
+            uniq(hostname) AS unique_hostnames,
+            uniq(session_id) AS unique_sessions,
+            round(avg(article_content_length)) AS avg_article_length
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND status = 'filled'
+            AND brand_name != ''
+          GROUP BY brand_name
+          ORDER BY impressions DESC
+          LIMIT 50
+        `).catch(() => [] as AdBrandStats[]),
+
+        // 18. Hourly ad traffic
+        queryClickhouse<AdHourlyTraffic>(`
+          SELECT
+            formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
+            count() AS total_requests,
+            countIf(status = 'filled') AS filled_count,
+            countIf(status = 'no_fill') AS no_fill_count,
+            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY hour
+          ORDER BY hour
+        `).catch(() => [] as AdHourlyTraffic[]),
+
+        // 19. Ad error breakdown
+        queryClickhouse<AdErrorBreakdown>(`
+          SELECT
+            status,
+            gravity_status_code,
+            any(error_message) AS error_message,
+            count() AS count,
+            formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS latest_timestamp
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND status IN ('error', 'gravity_error', 'timeout')
+          GROUP BY status, gravity_status_code
+          ORDER BY count DESC
+          LIMIT 50
+        `).catch(() => [] as AdErrorBreakdown[]),
+
+        // 20. Recent ad events (for live debugging)
+        queryClickhouse<AdRecentEvent>(`
+          SELECT
+            event_id,
+            formatDateTime(timestamp, '%Y-%m-%d %H:%i:%S') AS event_time,
+            hostname,
+            article_title,
+            status,
+            brand_name,
+            duration_ms,
+            device_type
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL 1 HOUR
+          ORDER BY timestamp DESC
+          LIMIT 100
+        `).catch(() => [] as AdRecentEvent[]),
       ]);
 
       // Get buffer stats for monitoring
@@ -495,6 +713,26 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         hourlyEndpointTraffic,
         universallyBroken,
         sourceErrorRateTimeSeries,
+        // Ad analytics
+        adHealth: adHealthMetrics[0] || {
+          total_requests: 0,
+          filled_count: 0,
+          no_fill_count: 0,
+          premium_count: 0,
+          error_count: 0,
+          timeout_count: 0,
+          fill_rate: 0,
+          avg_duration_ms: 0,
+          unique_sessions: 0,
+          unique_brands: 0,
+        },
+        adStatusBreakdown,
+        adHostnameStats,
+        adDeviceStats,
+        adBrandStats,
+        adHourlyTraffic,
+        adErrorBreakdown,
+        adRecentEvents,
       };
     } catch (error) {
       console.error("[analytics] Query error:", error);

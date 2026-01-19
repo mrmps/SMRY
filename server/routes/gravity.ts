@@ -11,6 +11,7 @@ import { getAuthInfo } from "../middleware/auth";
 import { env } from "../env";
 import { extractClientIp } from "../../lib/request-context";
 import { createLogger } from "../../lib/logger";
+import { trackAdEvent, type AdEventStatus } from "../../lib/clickhouse";
 
 const logger = createLogger("api:gravity");
 
@@ -124,14 +125,50 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   .post(
   "/context",
   async ({ body, request }) => {
+    const startTime = Date.now();
+    const { title, url, articleContent, sessionId, device, user } = body;
+
+    // Helper to extract hostname from URL
+    const getHostname = (urlStr: string): string => {
+      try { return new URL(urlStr).hostname; } catch { return ""; }
+    };
+
+    // Helper to track ad event
+    const track = (status: AdEventStatus, extra: {
+      gravityStatus?: number;
+      errorMessage?: string;
+      brandName?: string;
+      adTitle?: string;
+      userId?: string | null;
+      isPremium?: boolean;
+    } = {}) => {
+      trackAdEvent({
+        url,
+        hostname: getHostname(url),
+        article_title: title,
+        article_content_length: articleContent?.length || 0,
+        session_id: sessionId,
+        user_id: extra.userId ?? user?.id ?? "",
+        is_premium: extra.isPremium ? 1 : 0,
+        device_type: device?.deviceType ?? "",
+        os: device?.os ?? "",
+        browser: device?.browser ?? "",
+        status,
+        gravity_status_code: extra.gravityStatus ?? 0,
+        error_message: extra.errorMessage ?? "",
+        brand_name: extra.brandName ?? "",
+        ad_title: extra.adTitle ?? "",
+        duration_ms: Date.now() - startTime,
+      });
+    };
+
     try {
       // Check premium status
       const { isPremium, userId } = await getAuthInfo(request);
       if (isPremium) {
+        track("premium_user", { userId, isPremium: true });
         return { status: "premium_user" as const };
       }
-
-      const { title, url, articleContent, sessionId, device, user } = body;
 
       // Build conversation context for Gravity
       const messages: GravityMessage[] = [
@@ -205,6 +242,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         // No matching ad from Gravity
         if (response.status === 204) {
           logger.info({ url, status: 204 }, "No matching ad from Gravity");
+          track("no_fill", { gravityStatus: 204, userId });
           return {
             status: "no_fill" as const,
             debug: { gravityStatus: 204 },
@@ -215,6 +253,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         if (!response.ok) {
           const errorBody = await response.text().catch(() => "");
           logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
+          track("gravity_error", { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200), userId });
           return {
             status: "gravity_error" as const,
             debug: { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200) },
@@ -225,6 +264,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         if (ads && ads.length > 0) {
           logger.info({ url, brandName: ads[0].brandName }, "Ad received from Gravity");
+          track("filled", { gravityStatus: 200, brandName: ads[0].brandName, adTitle: ads[0].title, userId });
           return {
             status: "filled" as const,
             ad: ads[0],
@@ -233,6 +273,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         // Empty array from Gravity
         logger.info({ url }, "Empty ad array from Gravity");
+        track("no_fill", { gravityStatus: 200, errorMessage: "Empty ad array", userId });
         return {
           status: "no_fill" as const,
           debug: { gravityStatus: 200, errorMessage: "Empty ad array" },
@@ -242,14 +283,17 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         const errorMsg = String(fetchError);
         const isTimeout = errorMsg.includes("abort");
         logger.warn({ error: errorMsg, isTimeout }, "Gravity fetch error");
+        const status = isTimeout ? "timeout" : "gravity_error";
+        track(status, { errorMessage: errorMsg.slice(0, 200), userId });
         return {
-          status: isTimeout ? "timeout" as const : "gravity_error" as const,
+          status: status as "timeout" | "gravity_error",
           debug: { errorMessage: errorMsg.slice(0, 200) },
         };
       }
     } catch (error) {
       const errorMsg = String(error);
       logger.error({ error: errorMsg }, "Unexpected error in context route");
+      track("error", { errorMessage: errorMsg.slice(0, 200) });
       return {
         status: "error" as const,
         debug: { errorMessage: errorMsg.slice(0, 200) },

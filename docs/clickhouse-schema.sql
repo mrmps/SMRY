@@ -114,6 +114,59 @@ GROUP BY hour, hostname, source, error_type;
 
 
 -- ============================================================================
+-- AD EVENTS TABLE - Tracks ad requests, fill rates, and performance
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS ad_events
+(
+    event_id String,
+    timestamp DateTime64(3) DEFAULT now64(3),
+
+    -- Request context
+    url String,
+    hostname LowCardinality(String),
+    article_title String DEFAULT '',
+    article_content_length UInt32 DEFAULT 0,
+    session_id String,
+
+    -- User context
+    user_id String DEFAULT '',
+    is_premium UInt8 DEFAULT 0,
+
+    -- Device context
+    device_type LowCardinality(String) DEFAULT '',  -- desktop, mobile, tablet
+    os LowCardinality(String) DEFAULT '',            -- windows, macos, ios, android
+    browser LowCardinality(String) DEFAULT '',       -- chrome, safari, firefox
+
+    -- Response
+    status LowCardinality(String),  -- filled, no_fill, premium_user, gravity_error, timeout, error
+    gravity_status_code UInt16 DEFAULT 0,
+    error_message String DEFAULT '',
+
+    -- Ad data (when filled)
+    brand_name LowCardinality(String) DEFAULT '',
+    ad_title String DEFAULT '',
+
+    -- Performance
+    duration_ms UInt32 DEFAULT 0,
+
+    -- Environment
+    env LowCardinality(String) DEFAULT 'production'
+)
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (hostname, status, timestamp, event_id)
+TTL toDateTime(timestamp) + INTERVAL 90 DAY  -- Keep ad data longer for analysis
+SETTINGS index_granularity = 8192;
+
+-- Index for faster status filtering
+ALTER TABLE ad_events ADD INDEX idx_status status TYPE set(10) GRANULARITY 1;
+
+-- Index for brand lookups
+ALTER TABLE ad_events ADD INDEX idx_brand brand_name TYPE bloom_filter GRANULARITY 1;
+
+
+-- ============================================================================
 -- USEFUL QUERIES FOR DEBUGGING AND MONITORING
 -- ============================================================================
 
