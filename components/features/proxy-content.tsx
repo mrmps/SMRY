@@ -153,21 +153,59 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Track initialization state per URL
   const initializedUrlRef = useRef<string | null>(null);
 
-  // Find first successful article result
-  // Prefer Readability-based sources (smry-fast, smry-slow, wayback) over Jina
-  // because Jina returns full page markdown including navigation
-  const firstSuccessfulArticle = useMemo(() => {
-    // Preferred order: Readability sources first, then Jina as fallback
-    const preferredOrder: Source[] = ["smry-fast", "smry-slow", "wayback", "jina.ai"];
+  // Track timeout for fallback - after 5s use whatever we have
+  const [forceUseAvailable, setForceUseAvailable] = useState(false);
 
-    for (const source of preferredOrder) {
-      const result = results[source];
-      if (result?.isSuccess && result.data?.article?.title) {
-        return result.data.article;
+  // After 5 seconds, use whatever we have
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setForceUseAvailable(true);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Find best article for ad context
+  // Priority: 1) First source with title + >400 chars, 2) Longest source, 3) After 5s use anything
+  const firstSuccessfulArticle = useMemo(() => {
+    const allResults = Object.values(results);
+
+    // 1. First try: source with title AND textContent > 400 chars
+    for (const result of allResults) {
+      const article = result.data?.article;
+      if (result.isSuccess && article?.title && (article.textContent?.length || 0) > 400) {
+        return article;
       }
     }
+
+    // 2. Fallback: use source with longest textContent
+    let longestArticle = null;
+    let longestLength = 0;
+    for (const result of allResults) {
+      const article = result.data?.article;
+      if (result.isSuccess && article) {
+        const len = article.textContent?.length || 0;
+        if (len > longestLength) {
+          longestLength = len;
+          longestArticle = article;
+        }
+      }
+    }
+    if (longestArticle) {
+      return longestArticle;
+    }
+
+    // 3. Timeout fallback: after 5s, use any article with a title
+    if (forceUseAvailable) {
+      for (const result of allResults) {
+        const article = result.data?.article;
+        if (article?.title) {
+          return article;
+        }
+      }
+    }
+
     return null;
-  }, [results]);
+  }, [results, forceUseAvailable]);
 
   // Fetch ad - pass article data for better targeting
   const { ad: gravityAd, fireImpression } = useGravityAd({
