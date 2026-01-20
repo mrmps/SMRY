@@ -206,7 +206,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         sessionId,
         placements: [{ placement: "below_response", placement_id: "smry-summary-bottom" }],
         ...(USE_TEST_ADS && { testAd: true }),
-        relevancy: 0.3,
+        relevancy: 0.1,
         device: gravityDevice,
         user: gravityUser,
       };
