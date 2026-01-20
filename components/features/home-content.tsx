@@ -10,6 +10,7 @@ import { GitHubStarsButton } from "@/components/ui/shadcn-io/github-stars-button
 import { Banner } from "@/components/marketing/banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
+import { BookmarkBanner } from "@/components/marketing/bookmark-banner";
 import { AdSpot } from "@/components/marketing/ad-spot";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
@@ -89,11 +90,12 @@ export function HomeContent() {
 
       <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24 pb-24 lg:pb-4">
         <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
+          <BookmarkBanner />
           <GitHubStarsButton
             username="mrmps"
             repo="SMRY"
             formatted={true}
-            className="mb-10 mr-4"
+            className="mt-4 mb-10 mr-4"
           />
           <h1 className="text-center text-4xl font-semibold text-foreground md:text-5xl">
             <Image
