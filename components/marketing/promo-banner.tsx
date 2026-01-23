@@ -46,7 +46,7 @@ export function PromoBanner() {
           href="/pricing"
           className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
         >
-          Try Premium
+          Try Premium for $0.00
         </Link>
       </div>
       <button
