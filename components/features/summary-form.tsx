@@ -227,7 +227,8 @@ export default function SummaryForm({
     );
   };
 
-  const handleLanguageChange = (newLanguage: string) => {
+  const handleLanguageChange = (newLanguage: string | null) => {
+    if (!newLanguage) return;
     setPreferredLanguage(newLanguage);
     hasTriggeredRef.current = false;
   };

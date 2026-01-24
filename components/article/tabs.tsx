@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Tabs as TabsPrimitive } from "@base-ui-components/react/tabs";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import React from "react";
 import { ArticleContent } from "./content";
 import { Source, ArticleResponse, SOURCES } from "@/types/api";

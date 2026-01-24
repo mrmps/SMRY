@@ -71,7 +71,7 @@ export function CustomPricingTable() {
               </CheckoutButton>
             </div>
             <p className="mt-2 text-xs text-muted-foreground text-center">
-              We'll email you before you're charged
+              We&apos;ll email you before you&apos;re charged
             </p>
           </SignedIn>
           <SignedOut>
@@ -123,7 +123,7 @@ export function CustomPricingTable() {
               </CheckoutButton>
             </div>
             <p className="mt-2 text-xs text-muted-foreground text-center">
-              We'll email you before you're charged
+              We&apos;ll email you before you&apos;re charged
             </p>
           </SignedIn>
           <SignedOut>

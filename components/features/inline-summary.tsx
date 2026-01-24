@@ -354,7 +354,8 @@ function ExpandedSummary({
   }, [preferredLanguage, selectedSource]);
 
   const handleSourceChange = useCallback(
-    (newSource: Source) => {
+    (newSource: Source | null) => {
+      if (!newSource) return;
       setSelectedSource(newSource);
       // Auto-generate effect will handle generation if no cached summary exists
     },
@@ -362,7 +363,8 @@ function ExpandedSummary({
   );
 
   const handleLanguageChange = useCallback(
-    (newLang: string) => {
+    (newLang: string | null) => {
+      if (!newLang) return;
       setPreferredLanguage(newLang);
       hasTriggeredRef.current = false;
     },
