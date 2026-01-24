@@ -302,7 +302,7 @@ export function PricingContent() {
                     planPeriod={billingPeriod === "annual" ? "annual" : "month"}
                     onSubscriptionComplete={() => setShowSuccess(true)}
                   >
-                    Start my free trial
+                    Start my 7-day free trial
                   </CheckoutButton>
                 </div>
               )}
