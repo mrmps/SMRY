@@ -2,7 +2,14 @@
 import { ReactScan } from "@/components/shared/react-scan";
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
+import { Syne } from "next/font/google";
 import "./globals.css";
+
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+  display: "swap",
+});
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { QueryProvider } from "@/components/shared/query-provider";
@@ -52,7 +59,7 @@ export default async function RootLayout({
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <ReactScan />
         <body
-          className={`${GeistSans.className} bg-background text-foreground`}
+          className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
           <ThemeProvider
             attribute="class"

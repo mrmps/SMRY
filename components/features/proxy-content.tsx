@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import React, { useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
@@ -49,6 +48,9 @@ import {
   MenuTrigger,
   MenuPopup,
   MenuItem,
+  MenuSeparator,
+  MenuGroup,
+  MenuGroupLabel,
 } from "@/components/ui/menu";
 import {
   useQueryStates,
@@ -64,10 +66,6 @@ import {
 } from "@/components/ui/resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
 
-const ModeToggle = dynamic(
-  () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
-  { ssr: false, loading: () => <div className="size-9" /> }
-);
 
 // History button that links to /history for signed-in users, /pricing for signed-out
 function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
@@ -83,7 +81,7 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
   const href = isSignedIn ? "/history" : "/pricing";
   // Only show badge after mount to avoid hydration mismatch (auth state is client-only)
   const showBadge = mounted && isLoaded && !isSignedIn;
-  
+
   return (
     <Link
       href={href}
@@ -110,6 +108,99 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
         ★
       </span>
     </Link>
+  );
+}
+
+// Helper to detect client-side rendering without setState in effect
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+// History menu item for the More dropdown
+function HistoryMenuItem() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+
+  const href = isSignedIn ? "/history" : "/pricing";
+  const showBadge = mounted && isLoaded && !isSignedIn;
+
+  return (
+    <MenuItem
+      render={(props) => {
+        const { key, ...rest } = props as typeof props & { key?: React.Key };
+        return (
+          <Link
+            key={key}
+            {...rest}
+            href={href}
+            className="flex items-center gap-2 w-full"
+          >
+            <HistoryIcon className="size-4" />
+            <span className="flex-1">History</span>
+            {showBadge && (
+              <span className="text-[10px] font-medium text-amber-500">PRO</span>
+            )}
+          </Link>
+        );
+      }}
+    />
+  );
+}
+
+// Theme menu items for the More dropdown
+function ThemeMenuItems() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+
+  if (!mounted) return null;
+
+  const isDark = resolvedTheme === "dark" || resolvedTheme === "magic-blue" || resolvedTheme === "classic-dark";
+
+  return (
+    <>
+      <MenuSeparator />
+      <MenuGroup>
+        <MenuGroupLabel>Theme</MenuGroupLabel>
+        <div className="flex items-center gap-1 px-2 pb-1">
+        <button
+          onClick={() => setTheme("light")}
+          className={cn(
+            "flex items-center justify-center rounded-md p-1.5 transition-colors",
+            theme === "light" || (theme === "system" && !isDark)
+              ? "bg-accent text-accent-foreground"
+              : "hover:bg-accent/50 text-muted-foreground"
+          )}
+          title="Light"
+        >
+          <Sun className="size-4" />
+        </button>
+        <button
+          onClick={() => setTheme("dark")}
+          className={cn(
+            "flex items-center justify-center rounded-md p-1.5 transition-colors",
+            theme === "dark" || theme === "magic-blue" || theme === "classic-dark"
+              ? "bg-accent text-accent-foreground"
+              : "hover:bg-accent/50 text-muted-foreground"
+          )}
+          title="Dark"
+        >
+          <Moon className="size-4" />
+        </button>
+        <button
+          onClick={() => setTheme("system")}
+          className={cn(
+            "flex items-center justify-center rounded-md p-1.5 transition-colors",
+            theme === "system"
+              ? "bg-accent text-accent-foreground"
+              : "hover:bg-accent/50 text-muted-foreground"
+          )}
+          title="System"
+        >
+          <Laptop className="size-4" />
+        </button>
+        </div>
+      </MenuGroup>
+    </>
   );
 }
 
@@ -390,13 +481,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 viewMode={viewMode}
               />
 
-              {/* Separator */}
-              <div className="w-px h-5 bg-border/60 mx-1" />
-
-              {/* Secondary Actions */}
-              <HistoryButton variant="desktop" />
-              <ModeToggle />
-
               {/* User Section */}
               <AuthBar variant="compact" showUpgrade={false} className="ml-1" />
 
@@ -420,7 +504,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     );
                   }}
                 />
-                <MenuPopup side="bottom" align="end">
+                <MenuPopup side="bottom" align="end" className="min-w-[180px]">
+                  <HistoryMenuItem />
+                  <ThemeMenuItems />
+                  <MenuSeparator />
                   <MenuItem
                     render={(props) => {
                       const { key, ...rest } = props as typeof props & { key?: React.Key };

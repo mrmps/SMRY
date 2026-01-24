@@ -33,7 +33,17 @@ const languageFlags: Record<Locale, string> = {
 export function LanguageSwitcher() {
   const locale = useLocale() as Locale;
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+
+  // Strip any locale prefix from pathname (workaround for next-intl edge case
+  // where usePathname() returns locale-prefixed path, and useLocale() may be
+  // out of sync during navigation transitions)
+  const localePrefix = routing.locales.find(
+    (loc) => rawPathname === `/${loc}` || rawPathname.startsWith(`/${loc}/`)
+  );
+  const pathname = localePrefix
+    ? rawPathname.slice(localePrefix.length + 1) || "/"
+    : rawPathname;
 
   const handleChange = (newLocale: Locale | null) => {
     if (!newLocale) return;
@@ -49,7 +59,7 @@ export function LanguageSwitcher() {
         <span className="sm:hidden">{languageFlags[locale]}</span>
         <SelectValue className="sr-only" />
       </SelectTrigger>
-      <SelectContent alignItemWithTrigger={false}>
+      <SelectContent alignItemWithTrigger={false} className="p-0 [&_[data-slot=select-item]]:h-7 [&_[data-slot=select-item]]:py-0">
         {routing.locales.map((loc) => (
           <SelectItem key={loc} value={loc}>
             <span className="mr-2">{languageFlags[loc]}</span>

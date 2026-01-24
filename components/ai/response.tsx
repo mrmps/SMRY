@@ -221,7 +221,6 @@ export const Response = memo(
           shikiTheme={shikiThemes}
           rehypePlugins={[
             defaultRehypePlugins.raw,
-            defaultRehypePlugins.katex,
             [harden, hardenConfig],
           ]}
           controls={{

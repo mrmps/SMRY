@@ -13,6 +13,7 @@ function PopoverTrigger(props: PopoverPrimitive.Trigger.Props) {
 function PopoverPopup({
   children,
   className,
+  contentClassName,
   side = "bottom",
   align = "center",
   sideOffset = 4,
@@ -25,6 +26,7 @@ function PopoverPopup({
   sideOffset?: PopoverPrimitive.Positioner.Props["sideOffset"];
   alignOffset?: PopoverPrimitive.Positioner.Props["alignOffset"];
   tooltipStyle?: boolean;
+  contentClassName?: string;
 }) {
   return (
     <PopoverPrimitive.Portal>
@@ -46,9 +48,11 @@ function PopoverPopup({
         >
           <PopoverPrimitive.Popup
             className={cn(
-              "max-h-(--available-height) w-full overflow-y-auto p-4 outline-none",
-              tooltipStyle &&
-                "px-[calc(--spacing(2)+1px)] py-[calc(--spacing(1)+1px)]",
+              "max-h-(--available-height) w-full overflow-y-auto outline-none",
+              tooltipStyle
+                ? "px-[calc(--spacing(2)+1px)] py-[calc(--spacing(1)+1px)]"
+                : "p-0",
+              contentClassName,
             )}
             data-slot="popover-content"
             {...props}

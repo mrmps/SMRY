@@ -8,7 +8,7 @@
     "twitterDescription": "Cole qualquer link de artigo com paywall e obtenha o texto completo mais um resumo de IA. Gratuito, sem conta, sem extensão."
   },
   "home": {
-    "tagline": "Leia artigos com paywall de graça + obtenha um resumo de IA.",
+    "tagline": "Leia artigos com paywall de graça — e obtenha um resumo de IA.",
     "tryIt": "Experimente",
     "placeholder": "Cole a URL do artigo...",
     "by": "por",
@@ -18,7 +18,8 @@
     "bookmarkletTip": "Para acesso rápido, salve este",
     "bookmarkletInstructions": "Arraste para sua barra de favoritos e clique em qualquer página para abrir no SMRY.",
     "validationError": "Por favor, insira uma URL válida.",
-    "submitUrl": "Enviar URL"
+    "submitUrl": "Enviar URL",
+    "quickAccessTips": "Dicas de acesso rápido"
   },
   "banner": {
     "heading": "Pule estes paywalls:"
@@ -202,6 +203,20 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "logo smry"
+  },
+  "nav": {
+    "language": "Idioma",
+    "help": "Ajuda e mais",
+    "getStarted": "Começar",
+    "history": "Histórico",
+    "changelog": "Alterações",
+    "pricing": "Preços",
+    "feedback": "Feedback",
+    "signIn": "Entrar",
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Escuro",
+    "system": "Sistema"
   },
   "changelog": {
     "title": "Registro de alterações",

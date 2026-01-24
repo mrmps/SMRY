@@ -8,7 +8,7 @@
     "twitterDescription": "Paste any paywalled article link and get the full text plus an AI summary. Free, no account, no extension."
   },
   "home": {
-    "tagline": "Read paywalled articles for free + get an AI summary.",
+    "tagline": "Read paywalled articles for free — and get an AI summary.",
     "tryIt": "Try it",
     "placeholder": "Paste article URL...",
     "by": "by",
@@ -18,7 +18,8 @@
     "bookmarkletTip": "For quick access, bookmark this",
     "bookmarkletInstructions": "Drag it to your bookmarks bar, then click it on any page to open in SMRY.",
     "validationError": "Please enter a valid URL.",
-    "submitUrl": "Submit URL"
+    "submitUrl": "Submit URL",
+    "quickAccessTips": "Quick access tips"
   },
   "banner": {
     "heading": "Hop over these paywalls:"
@@ -202,6 +203,20 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry logo"
+  },
+  "nav": {
+    "language": "Language",
+    "help": "Help & More",
+    "getStarted": "Get started",
+    "history": "History",
+    "changelog": "Changelog",
+    "pricing": "Pricing",
+    "feedback": "Feedback",
+    "signIn": "Sign in",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
   },
   "changelog": {
     "title": "Changelog",

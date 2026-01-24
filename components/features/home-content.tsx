@@ -2,25 +2,17 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
-import { CornerDownLeft, Star } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { CornerDownLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { z } from "zod";
-import { Banner } from "@/components/marketing/banner";
-import { SiteFooter } from "@/components/layout/site-footer";
 import { BookmarkletLink } from "@/components/marketing/bookmarklet";
-import { AdSpot } from "@/components/marketing/ad-spot";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
-import { FAQ } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
-import dynamic from "next/dynamic";
 import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { AuthBar, UpgradeLink } from "@/components/shared/auth-bar";
+import { BottomCornerNav } from "@/components/shared/bottom-corner-nav";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -38,60 +30,10 @@ const urlSchema = z.object({
   url: NormalizedUrlSchema,
 });
 
-const ModeToggle = dynamic(
-  () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
-  { ssr: false, loading: () => <div className="size-9" /> }
-);
-
-function GitHubBadge() {
-  const { data: stars } = useQuery({
-    queryKey: ["github-stars", "mrmps", "SMRY"],
-    queryFn: async () => {
-      const cached = localStorage.getItem("github-stars-mrmps-SMRY");
-      if (cached) {
-        const { stars, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 1000 * 60 * 60 * 24 * 5) return stars;
-      }
-      const res = await fetch("https://api.github.com/repos/mrmps/SMRY");
-      const data = await res.json();
-      const count = data.stargazers_count as number;
-      localStorage.setItem(
-        "github-stars-mrmps-SMRY",
-        JSON.stringify({ stars: count, timestamp: Date.now() })
-      );
-      return count;
-    },
-    staleTime: 1000 * 60 * 60 * 24 * 5,
-    gcTime: 1000 * 60 * 60 * 24 * 5,
-  });
-
-  const formatted = stars ? (stars < 1000 ? stars.toString() : (stars / 1000).toFixed(1) + "k") : null;
-
-  return (
-    <a
-      href="https://github.com/mrmps/SMRY"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-2.5 py-1 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:border-foreground/20 hover:text-foreground"
-    >
-      <svg viewBox="0 0 24 24" fill="currentColor" className="size-3.5">
-        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-      </svg>
-      {formatted && (
-        <>
-          <Star className="size-3 fill-yellow-500 text-yellow-500" />
-          <span className="tabular-nums">{formatted}</span>
-        </>
-      )}
-    </a>
-  );
-}
-
 export function HomeContent() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const t = useTranslations("home");
-  const tCommon = useTranslations("common");
   const isDesktop = useIsDesktop();
 
   const router = useRouter();
@@ -109,7 +51,6 @@ export function HomeContent() {
           ? error.issues[0]?.message ?? t("validationError")
           : t("validationError");
       setUrlError(message);
-      console.error(error);
     }
   };
 
@@ -122,58 +63,36 @@ export function HomeContent() {
 
   return (
     <>
-      <div className="absolute left-4 top-4 z-50 hidden sm:block md:left-8 md:top-8">
-        <GitHubBadge />
-      </div>
-
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-2 sm:gap-3 md:right-8 md:top-8">
-        <span className="hidden sm:inline-flex">
-          <UpgradeLink />
-        </span>
-        <AuthBar showUpgrade={false} />
-        <span className="hidden sm:inline-flex">
-          <LanguageSwitcher />
-        </span>
-        <ModeToggle />
-      </div>
-
-      <AdSpot className="xl:fixed xl:left-6 xl:top-6 xl:z-40" />
-
-      <main className="flex min-h-screen flex-col items-center bg-background p-4 pt-20 text-foreground sm:pt-24 md:p-24 pb-24 lg:pb-4">
-        <div className="z-10 mx-auto flex w-full max-w-lg flex-col items-center justify-center sm:mt-16">
-          <h1 className="text-center text-4xl font-semibold text-foreground md:text-5xl">
-            <Image
-              src="/logo.svg"
-              width={280}
-              height={280}
-              alt={tCommon("smryLogo")}
-              className="-ml-4 dark:invert"
-              priority
-            />
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground">
+        <div className="z-10 mx-auto flex w-full max-w-xl flex-col items-center justify-center">
+          {/* Wordmark */}
+          <h1 className="font-syne text-[2.75rem] font-normal tracking-normal text-foreground">
+            smry
           </h1>
 
-          <p className="mt-2 text-center text-lg text-muted-foreground">
+          {/* Tagline - softer color for hierarchy */}
+          <p className="mt-4 text-center text-lg text-muted-foreground/80">
             {t("tagline")}{" "}
             <Link
               href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-              className="border-b border-muted-foreground transition-colors hover:text-foreground hover:border-foreground"
+              className="text-muted-foreground underline underline-offset-4 decoration-muted-foreground/40 transition-colors hover:text-foreground hover:decoration-foreground"
             >
               {t("tryIt")}
-            </Link>
-            .
+            </Link>.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 w-full">
+          {/* Input */}
+          <form onSubmit={handleSubmit} className="mt-8 w-full">
             <div
               className={clsx(
-                "flex overflow-hidden rounded-lg border shadow-sm transition-colors duration-300",
+                "flex overflow-hidden rounded-xl border transition-colors duration-300",
                 "bg-background",
                 "focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/20 focus-within:ring-offset-0",
                 urlError ? "border-destructive ring-destructive/20" : "border-input"
               )}
             >
               <input
-                className="w-full bg-transparent p-4 py-3 text-lg placeholder:text-muted-foreground focus:outline-none"
+                className="w-full bg-transparent px-5 py-4 text-base placeholder:text-muted-foreground/70 focus:outline-none md:text-lg"
                 name="url"
                 placeholder={t("placeholder")}
                 aria-label={t("placeholder")}
@@ -223,53 +142,62 @@ export function HomeContent() {
               </Button>
             </div>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            {t("by")}{" "}
-            <a
-              href="https://x.com/michael_chomsky"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border-b border-muted-foreground transition-colors hover:text-foreground"
-            >
-              @michael_chomsky
-            </a>
-          </p>
 
           {urlError && (
             <p
-              className="animate-fade-in mt-2 flex items-center text-muted-foreground"
+              className="animate-fade-in mt-3 flex items-center text-sm text-destructive/80"
               role="alert"
             >
-              <ExclamationCircleIcon className="mr-2 size-5 text-muted-foreground" />
+              <ExclamationCircleIcon className="mr-2 size-4" />
               {urlError}
             </p>
           )}
 
-          <div className="mx-auto mt-12 max-w-2xl space-y-4 text-center">
-            <p className="text-[15px] leading-relaxed text-muted-foreground">
-              {t("prepend")}{" "}
-              <code className="rounded bg-yellow-200 px-2 py-0.5 font-mono text-xs text-stone-700 dark:bg-yellow-900 dark:text-stone-200">
-                https://smry.ai/
-              </code>{" "}
-              {t("toAnyUrl")}
-            </p>
+          {/* Tips section */}
+          <details className="relative mx-auto mt-8 w-full max-w-lg group [&>summary]:list-none [&>summary::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer items-center justify-center gap-2 text-sm text-muted-foreground/50 transition-colors hover:text-muted-foreground/70 group-open:text-muted-foreground/70">
+              <span>{t("quickAccessTips")}</span>
+              <svg
+                className="size-3 transition-transform duration-200 ease-out group-open:rotate-180"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="mt-6 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 md:absolute md:top-full md:left-0 md:right-0 md:mt-6">
+              {/* Prepend tip */}
+              <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
+                <svg className="size-4 shrink-0 text-muted-foreground/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                </svg>
+                <p className="text-sm text-muted-foreground">
+                  Prepend{" "}
+                  <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs">
+                    smry.ai/
+                  </code>{" "}
+                  to any article URL
+                </p>
+              </div>
 
-            <div className="hidden border-t border-border pt-2 sm:block">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {t("bookmarkletTip")} <BookmarkletLink />.{" "}
-                {t("bookmarkletInstructions")}
-              </p>
+              {/* Bookmarklet tip */}
+              <div className="hidden sm:flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
+                <svg className="size-4 shrink-0 text-muted-foreground/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                </svg>
+                <p className="flex-1 text-sm text-muted-foreground">
+                  Drag to bookmarks bar
+                </p>
+                <BookmarkletLink />
+              </div>
             </div>
-          </div>
+          </details>
         </div>
-
-        <Banner />
-        <FAQ />
       </main>
 
-      <div className="bg-background">
-        <SiteFooter className="border-t border-border" />
-      </div>
+      <BottomCornerNav />
     </>
   );
 }

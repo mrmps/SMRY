@@ -8,7 +8,7 @@
     "twitterDescription": "Fügen Sie einen beliebigen Paywall-Artikellink ein und erhalten Sie den vollständigen Text plus eine KI-Zusammenfassung. Kostenlos, kein Konto, keine Erweiterung."
   },
   "home": {
-    "tagline": "Lesen Sie Paywall-Artikel kostenlos + erhalten Sie eine KI-Zusammenfassung.",
+    "tagline": "Lesen Sie Paywall-Artikel kostenlos — und erhalten Sie eine KI-Zusammenfassung.",
     "tryIt": "Ausprobieren",
     "placeholder": "Artikel-URL einfügen...",
     "by": "von",
@@ -18,7 +18,8 @@
     "bookmarkletTip": "Für schnellen Zugriff speichern Sie dieses",
     "bookmarkletInstructions": "Ziehen Sie es in Ihre Lesezeichen-Leiste, dann klicken Sie auf einer beliebigen Seite darauf, um sie in SMRY zu öffnen.",
     "validationError": "Bitte geben Sie eine gültige URL ein.",
-    "submitUrl": "URL absenden"
+    "submitUrl": "URL absenden",
+    "quickAccessTips": "Schnellzugriff-Tipps"
   },
   "banner": {
     "heading": "Diese Paywalls überspringen:"
@@ -202,6 +203,20 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry Logo"
+  },
+  "nav": {
+    "language": "Sprache",
+    "help": "Hilfe & Mehr",
+    "getStarted": "Erste Schritte",
+    "history": "Verlauf",
+    "changelog": "Änderungen",
+    "pricing": "Preise",
+    "feedback": "Feedback",
+    "signIn": "Anmelden",
+    "theme": "Design",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "system": "System"
   },
   "changelog": {
     "title": "Änderungsprotokoll",

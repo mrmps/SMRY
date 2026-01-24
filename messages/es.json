@@ -8,7 +8,7 @@
     "twitterDescription": "Pega cualquier enlace de artículo con muro de pago y obtén el texto completo más un resumen de IA. Gratis, sin cuenta, sin extensión."
   },
   "home": {
-    "tagline": "Lee artículos con muro de pago gratis + obtén un resumen de IA.",
+    "tagline": "Lee artículos con muro de pago gratis — y obtén un resumen de IA.",
     "tryIt": "Pruébalo",
     "placeholder": "Pega la URL del artículo...",
     "by": "por",
@@ -18,7 +18,8 @@
     "bookmarkletTip": "Para acceso rápido, guarda este",
     "bookmarkletInstructions": "Arrástralo a tu barra de marcadores, luego haz clic en cualquier página para abrirla en SMRY.",
     "validationError": "Por favor, introduce una URL válida.",
-    "submitUrl": "Enviar URL"
+    "submitUrl": "Enviar URL",
+    "quickAccessTips": "Consejos de acceso rápido"
   },
   "banner": {
     "heading": "Salta estos muros de pago:"
@@ -202,6 +203,20 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "logo smry"
+  },
+  "nav": {
+    "language": "Idioma",
+    "help": "Ayuda y más",
+    "getStarted": "Comenzar",
+    "history": "Historial",
+    "changelog": "Cambios",
+    "pricing": "Precios",
+    "feedback": "Comentarios",
+    "signIn": "Iniciar sesión",
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
   },
   "changelog": {
     "title": "Registro de cambios",

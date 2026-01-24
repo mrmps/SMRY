@@ -8,7 +8,7 @@
     "twitterDescription": "Plak een link naar een artikel met betaalmuur en krijg de volledige tekst plus een AI-samenvatting. Gratis, geen account, geen extensie."
   },
   "home": {
-    "tagline": "Lees artikelen met betaalmuur gratis + krijg een AI-samenvatting.",
+    "tagline": "Lees artikelen met betaalmuur gratis — en krijg een AI-samenvatting.",
     "tryIt": "Probeer het",
     "placeholder": "Plak artikel-URL...",
     "by": "door",
@@ -18,7 +18,8 @@
     "bookmarkletTip": "Voor snelle toegang, sla deze",
     "bookmarkletInstructions": "Sleep het naar je bladwijzerbalk, klik er dan op elke pagina op om deze in SMRY te openen.",
     "validationError": "Voer een geldige URL in.",
-    "submitUrl": "URL verzenden"
+    "submitUrl": "URL verzenden",
+    "quickAccessTips": "Snelle toegangstips"
   },
   "banner": {
     "heading": "Spring over deze betaalmuren:"
@@ -202,6 +203,20 @@
   "common": {
     "premium": "Premium",
     "smryLogo": "smry logo"
+  },
+  "nav": {
+    "language": "Taal",
+    "help": "Help & Meer",
+    "getStarted": "Aan de slag",
+    "history": "Geschiedenis",
+    "changelog": "Wijzigingen",
+    "pricing": "Prijzen",
+    "feedback": "Feedback",
+    "signIn": "Inloggen",
+    "theme": "Thema",
+    "light": "Licht",
+    "dark": "Donker",
+    "system": "Systeem"
   },
   "changelog": {
     "title": "Wijzigingslogboek",

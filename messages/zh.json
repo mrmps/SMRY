@@ -8,7 +8,7 @@
     "twitterDescription": "粘贴任何付费墙文章链接，获取完整文本和AI摘要。免费，无需账户，无需扩展。"
   },
   "home": {
-    "tagline": "免费阅读付费墙文章 + 获取AI摘要。",
+    "tagline": "免费阅读付费墙文章，并获取AI摘要。",
     "tryIt": "试试看",
     "placeholder": "粘贴文章URL...",
     "by": "作者",
@@ -18,7 +18,8 @@
     "bookmarkletTip": "为了快速访问，请收藏这个",
     "bookmarkletInstructions": "将其拖到书签栏，然后在任何页面上点击它即可在SMRY中打开。",
     "validationError": "请输入有效的URL。",
-    "submitUrl": "提交URL"
+    "submitUrl": "提交URL",
+    "quickAccessTips": "快速访问提示"
   },
   "banner": {
     "heading": "跳过这些付费墙："
@@ -202,6 +203,20 @@
   "common": {
     "premium": "高级版",
     "smryLogo": "smry标志"
+  },
+  "nav": {
+    "language": "语言",
+    "help": "帮助与更多",
+    "getStarted": "开始使用",
+    "history": "历史记录",
+    "changelog": "更新日志",
+    "pricing": "价格",
+    "feedback": "反馈",
+    "signIn": "登录",
+    "theme": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统"
   },
   "changelog": {
     "title": "更新日志",
