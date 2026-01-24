@@ -70,6 +70,9 @@ export function CustomPricingTable() {
                 {t("startFreeTrial")}
               </CheckoutButton>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground text-center">
+              We&apos;ll email you before you&apos;re charged
+            </p>
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
@@ -119,6 +122,9 @@ export function CustomPricingTable() {
                 {t("startFreeTrial")}
               </CheckoutButton>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground text-center">
+              We&apos;ll email you before you&apos;re charged
+            </p>
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
