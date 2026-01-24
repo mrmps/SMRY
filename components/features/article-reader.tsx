@@ -167,7 +167,7 @@ export function ArticleReader({
       {/* Article Container */}
       <article
         ref={articleRef}
-        className="article-container mx-auto w-full max-w-[740px] px-4 pb-32 pt-20 sm:pt-24 md:pt-28"
+        className="article-container mx-auto w-full max-w-[740px] px-4 pb-32 pt-14 sm:pt-16 md:pt-20"
       >
         <div className="relative">
           {/* Document Header
@@ -224,103 +224,100 @@ export function ArticleReader({
               - Hanging punctuation
               - Optical alignment adjustments
               ═══════════════════════════════════════════════════════════════ */}
-          <header className="article-header mb-0 px-6 sm:px-8" id="document-header">
-
-            {/* Source Attribution */}
-            <div className="mb-7">
+          <header className="article-header mb-2 px-5 sm:mb-4 sm:px-8 md:px-10" id="document-header">
+            {/* Source Attribution - Premium badge design */}
+            <div className="mb-8 sm:mb-10">
               <a
                 href={source.url}
-                className="group inline-flex items-center gap-2.5 transition-opacity duration-150 hover:opacity-75"
+                className="source-badge group inline-flex items-center gap-2 rounded-full bg-[rgba(110,120,131,0.08)] py-1.5 pl-1.5 pr-3.5 shadow-[0_0_0_1px_rgba(110,120,131,0.06)] transition-all duration-250 ease-out hover:bg-[rgba(110,120,131,0.13)] hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3),0_0_0_1px_rgba(110,120,131,0.1)] hover:translate-y-[-1px]"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {source.favicon ? (
                   <div
-                    className="h-5 w-5 flex-shrink-0 rounded-[4px] bg-cover bg-center shadow-[0_0_0_1px_rgba(255,255,255,0.1)]"
+                    className="h-6 w-6 flex-shrink-0 rounded-full bg-cover bg-center ring-1 ring-white/[0.08] transition-all duration-200 group-hover:ring-white/[0.15]"
                     style={{ backgroundImage: `url(${source.favicon})` }}
                     role="img"
                     aria-hidden="true"
                   />
                 ) : (
                   <div
-                    className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[4px] bg-[rgba(110,120,131,0.2)] text-[10px] font-bold uppercase text-[rgb(149,159,170)]"
+                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[rgba(110,120,131,0.3)] text-[11px] font-bold uppercase text-[rgb(149,159,170)]"
                     aria-hidden="true"
                   >
                     {source.name.charAt(0)}
                   </div>
                 )}
-                <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[rgb(149,159,170)] transition-colors duration-150 group-hover:text-[rgb(180,188,196)]">
+                <span className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[rgb(156,165,175)] transition-colors duration-200 group-hover:text-[rgb(210,218,226)]">
                   {source.name.replace(/^www\./i, "")}
                 </span>
+                <svg
+                  className="h-3 w-3 text-[rgb(100,108,118)] transition-all duration-200 group-hover:text-[rgb(140,150,160)] group-hover:translate-x-0.5"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3.5 2.5h6m0 0v6m0-6L3 9"
+                    stroke="currentColor"
+                    strokeWidth="1.25"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </a>
             </div>
 
-            {/* Title */}
-            <h1 className="article-title mb-0 font-serif text-[36px] font-bold leading-[1.08] tracking-[-0.025em] text-white sm:text-[44px] md:text-[48px] lg:text-[52px]">
+            {/* Title - Display typography with optical adjustments */}
+            <h1 className="article-title mb-6 font-serif text-[30px] font-bold leading-[1.15] tracking-[-0.022em] text-[rgb(250,251,252)] sm:mb-7 sm:text-[36px] sm:leading-[1.12] md:text-[44px] md:tracking-[-0.025em] lg:text-[52px] lg:leading-[1.08]">
               {title}
             </h1>
 
-            {/* Meta Row - Separated by divider */}
-            <div className="article-meta mt-8 flex flex-col gap-4 border-t border-[rgba(110,120,131,0.12)] pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              {/* Left side: Read time */}
-              <div className="flex items-center gap-3 text-[15px] font-medium text-[rgb(136,145,155)]">
-                {readTime && (
-                  <span className="tabular-nums">{readTime}</span>
-                )}
+            {/* Gradient Divider */}
+            <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-[rgba(110,120,131,0.2)] to-transparent sm:mb-6" />
+
+            {/* Author & Meta Row */}
+            <div className="article-meta flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                 {author && (
                   <>
-                    {readTime && (
-                      <span className="text-[rgb(80,88,98)]">·</span>
-                    )}
+                    <span className="text-[13px] text-[rgb(100,108,118)]">By</span>
                     {author.url ? (
                       <Link
                         href={author.url}
-                        className="transition-colors duration-150 hover:text-[rgb(174,200,241)]"
+                        className="text-[15px] font-medium text-[rgb(210,216,222)] transition-colors duration-150 hover:text-[rgb(174,200,241)]"
                       >
                         {author.name}
                       </Link>
                     ) : (
-                      <span>{author.name}</span>
+                      <span className="text-[15px] font-medium text-[rgb(210,216,222)]">{author.name}</span>
                     )}
                   </>
                 )}
-              </div>
 
-              {/* Right side: Date */}
-              <div className="flex items-center gap-4">
-                {publishedDate && (
-                  <time
-                    dateTime={publishedDate}
-                    className="text-[15px] font-medium tabular-nums text-[rgb(136,145,155)]"
-                  >
-                    {publishedDate}
-                  </time>
-                )}
-
-                {tags && tags.length > 0 && (
-                  <div className="hidden items-center gap-2 sm:flex">
-                    {tags.map((tag) => (
-                      <Link
-                        key={tag.label}
-                        href={tag.url}
-                        className="inline-flex h-6 items-center rounded-full bg-[rgba(110,120,131,0.1)] px-2.5 text-[12px] font-medium text-[rgb(168,176,185)] transition-all duration-150 hover:bg-[rgba(110,120,131,0.18)] hover:text-[rgb(200,208,216)]"
-                      >
-                        {tag.label}
-                      </Link>
-                    ))}
-                  </div>
+                {readTime && (
+                  <span className="ml-1 text-[13px] tabular-nums text-[rgb(100,108,118)]">
+                    <span className="mx-1.5 text-[rgb(70,78,88)]">·</span>
+                    {readTime}
+                  </span>
                 )}
               </div>
+
+              {publishedDate && (
+                <time dateTime={publishedDate} className="text-[13px] tabular-nums text-[rgb(90,98,108)]">
+                  {publishedDate}
+                </time>
+              )}
             </div>
 
-            {/* Mobile tags (if any) */}
+            {/* Tags (if any) - between meta and content */}
             {tags && tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2 sm:hidden">
+              <div className="mt-5 flex flex-wrap items-center gap-1.5 sm:mt-6">
                 {tags.map((tag) => (
                   <Link
                     key={tag.label}
                     href={tag.url}
-                    className="inline-flex h-7 items-center rounded-full bg-[rgba(110,120,131,0.1)] px-3 text-[13px] font-medium text-[rgb(168,176,185)] transition-all duration-150 hover:bg-[rgba(110,120,131,0.18)]"
+                    className="inline-flex h-[26px] items-center rounded-md bg-[rgba(110,120,131,0.08)] px-2.5 text-[11px] font-medium text-[rgb(140,150,160)] ring-1 ring-inset ring-[rgba(110,120,131,0.08)] transition-all duration-150 hover:bg-[rgba(110,120,131,0.14)] hover:text-[rgb(190,198,206)] hover:ring-[rgba(110,120,131,0.15)]"
                   >
                     {tag.label}
                   </Link>
@@ -331,7 +328,7 @@ export function ArticleReader({
 
           {/* Article Content */}
           <div
-            className="prose-article mt-10 px-6 sm:mt-12 sm:px-8"
+            className="prose-article mt-6 px-6 sm:mt-8 sm:px-8"
             id="article-content"
           >
             {children}
@@ -347,11 +344,24 @@ export function ArticleReader({
 
         /* ═══════════════════════════════════════════════════════════════════
            ARTICLE HEADER SYSTEM
-           Premium header typography with 10 rounds of refinement
+           Premium header typography - 10 rounds of senior designer refinement
            ═══════════════════════════════════════════════════════════════════ */
 
         .article-header {
           /* Establish optical alignment container */
+          position: relative;
+        }
+
+        /* Source Badge styling */
+        .source-badge {
+          font-family:
+            "Inter VF",
+            "Inter",
+            -apple-system,
+            system-ui,
+            sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
 
         /* Title Typography */
@@ -382,7 +392,7 @@ export function ArticleReader({
           -moz-osx-font-smoothing: grayscale;
 
           /* Subtle text shadow for depth on dark bg */
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
         }
 
         /* Title size responsive scale */
@@ -390,7 +400,7 @@ export function ArticleReader({
           .article-title {
             font-size: 56px;
             line-height: 1.06;
-            letter-spacing: -0.03em;
+            letter-spacing: -0.028em;
           }
         }
 
@@ -402,6 +412,15 @@ export function ArticleReader({
             -apple-system,
             system-ui,
             sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Author link underline on hover */
+        .article-meta a:hover {
+          text-decoration: underline;
+          text-underline-offset: 3px;
+          text-decoration-thickness: 1px;
         }
 
         /* ─────────────────────────────────────────────────────────────────────
@@ -876,17 +895,21 @@ export function ArticleReader({
         /* Large desktop */
         @media (min-width: 1280px) {
           .article-header {
-            padding-left: 2.5rem;
-            padding-right: 2.5rem;
+            padding-left: 3rem;
+            padding-right: 3rem;
           }
         }
 
         /* Tablet */
         @media (max-width: 768px) {
           .article-title {
-            font-size: 40px;
-            line-height: 1.1;
-            letter-spacing: -0.02em;
+            font-size: 34px;
+            line-height: 1.14;
+            letter-spacing: -0.016em;
+          }
+
+          .source-badge {
+            padding: 0.3rem 0.75rem 0.3rem 0.3rem;
           }
 
           .prose-article {
@@ -910,18 +933,29 @@ export function ArticleReader({
         /* Mobile */
         @media (max-width: 480px) {
           .article-title {
-            font-size: 32px;
-            line-height: 1.12;
-            letter-spacing: -0.015em;
+            font-size: 26px;
+            line-height: 1.18;
+            letter-spacing: -0.01em;
           }
 
           .article-header {
-            padding-left: 1.25rem;
-            padding-right: 1.25rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
           }
 
           .article-meta {
-            gap: 0.75rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+
+          .source-badge {
+            padding: 0.25rem 0.65rem 0.25rem 0.25rem;
+            gap: 0.375rem;
+          }
+
+          .source-badge svg {
+            display: none;
           }
 
           .prose-article {
@@ -973,8 +1007,14 @@ export function ArticleReader({
           .prose-article a,
           .prose-article mark,
           .prose-article rw-highlight,
-          .prose-article .highlight {
+          .prose-article .highlight,
+          .source-badge,
+          .article-meta a {
             transition: none;
+          }
+
+          .source-badge:hover {
+            transform: none;
           }
         }
 

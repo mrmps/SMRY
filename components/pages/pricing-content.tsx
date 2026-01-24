@@ -101,10 +101,10 @@ function CTAButton({
   onSignedOutClick,
 }: CTAButtonProps) {
   const baseStyles = variant === "desktop"
-    ? "w-full py-2.5 px-4 rounded-lg bg-foreground text-background font-medium text-sm"
-    : "w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm";
+    ? "w-full py-3 px-4 rounded-xl bg-foreground text-background font-semibold text-sm shadow-sm"
+    : "w-full py-3.5 px-4 rounded-xl bg-foreground text-background font-semibold text-sm shadow-sm";
 
-  const interactiveStyles = "hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none";
+  const interactiveStyles = "hover:bg-foreground/90 active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none";
 
   const ctaText = "Start My Free Trial";
 
@@ -267,6 +267,17 @@ export function PricingContent() {
     };
   }, []);
 
+  const premiumFeatures = [
+    "1,000+ publications",
+    t("unlimitedArticles"),
+    t("unlimitedAiSummaries"),
+    t("premiumAiModels"),
+    t("bypassIndicator"),
+    t("unlimitedHistory"),
+    t("adFreeReading"),
+    t("prioritySupport"),
+  ];
+
   const faqs = [
     { q: t("faqHowWorks"), a: t("faqHowWorksAnswer") },
     { q: t("faqPublications"), a: t("faqPublicationsAnswer") },
@@ -358,44 +369,43 @@ export function PricingContent() {
         </div>
 
         {/* Card */}
-        <div className="flex justify-center px-4 pt-5 pb-24 sm:pb-16">
-          <div className="w-full max-w-[320px]">
-            <div className={`rounded-xl border ${isProUser ? "border-[var(--p3-gold)]/20" : "border-foreground/[0.06]"} bg-card px-5 py-6`}>
-
-              {/* Urgency - subtle */}
-              {billingPeriod === "annual" && !isProUser && (
-                <p className="text-[11px] text-center text-[var(--p3-emerald)] mb-4 font-medium">
-                  Limited time · 50% off
-                </p>
-              )}
+        <div className="flex justify-center px-4 pt-6 pb-24 sm:pb-16">
+          <div className="w-full max-w-[340px]">
+            <div className={`relative rounded-2xl border ${isProUser ? "border-[var(--p3-gold)]/30 shadow-[0_0_32px_-8px_var(--p3-gold)]" : "border-foreground/[0.1]"} bg-gradient-to-b from-card via-card to-muted/40 px-6 py-7 shadow-lg shadow-foreground/[0.03]`}>
 
               {/* Price */}
               <div className="text-center">
-                <div className="flex items-baseline justify-center gap-1">
+                {billingPeriod === "annual" && !isProUser && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide text-[var(--p3-emerald)] bg-[var(--p3-emerald)]/[0.08] px-2.5 py-1 rounded-full mb-4">
+                    <span className="size-1 rounded-full bg-[var(--p3-emerald)] animate-pulse" />
+                    Limited offer · 50% off
+                  </span>
+                )}
+                <div className="flex items-baseline justify-center gap-2">
                   {billingPeriod === "annual" && (
-                    <span className="text-base text-muted-foreground/35 line-through tabular-nums">${originalAnnualPrice}</span>
+                    <span className="text-xl text-muted-foreground/30 line-through tabular-nums">${originalAnnualPrice}</span>
                   )}
-                  <span className="text-[2.75rem] font-semibold tabular-nums tracking-[-0.03em] leading-none">
+                  <span className="text-5xl font-bold tabular-nums tracking-[-0.04em] leading-none">
                     ${billingPeriod === "annual" ? annualPrice : monthlyPrice}
                   </span>
                 </div>
-                <p className="text-[12px] text-muted-foreground mt-1">
+                <p className="text-[12px] text-muted-foreground mt-1.5">
                   {billingPeriod === "annual"
-                    ? <><span className="text-foreground/90">${annualMonthly}/mo</span> · billed yearly</>
+                    ? <><span className="text-foreground/80 font-medium">${annualMonthly}/mo</span> · billed yearly</>
                     : "per month"
                   }
                 </p>
               </div>
 
               {/* Billing Toggle */}
-              <fieldset className="mt-5 mb-4">
+              <fieldset className="mt-6 mb-5">
                 <legend className="sr-only">Billing period</legend>
-                <div className="flex p-0.5 bg-muted/40 rounded-lg">
+                <div className="flex p-1 bg-muted/50 rounded-xl">
                   <button
                     onClick={() => setBillingPeriod("annual")}
-                    className={`flex-1 py-[7px] rounded-[6px] text-[13px] font-medium transition-colors ${
+                    className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-all ${
                       billingPeriod === "annual"
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-foreground/[0.08]"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     type="button"
@@ -405,9 +415,9 @@ export function PricingContent() {
                   </button>
                   <button
                     onClick={() => setBillingPeriod("monthly")}
-                    className={`flex-1 py-[7px] rounded-[6px] text-[13px] font-medium transition-colors ${
+                    className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-all ${
                       billingPeriod === "monthly"
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-foreground/[0.08]"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     type="button"
@@ -419,40 +429,32 @@ export function PricingContent() {
               </fieldset>
 
               {/* CTA */}
-              <CTAButton
-                variant="desktop"
-                hasMounted={hasMounted}
-                isProUser={isProUser}
-                billingPeriod={billingPeriod}
-                manageSubscriptionLabel={t("manageSubscription")}
-                onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
-                onSubscriptionComplete={() => setShowSuccess(true)}
-                onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
-              />
+              <div className="hidden sm:block">
+                <CTAButton
+                  variant="desktop"
+                  hasMounted={hasMounted}
+                  isProUser={isProUser}
+                  billingPeriod={billingPeriod}
+                  manageSubscriptionLabel={t("manageSubscription")}
+                  onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
+                  onSubscriptionComplete={() => setShowSuccess(true)}
+                  onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
+                />
 
-              <p className="mt-2.5 text-[10px] text-muted-foreground/50 text-center tracking-wide">
-                7-day free trial · Cancel anytime
-              </p>
+                <p className="mt-3 text-[11px] text-muted-foreground/60 text-center">
+                  Try free for 7 days · Cancel anytime
+                </p>
+              </div>
 
               {/* Features */}
-              <div className="mt-5 pt-4 border-t border-foreground/[0.04]">
-                <ul className="space-y-2" aria-label="Pro features">
-                  <li className="flex items-center gap-2 text-[12px] text-foreground/75">
-                    <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
-                    1,000+ publications
-                  </li>
-                  <li className="flex items-center gap-2 text-[12px] text-foreground/75">
-                    <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
-                    {t("unlimitedArticles")}
-                  </li>
-                  <li className="flex items-center gap-2 text-[12px] text-foreground/75">
-                    <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
-                    AI summaries
-                  </li>
-                  <li className="flex items-center gap-2 text-[12px] text-foreground/75">
-                    <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
-                    {t("adFreeReading")}
-                  </li>
+              <div className="mt-6 pt-5 border-t border-foreground/[0.06]">
+                <ul className="space-y-2.5" aria-label="Pro features">
+                  {premiumFeatures.map((feature) => (
+                    <li key={feature} className="flex items-center gap-2.5 text-[13px] text-foreground/80">
+                      <Check className="size-3.5 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -477,7 +479,7 @@ export function PricingContent() {
                 { feature: "Bypass detection", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
                 { feature: "Ad-free reading", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
                 { feature: "Search history", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
-                { feature: "Priority support", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
+                { feature: t("prioritySupport"), free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
               ].map((row, i) => (
                 <div key={i} className={`grid grid-cols-3 text-center text-sm ${i !== 5 ? "border-b border-border" : ""}`}>
                   <div className="p-3 text-left text-muted-foreground text-xs">{row.feature}</div>

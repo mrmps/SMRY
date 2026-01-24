@@ -19,7 +19,9 @@
     "bookmarkletInstructions": "Drag it to your bookmarks bar, then click it on any page to open in SMRY.",
     "validationError": "Please enter a valid URL.",
     "submitUrl": "Submit URL",
-    "quickAccessTips": "Quick access tips"
+    "quickAccessTips": "Quick access tips",
+    "prependTip": "Prepend <code>smry.ai/</code> to any article URL",
+    "dragToBookmarks": "Drag to bookmarks bar"
   },
   "banner": {
     "heading": "Hop over these paywalls:"
@@ -102,6 +104,7 @@
     "articlesInHistory": "articles in history",
     "searchHistory": "Search history",
     "adFreeReading": "Ad-free reading",
+    "prioritySupport": "Priority support",
     "bypassIndicator": "Bypass indicator",
     "bypassIndicatorDesc": "Stop guessing. Know instantly if you got the full article or if content was cut off.",
     "premiumAiModels": "Premium AI models",

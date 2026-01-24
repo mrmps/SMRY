@@ -1,8 +1,11 @@
 "use client";
 
 import { useLocale } from "next-intl";
+import { useParams } from "next/navigation";
+import { useTransition } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type Locale } from "@/i18n/routing";
+import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import {
   Select,
   SelectContent,
@@ -34,21 +37,21 @@ export function LanguageSwitcher() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const rawPathname = usePathname();
-
-  // Strip any locale prefix from pathname (workaround for next-intl edge case
-  // where usePathname() returns locale-prefixed path, and useLocale() may be
-  // out of sync during navigation transitions)
-  const localePrefix = routing.locales.find(
-    (loc) => rawPathname === `/${loc}` || rawPathname.startsWith(`/${loc}/`)
-  );
-  const pathname = localePrefix
-    ? rawPathname.slice(localePrefix.length + 1) || "/"
-    : rawPathname;
+  const pathname = stripLocaleFromPathname(rawPathname);
+  const params = useParams();
+  const [, startTransition] = useTransition();
 
   const handleChange = (newLocale: Locale | null) => {
     if (!newLocale) return;
-
-    router.replace(pathname, { locale: newLocale });
+    startTransition(() => {
+      router.replace(
+        // @ts-expect-error -- TypeScript will validate that only known `params`
+        // are used in combination with a given `pathname`. Since the two will
+        // always match for the current route, we can skip runtime checks.
+        { pathname, params },
+        { locale: newLocale }
+      );
+    });
   };
 
   return (

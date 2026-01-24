@@ -19,7 +19,9 @@
     "bookmarkletInstructions": "Ziehen Sie es in Ihre Lesezeichen-Leiste, dann klicken Sie auf einer beliebigen Seite darauf, um sie in SMRY zu öffnen.",
     "validationError": "Bitte geben Sie eine gültige URL ein.",
     "submitUrl": "URL absenden",
-    "quickAccessTips": "Schnellzugriff-Tipps"
+    "quickAccessTips": "Schnellzugriff-Tipps",
+    "prependTip": "Füge <code>smry.ai/</code> vor jede Artikel-URL ein",
+    "dragToBookmarks": "In Lesezeichen-Leiste ziehen"
   },
   "banner": {
     "heading": "Diese Paywalls überspringen:"
@@ -102,6 +104,7 @@
     "articlesInHistory": "Artikel im Verlauf",
     "searchHistory": "Verlauf durchsuchen",
     "adFreeReading": "Werbefreies Lesen",
+    "prioritySupport": "Prioritärer Support",
     "bypassIndicator": "Bypass-Anzeige",
     "bypassIndicatorDesc": "Schluss mit Raten. Sieh sofort, ob du den vollständigen Artikel bekommen hast oder ob Inhalte abgeschnitten wurden.",
     "premiumAiModels": "Premium-KI-Modelle",

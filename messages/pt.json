@@ -19,7 +19,9 @@
     "bookmarkletInstructions": "Arraste para sua barra de favoritos e clique em qualquer página para abrir no SMRY.",
     "validationError": "Por favor, insira uma URL válida.",
     "submitUrl": "Enviar URL",
-    "quickAccessTips": "Dicas de acesso rápido"
+    "quickAccessTips": "Dicas de acesso rápido",
+    "prependTip": "Adicione <code>smry.ai/</code> antes de qualquer URL de artigo",
+    "dragToBookmarks": "Arraste para a barra de favoritos"
   },
   "banner": {
     "heading": "Pule estes paywalls:"
@@ -102,6 +104,7 @@
     "articlesInHistory": "Artigos no histórico",
     "searchHistory": "Pesquisar histórico",
     "adFreeReading": "Leitura sem anúncios",
+    "prioritySupport": "Suporte prioritário",
     "bypassIndicator": "Indicador de bypass",
     "bypassIndicatorDesc": "Pare de adivinhar. Saiba instantaneamente se você obteve o artigo completo ou se o conteúdo foi cortado.",
     "premiumAiModels": "Modelos de IA premium",

@@ -34,6 +34,7 @@ import {
   PopoverTrigger,
   PopoverPopup,
 } from "@/components/ui/popover";
+import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import { cn } from "@/lib/utils";
 
 const emptySubscribe = () => () => {};
@@ -63,11 +64,8 @@ function LanguagePopover() {
   const locale = useLocale() as Locale;
   const rawPathname = usePathname();
 
-  // Strip locale prefix from pathname if present (workaround for next-intl edge case
-  // where usePathname() sometimes returns locale-prefixed path after navigation)
-  const pathname = rawPathname.startsWith(`/${locale}`)
-    ? rawPathname.slice(locale.length + 1) || "/"
-    : rawPathname;
+  // Normalize pathname because next-intl occasionally leaves the previous locale prefix in place
+  const pathname = stripLocaleFromPathname(rawPathname);
 
   return (
     <Popover>
@@ -282,6 +280,32 @@ function HelpPopoverContent() {
     return () => clearTimeout(timer);
   }, []);
 
+  const query = searchQuery.toLowerCase().trim();
+
+  const menuItems = [
+    { icon: MessageCircle, label: "Contact us", href: "https://smryai.userjot.com/", external: true },
+    { icon: BookOpen, label: t("getStarted"), href: "/guide" },
+    { icon: History, label: t("history"), href: "/history", shortcut: "G H" },
+    { icon: CreditCard, label: t("pricing"), href: "/pricing" },
+  ];
+
+  const whatsNewItems = [
+    { text: "Improved history with keyboard nav", isNew: true },
+    { text: "Multiple view modes for history" },
+    { text: "Full changelog", href: "/changelog" },
+  ];
+
+  const filteredMenuItems = query
+    ? menuItems.filter((item) => item.label.toLowerCase().includes(query))
+    : menuItems;
+
+  const filteredWhatsNew = query
+    ? whatsNewItems.filter((item) => item.text.toLowerCase().includes(query))
+    : whatsNewItems;
+
+  const showTheme = !query || "theme".includes(query);
+  const showWhatsNew = filteredWhatsNew.length > 0;
+
   return (
     <div className="relative">
       {/* Search */}
@@ -298,36 +322,38 @@ function HelpPopoverContent() {
       </div>
 
       {/* Menu */}
-      <div className="p-1.5">
-        <MenuItem
-          icon={MessageCircle}
-          label="Contact us"
-          href="https://smryai.userjot.com/"
-          external
-        />
-        <MenuItem icon={BookOpen} label={t("getStarted")} href="/guide" />
-        <MenuItem
-          icon={History}
-          label={t("history")}
-          href="/history"
-          shortcut="G H"
-        />
-        <MenuItem icon={CreditCard} label={t("pricing")} href="/pricing" />
-        <ThemeSubmenu />
-      </div>
+      {(filteredMenuItems.length > 0 || showTheme) && (
+        <div className="p-1.5">
+          {filteredMenuItems.map((item) => (
+            <MenuItem
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              href={item.href}
+              external={item.external}
+              shortcut={item.shortcut}
+            />
+          ))}
+          {showTheme && <ThemeSubmenu />}
+        </div>
+      )}
 
       {/* Divider */}
-      <div className="mx-2.5 border-t border-neutral-800" />
+      {showWhatsNew && <div className="mx-2.5 border-t border-neutral-800" />}
 
       {/* What's new */}
-      <div className="px-2.5 pt-2 pb-1">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-neutral-600 mb-1.5">
-          What&apos;s new
+      {showWhatsNew && (
+        <div className="px-2.5 pt-2 pb-1">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-neutral-600 mb-1.5">
+            What&apos;s new
+          </div>
+          {filteredWhatsNew.map((item) => (
+            <WhatsNewItem key={item.text} isNew={item.isNew} href={item.href}>
+              {item.text}
+            </WhatsNewItem>
+          ))}
         </div>
-        <WhatsNewItem isNew>Improved history with keyboard nav</WhatsNewItem>
-        <WhatsNewItem>Multiple view modes for history</WhatsNewItem>
-        <WhatsNewItem href="/changelog">Full changelog</WhatsNewItem>
-      </div>
+      )}
 
       {/* Bottom bar */}
       <div className="flex items-center gap-2 border-t border-neutral-800 px-2.5 py-2 mt-1">

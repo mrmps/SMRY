@@ -174,11 +174,13 @@ export function HomeContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
                 </svg>
                 <p className="text-sm text-muted-foreground">
-                  Prepend{" "}
-                  <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs">
-                    smry.ai/
-                  </code>{" "}
-                  to any article URL
+                  {t.rich("prependTip", {
+                    code: (chunks) => (
+                      <code className="rounded bg-background px-1.5 py-0.5 font-mono text-xs">
+                        {chunks}
+                      </code>
+                    ),
+                  })}
                 </p>
               </div>
 
@@ -188,7 +190,7 @@ export function HomeContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
                 </svg>
                 <p className="flex-1 text-sm text-muted-foreground">
-                  Drag to bookmarks bar
+                  {t("dragToBookmarks")}
                 </p>
                 <BookmarkletLink />
               </div>

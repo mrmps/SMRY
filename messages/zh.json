@@ -19,7 +19,9 @@
     "bookmarkletInstructions": "将其拖到书签栏，然后在任何页面上点击它即可在SMRY中打开。",
     "validationError": "请输入有效的URL。",
     "submitUrl": "提交URL",
-    "quickAccessTips": "快速访问提示"
+    "quickAccessTips": "快速访问提示",
+    "prependTip": "在任何文章URL前添加 <code>smry.ai/</code>",
+    "dragToBookmarks": "拖动到书签栏"
   },
   "banner": {
     "heading": "跳过这些付费墙："
@@ -102,6 +104,7 @@
     "articlesInHistory": "历史记录中的文章",
     "searchHistory": "搜索历史",
     "adFreeReading": "无广告阅读",
+    "prioritySupport": "优先支持",
     "bypassIndicator": "绕过指示器",
     "bypassIndicatorDesc": "不用再猜测。立即知道您是否获得了完整文章，还是内容被截断了。",
     "premiumAiModels": "高级AI模型",

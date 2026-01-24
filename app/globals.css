@@ -488,6 +488,53 @@
   .prose svg {
     display: none !important;
   }
+
+  /* Better image handling in articles */
+  .prose img {
+    max-width: 100%;
+    height: auto;
+    max-height: 400px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    cursor: zoom-in;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .prose img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Expanded image state (toggled via JS) */
+  .prose img.expanded {
+    max-height: none;
+    max-width: 100%;
+    cursor: zoom-out;
+    transform: none;
+  }
+
+  /* Hide broken/placeholder images */
+  .prose img[src=""],
+  .prose img:not([src]),
+  .prose img[alt^="Image"][alt$=":"] {
+    display: none !important;
+  }
+
+  /* Small inline icon-like images */
+  .prose img[width="16"],
+  .prose img[width="20"],
+  .prose img[width="24"],
+  .prose img[height="16"],
+  .prose img[height="20"],
+  .prose img[height="24"] {
+    display: inline-block;
+    max-height: 1.5em;
+    margin: 0 0.25em;
+    vertical-align: middle;
+    border-radius: 0;
+  }
 }
 
 @layer utilities {
@@ -631,6 +678,21 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
 .cl-subscriptionDetails,
 .cl-checkout {
   z-index: 9999 !important;
+}
+
+/* Hide duplicate close button in Clerk checkout/subscription drawer on mobile */
+/* The drawer shows both a "Done" button and a "Close" button - hide the footer close */
+.cl-checkout .cl-drawerClose,
+.cl-checkout + .cl-drawerClose,
+.cl-checkout ~ .cl-drawerClose,
+.cl-subscriptionDetails .cl-drawerClose,
+.cl-subscriptionDetails + .cl-drawerClose,
+.cl-subscriptionDetails ~ .cl-drawerClose,
+.cl-drawer:has(.cl-checkout) footer,
+.cl-drawer:has(.cl-subscriptionDetails) footer,
+.cl-drawerContent:has(.cl-checkout) > footer,
+.cl-drawerContent:has(.cl-subscriptionDetails) > footer {
+  display: none !important;
 }
 
 /* Minimal Tweet Card Styling */

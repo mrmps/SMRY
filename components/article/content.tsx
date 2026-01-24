@@ -189,6 +189,29 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { data, isLoading, isError, error } = query;
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  // Add click-to-expand functionality to images
+  useEffect(() => {
+    if (!contentRef.current) return;
+
+    const images = contentRef.current.querySelectorAll("img");
+    const handleClick = (e: Event) => {
+      const img = e.target as HTMLImageElement;
+      img.classList.toggle("expanded");
+    };
+
+    images.forEach((img) => {
+      img.addEventListener("click", handleClick);
+      img.title = "Click to expand/collapse";
+    });
+
+    return () => {
+      images.forEach((img) => {
+        img.removeEventListener("click", handleClick);
+      });
+    };
+  }, [data?.article?.content]);
 
   // Extract debug context from error if available
   const debugContext =
@@ -486,6 +509,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               ) : sanitizedArticleContent ? (
                 <>
                   <div
+                    ref={contentRef}
                     className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
                     dir={data?.article?.dir || "ltr"}
                     lang={data?.article?.lang || undefined}

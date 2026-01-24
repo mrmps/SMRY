@@ -19,7 +19,9 @@
     "bookmarkletInstructions": "Sleep het naar je bladwijzerbalk, klik er dan op elke pagina op om deze in SMRY te openen.",
     "validationError": "Voer een geldige URL in.",
     "submitUrl": "URL verzenden",
-    "quickAccessTips": "Snelle toegangstips"
+    "quickAccessTips": "Snelle toegangstips",
+    "prependTip": "Zet <code>smry.ai/</code> voor elke artikel-URL",
+    "dragToBookmarks": "Sleep naar bladwijzerbalk"
   },
   "banner": {
     "heading": "Spring over deze betaalmuren:"
@@ -102,6 +104,7 @@
     "articlesInHistory": "artikelen in geschiedenis",
     "searchHistory": "Geschiedenis doorzoeken",
     "adFreeReading": "Advertentievrij lezen",
+    "prioritySupport": "Prioritaire ondersteuning",
     "bypassIndicator": "Bypass-indicator",
     "bypassIndicatorDesc": "Stop met gissen. Weet direct of je het volledige artikel hebt of dat inhoud is afgekapt.",
     "premiumAiModels": "Premium AI-modellen",
