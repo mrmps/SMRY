@@ -103,6 +103,8 @@
     "adFreeReading": "无广告阅读",
     "bypassIndicator": "绕过指示器",
     "bypassIndicatorDesc": "不用再猜测。立即知道您是否获得了完整文章，还是内容被截断了。",
+    "premiumAiModels": "高级AI模型",
+    "premiumAiModelsDesc": "使用顶级模型获得更快、更智能的摘要",
     "pro": "专业版",
     "forPowerReaders": "适合深度读者",
     "perMonth": "每月",

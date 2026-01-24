@@ -362,7 +362,8 @@ function ExpandedSummary({
   );
 
   const handleLanguageChange = useCallback(
-    (newLang: string) => {
+    (newLang: string | null) => {
+      if (!newLang) return;
       setPreferredLanguage(newLang);
       hasTriggeredRef.current = false;
     },
