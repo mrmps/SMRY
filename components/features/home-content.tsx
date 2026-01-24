@@ -71,7 +71,7 @@ export function HomeContent() {
           </h1>
 
           {/* Tagline - softer color for hierarchy */}
-          <p className="mt-4 text-center text-lg text-muted-foreground/80">
+          <p className="mt-2 text-center text-lg text-muted-foreground/80">
             {t("tagline")}{" "}
             <Link
               href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
@@ -82,13 +82,13 @@ export function HomeContent() {
           </p>
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="mt-8 w-full">
+          <form onSubmit={handleSubmit} className="mt-4 w-full">
             <div
               className={clsx(
-                "flex overflow-hidden rounded-xl border transition-colors duration-300",
-                "bg-background",
-                "focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/20 focus-within:ring-offset-0",
-                urlError ? "border-destructive ring-destructive/20" : "border-input"
+                "flex overflow-hidden rounded-lg border transition-all duration-200",
+                "bg-muted/30",
+                "focus-within:bg-muted/50 focus-within:border-foreground/20",
+                urlError ? "border-destructive/50" : "border-foreground/[0.08]"
               )}
             >
               <input
@@ -154,7 +154,7 @@ export function HomeContent() {
           )}
 
           {/* Tips section */}
-          <details className="relative mx-auto mt-8 w-full max-w-lg group [&>summary]:list-none [&>summary::-webkit-details-marker]:hidden">
+          <details className="relative mx-auto mt-2 w-full max-w-lg group [&>summary]:list-none [&>summary::-webkit-details-marker]:hidden">
             <summary className="flex cursor-pointer items-center justify-center gap-2 text-sm text-muted-foreground/50 transition-colors hover:text-muted-foreground/70 group-open:text-muted-foreground/70">
               <span>{t("quickAccessTips")}</span>
               <svg

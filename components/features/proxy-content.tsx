@@ -127,13 +127,16 @@ function HistoryMenuItem() {
   return (
     <MenuItem
       render={(props) => {
-        const { key, ...rest } = props as typeof props & { key?: React.Key };
+        const { key, className, ...rest } = props as typeof props & {
+          key?: React.Key;
+          className?: string;
+        };
         return (
           <Link
             key={key}
             {...rest}
             href={href}
-            className="flex items-center gap-2 w-full"
+            className={cn(className, "flex items-center gap-2 w-full px-3")}
           >
             <HistoryIcon className="size-4" />
             <span className="flex-1">History</span>
@@ -161,43 +164,43 @@ function ThemeMenuItems() {
       <MenuSeparator />
       <MenuGroup>
         <MenuGroupLabel>Theme</MenuGroupLabel>
-        <div className="flex items-center gap-1 px-2 pb-1">
-        <button
-          onClick={() => setTheme("light")}
-          className={cn(
-            "flex items-center justify-center rounded-md p-1.5 transition-colors",
-            theme === "light" || (theme === "system" && !isDark)
-              ? "bg-accent text-accent-foreground"
-              : "hover:bg-accent/50 text-muted-foreground"
-          )}
-          title="Light"
-        >
-          <Sun className="size-4" />
-        </button>
-        <button
-          onClick={() => setTheme("dark")}
-          className={cn(
-            "flex items-center justify-center rounded-md p-1.5 transition-colors",
-            theme === "dark" || theme === "magic-blue" || theme === "classic-dark"
-              ? "bg-accent text-accent-foreground"
-              : "hover:bg-accent/50 text-muted-foreground"
-          )}
-          title="Dark"
-        >
-          <Moon className="size-4" />
-        </button>
-        <button
-          onClick={() => setTheme("system")}
-          className={cn(
-            "flex items-center justify-center rounded-md p-1.5 transition-colors",
-            theme === "system"
-              ? "bg-accent text-accent-foreground"
-              : "hover:bg-accent/50 text-muted-foreground"
-          )}
-          title="System"
-        >
-          <Laptop className="size-4" />
-        </button>
+        <div className="flex items-center gap-1 px-3 pb-1">
+          <button
+            onClick={() => setTheme("light")}
+            className={cn(
+              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              theme === "light" || (theme === "system" && !isDark)
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent/50 text-muted-foreground"
+            )}
+            title="Light"
+          >
+            <Sun className="size-4" />
+          </button>
+          <button
+            onClick={() => setTheme("dark")}
+            className={cn(
+              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              theme === "dark" || theme === "magic-blue" || theme === "classic-dark"
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent/50 text-muted-foreground"
+            )}
+            title="Dark"
+          >
+            <Moon className="size-4" />
+          </button>
+          <button
+            onClick={() => setTheme("system")}
+            className={cn(
+              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              theme === "system"
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent/50 text-muted-foreground"
+            )}
+            title="System"
+          >
+            <Laptop className="size-4" />
+          </button>
         </div>
       </MenuGroup>
     </>
@@ -510,7 +513,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   <MenuSeparator />
                   <MenuItem
                     render={(props) => {
-                      const { key, ...rest } = props as typeof props & { key?: React.Key };
+                      const { key, className, ...rest } = props as typeof props & {
+                        key?: React.Key;
+                        className?: string;
+                      };
                       return (
                         <a
                           key={key}
@@ -518,7 +524,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                           href="https://smryai.userjot.com/"
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-2 w-full"
+                          className={cn(className, "flex items-center gap-2 w-full px-3")}
                         >
                           <BugIcon className="size-4" />
                           <span className="flex-1">Report Bug</span>
@@ -529,7 +535,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   />
                   <MenuItem
                     render={(props) => {
-                      const { key, ...rest } = props as typeof props & { key?: React.Key };
+                      const { key, className, ...rest } = props as typeof props & {
+                        key?: React.Key;
+                        className?: string;
+                      };
                       return (
                         <a
                           key={key}
@@ -537,7 +546,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                           href="https://smryai.userjot.com/"
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-2 w-full"
+                          className={cn(className, "flex items-center gap-2 w-full px-3")}
                         >
                           <MessageSquare className="size-4" />
                           <span className="flex-1">Send Feedback</span>
