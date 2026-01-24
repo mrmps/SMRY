@@ -19,9 +19,13 @@
 import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
 import { memo } from 'react';
-import { Streamdown, defaultRehypePlugins, type StreamdownProps } from 'streamdown';
+import {
+  Streamdown,
+  defaultRehypePlugins,
+  type StreamdownProps,
+  type BundledTheme,
+} from 'streamdown';
 import { harden } from 'rehype-harden';
-import type { BundledTheme } from 'shiki';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
