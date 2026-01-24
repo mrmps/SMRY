@@ -650,6 +650,7 @@ export function PricingContent() {
           manageSubscriptionLabel={t("manageSubscription")}
           onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
           onSubscriptionComplete={() => setShowSuccess(true)}
+          onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
         />
         <p className="mt-2 text-xs text-muted-foreground text-center">
           No payment due now · Cancel anytime
