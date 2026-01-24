@@ -62,22 +62,11 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
     url,
     articleTitle = "Article",
     source = "smry-fast",
-    viewMode = "markdown",
-    sidebarOpen = true,
     onActionComplete,
   }) {
     const [copied, setCopied] = useState(false);
 
-    const getShareUrl = () => {
-      const shareUrl = new URL(url);
-      if (source) shareUrl.searchParams.set("source", source);
-      if (viewMode) shareUrl.searchParams.set("view", viewMode);
-      if (sidebarOpen !== undefined)
-        shareUrl.searchParams.set("sidebar", String(sidebarOpen));
-      return shareUrl.toString();
-    };
-
-    const finalUrl = getShareUrl();
+    const finalUrl = url;
 
     const handleCopy = async () => {
       try {
