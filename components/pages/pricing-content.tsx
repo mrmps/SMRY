@@ -70,6 +70,85 @@ const publications = [
   "Quora",
 ];
 
+interface CTAButtonProps {
+  variant: "desktop" | "mobile";
+  hasMounted: boolean;
+  isProUser: boolean;
+  billingPeriod: BillingPeriod;
+  manageSubscriptionLabel: string;
+  onCheckoutOpen: () => void;
+  onSubscriptionComplete: () => void;
+  onSignedOutClick?: () => void;
+}
+
+function CTAButton({
+  variant,
+  hasMounted,
+  isProUser,
+  billingPeriod,
+  manageSubscriptionLabel,
+  onCheckoutOpen,
+  onSubscriptionComplete,
+  onSignedOutClick,
+}: CTAButtonProps) {
+  const baseStyles = variant === "desktop"
+    ? "w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm"
+    : "w-full py-3.5 px-4 rounded-xl bg-foreground text-background font-medium text-sm";
+
+  const interactiveStyles = variant === "desktop"
+    ? "hover:bg-foreground/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+    : "";
+
+  const loadingButton = (
+    <button className={baseStyles} aria-disabled="true" disabled>
+      Start Free for 7 Days
+    </button>
+  );
+
+  if (!hasMounted) {
+    return loadingButton;
+  }
+
+  return (
+    <>
+      <ClerkLoading>{loadingButton}</ClerkLoading>
+      <ClerkLoaded>
+        <SignedIn>
+          {isProUser ? (
+            <SubscriptionDetailsButton>
+              <button className={`${baseStyles} ${interactiveStyles}`}>
+                {manageSubscriptionLabel}
+              </button>
+            </SubscriptionDetailsButton>
+          ) : (
+            <div className="checkout-btn-primary">
+              <CheckoutButton
+                planId={env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID}
+                planPeriod={billingPeriod === "annual" ? "annual" : "month"}
+                onSubscriptionComplete={onSubscriptionComplete}
+              >
+                <button type="button" onClick={onCheckoutOpen}>
+                  Start Free for 7 Days
+                </button>
+              </CheckoutButton>
+            </div>
+          )}
+        </SignedIn>
+        <SignedOut>
+          <SignInButton mode="modal" fallbackRedirectUrl="/pricing">
+            <button
+              onClick={onSignedOutClick}
+              className={`${baseStyles} ${interactiveStyles}`}
+            >
+              Start Free for 7 Days
+            </button>
+          </SignInButton>
+        </SignedOut>
+      </ClerkLoaded>
+    </>
+  );
+}
+
 export function PricingContent() {
   const t = useTranslations("pricing");
   const router = useRouter();
@@ -77,6 +156,7 @@ export function PricingContent() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("annual");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
   const { user } = useUser();
 
@@ -84,7 +164,13 @@ export function PricingContent() {
   const returnUrlFromParams = searchParams.get("returnUrl");
 
   // Check if user came from an article (for showing dismiss option)
-  const hasReturnUrl = !!(returnUrlFromParams || (typeof window !== "undefined" && sessionStorage.getItem("smry-return-url")));
+  // Use state to avoid hydration mismatch from sessionStorage access
+  const [hasStoredReturnUrl, setHasStoredReturnUrl] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: hydration-safe sessionStorage access
+    setHasStoredReturnUrl(!!sessionStorage.getItem("smry-return-url"));
+  }, []);
+  const hasReturnUrl = !!(returnUrlFromParams || hasStoredReturnUrl);
 
   // Handle dismiss/go back
   const handleDismiss = useCallback(() => {
@@ -95,6 +181,12 @@ export function PricingContent() {
       router.push("/");
     }
   }, [returnUrlFromParams, router]);
+
+  // Track when component has mounted for hydration-safe rendering
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: standard hasMounted pattern for SSR
+    setHasMounted(true);
+  }, []);
 
   // Auto-hide success toast after 3 seconds
   useEffect(() => {
@@ -150,7 +242,8 @@ export function PricingContent() {
   ];
 
   return (
-    <>
+    // isolation: isolate creates a stacking context boundary so Clerk modals appear above all app content
+    <div className="isolate">
       {/* Success Toast - outside main for z-index */}
       {showSuccess && (
         <div
@@ -312,50 +405,16 @@ export function PricingContent() {
 
             {/* CTA Button - hidden on mobile, shown in sticky footer */}
             <div className="hidden sm:block">
-              <ClerkLoading>
-                <button
-                  className="w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm"
-                  aria-disabled="true"
-                  disabled
-                >
-                  Start Free for 7 Days
-                </button>
-              </ClerkLoading>
-              <ClerkLoaded>
-                <SignedIn>
-                  {isProUser ? (
-                    <SubscriptionDetailsButton>
-                      <button className="w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none">
-                        {t("manageSubscription")}
-                      </button>
-                    </SubscriptionDetailsButton>
-                  ) : (
-                    <div className="checkout-btn-primary">
-                      <CheckoutButton
-                        planId={env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID}
-                        planPeriod={billingPeriod === "annual" ? "annual" : "month"}
-                        onSubscriptionComplete={() => {
-                          setShowSuccess(true);
-                        }}
-                      >
-                        <button type="button" onClick={() => handleCheckoutOpen(billingPeriod)}>
-                          Start Free for 7 Days
-                        </button>
-                      </CheckoutButton>
-                    </div>
-                  )}
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton mode="modal" fallbackRedirectUrl="/pricing">
-                    <button
-                      onClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
-                      className="w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                    >
-                      Start Free for 7 Days
-                    </button>
-                  </SignInButton>
-                </SignedOut>
-              </ClerkLoaded>
+              <CTAButton
+                variant="desktop"
+                hasMounted={hasMounted}
+                isProUser={isProUser}
+                billingPeriod={billingPeriod}
+                manageSubscriptionLabel={t("manageSubscription")}
+                onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
+                onSubscriptionComplete={() => setShowSuccess(true)}
+                onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
+              />
 
               {/* Reassurance text */}
               <p className="mt-3 text-xs text-muted-foreground text-center leading-relaxed">
@@ -518,6 +577,7 @@ export function PricingContent() {
               {faqs.map((faq, i) => (
                 <div key={i} className="rounded-xl border border-border overflow-hidden">
                   <button
+                    id={`faq-question-${i}`}
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -582,47 +642,19 @@ export function PricingContent() {
 
       {/* Sticky Mobile CTA */}
       <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden bg-background border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <ClerkLoading>
-          <button className="w-full py-3.5 px-4 rounded-xl bg-foreground text-background font-medium text-sm" aria-disabled="true" disabled>
-            Start Free for 7 Days
-          </button>
-        </ClerkLoading>
-        <ClerkLoaded>
-          <SignedIn>
-            {isProUser ? (
-              <SubscriptionDetailsButton>
-                <button className="w-full py-3.5 px-4 rounded-xl bg-foreground text-background font-medium text-sm">
-                  {t("manageSubscription")}
-                </button>
-              </SubscriptionDetailsButton>
-            ) : (
-              <div className="checkout-btn-primary">
-                <CheckoutButton
-                  planId={env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID}
-                  planPeriod={billingPeriod === "annual" ? "annual" : "month"}
-                  onSubscriptionComplete={() => {
-                    setShowSuccess(true);
-                  }}
-                >
-                  <button type="button" onClick={() => handleCheckoutOpen(billingPeriod)}>
-                    Start Free for 7 Days
-                  </button>
-                </CheckoutButton>
-              </div>
-            )}
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal" fallbackRedirectUrl="/pricing">
-              <button className="w-full py-3.5 px-4 rounded-xl bg-foreground text-background font-medium text-sm">
-                Start Free for 7 Days
-              </button>
-            </SignInButton>
-          </SignedOut>
-        </ClerkLoaded>
+        <CTAButton
+          variant="mobile"
+          hasMounted={hasMounted}
+          isProUser={isProUser}
+          billingPeriod={billingPeriod}
+          manageSubscriptionLabel={t("manageSubscription")}
+          onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
+          onSubscriptionComplete={() => setShowSuccess(true)}
+        />
         <p className="mt-2 text-xs text-muted-foreground text-center">
           No payment due now · Cancel anytime
         </p>
       </div>
-    </>
+    </div>
   );
 }

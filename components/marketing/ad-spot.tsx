@@ -3,12 +3,10 @@
 import * as React from "react";
 import Image from "next/image";
 import { ExternalLink, Check } from "lucide-react";
-import { useMediaQuery } from "usehooks-ts";
 import { useTranslations } from "next-intl";
 
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 import { cn } from "@/lib/utils";
-import { useIsPremium } from "@/lib/hooks/use-is-premium";
 
 // Get the name of next month in user's locale
 function useNextMonth(): string {
@@ -426,20 +424,9 @@ function AdvertiseModal({
 // EXPORTED COMPONENTS
 // ============================================
 
-export function AdSpot({ className }: AdSpotProps) {
-  const { isPremium, isLoading } = useIsPremium();
-  // Use 1280px breakpoint to match Tailwind's xl: prefix - ensures enough room for ads + content
-  const isMobile = useMediaQuery("(max-width: 1279px)", {
-    defaultValue: true,
-    initializeWithValue: false,
-  });
-
-  // Always render to prevent hydration mismatch, use hidden prop for visibility
-  return isMobile ? (
-    <AdSpotMobileBar className={className} hidden={isLoading || isPremium} />
-  ) : (
-    <AdSpotSidebar className={className} hidden={isLoading || isPremium} />
-  );
+export function AdSpot({ className: _className }: AdSpotProps) {
+  // Temporarily disabled - no active ad campaigns
+  return null;
 }
 
 export function AdSpotSidebar({
