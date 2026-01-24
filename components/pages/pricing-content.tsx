@@ -10,7 +10,6 @@ import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAndClearReturnUrl, storeReturnUrl } from "@/lib/hooks/use-return-url";
-import { env } from "@/lib/env";
 
 // Track buy button clicks
 function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
@@ -123,7 +122,7 @@ function CTAButton({
           ) : (
             <div className="checkout-btn-primary">
               <CheckoutButton
-                planId={env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID}
+                planId={process.env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID!}
                 planPeriod={billingPeriod === "annual" ? "annual" : "month"}
                 onSubscriptionComplete={onSubscriptionComplete}
               >
