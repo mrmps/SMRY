@@ -302,7 +302,7 @@ export function PricingContent() {
                     planPeriod={billingPeriod === "annual" ? "annual" : "month"}
                     onSubscriptionComplete={() => setShowSuccess(true)}
                   >
-                    Start free for 7 days
+                    Start my free trial
                   </CheckoutButton>
                 </div>
               )}
@@ -313,16 +313,14 @@ export function PricingContent() {
                   onClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
                   className="w-full py-3 px-4 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors"
                 >
-                  Start free for 7 days
+                  Start my free trial
                 </button>
               </SignInButton>
             </SignedOut>
 
             {/* Reassurance text */}
-            <p className="mt-3 text-xs text-muted-foreground text-center leading-relaxed">
-              No payment due now
-              <br />
-              Cancel anytime
+            <p className="mt-3 text-xs text-muted-foreground text-center">
+              We'll email you before you're charged
             </p>
 
             {/* Feature List - Reordered */}
