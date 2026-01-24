@@ -122,14 +122,18 @@ export function HomeContent() {
 
   return (
     <>
-      <div className="absolute left-4 top-4 z-50 md:left-8 md:top-8">
+      <div className="absolute left-4 top-4 z-50 hidden sm:block md:left-8 md:top-8">
         <GitHubBadge />
       </div>
 
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-3 md:right-8 md:top-8">
-        <UpgradeLink />
+      <div className="absolute right-4 top-4 z-50 flex items-center gap-2 sm:gap-3 md:right-8 md:top-8">
+        <span className="hidden sm:inline-flex">
+          <UpgradeLink />
+        </span>
         <AuthBar showUpgrade={false} />
-        <LanguageSwitcher />
+        <span className="hidden sm:inline-flex">
+          <LanguageSwitcher />
+        </span>
         <ModeToggle />
       </div>
 
