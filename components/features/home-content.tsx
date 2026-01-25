@@ -60,10 +60,9 @@ export function HomeContent() {
     <>
       <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground overflow-hidden">
         {/* Film grain texture - adds warmth and premium feel */}
-        <svg className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.15]">
+        <svg className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.04] mix-blend-soft-light">
           <filter id="grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" />
-            <feColorMatrix type="saturate" values="0" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" />
           </filter>
           <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
