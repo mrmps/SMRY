@@ -58,7 +58,7 @@ export function HomeContent() {
 
   return (
     <>
-      <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground overflow-hidden">
+      <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-24 text-foreground overflow-hidden">
         {/* Subtle P3 ambient glow - dark mode only */}
         <div
           className="pointer-events-none absolute inset-0 hidden dark:block"
