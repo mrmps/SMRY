@@ -72,9 +72,9 @@ function LanguagePopover() {
       <PopoverTrigger
         className={cn(
           "flex items-center justify-center size-8 rounded-full",
-          "bg-neutral-800 dark:bg-neutral-800 border border-neutral-700/80",
-          "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
-          "shadow-lg shadow-black/25 transition-all duration-150"
+          "bg-muted border border-border",
+          "text-muted-foreground hover:text-foreground hover:bg-accent",
+          "shadow-sm transition-all duration-150"
         )}
         aria-label="Language"
       >
@@ -84,7 +84,7 @@ function LanguagePopover() {
         side="top"
         align="end"
         sideOffset={8}
-        className="w-44 rounded-lg bg-neutral-900 border-neutral-700/50"
+        className="w-44 rounded-lg bg-popover border-border"
         contentClassName="p-1"
       >
         <div className="space-y-0.5">
@@ -96,12 +96,12 @@ function LanguagePopover() {
               className={cn(
                 "flex items-center justify-between rounded px-2.5 py-1.5 text-[13px] transition-colors",
                 locale === loc
-                  ? "bg-neutral-800 text-neutral-100"
-                  : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               <span>{languageNames[loc]}</span>
-              {locale === loc && <Check className="size-3.5 text-neutral-500" />}
+              {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
             </Link>
           ))}
         </div>
@@ -136,21 +136,21 @@ function MenuItem({
   const className = cn(
     "flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors",
     isActive
-      ? "bg-neutral-800 text-neutral-100"
-      : "text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+      ? "bg-accent text-foreground"
+      : "text-foreground/80 hover:bg-accent hover:text-foreground"
   );
 
   const content = (
     <>
-      <Icon className="size-4 text-neutral-500" />
+      <Icon className="size-4 text-muted-foreground/70" />
       <span className="flex-1">{label}</span>
       {shortcut && (
-        <span className="text-[11px] text-neutral-600 tracking-wide">
+        <span className="text-[11px] text-muted-foreground/50 tracking-wide">
           {shortcut}
         </span>
       )}
-      {external && <ArrowUpRight className="size-3.5 text-neutral-600" />}
-      {hasSubmenu && <ChevronRight className="size-3.5 text-neutral-600" />}
+      {external && <ArrowUpRight className="size-3.5 text-muted-foreground/50" />}
+      {hasSubmenu && <ChevronRight className="size-3.5 text-muted-foreground/50" />}
     </>
   );
 
@@ -196,17 +196,17 @@ function WhatsNewItem({
       {...wrapperProps}
       className={cn(
         "flex items-start gap-2 py-1 text-[13px]",
-        href && "hover:text-neutral-200 cursor-pointer"
+        href && "hover:text-foreground cursor-pointer"
       )}
     >
       <div
         className={cn(
           "mt-[7px] size-[5px] rounded-full shrink-0",
-          isNew ? "bg-blue-400" : "bg-neutral-600"
+          isNew ? "bg-blue-400" : "bg-muted-foreground/50"
         )}
       />
-      <span className="text-neutral-400 leading-snug">{children}</span>
-      {href && <ArrowUpRight className="size-3 text-neutral-600 mt-0.5 shrink-0" />}
+      <span className="text-muted-foreground leading-snug">{children}</span>
+      {href && <ArrowUpRight className="size-3 text-muted-foreground/50 mt-0.5 shrink-0" />}
     </Wrapper>
   );
 }
@@ -229,21 +229,21 @@ function ThemeSubmenu() {
       <PopoverTrigger
         className={cn(
           "flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors",
-          "text-neutral-300 hover:bg-neutral-800 hover:text-neutral-100"
+          "text-foreground/80 hover:bg-accent hover:text-foreground"
         )}
       >
         {(() => {
           const Icon = currentIcon;
-          return <Icon className="size-4 text-neutral-500" />;
+          return <Icon className="size-4 text-muted-foreground/70" />;
         })()}
         <span className="flex-1 text-left">{t("theme")}</span>
-        <ChevronRight className="size-3.5 text-neutral-600" />
+        <ChevronRight className="size-3.5 text-muted-foreground/50" />
       </PopoverTrigger>
       <PopoverPopup
         side="left"
         align="end"
         sideOffset={8}
-        className="w-40 rounded-lg bg-neutral-900 border-neutral-700/50"
+        className="w-40 rounded-lg bg-popover border-border"
         contentClassName="p-1.5"
       >
         {themes.map(({ id, icon: Icon, label }) => (
@@ -253,13 +253,13 @@ function ThemeSubmenu() {
             className={cn(
               "flex w-full items-center gap-2 rounded px-2 py-1.5 text-[13px] transition-colors",
               theme === id
-                ? "bg-neutral-800 text-neutral-100"
-                : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
-            <Icon className="size-3.5 text-neutral-500" />
+            <Icon className="size-3.5 text-muted-foreground/70" />
             <span className="flex-1 text-left">{label}</span>
-            {theme === id && <Check className="size-3 text-neutral-500" />}
+            {theme === id && <Check className="size-3 text-muted-foreground/70" />}
           </button>
         ))}
       </PopoverPopup>
@@ -309,15 +309,15 @@ function HelpPopoverContent() {
   return (
     <div className="relative">
       {/* Search */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-800">
-        <Search className="size-4 text-neutral-500" />
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+        <Search className="size-4 text-muted-foreground/70" />
         <input
           ref={searchRef}
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search for help..."
-          className="flex-1 bg-transparent text-[13px] text-neutral-300 outline-none placeholder:text-neutral-600"
+          className="flex-1 bg-transparent text-[13px] text-foreground/80 outline-none placeholder:text-muted-foreground/50"
         />
       </div>
 
@@ -339,12 +339,12 @@ function HelpPopoverContent() {
       )}
 
       {/* Divider */}
-      {showWhatsNew && <div className="mx-2.5 border-t border-neutral-800" />}
+      {showWhatsNew && <div className="mx-2.5 border-t border-border" />}
 
       {/* What's new */}
       {showWhatsNew && (
         <div className="px-2.5 pt-2 pb-1">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-neutral-600 mb-1.5">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1.5">
             What&apos;s new
           </div>
           {filteredWhatsNew.map((item) => (
@@ -356,14 +356,14 @@ function HelpPopoverContent() {
       )}
 
       {/* Bottom bar */}
-      <div className="flex items-center gap-2 border-t border-neutral-800 px-2.5 py-2 mt-1">
+      <div className="flex items-center gap-2 border-t border-border px-2.5 py-2 mt-1">
         {isClient && (
           <>
             <SignedOut>
               <SignInButton mode="modal" fallbackRedirectUrl="/">
                 <button
                   onClick={() => storeReturnUrl()}
-                  className="flex items-center gap-1.5 rounded-full border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-[11px] font-medium text-neutral-300 hover:bg-neutral-700 transition-colors"
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-accent px-2.5 py-1 text-[11px] font-medium text-foreground/80 hover:bg-accent transition-colors"
                 >
                   <Crown className="size-3 text-amber-500" />
                   Sign in
@@ -382,7 +382,7 @@ function HelpPopoverContent() {
               ) : (
                 <Link
                   href="/pricing"
-                  className="flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-[11px] font-medium text-neutral-400 hover:text-neutral-200 transition-colors"
+                  className="flex items-center gap-1 rounded-full border border-border bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Zap className="size-3" />
                   Free plan
@@ -407,8 +407,8 @@ export function BottomCornerNav() {
   if (!isClient) {
     return (
       <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 md:bottom-6 md:right-6">
-        <div className="size-8 rounded-full bg-neutral-800 border border-neutral-700/80" />
-        <div className="size-8 rounded-full bg-neutral-800 border border-neutral-700/80" />
+        <div className="size-8 rounded-full bg-muted border border-border" />
+        <div className="size-8 rounded-full bg-muted border border-border" />
       </div>
     );
   }
@@ -420,9 +420,9 @@ export function BottomCornerNav() {
         <PopoverTrigger
           className={cn(
             "flex items-center justify-center size-8 rounded-full",
-            "bg-neutral-800 dark:bg-neutral-800 border border-neutral-700/80",
-            "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
-            "shadow-lg shadow-black/25 transition-all duration-150"
+            "bg-muted border border-border",
+            "text-muted-foreground hover:text-foreground hover:bg-accent",
+            "shadow-sm transition-all duration-150"
           )}
           aria-label="Help"
         >
@@ -432,7 +432,7 @@ export function BottomCornerNav() {
           side="top"
           align="end"
           sideOffset={8}
-          className="w-64 !p-0 rounded-lg bg-neutral-900 border-neutral-700/50 overflow-hidden"
+          className="w-64 !p-0 rounded-lg bg-popover border-border overflow-hidden"
         >
           <HelpPopoverContent />
         </PopoverPopup>
