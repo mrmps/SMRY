@@ -59,6 +59,14 @@ export function HomeContent() {
   return (
     <>
       <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground overflow-hidden">
+        {/* Subtle P3 ambient glow - richer on modern displays */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse 80% 60% at 50% 40%, color(display-p3 0.15 0.15 0.2 / 0.4) 0%, transparent 70%)`,
+          }}
+        />
+
         {/* Film grain texture - adds warmth and premium feel */}
         <svg className="pointer-events-none absolute inset-0 w-full h-full opacity-[0.04] mix-blend-soft-light">
           <filter id="grain">
