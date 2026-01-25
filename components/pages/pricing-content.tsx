@@ -67,13 +67,12 @@ const _publications = [
   "The Atlantic",
   "Foreign Policy",
   "Quora",
-  "Bloomberg",
   "The New Yorker",
   "MIT Tech Review",
 ];
 
 const publicationCategories = [
-  { label: "News", pubs: ["NYT", "WSJ", "WaPo", "Bloomberg"] },
+  { label: "News", pubs: ["NYT", "WSJ", "WaPo", "The Guardian"] },
   { label: "Tech", pubs: ["Wired", "MIT Tech", "The Verge", "Ars Technica"] },
   { label: "Business", pubs: ["HBR", "Forbes", "Inc.", "Fast Company"] },
   { label: "Culture", pubs: ["The Atlantic", "New Yorker", "Vanity Fair"] },
@@ -584,7 +583,6 @@ export function PricingContent() {
                     { name: "New York Times", price: "$17" },
                     { name: "Wall Street Journal", price: "$20" },
                     { name: "The Atlantic", price: "$10" },
-                    { name: "Bloomberg", price: "$35" },
                     { name: "Washington Post", price: "$10" },
                   ].map((item) => (
                     <div key={item.name} className="flex items-center justify-between text-sm">
@@ -598,7 +596,7 @@ export function PricingContent() {
 
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-muted-foreground">Typical monthly cost</span>
-                  <span className="font-bold text-price-strike line-through">$92/mo</span>
+                  <span className="font-bold text-price-strike line-through">$57/mo</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">smry Pro</span>
@@ -609,10 +607,10 @@ export function PricingContent() {
 
                 <div className="mt-4 p-3 rounded-xl bg-success/10 text-center">
                   <p className="text-sm font-semibold text-success">
-                    You save ${92 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)}/month
+                    You save ${57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)}/month
                   </p>
                   <p className="text-xs text-success/80 mt-0.5">
-                    That&apos;s ${(92 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)) * 12}/year back in your pocket
+                    That&apos;s ${(57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)) * 12}/year back in your pocket
                   </p>
                 </div>
               </div>
@@ -679,7 +677,7 @@ export function PricingContent() {
                 </div>
                 <div className="hidden sm:block w-px h-12 bg-border" />
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="text-3xl sm:text-4xl font-bold text-foreground mb-1">98%</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-foreground mb-1">76%</p>
                   <p className="text-sm text-muted-foreground">Success rate on major sites</p>
                 </div>
               </div>
