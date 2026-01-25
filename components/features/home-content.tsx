@@ -81,11 +81,6 @@ export function HomeContent() {
             smry
           </h1>
 
-          {/* Value prop - short, powerful */}
-          <p className="mt-3 text-base text-muted-foreground/70">
-            Unlock any article. Read or summarize it.
-          </p>
-
           {/* Input container - nested radius pattern */}
           <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div
@@ -133,13 +128,16 @@ export function HomeContent() {
             </p>
           )}
 
-          {/* Minimal CTA - confidence through restraint */}
-          <Link
-            href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-            className="mt-6 text-sm text-muted-foreground/50 transition-colors hover:text-muted-foreground"
-          >
-            See it in action →
-          </Link>
+          {/* Value prop - below input */}
+          <p className="mt-5 text-sm text-muted-foreground/60">
+            Unlock any article. Read or summarize it.{" "}
+            <Link
+              href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
+              className="text-muted-foreground/80 underline underline-offset-4 decoration-muted-foreground/30 transition-colors hover:text-foreground"
+            >
+              Try it
+            </Link>
+          </p>
         </div>
       </main>
 

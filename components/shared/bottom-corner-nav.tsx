@@ -401,6 +401,18 @@ function HelpPopoverContent() {
 // ============================================================================
 
 export function BottomCornerNav() {
+  const isClient = useIsClient();
+
+  // Prevent SSR to avoid hydration mismatch from Base UI's auto-generated IDs
+  if (!isClient) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 md:bottom-6 md:right-6">
+        <div className="size-8 rounded-full bg-neutral-800 border border-neutral-700/80" />
+        <div className="size-8 rounded-full bg-neutral-800 border border-neutral-700/80" />
+      </div>
+    );
+  }
+
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 md:bottom-6 md:right-6">
       <LanguagePopover />
