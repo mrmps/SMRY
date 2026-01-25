@@ -6,7 +6,6 @@ import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import clsx from "clsx";
-import { Button } from "@/components/ui/button";
 import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -57,43 +56,27 @@ export function HomeContent() {
     return success;
   }, [url]);
 
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
     <>
-      <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground overflow-hidden">
-        {/* Subtle ambient glow */}
-        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-foreground/[0.02] rounded-full blur-3xl" />
-
-        <div className="z-10 mx-auto flex w-full max-w-md flex-col items-center justify-center">
-          {/* Wordmark */}
-          <h1 className="font-syne text-[2.75rem] font-normal tracking-normal text-foreground">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground">
+        <div className="mx-auto flex w-full max-w-[528px] flex-col items-center">
+          {/* Title - bold, simple */}
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">
             smry
           </h1>
 
-          {/* Tagline - softer color for hierarchy */}
-          <p className="mt-2 text-center text-base text-muted-foreground/70">
-            {t("tagline")}{" "}
-            <Link
-              href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-              className="text-foreground/80 underline underline-offset-4 decoration-foreground/30 transition-colors hover:text-foreground hover:decoration-foreground/60"
-            >
-              {t("tryIt")}
-            </Link>
-          </p>
-
-          {/* Input */}
-          <form onSubmit={handleSubmit} className="mt-4 w-full">
+          {/* Input container - nested radius pattern */}
+          <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div
               className={clsx(
-                "flex overflow-hidden rounded-lg border transition-all duration-200",
-                "bg-muted/30",
-                "focus-within:bg-muted/50 focus-within:border-foreground/20",
-                urlError ? "border-destructive/50" : "border-foreground/[0.08]"
+                "flex gap-1 p-1 rounded-[14px] border transition-all duration-200",
+                "bg-foreground/[0.045]",
+                "focus-within:bg-foreground/[0.06] focus-within:border-foreground/20",
+                urlError ? "border-destructive/50" : "border-foreground/[0.15]"
               )}
             >
               <input
-                className="w-full bg-transparent px-4 py-3 text-[15px] placeholder:text-muted-foreground/50 focus:outline-none"
+                className="min-w-0 flex-1 rounded-lg bg-transparent px-3 py-2 text-base placeholder:text-muted-foreground/50 focus:outline-none"
                 name="url"
                 placeholder={t("placeholder")}
                 aria-label={t("placeholder")}
@@ -106,40 +89,38 @@ export function HomeContent() {
                 autoComplete="off"
                 aria-invalid={Boolean(urlError)}
               />
-              <Button
-                className="rounded-none border-0 px-3 transition-all duration-200 hover:bg-transparent"
+              <button
                 type="submit"
-                variant="ghost"
                 aria-label={t("submitUrl")}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                disabled={!isUrlValid}
+                className={clsx(
+                  "flex size-9 shrink-0 items-center justify-center rounded-[10px] transition-all duration-200",
+                  isUrlValid
+                    ? "text-foreground/90 hover:bg-foreground/10"
+                    : "text-foreground/50 pointer-events-none"
+                )}
               >
-                <ArrowRight
-                  aria-hidden="true"
-                  strokeWidth={1.5}
-                  className={clsx(
-                    "size-5 transition-all duration-200",
-                    isHovered && "translate-x-0.5",
-                    isUrlValid ? "text-foreground/70" : "text-muted-foreground/40"
-                  )}
-                />
-              </Button>
+                <ArrowRight className="size-5" strokeWidth={1.5} />
+              </button>
             </div>
           </form>
 
           {urlError && (
-            <p
-              className="animate-fade-in mt-2 flex items-center text-sm text-destructive/70"
-              role="alert"
-            >
+            <p className="mt-3 flex items-center text-sm text-destructive/70" role="alert">
               <ExclamationCircleIcon className="mr-1.5 size-4" />
               {urlError}
             </p>
           )}
 
-          {/* Subtle hint */}
-          <p className="mt-3 text-xs text-muted-foreground/40">
-            or prepend <code className="text-muted-foreground/50">smry.ai/</code> to any URL
+          {/* Description - below input */}
+          <p className="mt-6 text-center text-sm text-muted-foreground/70">
+            {t("tagline")}{" "}
+            <Link
+              href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
+              className="text-muted-foreground underline underline-offset-4 decoration-muted-foreground/40 transition-colors hover:text-foreground"
+            >
+              {t("tryIt")}
+            </Link>
           </p>
         </div>
       </main>
