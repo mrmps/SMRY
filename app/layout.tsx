@@ -1,5 +1,6 @@
 // ReactScan must be the top-most import (before React)
 import { ReactScan } from "@/components/shared/react-scan";
+import { ReactGrab } from "@/components/shared/react-grab";
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Syne } from "next/font/google";
@@ -58,6 +59,7 @@ export default async function RootLayout({
     <ClerkProvider>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <ReactScan />
+        <ReactGrab />
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
