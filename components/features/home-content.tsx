@@ -68,8 +68,13 @@ export function HomeContent() {
             smry
           </h1>
 
+          {/* Value prop - short, powerful */}
+          <p className="mt-3 text-base text-muted-foreground/70">
+            Unlock any article. Read or summarize it.
+          </p>
+
           {/* Input container - nested radius pattern */}
-          <form onSubmit={handleSubmit} className="mt-8 w-full">
+          <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div
               className={clsx(
                 "flex gap-1 p-1 rounded-[14px] border transition-all duration-200",
