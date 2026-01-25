@@ -58,15 +58,18 @@ export function HomeContent() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground">
-        <div className="mx-auto flex w-full max-w-[528px] flex-col items-center">
-          {/* Title - bold, simple */}
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
+      <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground overflow-hidden">
+        {/* Ambient glow - subtle brand presence */}
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[40%] w-[500px] h-[300px] bg-gradient-to-b from-violet-500/[0.07] to-transparent rounded-full blur-3xl" />
+
+        <div className="relative mx-auto flex w-full max-w-[528px] flex-col items-center">
+          {/* Wordmark - Syne for brand recognition */}
+          <h1 className="font-syne text-5xl font-semibold tracking-tight text-foreground">
             smry
           </h1>
 
           {/* Input container - nested radius pattern */}
-          <form onSubmit={handleSubmit} className="mt-6 w-full">
+          <form onSubmit={handleSubmit} className="mt-8 w-full">
             <div
               className={clsx(
                 "flex gap-1 p-1 rounded-[14px] border transition-all duration-200",
@@ -112,16 +115,13 @@ export function HomeContent() {
             </p>
           )}
 
-          {/* Description - below input */}
-          <p className="mt-6 text-center text-sm text-muted-foreground/70">
-            {t("tagline")}{" "}
-            <Link
-              href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-              className="text-muted-foreground underline underline-offset-4 decoration-muted-foreground/40 transition-colors hover:text-foreground"
-            >
-              {t("tryIt")}
-            </Link>
-          </p>
+          {/* Minimal CTA - confidence through restraint */}
+          <Link
+            href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
+            className="mt-6 text-sm text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          >
+            See it in action →
+          </Link>
         </div>
       </main>
 
