@@ -234,6 +234,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const { results } = useArticles(url);
   const { isPremium } = useIsPremium();
   const isDesktop = useIsDesktop();
+  const showDesktopPromo = isDesktop !== false;
+  const showMobilePromo = isDesktop === false;
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
@@ -438,8 +440,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   return (
     <div className="flex h-dvh flex-col bg-background">
-      {/* Promo Banner - above everything */}
-      <PromoBanner />
+      {/* Promo Banner - desktop/tablet */}
+      {showDesktopPromo && <PromoBanner />}
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
@@ -713,51 +715,56 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 ref={mobileScrollRef}
                 className="h-full overflow-y-auto bg-card pb-16 touch-pan-y"
               >
-                {/* Mobile sticky header with hide-on-scroll */}
-                <header className={cn(
-                  "sticky top-0 z-30 flex h-14 items-center bg-background px-4 transition-transform duration-300 ease-out",
-                  !mobileHeaderVisible && "-translate-y-full"
-                )}>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <button
-                      onClick={() => window.history.back()}
-                      className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      aria-label="Go back"
-                    >
-                      <ArrowLeft className="size-5" />
-                    </button>
-                  </div>
-                  <div className="flex-1 flex items-center justify-center">
-                    <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px]">
-                      {(() => {
-                        try {
-                          return new URL(url).hostname.replace('www.', '').toUpperCase();
-                        } catch {
-                          return '';
-                        }
-                      })()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setMobileSummaryOpen(true)}
-                      className={cn(
-                        "size-9 flex items-center justify-center rounded-full transition-colors",
-                        mobileSummaryOpen
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      aria-label="Open summary"
-                    >
-                      <SummaryIcon className="size-5" />
-                    </button>
-                    <SettingsDrawer
-                      ref={settingsDrawerRef}
-                      viewMode={viewMode}
-                      onViewModeChange={handleViewModeChange}
-                    />
-                  </div>
-                </header>
+                {/* Mobile promo + header stack with safe-area support */}
+                <div
+                  className={cn(
+                    "sticky top-0 z-40 bg-background transition-transform duration-300 ease-out",
+                    !mobileHeaderVisible && "-translate-y-full"
+                  )}
+                >
+                  {showMobilePromo && <PromoBanner className="md:hidden" />}
+                  <header className="flex h-14 items-center bg-background px-4">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() => window.history.back()}
+                        className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        aria-label="Go back"
+                      >
+                        <ArrowLeft className="size-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center">
+                      <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px]">
+                        {(() => {
+                          try {
+                            return new URL(url).hostname.replace('www.', '').toUpperCase();
+                          } catch {
+                            return '';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setMobileSummaryOpen(true)}
+                        className={cn(
+                          "size-9 flex items-center justify-center rounded-full transition-colors",
+                          mobileSummaryOpen
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                        aria-label="Open summary"
+                      >
+                        <SummaryIcon className="size-5" />
+                      </button>
+                      <SettingsDrawer
+                        ref={settingsDrawerRef}
+                        viewMode={viewMode}
+                        onViewModeChange={handleViewModeChange}
+                      />
+                    </div>
+                  </header>
+                </div>
 
                 <div className={cn(
                   viewMode === "html"

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "promo-banner-dismissed";
 
@@ -18,7 +19,11 @@ function useIsClient() {
   );
 }
 
-export function PromoBanner() {
+interface PromoBannerProps {
+  className?: string;
+}
+
+export function PromoBanner({ className }: PromoBannerProps) {
   const t = useTranslations("promo");
   const isClient = useIsClient();
   const { isPremium, isLoading } = useIsPremium();
@@ -36,7 +41,13 @@ export function PromoBanner() {
   if (isPremium || isDismissed) return null;
 
   return (
-    <div className="relative z-40 w-full shrink-0 bg-foreground/5 border-b border-border">
+    <div
+      className={cn(
+        "relative z-40 w-full shrink-0 bg-foreground/5 border-b border-border",
+        className
+      )}
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
         <Link
           href="/pricing"
