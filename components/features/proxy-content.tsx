@@ -20,10 +20,15 @@ import {
   X,
   Zap,
   LogIn,
+  Globe,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
+import { routing, type Locale } from "@/i18n/routing";
 import ShareButton from "@/components/features/share-button";
 import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
@@ -147,6 +152,90 @@ function HistoryMenuItem() {
         );
       }}
     />
+  );
+}
+
+const languageNames: Record<Locale, string> = {
+  en: "English",
+  pt: "Português",
+  de: "Deutsch",
+  zh: "中文",
+  es: "Español",
+  nl: "Nederlands",
+};
+
+// Cookie-based locale switching (doesn't change URL, preserves state)
+function useLocaleSwitch() {
+  const router = useRouter();
+
+  return (newLocale: Locale) => {
+    // Set the NEXT_LOCALE cookie (next-intl respects this)
+    document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
+    // Refresh to apply new locale without navigation
+    router.refresh();
+  };
+}
+
+// Language menu items for the More dropdown
+function LanguageMenuItems() {
+  const locale = useLocale() as Locale;
+  const switchLocale = useLocaleSwitch();
+
+  return (
+    <>
+      <MenuSeparator />
+      <MenuGroup>
+        <MenuGroupLabel>Language</MenuGroupLabel>
+        <div className="px-1 pb-1 space-y-0.5">
+          {routing.locales.map((loc) => (
+            <MenuItem
+              key={loc}
+              onClick={() => switchLocale(loc)}
+              className={cn(
+                "flex items-center justify-between w-full px-2 rounded cursor-pointer",
+                locale === loc && "bg-accent"
+              )}
+            >
+              <span>{languageNames[loc]}</span>
+              {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
+            </MenuItem>
+          ))}
+        </div>
+      </MenuGroup>
+    </>
+  );
+}
+
+// Language section for mobile drawer
+function LanguageSection({ onSelect }: { onSelect?: () => void }) {
+  const locale = useLocale() as Locale;
+  const switchLocale = useLocaleSwitch();
+
+  const handleSelect = (loc: Locale) => {
+    switchLocale(loc);
+    onSelect?.();
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+        <Globe className="size-4" />
+        Language
+      </label>
+      <div className="grid grid-cols-3 gap-2">
+        {routing.locales.map((loc) => (
+          <Button
+            key={loc}
+            variant={locale === loc ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => handleSelect(loc)}
+            className="w-full justify-center"
+          >
+            {languageNames[loc]}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -509,6 +598,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 />
                 <MenuPopup side="bottom" align="end" className="min-w-[180px]">
                   <HistoryMenuItem />
+                  <LanguageMenuItems />
                   <ThemeMenuItems />
                   <MenuSeparator />
                   <MenuItem
@@ -757,6 +847,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         </Button>
                       </div>
                     </div>
+
+                    {/* Language Section */}
+                    <LanguageSection onSelect={() => setSettingsOpen(false)} />
 
                     {/* Support Section */}
                     <div className="space-y-3">
