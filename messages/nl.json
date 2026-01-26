@@ -42,7 +42,7 @@
     "q5": "Hoe snel worden samenvattingen gegenereerd?",
     "a5": "Samenvattingen worden in seconden gegenereerd met AI. We cachen samenvattingen om directe resultaten te bieden voor artikelen die al eerder zijn samengevat.",
     "q6": "Welke talen worden ondersteund voor samenvattingen?",
-    "a6": "Samenvattingen zijn beschikbaar in 8 talen: Engels, Spaans, Frans, Duits, Italiaans, Portugees, Russisch en Chinees. Selecteer je voorkeurstaal bij het genereren van een samenvatting.",
+    "a6": "Samenvattingen zijn beschikbaar in 8 talen: Engels, Duits, Spaans, Frans, Portugees, Nederlands, Chinees en Japans. Selecteer je voorkeurstaal bij het genereren van een samenvatting.",
     "q7": "Is er een limiet aan hoeveel samenvattingen ik kan genereren?",
     "a7": "Ja, om eerlijk gebruik te garanderen, zijn er limieten: 20 samenvattingen per dag en 6 samenvattingen per minuut per IP-adres.",
     "q8": "Hoe gebruik ik SMRY?",
@@ -201,7 +201,12 @@
   },
   "bookmarklet": {
     "linkText": "smry.ai bookmarklet",
-    "dragTip": "Sleep naar bladwijzerbalk"
+    "dragTip": "Sleep naar bladwijzerbalk",
+    "installTitle": "Voeg de SMRY-snelkoppeling toe",
+    "installDescription": "Sleep hem één keer en hij staat klaar in je bladwijzerbalk.",
+    "stepShowBar": "Toon je bladwijzerbalk (Cmd + Shift + B op Mac, Ctrl + Shift + B op Windows).",
+    "stepDrag": "Sleep het SMRY-logo omhoog tot je browser een pluspictogram in de balk laat zien en laat los.",
+    "stepUse": "Klik tijdens het lezen van een artikel op de bladwijzer om de pagina in SMRY te openen."
   },
   "common": {
     "premium": "Premium",

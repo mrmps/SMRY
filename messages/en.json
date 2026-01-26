@@ -42,7 +42,7 @@
     "q5": "How fast are summaries generated?",
     "a5": "Summaries are generated in seconds using AI. We cache summaries to provide instant results for articles that have been summarized before.",
     "q6": "What languages are supported for summaries?",
-    "a6": "Summaries are available in 8 languages: English, Spanish, French, German, Italian, Portuguese, Russian, and Chinese. Select your preferred language when generating a summary.",
+    "a6": "Summaries are available in 8 languages: English, German, Spanish, French, Portuguese, Dutch, Chinese, and Japanese. Select your preferred language when generating a summary.",
     "q7": "Is there a limit to how many summaries I can generate?",
     "a7": "Yes, to ensure fair usage, there are rate limits: 20 summaries per day and 6 summaries per minute per IP address.",
     "q8": "How do I use SMRY?",
@@ -201,7 +201,12 @@
   },
   "bookmarklet": {
     "linkText": "smry.ai bookmarklet",
-    "dragTip": "Drag to bookmarks bar"
+    "dragTip": "Drag to bookmarks bar",
+    "installTitle": "Add the SMRY shortcut",
+    "installDescription": "Drag it once and it will always be ready in your bookmarks bar.",
+    "stepShowBar": "Show your bookmarks bar (Cmd + Shift + B on Mac, Ctrl + Shift + B on Windows).",
+    "stepDrag": "Drag the SMRY logo above until your browser shows a plus icon in the bar, then drop it.",
+    "stepUse": "When you're reading an article, click the bookmark to open the page inside SMRY."
   },
   "common": {
     "premium": "Premium",

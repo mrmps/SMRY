@@ -42,7 +42,7 @@
     "q5": "Wie schnell werden Zusammenfassungen erstellt?",
     "a5": "Zusammenfassungen werden in Sekunden mit KI erstellt. Wir cachen Zusammenfassungen, um sofortige Ergebnisse für Artikel zu liefern, die bereits zusammengefasst wurden.",
     "q6": "Welche Sprachen werden für Zusammenfassungen unterstützt?",
-    "a6": "Zusammenfassungen sind in 8 Sprachen verfügbar: Englisch, Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Russisch und Chinesisch. Wählen Sie Ihre bevorzugte Sprache beim Erstellen einer Zusammenfassung.",
+    "a6": "Zusammenfassungen sind in 8 Sprachen verfügbar: Englisch, Deutsch, Spanisch, Französisch, Portugiesisch, Niederländisch, Chinesisch und Japanisch. Wählen Sie Ihre bevorzugte Sprache beim Erstellen einer Zusammenfassung.",
     "q7": "Gibt es ein Limit für die Anzahl der Zusammenfassungen?",
     "a7": "Ja, um faire Nutzung zu gewährleisten, gibt es Ratenbegrenzungen: 20 Zusammenfassungen pro Tag und 6 Zusammenfassungen pro Minute pro IP-Adresse.",
     "q8": "Wie verwende ich SMRY?",
@@ -201,7 +201,12 @@
   },
   "bookmarklet": {
     "linkText": "smry.ai Bookmarklet",
-    "dragTip": "In Lesezeichen-Leiste ziehen"
+    "dragTip": "In Lesezeichen-Leiste ziehen",
+    "installTitle": "Füge die SMRY-Verknüpfung hinzu",
+    "installDescription": "Einmal ziehen und sie steht dauerhaft in deiner Lesezeichenleiste bereit.",
+    "stepShowBar": "Blende die Lesezeichenleiste ein (Cmd + Shift + B auf dem Mac, Ctrl + Shift + B unter Windows).",
+    "stepDrag": "Ziehe das SMRY-Logo nach oben, bis dein Browser ein Plus-Symbol in der Leiste zeigt, und lasse los.",
+    "stepUse": "Wenn du einen Artikel liest, klicke auf das Lesezeichen, um die Seite in SMRY zu öffnen."
   },
   "common": {
     "premium": "Premium",

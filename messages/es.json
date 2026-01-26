@@ -42,7 +42,7 @@
     "q5": "¿Qué tan rápido se generan los resúmenes?",
     "a5": "Los resúmenes se generan en segundos usando IA. Almacenamos en caché los resúmenes para proporcionar resultados instantáneos para artículos que ya han sido resumidos.",
     "q6": "¿Qué idiomas son compatibles para los resúmenes?",
-    "a6": "Los resúmenes están disponibles en 8 idiomas: inglés, español, francés, alemán, italiano, portugués, ruso y chino. Selecciona tu idioma preferido al generar un resumen.",
+    "a6": "Los resúmenes están disponibles en 8 idiomas: inglés, alemán, español, francés, portugués, holandés, chino y japonés. Selecciona tu idioma preferido al generar un resumen.",
     "q7": "¿Hay un límite para cuántos resúmenes puedo generar?",
     "a7": "Sí, para garantizar un uso justo, hay límites de tasa: 20 resúmenes por día y 6 resúmenes por minuto por dirección IP.",
     "q8": "¿Cómo uso SMRY?",
@@ -201,7 +201,12 @@
   },
   "bookmarklet": {
     "linkText": "bookmarklet smry.ai",
-    "dragTip": "Arrastra a la barra de marcadores"
+    "dragTip": "Arrastra a la barra de marcadores",
+    "installTitle": "Añade el acceso directo de SMRY",
+    "installDescription": "Arrástralo una vez y quedará listo en tu barra de marcadores.",
+    "stepShowBar": "Muestra tu barra de marcadores (Cmd + Shift + B en Mac, Ctrl + Shift + B en Windows).",
+    "stepDrag": "Arrastra el logo de SMRY hasta que el navegador muestre el ícono de suma en la barra y suéltalo.",
+    "stepUse": "Cuando estés leyendo un artículo, haz clic en el marcador para abrir la página en SMRY."
   },
   "common": {
     "premium": "Premium",
