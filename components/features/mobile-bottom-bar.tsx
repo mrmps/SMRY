@@ -86,7 +86,7 @@ export function MobileBottomBar({
       )}
     >
       <div className="flex items-center justify-around h-14 px-4">
-        {/* View mode toggle - simple Reader/HTML toggle */}
+        {/* View mode toggle - simple Reader/Original toggle */}
         <button
           onClick={() => onViewModeChange(isReader ? "html" : "markdown")}
           className={cn(
@@ -102,7 +102,7 @@ export function MobileBottomBar({
           ) : (
             <>
               <Code className="size-5" />
-              <span className="text-[10px] font-medium">HTML</span>
+              <span className="text-[10px] font-medium">Original</span>
             </>
           )}
         </button>
@@ -129,7 +129,7 @@ export function MobileBottomBar({
               <DrawerTitle>Share</DrawerTitle>
             </DrawerHeader>
 
-            <div className="px-4 pt-2 pb-4 space-y-3">
+            <div className="px-4 pt-2 pb-4 space-y-3" data-vaul-no-drag>
               {/* Top action buttons */}
               <div className="flex gap-2">
                 <button

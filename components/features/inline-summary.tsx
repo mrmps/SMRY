@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  memo,
 } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
@@ -247,7 +248,7 @@ interface InlineSummaryProps {
   onAdVisible?: () => void;
 }
 
-function CollapsedSummary({
+const CollapsedSummary = memo(function CollapsedSummary({
   onExpand,
   disabled,
 }: {
@@ -275,9 +276,9 @@ function CollapsedSummary({
       </button>
     </div>
   );
-}
+});
 
-function ExpandedSummary({
+const ExpandedSummary = memo(function ExpandedSummary({
   urlProp,
   articleResults,
   onCollapse,
@@ -606,9 +607,9 @@ function ExpandedSummary({
       )}
     </div>
   );
-}
+});
 
-export function InlineSummary({
+export const InlineSummary = memo(function InlineSummary({
   urlProp,
   articleResults,
   isOpen,
@@ -647,4 +648,4 @@ export function InlineSummary({
       onAdVisible={onAdVisible}
     />
   );
-}
+});

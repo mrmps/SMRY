@@ -210,7 +210,7 @@ function LanguageDrawer({
         <DrawerHeader className="pb-2">
           <DrawerTitle className="text-center">Language</DrawerTitle>
         </DrawerHeader>
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-4" data-vaul-no-drag>
           <Card>
             {routing.locales.map((loc, index) => (
               <div key={loc} className="relative">
@@ -383,7 +383,7 @@ export const SettingsDrawer = React.forwardRef<SettingsDrawerHandle, SettingsDra
           <DrawerTitle>Settings</DrawerTitle>
         </DrawerHeader>
 
-        <div className="px-4 pb-8 space-y-6 overflow-y-auto">
+        <div className="px-4 pb-8 space-y-6 overflow-y-auto" data-vaul-no-drag>
           {/* Reading Section */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

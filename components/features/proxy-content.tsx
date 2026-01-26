@@ -522,7 +522,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
 
               <ShareButton
-                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
+                url={`https://smry.ai/${url}`}
                 originalUrl={url}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
@@ -707,71 +707,79 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             </div>
           ) : (
             // Mobile: Clean article-first layout with bottom bar
-            <div ref={mobileScrollRef} className="h-full overflow-y-auto bg-card pb-16">
-              {/* Mobile sticky header with hide-on-scroll */}
-              <header className={cn(
-                "sticky top-0 z-30 flex h-14 items-center bg-background px-4 transition-transform duration-300 ease-out",
-                !mobileHeaderVisible && "-translate-y-full"
-              )}>
-                <div className="flex items-center gap-3 shrink-0">
-                  <button
-                    onClick={() => window.history.back()}
-                    className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    aria-label="Go back"
-                  >
-                    <ArrowLeft className="size-5" />
-                  </button>
-                </div>
-                <div className="flex-1 flex items-center justify-center">
-                  <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px]">
-                    {(() => {
-                      try {
-                        return new URL(url).hostname.replace('www.', '').toUpperCase();
-                      } catch {
-                        return '';
-                      }
-                    })()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setMobileSummaryOpen(true)}
-                    className={cn(
-                      "size-9 flex items-center justify-center rounded-full transition-colors",
-                      mobileSummaryOpen
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                    aria-label="Open summary"
-                  >
-                    <SummaryIcon className="size-5" />
-                  </button>
-                  <SettingsDrawer
-                    ref={settingsDrawerRef}
+            <div className="h-full relative">
+              {/* Scrollable content area */}
+              <div
+                ref={mobileScrollRef}
+                className="h-full overflow-y-auto bg-card pb-16 touch-pan-y"
+              >
+                {/* Mobile sticky header with hide-on-scroll */}
+                <header className={cn(
+                  "sticky top-0 z-30 flex h-14 items-center bg-background px-4 transition-transform duration-300 ease-out",
+                  !mobileHeaderVisible && "-translate-y-full"
+                )}>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      onClick={() => window.history.back()}
+                      className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      aria-label="Go back"
+                    >
+                      <ArrowLeft className="size-5" />
+                    </button>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center">
+                    <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px]">
+                      {(() => {
+                        try {
+                          return new URL(url).hostname.replace('www.', '').toUpperCase();
+                        } catch {
+                          return '';
+                        }
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setMobileSummaryOpen(true)}
+                      className={cn(
+                        "size-9 flex items-center justify-center rounded-full transition-colors",
+                        mobileSummaryOpen
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      aria-label="Open summary"
+                    >
+                      <SummaryIcon className="size-5" />
+                    </button>
+                    <SettingsDrawer
+                      ref={settingsDrawerRef}
+                      viewMode={viewMode}
+                      onViewModeChange={handleViewModeChange}
+                    />
+                  </div>
+                </header>
+
+                <div className={cn(
+                  viewMode === "html"
+                    ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
+                    : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
+                )}>
+                  {/* Article content - no inline summary, it's in the drawer now */}
+                  <ArrowTabs
+                    url={url}
+                    articleResults={results}
                     viewMode={viewMode}
-                    onViewModeChange={handleViewModeChange}
+                    activeSource={source}
+                    onSourceChange={handleSourceChange}
+                    summaryOpen={false}
+                    onSummaryOpenChange={() => {}}
+                    showInlineSummary={false}
+                    mobileHeaderVisible={mobileHeaderVisible}
                   />
                 </div>
-              </header>
-
-              <div className={cn(
-                viewMode === "html"
-                  ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
-                  : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
-              )}>
-                {/* Article content - no inline summary, it's in the drawer now */}
-                <ArrowTabs
-                  url={url}
-                  articleResults={results}
-                  viewMode={viewMode}
-                  activeSource={source}
-                  onSourceChange={handleSourceChange}
-                  summaryOpen={false}
-                  onSummaryOpenChange={() => {}}
-                  showInlineSummary={false}
-                  mobileHeaderVisible={mobileHeaderVisible}
-                />
               </div>
+
+              {/* Elements below are OUTSIDE scroll container to prevent Vaul scroll lock interference */}
 
               {/* Summary Drawer */}
               <Drawer open={mobileSummaryOpen} onOpenChange={setMobileSummaryOpen}>
@@ -789,15 +797,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   </div>
 
                   {/* Content - renders InlineSummary in drawer mode */}
-                  <div className="flex-1 overflow-y-auto">
+                  {/* data-vaul-no-drag allows scrolling without triggering drawer drag */}
+                  <div className="flex-1 overflow-y-auto touch-pan-y" data-vaul-no-drag>
                     <InlineSummary
                       urlProp={url}
                       articleResults={results}
                       isOpen={true}
                       onOpenChange={() => setMobileSummaryOpen(false)}
                       variant="sidebar"
-                      ad={!isPremium ? gravityAd : null}
-                      onAdVisible={gravityAd ? () => fireImpression(gravityAd.impUrl) : undefined}
                     />
                   </div>
                 </DrawerContent>

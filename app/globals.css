@@ -438,6 +438,11 @@
   }
 }
 
+[data-vaul-no-drag] {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
 @theme inline {
   --font-heading: var(--font-heading);
   --font-syne: var(--font-syne);

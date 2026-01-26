@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -14,7 +14,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "../ui/skeleton";
-import { UseQueryResult } from "@tanstack/react-query";
 import { ArticleResponse, Source } from "@/types/api";
 import { ErrorDisplay } from "../shared/error-display";
 import { DebugPanel } from "../shared/debug-panel";
@@ -119,6 +118,7 @@ const DOMPURIFY_CONFIG = {
 // Lazy-loaded DOMPurify instance (client-side only)
 let DOMPurify: typeof import("dompurify").default | null = null;
 let hooksConfigured = false;
+const sanitizedHtmlCache = new Map<string, string>();
 
 /**
  * Initialize DOMPurify on the client side only
@@ -151,31 +151,50 @@ async function initDOMPurify() {
  * Hook to get sanitized HTML content (client-side only)
  */
 function useSanitizedHtml(html: string | undefined | null): string | null {
-  const [sanitized, setSanitized] = useState<string | null>(null);
+  // Check cache synchronously - this runs on every render but is fast (Map lookup)
+  const cachedValue = html ? sanitizedHtmlCache.get(html) : null;
+
+  const [sanitized, setSanitized] = useState<string | null>(() => {
+    if (!html) return null;
+    return cachedValue ?? null;
+  });
 
   useEffect(() => {
-    // Skip if no content
-    if (!html) return;
+    // Skip effect when no content or when we have a cached value
+    if (!html || cachedValue) {
+      return;
+    }
 
     let cancelled = false;
 
     initDOMPurify().then((dp) => {
       if (dp && !cancelled) {
-        setSanitized(dp.sanitize(html, DOMPURIFY_CONFIG) as string);
+        const sanitizedHtml = dp.sanitize(html, DOMPURIFY_CONFIG) as string;
+        sanitizedHtmlCache.set(html, sanitizedHtml);
+        setSanitized(sanitizedHtml);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [html]);
+  }, [html, cachedValue]);
 
-  // Return null when html is empty/null, otherwise return sanitized content
-  return html ? sanitized : null;
+  // Return cached value if available (handles re-renders), otherwise state
+  // Return null when html is empty/null
+  if (!html) return null;
+  return cachedValue ?? sanitized;
 }
 
 interface ArticleContentProps {
-  query: UseQueryResult<ArticleResponse, Error>;
+  /** Article data from query - stable reference that only changes when data changes */
+  data: ArticleResponse | undefined;
+  /** Loading state - primitive boolean */
+  isLoading: boolean;
+  /** Error state - primitive boolean */
+  isError: boolean;
+  /** Error object - stable reference */
+  error: Error | null;
   source: Source;
   url: string;
   viewMode?: "markdown" | "html" | "iframe";
@@ -183,18 +202,22 @@ interface ArticleContentProps {
   onFullScreenChange?: (fullScreen: boolean) => void;
 }
 
-export const ArticleContent: React.FC<ArticleContentProps> = ({
-  query,
+export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
+  data,
+  isLoading,
+  isError,
+  error,
   source,
   url,
   viewMode = "markdown",
   isFullScreen = false,
   onFullScreenChange,
-}) => {
-  const { data, isLoading, isError, error } = query;
+}) {
   const contentRef = React.useRef<HTMLDivElement>(null);
 
-  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
+  // Memoize the article content to avoid unnecessary sanitization triggers
+  const articleContent = data?.article?.content;
+  const sanitizedArticleContent = useSanitizedHtml(articleContent);
 
   // Add click-to-expand functionality to images
   // Must depend on sanitizedArticleContent since that's what's actually rendered
@@ -224,17 +247,22 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     };
   }, [sanitizedArticleContent]);
 
-  // Extract debug context from error if available
-  const debugContext =
+  // Extract debug context from error if available - memoized to prevent re-computation
+  const debugContext = useMemo(() =>
     error instanceof ArticleFetchError
       ? error.debugContext
-      : data?.debugContext;
+      : data?.debugContext,
+    [error, data?.debugContext]
+  );
 
-  // Helper function to get cacheURL, constructing it if needed
-  const getCacheURL = (): string | undefined => {
+  // Extract cacheURL from data for stable dependency
+  const dataCacheURL = data?.cacheURL;
+
+  // Memoize cacheURL computation
+  const cacheURL = useMemo(() => {
     // First try to get from data
-    if (data?.cacheURL) {
-      return data.cacheURL;
+    if (dataCacheURL) {
+      return dataCacheURL;
     }
 
     // If not available, construct based on source
@@ -248,16 +276,17 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       default:
         return url;
     }
-  };
+  }, [dataCacheURL, source, url]);
 
-  const cacheURL = getCacheURL();
-
-  // Get the raw HTML content for the "Original" view
+  // Get the raw HTML content for the "Original" view - memoized
   // No sanitization needed - it's rendered in a sandboxed iframe which:
   // - Blocks all script execution (sandbox without allow-scripts)
   // - Prevents navigation/popups
   // - Isolates from parent page completely
-  const preparedHtmlContent = data?.article?.htmlContent ?? null;
+  const preparedHtmlContent = useMemo(
+    () => data?.article?.htmlContent ?? null,
+    [data?.article?.htmlContent]
+  );
 
   return (
     <div className={viewMode === "markdown" ? "mt-2" : "-mt-2"}>
@@ -556,6 +585,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       )}
     </div>
   );
-};
+});
 
 export default ArticleContent;
