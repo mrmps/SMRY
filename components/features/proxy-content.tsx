@@ -26,7 +26,6 @@ import {
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { routing, type Locale } from "@/i18n/routing";
 import ShareButton from "@/components/features/share-button";
@@ -166,13 +165,11 @@ const languageNames: Record<Locale, string> = {
 
 // Cookie-based locale switching (doesn't change URL, preserves state)
 function useLocaleSwitch() {
-  const router = useRouter();
-
   return (newLocale: Locale) => {
     // Set the NEXT_LOCALE cookie (next-intl respects this)
     document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
-    // Refresh to apply new locale without navigation
-    router.refresh();
+    // Hard refresh to trigger middleware with new cookie
+    window.location.reload();
   };
 }
 
