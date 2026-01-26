@@ -20,7 +20,9 @@ import {
   Zap,
   Globe,
   ArrowUpRight,
+  Bookmark,
 } from "lucide-react";
+import type { DragEvent, MouseEvent } from "react";
 import {
   SignedIn,
   SignedOut,
@@ -39,6 +41,46 @@ import { cn } from "@/lib/utils";
 import { getRecentChanges } from "@/lib/changelog";
 
 const emptySubscribe = () => () => {};
+
+// Bookmarklet button - draggable to bookmarks bar
+function BookmarkletButton({ t }: { t: (key: string) => string }) {
+  const bookmarklet = `javascript:void(function(){var url=window.location.href;window.open('https://smry.ai/proxy?url='+encodeURIComponent(url)+'&utm_source=bookmarklet','_blank');}());`;
+  const linkRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (linkRef.current) {
+      linkRef.current.setAttribute("href", bookmarklet);
+    }
+  }, [bookmarklet]);
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+  };
+
+  const handleDragStart = (event: DragEvent<HTMLAnchorElement>) => {
+    event.dataTransfer.setData("text/uri-list", bookmarklet);
+    event.dataTransfer.setData("text/plain", "SMRY");
+    event.dataTransfer.setData(
+      "text/html",
+      `<a href="${bookmarklet}" title="SMRY">SMRY</a>`
+    );
+    event.dataTransfer.effectAllowed = "copyLink";
+  };
+
+  return (
+    <a
+      ref={linkRef}
+      draggable="true"
+      onDragStart={handleDragStart}
+      onClick={handleClick}
+      title={t("dragToBookmarksBar")}
+      className="inline-flex cursor-grab items-center gap-1.5 rounded-md border border-border bg-accent px-2 py-1 text-[11px] font-medium text-muted-foreground transition-all hover:text-foreground active:scale-95 active:cursor-grabbing"
+    >
+      <Bookmark className="size-3" strokeWidth={2} />
+      <span>SMRY</span>
+    </a>
+  );
+}
 
 function useIsClient() {
   return useSyncExternalStore(
@@ -341,6 +383,18 @@ function HelpPopoverContent() {
         </div>
       )}
 
+      {/* Bookmarklet */}
+      <div className="mx-2.5 border-t border-border" />
+      <div className="px-2.5 py-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[12px] font-medium text-foreground/80">{t("bookmarkletSection")}</p>
+            <p className="text-[11px] text-muted-foreground/60">{t("dragToBookmarksBar")}</p>
+          </div>
+          <BookmarkletButton t={t} />
+        </div>
+      </div>
+
       {/* Divider */}
       {showWhatsNew && <div className="mx-2.5 border-t border-border" />}
 
@@ -380,7 +434,7 @@ function HelpPopoverContent() {
               {isPremium ? (
                 <span className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-400">
                   <Crown className="size-3" />
-                  Pro
+                  {t("proBadge")}
                 </span>
               ) : (
                 <Link
@@ -388,7 +442,7 @@ function HelpPopoverContent() {
                   className="flex items-center gap-1 rounded-full border border-border bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Zap className="size-3" />
-                  Free plan
+                  {t("freePlanBadge")}
                 </Link>
               )}
             </SignedIn>

@@ -49,8 +49,8 @@ export const config = {
     // Pattern: `/(${nonDefaultLocales.join('|')})/:path*`
     // 'en' excluded since it's the default locale with 'as-needed' prefix strategy
     '/(pt|de|zh|es|nl)/:path*',
-    // Exclude _next and root-level static files
-    "/((?!_next|api|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
+    // Exclude _next, api, and root-level static files + Next.js special image routes
+    "/((?!_next|api|opengraph-image|twitter-image|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
     // Always run for API routes (Clerk auth)
     "/(api|trpc)(.*)",
   ],

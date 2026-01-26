@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
+import { useTranslations } from "next-intl";
 
 const STORAGE_KEY = "promo-banner-dismissed";
 
@@ -18,6 +19,7 @@ function useIsClient() {
 }
 
 export function PromoBanner() {
+  const t = useTranslations("promo");
   const isClient = useIsClient();
   const { isPremium, isLoading } = useIsPremium();
   const [isDismissed, setIsDismissed] = useState(() => {
@@ -36,23 +38,23 @@ export function PromoBanner() {
   return (
     <div className="relative z-40 w-full shrink-0 bg-foreground/5 border-b border-border">
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">No ads, instant bypass check, faster AI</span>
+        <span className="font-medium text-foreground">{t("features")}</span>
         <span className="mx-1.5">·</span>
-        <span>$6/mo or $36/yr</span>
+        <span>{t("pricing")}</span>
         <span className="mx-1.5">·</span>
-        <span>Deal ends Feb 15</span>
+        <span>{t("deadline")}</span>
         <span className="mx-1.5">·</span>
         <Link
           href="/pricing"
           className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
         >
-          Try Premium for $0.00
+          {t("cta")}
         </Link>
       </div>
       <button
         onClick={handleDismiss}
         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Dismiss"
+        aria-label={t("dismiss")}
       >
         <X className="size-3.5" />
       </button>

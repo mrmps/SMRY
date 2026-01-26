@@ -329,7 +329,7 @@ const ShareButton: React.FC<ShareButtonProps> = React.memo(
     );
 
     return (
-      <ResponsiveDrawer open={open} onOpenChange={setOpen} trigger={trigger} triggerId="share-modal-trigger">
+      <ResponsiveDrawer open={open} onOpenChange={setOpen} trigger={trigger} triggerId="share-modal-trigger" showCloseButton={false}>
         <ShareModalContent {...shareProps} onClose={handleClose} />
       </ResponsiveDrawer>
     );

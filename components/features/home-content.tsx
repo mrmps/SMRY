@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import {
   ArrowRight,
@@ -11,10 +11,6 @@ import {
   Loader2,
   CheckCircle,
   FileText,
-  Zap,
-  Eye,
-  Languages,
-  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -23,11 +19,11 @@ import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BottomCornerNav } from "@/components/shared/bottom-corner-nav";
-import { BookmarkletLink } from "@/components/marketing/bookmarklet";
 import { FAQ } from "@/components/marketing/faq";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
+
 
 // Feature Grid Cell - visual card with rounded background
 function FeatureVisual({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -61,7 +57,7 @@ function FeatureText({ title, description, className }: { title: string; descrip
 }
 
 // Source Fetching Card Visual
-function SourceFetchCard() {
+function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, string | number>) => string }) {
   return (
     <div className="relative flex max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
@@ -70,7 +66,7 @@ function SourceFetchCard() {
       {/* Badge */}
       <div className="relative z-10 flex justify-center">
         <div className="flex items-center justify-center rounded-full bg-white/80 px-2.5 py-1 text-sm font-medium text-[#999] backdrop-blur-sm dark:bg-[#222]/80 dark:text-[#888]">
-          Fetching
+          {t("fetchingBadge")}
         </div>
       </div>
 
@@ -78,7 +74,7 @@ function SourceFetchCard() {
       <div className="relative z-10 flex w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
           <p className="text-xs text-[#999] dark:text-[#777]">
-            Racing <span className="text-[#181925] dark:text-white">3 sources</span> simultaneously
+            {t("racingSources", { count: 3 })}
           </p>
         </div>
 
@@ -87,9 +83,9 @@ function SourceFetchCard() {
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <Check className="h-4 w-4 shrink-0 text-emerald-500" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">Wayback Machine</span>
+                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceWayback")}</span>
               </div>
-              <span className="text-[13px] text-emerald-500">Winner</span>
+              <span className="text-[13px] text-emerald-500">{t("statusWinner")}</span>
             </div>
           </div>
 
@@ -97,9 +93,9 @@ function SourceFetchCard() {
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <Loader2 className="h-4 w-4 shrink-0 text-[#999] dark:text-[#777]" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">Jina.ai</span>
+                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceJina")}</span>
               </div>
-              <span className="text-[13px] text-[#999] dark:text-[#777]">Cancelled</span>
+              <span className="text-[13px] text-[#999] dark:text-[#777]">{t("statusCancelled")}</span>
             </div>
           </div>
 
@@ -107,9 +103,9 @@ function SourceFetchCard() {
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <Ban className="h-4 w-4 shrink-0 text-[#999] dark:text-[#777]" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">Direct Access</span>
+                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceDirect")}</span>
               </div>
-              <span className="text-[13px] text-[#999] dark:text-[#777]">Paywalled</span>
+              <span className="text-[13px] text-[#999] dark:text-[#777]">{t("statusPaywalled")}</span>
             </div>
           </div>
         </div>
@@ -127,7 +123,7 @@ function SourceFetchCard() {
 }
 
 // Clean Reading Card Visual
-function CleanReadingCard() {
+function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, string | number>) => string }) {
   return (
     <div className="relative flex max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
@@ -136,7 +132,7 @@ function CleanReadingCard() {
       {/* Badge */}
       <div className="relative z-10 flex justify-center">
         <div className="flex items-center justify-center rounded-full bg-white/80 px-2.5 py-1 text-sm font-medium text-[#999] backdrop-blur-sm dark:bg-[#222]/80 dark:text-[#888]">
-          Clean Mode
+          {t("cleanModeBadge")}
         </div>
       </div>
 
@@ -144,7 +140,7 @@ function CleanReadingCard() {
       <div className="relative z-10 flex w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
           <p className="text-xs text-[#999] dark:text-[#777]">
-            Removed <span className="text-[#181925] dark:text-white">12 distractions</span>
+            {t("removedDistractions", { count: 12 })}
           </p>
         </div>
 
@@ -153,9 +149,9 @@ function CleanReadingCard() {
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">Paywall overlay</span>
+                <span className="truncate text-sm text-[#181925] dark:text-white">{t("paywallOverlay")}</span>
               </div>
-              <span className="text-[13px] text-red-400">Removed</span>
+              <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
 
@@ -163,9 +159,9 @@ function CleanReadingCard() {
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">Cookie banner</span>
+                <span className="truncate text-sm text-[#181925] dark:text-white">{t("cookieBanner")}</span>
               </div>
-              <span className="text-[13px] text-red-400">Removed</span>
+              <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
 
@@ -173,9 +169,9 @@ function CleanReadingCard() {
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">Sidebar ads (3)</span>
+                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sidebarAds", { count: 3 })}</span>
               </div>
-              <span className="text-[13px] text-red-400">Removed</span>
+              <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
         </div>
@@ -183,7 +179,7 @@ function CleanReadingCard() {
         <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-2">
           <div className="flex items-center gap-1.5 text-sm text-[#999] dark:text-[#777]">
             <CheckCircle className="h-4 w-4" strokeWidth={2} />
-            <span>Ready to read</span>
+            <span>{t("readyToRead")}</span>
           </div>
           <span className="text-[13px] text-emerald-500">2,847 words</span>
         </div>
@@ -193,14 +189,14 @@ function CleanReadingCard() {
 }
 
 // AI Summary Card Visual
-function AISummaryCard() {
+function AISummaryCard({ t }: { t: (key: string) => string }) {
   return (
     <div className="w-[280px] overflow-hidden rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
           <FileText className="h-3.5 w-3.5" strokeWidth={2} />
         </div>
-        <span className="text-xs font-medium text-[#999] dark:text-[#777]">Summary</span>
+        <span className="text-xs font-medium text-[#999] dark:text-[#777]">{t("summaryLabel")}</span>
       </div>
       <div className="space-y-2">
         <div className="h-2.5 w-full rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
@@ -240,14 +236,51 @@ const urlSchema = z.object({
   url: NormalizedUrlSchema,
 });
 
+// Validate and return error message if invalid, null if valid
+function getValidationError(input: string): string | null {
+  if (!input.trim()) return null;
+  const result = urlSchema.safeParse({ url: input });
+  if (result.success) return null;
+  return result.error.issues[0]?.message ?? "Please enter a valid URL.";
+}
+
+// Check if input looks like a URL attempt (has domain-like structure)
+function looksLikeUrlAttempt(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+  // Has a dot followed by at least 2 chars (TLD-like), or starts with http
+  return /\.[a-zA-Z]{2,}/.test(trimmed) || /^https?:\/\//i.test(trimmed);
+}
+
 export function HomeContent() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [hasBlurred, setHasBlurred] = useState(false);
+  const [debouncedUrl, setDebouncedUrl] = useState("");
   const t = useTranslations("home");
   const isDesktop = useIsDesktop();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const router = useRouter();
+
+  // Debounce URL changes (400ms) - only validate after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUrl(url);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [url]);
+
+  // Compute validation error after debounce
+  // Only show if: user has blurred OR input clearly looks like a URL attempt
+  const debouncedError = useMemo(() => {
+    if (!debouncedUrl.trim()) return null;
+    if (!hasBlurred && !looksLikeUrlAttempt(debouncedUrl)) return null;
+    return getValidationError(debouncedUrl);
+  }, [debouncedUrl, hasBlurred]);
+
+  // Display either submit-triggered error or debounced error
+  const displayError = urlError ?? debouncedError;
 
   // Global paste handler - allows pasting from anywhere on the page
   useEffect(() => {
@@ -259,6 +292,7 @@ export function HomeContent() {
       if (pastedText) {
         setUrl(pastedText.trim());
         setUrlError(null);
+        setHasBlurred(true); // Treat paste as committed input
         inputRef.current?.focus();
       }
     };
@@ -267,8 +301,22 @@ export function HomeContent() {
     return () => document.removeEventListener("paste", handlePaste);
   }, []);
 
+  const handleBlur = useCallback(() => {
+    if (url.trim()) {
+      setHasBlurred(true);
+    }
+  }, [url]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setUrl(newValue);
+    // Clear submit-triggered error on change; debounced validation will re-evaluate
+    if (urlError) setUrlError(null);
+  }, [urlError]);
+
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
+    setHasBlurred(true); // Mark as committed on submit attempt
 
     try {
       const parsed = urlSchema.parse({ url });
@@ -290,7 +338,7 @@ export function HomeContent() {
 
   return (
     <>
-      <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 pb-72 text-foreground overflow-hidden">
+      <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
 
         {/* Film grain texture - dark mode only */}
         <svg
@@ -321,7 +369,7 @@ export function HomeContent() {
                 "focus-within:bg-black/[0.04] dark:focus-within:bg-white/[0.06]",
                 "focus-within:shadow-[0_0_0_1px_rgba(0,0,0,0.1),0_1px_2px_-1px_rgba(0,0,0,0.08),0_2px_4px_0_rgba(0,0,0,0.06)]",
                 "dark:focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_1px_2px_-1px_rgba(0,0,0,0.25),0_2px_4px_0_rgba(0,0,0,0.2)]",
-                urlError && "shadow-[0_0_0_1px_rgba(239,68,68,0.4),0_1px_2px_-1px_rgba(239,68,68,0.2),0_2px_4px_0_rgba(239,68,68,0.1)]"
+                displayError && "shadow-[0_0_0_1px_rgba(239,68,68,0.4),0_1px_2px_-1px_rgba(239,68,68,0.2),0_2px_4px_0_rgba(239,68,68,0.1)]"
               )}
             >
               <input
@@ -331,13 +379,12 @@ export function HomeContent() {
                 placeholder={t("placeholder")}
                 aria-label={t("placeholder")}
                 value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value);
-                  if (urlError) setUrlError(null);
-                }}
+                onChange={handleChange}
+                onBlur={handleBlur}
                 autoFocus={isDesktop}
                 autoComplete="off"
-                aria-invalid={Boolean(urlError)}
+                aria-invalid={Boolean(displayError)}
+                aria-describedby={displayError ? "url-error" : undefined}
               />
               <button
                 type="submit"
@@ -357,77 +404,46 @@ export function HomeContent() {
             </div>
           </form>
 
-          {urlError && (
-            <p className="mt-3 flex items-center text-sm text-destructive/70" role="alert">
+          {displayError && (
+            <p id="url-error" className="mt-3 flex items-center text-sm text-destructive/70" role="alert">
               <ExclamationCircleIcon className="mr-1.5 size-4" />
-              {urlError}
+              {displayError}
             </p>
           )}
 
-          {/* Value prop - below input */}
-          <p className="mt-5 text-sm text-muted-foreground/60">
-            {t("tagline")}{" "}
-            <Link
-              href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-              className="text-muted-foreground/80 underline underline-offset-4 decoration-muted-foreground/30 transition-colors hover:text-foreground"
-            >
-              {t("tryIt")}
-            </Link>
-          </p>
+        </div>
 
-          {/* Feature highlights */}
-          <div className="mt-10 flex flex-col items-center gap-6">
-            <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
-                  <Zap className="size-4 text-muted-foreground/70" strokeWidth={1.5} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground/90">{t("feature1Title")}</span>
-                  <span className="text-xs text-muted-foreground/60">{t("feature1Desc")}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
-                  <Eye className="size-4 text-muted-foreground/70" strokeWidth={1.5} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground/90">{t("feature2Title")}</span>
-                  <span className="text-xs text-muted-foreground/60">{t("feature2Desc")}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
-                  <Languages className="size-4 text-muted-foreground/70" strokeWidth={1.5} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground/90">{t("feature3Title")}</span>
-                  <span className="text-xs text-muted-foreground/60">{t("feature3Desc")}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Social proof */}
-            <div className="flex items-center gap-2 text-muted-foreground/50">
-              <Users className="size-3.5" strokeWidth={1.5} />
-              <span className="text-xs">{t("trustedBy")}</span>
+        {/* Value prop - positioned near bottom */}
+        <div className="absolute bottom-56 left-1/2 w-full max-w-[400px] -translate-x-1/2 px-6">
+          <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
+            <h2 className="text-center text-[15px] font-medium text-foreground/90">
+              {t("valuePropTitle")}
+            </h2>
+            <p className="mt-2.5 text-center text-[13px] leading-relaxed text-muted-foreground/70">
+              {t("valuePropDescription")}
+            </p>
+            <div className="mt-4 flex justify-center">
+              <Link
+                href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
+                className="group inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.03] px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+              >
+                <span>{t("tryPaywalledArticle")}</span>
+                <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* Scroll indicator + Bookmarklet */}
-        <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-6">
-          <BookmarkletLink />
+        {/* Scroll indicator */}
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });
             }}
             className="flex flex-col items-center gap-1 text-muted-foreground/40 transition-colors hover:text-muted-foreground/60"
-            aria-label="Scroll to learn more"
+            aria-label={t("scrollToLearnMore")}
           >
-            <span className="text-xs">Learn more</span>
+            <span className="text-xs">{t("learnMore")}</span>
             <ChevronDown className="size-4" />
           </button>
         </div>
@@ -440,32 +456,32 @@ export function HomeContent() {
           <div className="flex flex-col gap-4 lg:gap-0 lg:grid lg:grid-cols-2">
             {/* Row 1: Desktop = Visual left, Text right. Mobile = Text first */}
             <FeatureText
-              title="Three sources race, the fastest wins"
-              description="We fetch from Wayback Machine, Jina.ai, and direct access simultaneously. First one with the article wins."
+              title={t("featureSourcesTitle")}
+              description={t("featureSourcesDescription")}
               className="order-1 lg:order-2"
             />
             <FeatureVisual className="order-2 lg:order-1">
-              <SourceFetchCard />
+              <SourceFetchCard t={t} />
             </FeatureVisual>
 
             {/* Row 2: Desktop = Text left, Visual right. Mobile = Text first */}
             <FeatureText
-              title="All the content, none of the clutter"
-              description="Paywalls, popups, cookie banners, ads—all gone. Just the article text and images, ready to read."
+              title={t("featureCleanTitle")}
+              description={t("featureCleanDescription")}
               className="order-3 lg:order-3"
             />
             <FeatureVisual className="order-4 lg:order-4">
-              <CleanReadingCard />
+              <CleanReadingCard t={t} />
             </FeatureVisual>
 
             {/* Row 3: Desktop = Visual left, Text right. Mobile = Text first */}
             <FeatureText
-              title="TL;DR in your language"
-              description="AI-powered summaries in 8 languages. Get the key points without reading the full article."
+              title={t("featureSummaryTitle")}
+              description={t("featureSummaryDescription")}
               className="order-5 lg:order-6"
             />
             <FeatureVisual className="order-6 lg:order-5">
-              <AISummaryCard />
+              <AISummaryCard t={t} />
             </FeatureVisual>
           </div>
         </div>

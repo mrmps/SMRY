@@ -72,11 +72,11 @@ const _publications = [
   "MIT Tech Review",
 ];
 
-const publicationCategories = [
-  { label: "News", pubs: ["NYT", "WSJ", "WaPo", "The Guardian"] },
-  { label: "Tech", pubs: ["Wired", "MIT Tech", "The Verge", "Ars Technica"] },
-  { label: "Business", pubs: ["HBR", "Forbes", "Inc.", "Fast Company"] },
-  { label: "Culture", pubs: ["The Atlantic", "New Yorker", "Vanity Fair"] },
+const getPublicationCategories = (t: (key: string) => string) => [
+  { label: t("catNews"), pubs: ["NYT", "WSJ", "WaPo", "The Guardian"] },
+  { label: t("catTech"), pubs: ["Wired", "MIT Tech", "The Verge", "Ars Technica"] },
+  { label: t("catBusiness"), pubs: ["HBR", "Forbes", "Inc.", "Fast Company"] },
+  { label: t("catCulture"), pubs: ["The Atlantic", "New Yorker", "Vanity Fair"] },
 ];
 
 interface CTAButtonProps {
@@ -85,6 +85,7 @@ interface CTAButtonProps {
   isProUser: boolean;
   billingPeriod: BillingPeriod;
   manageSubscriptionLabel: string;
+  ctaLabel: string;
   onCheckoutOpen: () => void;
   onSubscriptionComplete: () => void;
   onSignedOutClick?: () => void;
@@ -96,6 +97,7 @@ function CTAButton({
   isProUser,
   billingPeriod,
   manageSubscriptionLabel,
+  ctaLabel,
   onCheckoutOpen,
   onSubscriptionComplete,
   onSignedOutClick,
@@ -106,7 +108,7 @@ function CTAButton({
 
   const interactiveStyles = "hover:bg-foreground/90 active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none";
 
-  const ctaText = "Start My Free Trial";
+  const ctaText = ctaLabel;
 
   const loadingButton = (
     <button className={baseStyles} aria-disabled="true" disabled>
@@ -298,7 +300,7 @@ export function PricingContent() {
         >
           <div className="flex items-center gap-2 bg-success text-success-foreground px-4 py-3 rounded-lg shadow-lg">
             <CheckCircle className="size-5" aria-hidden="true" />
-            <span className="font-medium">Welcome to Pro! Redirecting…</span>
+            <span className="font-medium">{t("welcomeToPro")}</span>
           </div>
         </div>
       )}
@@ -360,8 +362,10 @@ export function PricingContent() {
             {t("readWithoutLimits")}
           </h1>
           <p className="mt-2 text-[14px] sm:text-[15px] text-muted-foreground text-center max-w-[320px] leading-[1.55]">
-            Skip the $100+/month in subscriptions.{" "}
-            <span className="text-foreground">Get everything for $3/month</span>.
+            {t.rich("heroSubtitle", {
+              price: annualMonthly,
+              highlight: (chunks) => <span className="text-foreground">{chunks}</span>
+            })}
           </p>
         </div>
 
@@ -378,12 +382,12 @@ export function PricingContent() {
                 >
                   <TabsList>
                     <TabsTab value="monthly" className="px-4">
-                      Monthly
+                      {t("billingMonthly")}
                     </TabsTab>
                     <TabsTab value="annual" className="gap-1.5 px-4">
-                      Annually
+                      {t("billingAnnually")}
                       <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                        -50%
+                        {t("discountBadge")}
                       </span>
                     </TabsTab>
                   </TabsList>
@@ -402,8 +406,12 @@ export function PricingContent() {
                 </div>
                 <p className="text-[13px] text-muted-foreground mt-1">
                   {billingPeriod === "annual"
-                    ? <>Billed as <span className="text-foreground font-medium">${annualPrice}/year</span>, saving <span className="text-foreground font-medium">${originalAnnualPrice - annualPrice}</span></>
-                    : "per month"
+                    ? t.rich("billedAsYearly", {
+                        price: annualPrice,
+                        savings: originalAnnualPrice - annualPrice,
+                        highlight: (chunks) => <span className="text-foreground font-medium">{chunks}</span>
+                      })
+                    : t("perMonthShort")
                   }
                 </p>
               </div>
@@ -411,9 +419,9 @@ export function PricingContent() {
               {/* Quick stats */}
               <div className="space-y-1.5 mb-5">
                 {[
-                  { label: "Publications", value: "1,000+" },
-                  { label: "Articles", value: "Unlimited" },
-                  { label: "Features", value: "Everything" },
+                  { label: t("statPublications"), value: t("stat1000Plus") },
+                  { label: t("statArticles"), value: t("statUnlimited") },
+                  { label: t("statFeatures"), value: t("statEverything") },
                 ].map((stat) => (
                   <div
                     key={stat.label}
@@ -433,12 +441,13 @@ export function PricingContent() {
                   isProUser={isProUser}
                   billingPeriod={billingPeriod}
                   manageSubscriptionLabel={t("manageSubscription")}
+                  ctaLabel={t("startFreeTrial")}
                   onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
                   onSubscriptionComplete={() => setShowSuccess(true)}
                   onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground/70 text-center">
-                  7-day free trial · Cancel anytime
+                  {t("trialAndCancel")}
                 </p>
               </div>
 
@@ -464,18 +473,18 @@ export function PricingContent() {
             {/* Section 1: How it works - Desktop: Visual left, Text right */}
             <div className="order-1 lg:order-2 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
               <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
-                Start reading in seconds
+                {t("featureHowItWorksTitle")}
               </h2>
               <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
-                No browser extension needed. Just paste a URL and we handle the rest.
+                {t("featureHowItWorksDesc")}
               </p>
             </div>
             <div className="order-2 lg:order-1 flex h-[220px] sm:h-[260px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
               <div className="flex flex-col gap-3 px-6">
                 {[
-                  { step: "1", text: "Paste article URL", color: "bg-foreground text-background" },
-                  { step: "2", text: "We fetch from 3 sources", color: "bg-muted text-muted-foreground" },
-                  { step: "3", text: "Read without paywall", color: "bg-muted text-muted-foreground" },
+                  { step: "1", text: t("stepPasteUrl"), color: "bg-foreground text-background" },
+                  { step: "2", text: t("stepFetchSources"), color: "bg-muted text-muted-foreground" },
+                  { step: "3", text: t("stepReadWithout"), color: "bg-muted text-muted-foreground" },
                 ].map((item) => (
                   <div key={item.step} className="flex items-center gap-3">
                     <span className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${item.color}`}>
@@ -490,20 +499,20 @@ export function PricingContent() {
             {/* Section 2: Comparison - Desktop: Text left, Visual right */}
             <div className="order-3 lg:order-3 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
               <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
-                More features, less cost
+                {t("featureCompareTitle")}
               </h2>
               <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
-                Get unlimited AI summaries, bypass detection, and ad-free reading for ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo.
+                {t("featureCompareDesc", { price: billingPeriod === "annual" ? annualMonthly : monthlyPrice })}
               </p>
             </div>
             <div className="order-4 lg:order-4 flex h-[180px] sm:h-[220px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
               <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-white p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)] mx-4">
                 <div className="space-y-2 sm:space-y-2.5">
                   {[
-                    { feature: "AI summaries", free: "20/day", pro: "Unlimited" },
-                    { feature: "AI quality", free: "Basic", pro: "Premium" },
-                    { feature: "Bypass detection", free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
-                    { feature: "Ad-free", free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
+                    { feature: t("compareAiSummaries"), free: t("comparePerDay", { count: 20 }), pro: t("statUnlimited") },
+                    { feature: t("compareAiQuality"), free: t("compareBasic"), pro: t("comparePremium") },
+                    { feature: t("compareBypassDetection"), free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
+                    { feature: t("compareAdFree"), free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
                   ].map((row, i) => (
                     <div key={i} className="flex items-center justify-between text-xs sm:text-sm">
                       <span className="text-muted-foreground">{row.feature}</span>
@@ -520,15 +529,15 @@ export function PricingContent() {
             {/* Section 3: Publications - Desktop: Visual left, Text right */}
             <div className="order-5 lg:order-6 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
               <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
-                1,000+ publications
+                {t("featurePubsTitle")}
               </h2>
               <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
-                From NYT to Wired, The Atlantic to HBR. If it has a soft paywall, we can likely bypass it.
+                {t("featurePubsDesc")}
               </p>
             </div>
             <div className="order-6 lg:order-5 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
               <div className="grid grid-cols-2 gap-2 sm:gap-3 px-4 sm:px-6 w-full max-w-[320px]">
-                {publicationCategories.map((cat) => (
+                {getPublicationCategories(t).map((cat) => (
                   <div key={cat.label} className="rounded-lg bg-white/80 dark:bg-[#222]/80 p-2 sm:p-2.5">
                     <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.label}</p>
                     <div className="space-y-0.5">
@@ -548,8 +557,8 @@ export function PricingContent() {
           <div className="max-w-md mx-auto">
             {/* Header */}
             <div className="text-center mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">The math is simple</h2>
-              <p className="text-sm text-muted-foreground mt-1">One subscription vs. many</p>
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{t("mathTitle")}</h2>
+              <p className="text-sm text-muted-foreground mt-1">{t("mathSubtitle")}</p>
             </div>
 
             {/* Comparison rows */}
@@ -574,8 +583,8 @@ export function PricingContent() {
             <div className="rounded-xl bg-foreground text-background px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[14px] font-medium">smry Pro</span>
-                  <span className="text-[12px] text-background/60 ml-2">All of the above + 1,000 more</span>
+                  <span className="text-[14px] font-medium">{t("smryProLabel")}</span>
+                  <span className="text-[12px] text-background/60 ml-2">{t("smryProSubtext")}</span>
                 </div>
                 <span className="text-lg font-bold tabular-nums">${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo</span>
               </div>
@@ -583,7 +592,10 @@ export function PricingContent() {
 
             {/* Savings callout */}
             <p className="text-center text-[13px] text-muted-foreground mt-4">
-              That&apos;s <span className="text-foreground font-medium">${57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)}/month</span> back in your pocket
+              {t.rich("savingsCallout", {
+                savings: 57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice),
+                highlight: (chunks) => <span className="text-foreground font-medium">{chunks}</span>
+              })}
             </p>
           </div>
         </div>
@@ -594,16 +606,16 @@ export function PricingContent() {
             {/* Header */}
             <div className="text-center mb-6">
               <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{t("lovedByReaders")}</h2>
-              <p className="text-sm text-muted-foreground mt-1">Join 260,000+ readers worldwide</p>
+              <p className="text-sm text-muted-foreground mt-1">{t("joinReaders")}</p>
             </div>
 
             {/* Stats rows - clean, scannable */}
             <div className="space-y-2 mb-8">
               {[
-                { label: "Avg. Monthly Savings", value: "$89+" },
-                { label: "Articles Read", value: "2.4M this month" },
-                { label: "Success Rate", value: "76% on major sites" },
-                { label: "User Rating", value: "4.9/5 stars" },
+                { label: t("statMonthlySavings"), value: t("statSavingsValue") },
+                { label: t("statArticlesRead"), value: t("statArticlesValue") },
+                { label: t("statSuccessRate"), value: t("statSuccessValue") },
+                { label: t("statUserRating"), value: t("statRatingValue") },
               ].map((stat) => (
                 <div
                   key={stat.label}
@@ -646,7 +658,7 @@ export function PricingContent() {
 
             {/* Trust footer */}
             <p className="text-[13px] text-muted-foreground/60 text-center mt-6">
-              Secure payments via Stripe
+              {t("securePayments")}
             </p>
           </div>
         </div>
@@ -656,16 +668,16 @@ export function PricingContent() {
           <div className="max-w-md mx-auto">
             {/* Header */}
             <div className="text-center mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">Risk-Free Guarantee</h2>
-              <p className="text-sm text-muted-foreground mt-1">Try with confidence</p>
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{t("guaranteeTitle")}</h2>
+              <p className="text-sm text-muted-foreground mt-1">{t("guaranteeSubtitle")}</p>
             </div>
 
             {/* Guarantee rows - clean, scannable */}
             <div className="space-y-2">
               {[
-                { label: "Free Trial", value: "7 days, no card required" },
-                { label: "Money Back", value: "30-day full refund" },
-                { label: "Cancellation", value: "Anytime, no questions" },
+                { label: t("guaranteeTrialLabel"), value: t("guaranteeTrialValue") },
+                { label: t("guaranteeRefundLabel"), value: t("guaranteeRefundValue") },
+                { label: t("guaranteeCancelLabel"), value: t("guaranteeCancelValue") },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -729,10 +741,10 @@ export function PricingContent() {
         <div className="py-12 sm:py-16 px-4 border-t border-border pb-32 sm:pb-16">
           <div className="max-w-md mx-auto text-center">
             <h2 className="text-lg sm:text-xl font-semibold tracking-tight mb-2">
-              Start reading without limits
+              {t("finalCtaTitle")}
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Join 260,000+ readers worldwide
+              {t("joinReaders")}
             </p>
 
             {/* Desktop final CTA */}
@@ -743,6 +755,7 @@ export function PricingContent() {
                 isProUser={isProUser}
                 billingPeriod={billingPeriod}
                 manageSubscriptionLabel={t("manageSubscription")}
+                ctaLabel={t("startFreeTrial")}
                 onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
                 onSubscriptionComplete={() => setShowSuccess(true)}
                 onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
@@ -761,7 +774,7 @@ export function PricingContent() {
               </span>
               <span className="flex items-center gap-1.5">
                 <Check className="size-3.5 text-success" aria-hidden="true" />
-                30-day guarantee
+                {t("guarantee30Day")}
               </span>
             </div>
 
@@ -789,10 +802,10 @@ export function PricingContent() {
               ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo
             </span>
             {billingPeriod === "annual" && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">50% off</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{t("discountOff")}</span>
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground">7-day free trial</span>
+          <span className="text-[10px] text-muted-foreground">{t("freeTrialShort")}</span>
         </div>
         <CTAButton
           variant="mobile"
@@ -800,6 +813,7 @@ export function PricingContent() {
           isProUser={isProUser}
           billingPeriod={billingPeriod}
           manageSubscriptionLabel={t("manageSubscription")}
+          ctaLabel={t("startFreeTrial")}
           onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
           onSubscriptionComplete={() => setShowSuccess(true)}
           onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}

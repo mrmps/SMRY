@@ -19,32 +19,23 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from 'next-intl/server';
 
 export const metadata: Metadata = {
-  title: "Bypass Paywalls & Read Full Articles Free – No Login | Smry",
+  title: "Read Anything, Summarize Everything | Smry",
   description:
-    "Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension. Works on most major news sites.",
-  keywords: ["bypass paywall", "paywall remover", "read paywalled articles", "free paywall bypass", "article summarizer", "remove paywall"],
+    "AI-powered reader that bypasses paywalls and summarizes any article. Paste a link, get the full text plus an AI summary. Free, no account needed.",
+  keywords: ["bypass paywall", "paywall remover", "read paywalled articles", "free paywall bypass", "article summarizer", "AI reader", "research papers"],
   openGraph: {
     type: "website",
-    title: "Bypass Paywalls & Read Full Articles Free | Smry",
+    title: "Read Anything, Summarize Everything | Smry",
     siteName: "smry.ai",
     url: "https://smry.ai",
     description:
-      "Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension.",
-    images: [
-      {
-        url: "https://smry.ai/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Smry - Free Paywall Bypass Tool & Article Summarizer",
-      },
-    ],
+      "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bypass Paywalls & Read Full Articles Free | Smry",
+    title: "Read Anything, Summarize Everything | Smry",
     description:
-      "Paste any paywalled article link and get the full text plus an AI summary. Free, no account, no extension.",
-    images: ["https://smry.ai/og-image.png"],
+      "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
   },
 };
 
