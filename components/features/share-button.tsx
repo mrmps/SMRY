@@ -278,7 +278,7 @@ const ShareModalContent = React.memo(function ShareModalContent({
       </div>
       {/* Content area */}
       <div className="flex flex-1 flex-col overflow-hidden px-1.5">
-        <div className="flex flex-1 flex-col gap-1.5 px-3 max-w-full">
+        <div className="flex flex-1 flex-col gap-1.5 px-3 pb-4 md:pb-0 max-w-full">
           <ShareContent
             url={url}
             articleTitle={articleTitle}
@@ -290,11 +290,11 @@ const ShareModalContent = React.memo(function ShareModalContent({
         </div>
       </div>
 
-      {/* Linear-style footer divider */}
-      <div className="flex w-full border-t-[0.5px] border-border" />
+      {/* Linear-style footer divider - hidden on mobile since drawer has its own close button */}
+      <div className="hidden md:flex w-full border-t-[0.5px] border-border" />
 
-      {/* Footer with done button */}
-      <div className="flex items-center justify-end gap-3 px-3 py-3">
+      {/* Footer with done button - hidden on mobile since drawer has its own close button */}
+      <div className="hidden md:flex items-center justify-end gap-3 px-3 py-3">
         <button
           type="button"
           onClick={onClose}

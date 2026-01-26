@@ -259,8 +259,8 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   return (
     <div className="mt-2">
       <article>
-        {/* Header - Title and Links (Only if data available) */}
-        {data && !isError && data.article && (
+        {/* Header - Title and Links (Only if data available, skip for original HTML view) */}
+        {data && !isError && data.article && viewMode !== "html" && (
           <div
             className="mb-8 space-y-6 border-b border-border pb-6"
             dir={data.article.dir || "ltr"}

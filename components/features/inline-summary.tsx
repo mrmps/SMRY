@@ -545,8 +545,8 @@ function ExpandedSummary({
 
       {/* Sidebar ad - above footer to prevent layout shift */}
       {variant === "sidebar" && ad && onAdVisible && (
-        <div className="shrink-0 border-t border-border p-3">
-          <GravityAd ad={ad} onVisible={onAdVisible} className="!mt-0" />
+        <div className="shrink-0 border-t border-border px-3 py-3">
+          <GravityAd ad={ad} onVisible={onAdVisible} />
         </div>
       )}
 

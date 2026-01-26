@@ -964,13 +964,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Fixed bottom-right ad when sidebar is closed */}
               {!sidebarOpen && !isPremium && gravityAd && (
                 <div className="fixed bottom-6 right-6 z-40 w-80">
-                  <div className="rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm p-4">
-                    <GravityAd
-                      ad={gravityAd}
-                      onVisible={() => fireImpression(gravityAd.impUrl)}
-                      className="!mt-0"
-                    />
-                  </div>
+                  <GravityAd
+                    ad={gravityAd}
+                    onVisible={() => fireImpression(gravityAd.impUrl)}
+                    className="shadow-lg shadow-black/5"
+                  />
                 </div>
               )}
             </div>
@@ -997,44 +995,44 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 />
               </div>
 
-              {/* Floating bottom ad */}
+              {/* Floating bottom ad - Redesigned for maximum clarity and conversion */}
               {!isPremium && gravityAd && !adDismissed && (
-                <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 backdrop-blur-sm safe-area-bottom">
-                  <div className="mx-auto max-w-3xl px-4 py-3">
-                    <div className="flex items-start gap-3">
+                <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/98 backdrop-blur-xl safe-area-bottom">
+                  <div className="mx-auto max-w-3xl px-3 py-2.5">
+                    <div className="flex items-center gap-2.5">
                       <a
                         href={gravityAd.clickUrl}
                         target="_blank"
                         rel="sponsored noopener"
-                        className="group flex flex-1 items-start gap-3 min-w-0"
+                        className="group flex flex-1 items-center gap-2.5 min-w-0 -my-0.5 py-0.5 rounded-lg transition-colors"
                         ref={mobileAdRef}
                       >
-                        {/* Favicon from external ad provider - unoptimized for external domains */}
                         {gravityAd.favicon && (
                           <Image
                             src={gravityAd.favicon}
                             alt=""
-                            width={36}
-                            height={36}
-                            className="size-9 rounded-lg shrink-0"
+                            width={32}
+                            height={32}
+                            className="size-8 rounded-[10px] shrink-0 shadow-sm"
                             unoptimized
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1">
-                            Sponsored
+                          {/* Single-line attribution: Brand · Sponsored */}
+                          <p className="text-[11px] leading-tight text-muted-foreground/70 mb-0.5 flex items-center gap-1">
+                            <span className="font-medium text-muted-foreground truncate">{gravityAd.brandName}</span>
+                            <span className="opacity-50">·</span>
+                            <span className="shrink-0">Sponsored</span>
                           </p>
-                          <p className="text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
-                            {gravityAd.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {gravityAd.brandName}
+                          {/* Value proposition - the compelling offer */}
+                          <p className="text-[13px] leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                            {gravityAd.adText || gravityAd.title}
                           </p>
                         </div>
                       </a>
                       <button
                         onClick={() => setAdDismissed(true)}
-                        className="shrink-0 p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
+                        className="shrink-0 size-7 flex items-center justify-center rounded-full text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors -mr-1"
                         aria-label="Dismiss ad"
                       >
                         <X className="size-4" />

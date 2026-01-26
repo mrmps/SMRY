@@ -54,38 +54,37 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
     };
   }, [hasTrackedImpression, onVisible]);
 
-  // Compact variant - minimal native styling like a link
+  // Compact variant - refined native styling
   if (variant === "compact") {
     return (
-      <div className={cn("mb-6", className)}>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-          Sponsored
-        </p>
+      <div className={cn("mb-4", className)}>
         <a
           ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
-          className="group flex items-start gap-3 rounded-lg p-2.5 -mx-2.5 transition-colors hover:bg-muted/40"
+          className="group flex items-center gap-2.5 rounded-lg p-2 -mx-2 transition-colors hover:bg-muted/30"
         >
-          {/* Favicon from external ad provider - unoptimized to avoid Next.js image optimization
-            for external domains that aren't in our allowlist */}
           {ad.favicon && (
             <Image
               src={ad.favicon}
               alt=""
-              width={32}
-              height={32}
-              className="size-8 rounded-md mt-0.5"
+              width={28}
+              height={28}
+              className="size-7 rounded-[8px] shrink-0 shadow-sm"
               unoptimized
             />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors">
-              {ad.title}
+            {/* Single-line attribution */}
+            <p className="text-[11px] leading-tight text-muted-foreground/70 mb-0.5 flex items-center gap-1">
+              <span className="font-medium text-muted-foreground truncate">{ad.brandName}</span>
+              <span className="opacity-50">·</span>
+              <span className="shrink-0">Sponsored</span>
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
-              {ad.brandName}
+            {/* Value proposition */}
+            <p className="text-[13px] leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+              {ad.adText || ad.title}
             </p>
           </div>
         </a>
@@ -93,7 +92,7 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
     );
   }
 
-  // Default variant - clean native style
+  // Default variant - clean card style for desktop
   return (
     <a
       ref={adRef}
@@ -101,51 +100,38 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
       target="_blank"
       rel="sponsored noopener"
       className={cn(
-        "group block mt-4 rounded-lg transition-colors hover:bg-muted/30",
+        "group block rounded-xl border border-border/60 bg-card p-4 transition-all duration-150 hover:bg-accent/50 hover:border-border",
         className
       )}
     >
-      {/* Sponsored label */}
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
-        Sponsored
-      </p>
-
       <div className="flex items-start gap-3">
-        {/* Favicon from external ad provider - unoptimized to avoid Next.js image optimization
-            for external domains that aren't in our allowlist */}
         {ad.favicon && (
           <Image
             src={ad.favicon}
             alt=""
             width={36}
             height={36}
-            className="size-9 rounded-lg shrink-0"
+            className="size-9 rounded-[10px] shrink-0 shadow-sm ring-1 ring-black/[0.04]"
             unoptimized
           />
         )}
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Title */}
-          <p className="text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors">
-            {ad.title}
+          {/* Single-line attribution */}
+          <p className="text-[11px] leading-tight mb-1.5 flex items-center gap-1.5">
+            <span className="font-medium text-foreground/80 truncate">{ad.brandName}</span>
+            <span className="text-muted-foreground/40">·</span>
+            <span className="text-muted-foreground/60 shrink-0">Sponsored</span>
           </p>
 
-          {/* Brand */}
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {ad.brandName}
+          {/* Value proposition */}
+          <p className="text-[14px] leading-snug text-foreground font-medium">
+            {ad.adText || ad.title}
           </p>
-
-          {/* Ad text - only show if present */}
-          {ad.adText && (
-            <p className="mt-1.5 text-xs text-muted-foreground/80 leading-relaxed">
-              {ad.adText}
-            </p>
-          )}
 
           {/* CTA */}
           {ad.cta && (
-            <p className="mt-2 text-xs font-medium text-primary">
+            <p className="mt-2 text-[13px] font-medium text-foreground">
               {ad.cta} →
             </p>
           )}
