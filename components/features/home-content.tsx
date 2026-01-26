@@ -225,10 +225,15 @@ function AISummaryCard({ t }: { t: (key: string) => string }) {
 }
 
 // Hook to detect if device is desktop (for autoFocus)
+// Returns true only for non-touch desktop devices to avoid keyboard popup on mobile
 function useIsDesktop() {
   return useSyncExternalStore(
     emptySubscribe,
-    () => window.matchMedia("(min-width: 768px)").matches,
+    () => {
+      const isWideScreen = window.matchMedia("(min-width: 768px)").matches;
+      const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+      return isWideScreen && !isTouchDevice;
+    },
     () => true // Assume desktop on server
   );
 }
