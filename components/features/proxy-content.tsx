@@ -26,10 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { routing, type Locale, defaultLocale } from "@/i18n/routing";
+import { routing, type Locale } from "@/i18n/routing";
+import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import ShareButton from "@/components/features/share-button";
 import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
@@ -162,19 +163,21 @@ const languageNames: Record<Locale, string> = {
   nl: "Nederlands",
 };
 
-// URL-based locale switching that preserves query params
+// Locale switching using next-intl's router (preserves query params)
 function useLocaleSwitch() {
-  const pathname = usePathname();
+  const router = useRouter();
+  const rawPathname = usePathname();
   const searchParams = useSearchParams();
 
   return (newLocale: Locale) => {
-    // Build the new URL with locale prefix (or none for default)
-    const localePrefix = newLocale === defaultLocale ? '' : `/${newLocale}`;
+    // Strip any existing locale prefix to get the bare pathname
+    const pathname = stripLocaleFromPathname(rawPathname);
+    // Build path with query params
     const search = searchParams.toString();
-    const newUrl = `${localePrefix}${pathname}${search ? `?${search}` : ''}`;
+    const fullPath = `${pathname}${search ? `?${search}` : ''}`;
 
-    // Navigate to the new locale URL (preserves all query state)
-    window.location.href = newUrl;
+    // Use next-intl's router to properly switch locales
+    router.replace(fullPath, { locale: newLocale });
   };
 }
 
