@@ -10,6 +10,7 @@
   "home": {
     "tagline": "Read paywalled articles for free — and get an AI summary.",
     "tryIt": "Try it",
+    "trustedBy": "Trusted by 260K+ readers monthly",
     "placeholder": "https://...",
     "by": "by",
     "support": "Support",
@@ -136,6 +137,12 @@
     "faqTrialAnswer": "Yes! Start with a 7-day free trial. You won't be charged until the trial ends, and you can cancel anytime.",
     "faqPayment": "What payment methods do you accept?",
     "faqPaymentAnswer": "We accept all major credit cards and debit cards through our secure payment processor.",
+    "faqSiteSupport": "What if it doesn't work for my favorite site?",
+    "faqSiteSupportAnswer": "Our bypass detection instantly tells you if an article was fully retrieved. If a site isn't working, you can request it and we'll prioritize adding support. With 1,000+ publications already supported, most major sites work great.",
+    "faqLegal": "Is this legal?",
+    "faqLegalAnswer": "Yes. smry works by accessing publicly available content through various legal methods. We don't store or redistribute copyrighted content — we simply help you read articles you've found.",
+    "faqValue": "Why should I pay when there are free alternatives?",
+    "faqValueAnswer": "Free tools are often slow, unreliable, or filled with ads. smry Pro gives you instant access, premium AI summaries, bypass detection, and a clean reading experience. At $3/month, it pays for itself with a single article from any major publication.",
     "stillHaveQuestions": "Still have questions?",
     "reachOut": "Reach out on X",
     "saveVsSubscriptions": "Save vs. individual subscriptions",
@@ -220,11 +227,15 @@
     "changelog": "Changelog",
     "pricing": "Pricing",
     "feedback": "Feedback",
+    "contactUs": "Contact us",
     "signIn": "Sign in",
     "theme": "Theme",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "searchPlaceholder": "Search for help...",
+    "whatsNew": "What's new",
+    "fullChangelog": "Full changelog"
   },
   "changelog": {
     "title": "Changelog",

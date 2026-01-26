@@ -58,11 +58,11 @@ export default async function RootLayout({
   return (
     <ClerkProvider>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
-        <ReactScan />
-        <ReactGrab />
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
+          <ReactScan />
+          <ReactGrab />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"

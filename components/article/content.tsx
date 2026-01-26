@@ -191,9 +191,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   const { data, isLoading, isError, error } = query;
   const contentRef = React.useRef<HTMLDivElement>(null);
 
+  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
+
   // Add click-to-expand functionality to images
+  // Must depend on sanitizedArticleContent since that's what's actually rendered
   useEffect(() => {
-    if (!contentRef.current) return;
+    if (!contentRef.current || !sanitizedArticleContent) return;
 
     const images = contentRef.current.querySelectorAll("img");
     const handleClick = (e: Event) => {
@@ -211,7 +214,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         img.removeEventListener("click", handleClick);
       });
     };
-  }, [data?.article?.content]);
+  }, [sanitizedArticleContent]);
 
   // Extract debug context from error if available
   const debugContext =
@@ -240,10 +243,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   };
 
   const cacheURL = getCacheURL();
-
-  // Sanitize article content for markdown view (prevents XSS)
-  // Uses client-side DOMPurify to avoid SSR issues with jsdom
-  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
 
   // Get the raw HTML content for the "Original" view
   // No sanitization needed - it's rendered in a sandboxed iframe which:

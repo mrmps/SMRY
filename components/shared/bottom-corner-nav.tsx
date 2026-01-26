@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/popover";
 import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import { cn } from "@/lib/utils";
+import { getRecentChanges } from "@/lib/changelog";
 
 const emptySubscribe = () => () => {};
 
@@ -283,16 +284,19 @@ function HelpPopoverContent() {
   const query = searchQuery.toLowerCase().trim();
 
   const menuItems = [
-    { icon: MessageCircle, label: "Contact us", href: "https://smryai.userjot.com/", external: true },
+    { icon: MessageCircle, label: t("contactUs"), href: "https://smryai.userjot.com/", external: true },
     { icon: BookOpen, label: t("getStarted"), href: "/guide" },
-    { icon: History, label: t("history"), href: "/history", shortcut: "G H" },
+    { icon: History, label: t("history"), href: "/history" },
     { icon: CreditCard, label: t("pricing"), href: "/pricing" },
   ];
 
-  const whatsNewItems = [
-    { text: "Improved history with keyboard nav", isNew: true },
-    { text: "Multiple view modes for history" },
-    { text: "Full changelog", href: "/changelog" },
+  const recentChanges = getRecentChanges(2);
+  const whatsNewItems: { text: string; isNew?: boolean; href?: string }[] = [
+    ...recentChanges.map((change, i) => ({
+      text: change.text,
+      isNew: i === 0,
+    })),
+    { text: t("fullChangelog"), href: "/changelog" },
   ];
 
   const filteredMenuItems = query
@@ -316,7 +320,7 @@ function HelpPopoverContent() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search for help..."
+          placeholder={t("searchPlaceholder")}
           className="flex-1 bg-transparent text-[13px] text-foreground/80 outline-none placeholder:text-muted-foreground/50"
         />
       </div>
@@ -330,8 +334,7 @@ function HelpPopoverContent() {
               icon={item.icon}
               label={item.label}
               href={item.href}
-              external={item.external}
-              shortcut={item.shortcut}
+              external={"external" in item ? item.external : undefined}
             />
           ))}
           {showTheme && <ThemeSubmenu />}
@@ -345,7 +348,7 @@ function HelpPopoverContent() {
       {showWhatsNew && (
         <div className="px-2.5 pt-2 pb-1">
           <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50 mb-1.5">
-            What&apos;s new
+            {t("whatsNew")}
           </div>
           {filteredWhatsNew.map((item) => (
             <WhatsNewItem key={item.text} isNew={item.isNew} href={item.href}>
@@ -366,7 +369,7 @@ function HelpPopoverContent() {
                   className="flex items-center gap-1.5 rounded-full border border-border bg-accent px-2.5 py-1 text-[11px] font-medium text-foreground/80 hover:bg-accent transition-colors"
                 >
                   <Crown className="size-3 text-amber-500" />
-                  Sign in
+                  {t("signIn")}
                 </button>
               </SignInButton>
             </SignedOut>

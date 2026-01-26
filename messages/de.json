@@ -10,6 +10,7 @@
   "home": {
     "tagline": "Lesen Sie Paywall-Artikel kostenlos — und erhalten Sie eine KI-Zusammenfassung.",
     "tryIt": "Ausprobieren",
+    "trustedBy": "Über 260.000 Leser monatlich",
     "placeholder": "Artikel-URL einfügen...",
     "by": "von",
     "support": "Unterstützen",
@@ -136,6 +137,12 @@
     "faqTrialAnswer": "Ja! Starten Sie mit einer 7-tägigen kostenlosen Testversion. Sie werden erst nach Ablauf der Testversion belastet, und Sie können jederzeit kündigen.",
     "faqPayment": "Welche Zahlungsmethoden akzeptieren Sie?",
     "faqPaymentAnswer": "Wir akzeptieren alle gängigen Kredit- und Debitkarten über unseren sicheren Zahlungsanbieter.",
+    "faqSiteSupport": "Was ist, wenn es für meine Lieblingsseite nicht funktioniert?",
+    "faqSiteSupportAnswer": "Unsere Bypass-Erkennung zeigt Ihnen sofort an, ob ein Artikel vollständig abgerufen wurde. Wenn eine Seite nicht funktioniert, können Sie sie anfordern und wir werden die Unterstützung priorisieren. Mit über 1.000 unterstützten Publikationen funktionieren die meisten großen Seiten hervorragend.",
+    "faqLegal": "Ist das legal?",
+    "faqLegalAnswer": "Ja. smry greift über verschiedene legale Methoden auf öffentlich zugängliche Inhalte zu. Wir speichern oder verbreiten keine urheberrechtlich geschützten Inhalte — wir helfen Ihnen einfach, Artikel zu lesen, die Sie gefunden haben.",
+    "faqValue": "Warum sollte ich zahlen, wenn es kostenlose Alternativen gibt?",
+    "faqValueAnswer": "Kostenlose Tools sind oft langsam, unzuverlässig oder voller Werbung. smry Pro bietet sofortigen Zugang, Premium-KI-Zusammenfassungen, Bypass-Erkennung und ein sauberes Leseerlebnis. Für 3€/Monat lohnt es sich schon bei einem einzigen Artikel von einer großen Publikation.",
     "stillHaveQuestions": "Noch Fragen?",
     "reachOut": "Kontaktieren Sie uns auf X",
     "saveVsSubscriptions": "Sparen vs. Einzelabonnements",
@@ -202,11 +209,11 @@
   "bookmarklet": {
     "linkText": "smry.ai Bookmarklet",
     "dragTip": "In Lesezeichen-Leiste ziehen",
-    "installTitle": "Füge die SMRY-Verknüpfung hinzu",
-    "installDescription": "Einmal ziehen und sie steht dauerhaft in deiner Lesezeichenleiste bereit.",
-    "stepShowBar": "Blende die Lesezeichenleiste ein (Cmd + Shift + B auf dem Mac, Ctrl + Shift + B unter Windows).",
-    "stepDrag": "Ziehe das SMRY-Logo nach oben, bis dein Browser ein Plus-Symbol in der Leiste zeigt, und lasse los.",
-    "stepUse": "Wenn du einen Artikel liest, klicke auf das Lesezeichen, um die Seite in SMRY zu öffnen."
+    "installTitle": "Fügen Sie die SMRY-Verknüpfung hinzu",
+    "installDescription": "Einmal ziehen und sie steht dauerhaft in Ihrer Lesezeichenleiste bereit.",
+    "stepShowBar": "Blenden Sie die Lesezeichenleiste ein (Cmd + Shift + B auf dem Mac, Ctrl + Shift + B unter Windows).",
+    "stepDrag": "Ziehen Sie das SMRY-Logo nach oben, bis Ihr Browser ein Plus-Symbol in der Leiste zeigt, und lassen Sie los.",
+    "stepUse": "Wenn Sie einen Artikel lesen, klicken Sie auf das Lesezeichen, um die Seite in SMRY zu öffnen."
   },
   "common": {
     "premium": "Premium",
@@ -220,11 +227,15 @@
     "changelog": "Änderungen",
     "pricing": "Preise",
     "feedback": "Feedback",
+    "contactUs": "Kontaktieren Sie uns",
     "signIn": "Anmelden",
     "theme": "Design",
     "light": "Hell",
     "dark": "Dunkel",
-    "system": "System"
+    "system": "System",
+    "searchPlaceholder": "Hilfe suchen...",
+    "whatsNew": "Neuigkeiten",
+    "fullChangelog": "Vollständiges Änderungsprotokoll"
   },
   "changelog": {
     "title": "Änderungsprotokoll",

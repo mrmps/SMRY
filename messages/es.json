@@ -10,6 +10,7 @@
   "home": {
     "tagline": "Lee artículos con muro de pago gratis — y obtén un resumen de IA.",
     "tryIt": "Pruébalo",
+    "trustedBy": "Más de 260K lectores mensuales",
     "placeholder": "Pega la URL del artículo...",
     "by": "por",
     "support": "Apoyar",
@@ -136,6 +137,12 @@
     "faqTrialAnswer": "¡Sí! Comienza con una prueba gratuita de 7 días. No se te cobrará hasta que termine la prueba, y puedes cancelar en cualquier momento.",
     "faqPayment": "¿Qué métodos de pago aceptan?",
     "faqPaymentAnswer": "Aceptamos todas las principales tarjetas de crédito y débito a través de nuestro procesador de pagos seguro.",
+    "faqSiteSupport": "¿Qué pasa si no funciona para mi sitio favorito?",
+    "faqSiteSupportAnswer": "Nuestra detección de bypass te indica al instante si un artículo fue recuperado completamente. Si un sitio no funciona, puedes solicitarlo y priorizaremos agregar soporte. Con más de 1,000 publicaciones ya soportadas, la mayoría de los sitios principales funcionan muy bien.",
+    "faqLegal": "¿Es esto legal?",
+    "faqLegalAnswer": "Sí. smry accede a contenido públicamente disponible a través de varios métodos legales. No almacenamos ni redistribuimos contenido protegido por derechos de autor — simplemente te ayudamos a leer artículos que has encontrado.",
+    "faqValue": "¿Por qué debería pagar cuando hay alternativas gratuitas?",
+    "faqValueAnswer": "Las herramientas gratuitas suelen ser lentas, poco confiables o llenas de anuncios. smry Pro te da acceso instantáneo, resúmenes de IA premium, detección de bypass y una experiencia de lectura limpia. A $3/mes, se paga solo con un artículo de cualquier publicación importante.",
     "stillHaveQuestions": "¿Aún tienes preguntas?",
     "reachOut": "Contáctanos en X",
     "saveVsSubscriptions": "Ahorra vs. suscripciones individuales",
@@ -220,11 +227,15 @@
     "changelog": "Cambios",
     "pricing": "Precios",
     "feedback": "Comentarios",
+    "contactUs": "Contáctanos",
     "signIn": "Iniciar sesión",
     "theme": "Tema",
     "light": "Claro",
     "dark": "Oscuro",
-    "system": "Sistema"
+    "system": "Sistema",
+    "searchPlaceholder": "Buscar ayuda...",
+    "whatsNew": "Novedades",
+    "fullChangelog": "Registro completo de cambios"
   },
   "changelog": {
     "title": "Registro de cambios",

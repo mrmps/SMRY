@@ -10,6 +10,7 @@
   "home": {
     "tagline": "Lees artikelen met betaalmuur gratis — en krijg een AI-samenvatting.",
     "tryIt": "Probeer het",
+    "trustedBy": "Meer dan 260K lezers per maand",
     "placeholder": "Plak artikel-URL...",
     "by": "door",
     "support": "Ondersteunen",
@@ -136,6 +137,12 @@
     "faqTrialAnswer": "Ja! Begin met een gratis proefperiode van 7 dagen. Je wordt pas belast na afloop van de proefperiode, en je kunt op elk moment opzeggen.",
     "faqPayment": "Welke betaalmethoden accepteren jullie?",
     "faqPaymentAnswer": "We accepteren alle belangrijke creditcards en debetkaarten via onze beveiligde betalingsverwerker.",
+    "faqSiteSupport": "Wat als het niet werkt voor mijn favoriete site?",
+    "faqSiteSupportAnswer": "Onze bypass-detectie laat je direct weten of een artikel volledig is opgehaald. Als een site niet werkt, kun je deze aanvragen en geven we prioriteit aan het toevoegen van ondersteuning. Met 1.000+ ondersteunde publicaties werken de meeste grote sites prima.",
+    "faqLegal": "Is dit legaal?",
+    "faqLegalAnswer": "Ja. smry gebruikt verschillende legale methoden om toegang te krijgen tot publiek beschikbare content. We slaan geen auteursrechtelijk beschermde content op en verspreiden deze niet — we helpen je gewoon artikelen te lezen die je hebt gevonden.",
+    "faqValue": "Waarom zou ik betalen als er gratis alternatieven zijn?",
+    "faqValueAnswer": "Gratis tools zijn vaak traag, onbetrouwbaar of vol advertenties. smry Pro geeft je directe toegang, premium AI-samenvattingen, bypass-detectie en een schone leeservaring. Voor €3/maand verdient het zichzelf terug met één artikel van een grote publicatie.",
     "stillHaveQuestions": "Nog vragen?",
     "reachOut": "Neem contact op via X",
     "saveVsSubscriptions": "Bespaar vs. individuele abonnementen",
@@ -220,11 +227,15 @@
     "changelog": "Wijzigingen",
     "pricing": "Prijzen",
     "feedback": "Feedback",
+    "contactUs": "Neem contact op",
     "signIn": "Inloggen",
     "theme": "Thema",
     "light": "Licht",
     "dark": "Donker",
-    "system": "Systeem"
+    "system": "Systeem",
+    "searchPlaceholder": "Zoek hulp...",
+    "whatsNew": "Nieuw",
+    "fullChangelog": "Volledig wijzigingslogboek"
   },
   "changelog": {
     "title": "Wijzigingslogboek",

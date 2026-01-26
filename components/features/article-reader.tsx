@@ -100,7 +100,8 @@ export function ArticleReader({
 
     const scrolled = Math.max(0, -rect.top);
     const total = elementHeight - windowHeight;
-    const percent = Math.min(100, Math.max(0, (scrolled / total) * 100));
+    // Guard against zero/negative scrollable height (content fits in viewport)
+    const percent = total <= 0 ? 100 : Math.min(100, Math.max(0, (scrolled / total) * 100));
 
     setProgress(percent);
   }, []);
@@ -112,7 +113,8 @@ export function ArticleReader({
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    updateProgress();
+    // Schedule initial progress calculation for next frame to avoid sync setState in effect
+    rafRef.current = requestAnimationFrame(updateProgress);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);

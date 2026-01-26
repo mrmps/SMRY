@@ -469,7 +469,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
 
               <ShareButton
-                url={`https://smry.ai/${url}`}
+                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}
@@ -562,7 +562,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             {/* Mobile Actions */}
             <div className="md:hidden flex items-center gap-1.5">
               <ShareButton
-                url={`https://smry.ai/${url}`}
+                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}

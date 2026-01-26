@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import {
   ArrowRight,
@@ -11,6 +11,10 @@ import {
   Loader2,
   CheckCircle,
   FileText,
+  Zap,
+  Eye,
+  Languages,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -26,18 +30,26 @@ import { FAQ } from "@/components/marketing/faq";
 const emptySubscribe = () => () => {};
 
 // Feature Grid Cell - visual card with rounded background
-function FeatureVisual({ children }: { children: React.ReactNode }) {
+function FeatureVisual({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex h-[340px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
+    <div className={clsx(
+      "relative flex h-[280px] sm:h-[320px] lg:h-[340px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#f8f8f8] via-[#f3f3f3] to-[#eee] dark:from-[#161616] dark:via-[#131313] dark:to-[#0f0f0f]",
+      className
+    )}>
+      {/* Subtle radial glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent dark:from-white/[0.03]" />
       {children}
     </div>
   );
 }
 
 // Feature Grid Cell - text content
-function FeatureText({ title, description }: { title: string; description: string }) {
+function FeatureText({ title, description, className }: { title: string; description: string; className?: string }) {
   return (
-    <div className="flex h-[340px] flex-col items-center justify-center gap-2.5 px-6 text-center">
+    <div className={clsx(
+      "flex py-8 lg:py-0 lg:h-[340px] flex-col items-center justify-center gap-2.5 px-6 text-center",
+      className
+    )}>
       <h2 className="max-w-[300px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
         {title}
       </h2>
@@ -233,8 +245,27 @@ export function HomeContent() {
   const [urlError, setUrlError] = useState<string | null>(null);
   const t = useTranslations("home");
   const isDesktop = useIsDesktop();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const router = useRouter();
+
+  // Global paste handler - allows pasting from anywhere on the page
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      // If input is already focused, let the default behavior handle it
+      if (document.activeElement === inputRef.current) return;
+
+      const pastedText = e.clipboardData?.getData("text");
+      if (pastedText) {
+        setUrl(pastedText.trim());
+        setUrlError(null);
+        inputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, []);
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
@@ -283,13 +314,18 @@ export function HomeContent() {
           <form onSubmit={handleSubmit} className="mt-6 w-full">
             <div
               className={clsx(
-                "flex gap-1 p-1 rounded-[14px] border transition-all duration-200",
-                "bg-foreground/[0.045]",
-                "focus-within:bg-foreground/[0.06] focus-within:border-foreground/20",
-                urlError ? "border-destructive/50" : "border-foreground/[0.15]"
+                "flex gap-1 p-1 rounded-[14px] transition-[background,box-shadow] duration-200",
+                "bg-black/[0.03] dark:bg-white/[0.04]",
+                "shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.06),0_2px_4px_0_rgba(0,0,0,0.04)]",
+                "dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_1px_2px_-1px_rgba(0,0,0,0.2),0_2px_4px_0_rgba(0,0,0,0.15)]",
+                "focus-within:bg-black/[0.04] dark:focus-within:bg-white/[0.06]",
+                "focus-within:shadow-[0_0_0_1px_rgba(0,0,0,0.1),0_1px_2px_-1px_rgba(0,0,0,0.08),0_2px_4px_0_rgba(0,0,0,0.06)]",
+                "dark:focus-within:shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_1px_2px_-1px_rgba(0,0,0,0.25),0_2px_4px_0_rgba(0,0,0,0.2)]",
+                urlError && "shadow-[0_0_0_1px_rgba(239,68,68,0.4),0_1px_2px_-1px_rgba(239,68,68,0.2),0_2px_4px_0_rgba(239,68,68,0.1)]"
               )}
             >
               <input
+                ref={inputRef}
                 className="min-w-0 flex-1 rounded-lg bg-transparent px-3 py-2 text-base placeholder:text-muted-foreground/50 focus:outline-none"
                 name="url"
                 placeholder={t("placeholder")}
@@ -310,11 +346,13 @@ export function HomeContent() {
                 className={clsx(
                   "flex size-9 shrink-0 items-center justify-center rounded-[10px] transition-all duration-200",
                   isUrlValid
-                    ? "text-foreground/90 hover:bg-foreground/10"
-                    : "text-foreground/50 pointer-events-none"
+                    ? "bg-foreground text-background hover:bg-foreground/85 active:scale-95"
+                    : url.length > 0
+                      ? "text-foreground/40 pointer-events-none"
+                      : "text-foreground/15 pointer-events-none"
                 )}
               >
-                <ArrowRight className="size-5" strokeWidth={1.5} />
+                <ArrowRight className="size-5" strokeWidth={isUrlValid ? 2 : 1.5} />
               </button>
             </div>
           </form>
@@ -328,14 +366,55 @@ export function HomeContent() {
 
           {/* Value prop - below input */}
           <p className="mt-5 text-sm text-muted-foreground/60">
-            Unlock any article. Read or summarize it.{" "}
+            {t("tagline")}{" "}
             <Link
               href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
               className="text-muted-foreground/80 underline underline-offset-4 decoration-muted-foreground/30 transition-colors hover:text-foreground"
             >
-              Try it
+              {t("tryIt")}
             </Link>
           </p>
+
+          {/* Feature highlights */}
+          <div className="mt-10 flex flex-col items-center gap-6">
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
+                  <Zap className="size-4 text-muted-foreground/70" strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground/90">{t("feature1Title")}</span>
+                  <span className="text-xs text-muted-foreground/60">{t("feature1Desc")}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
+                  <Eye className="size-4 text-muted-foreground/70" strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground/90">{t("feature2Title")}</span>
+                  <span className="text-xs text-muted-foreground/60">{t("feature2Desc")}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-black/[0.04] dark:bg-white/[0.06]">
+                  <Languages className="size-4 text-muted-foreground/70" strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground/90">{t("feature3Title")}</span>
+                  <span className="text-xs text-muted-foreground/60">{t("feature3Desc")}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Social proof */}
+            <div className="flex items-center gap-2 text-muted-foreground/50">
+              <Users className="size-3.5" strokeWidth={1.5} />
+              <span className="text-xs">{t("trustedBy")}</span>
+            </div>
+          </div>
         </div>
 
         {/* Scroll indicator + Bookmarklet */}
@@ -358,33 +437,36 @@ export function HomeContent() {
       <section id="below-fold">
         {/* Features Grid */}
         <div className="mx-auto max-w-[960px] px-5 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            {/* Row 1: Visual left, Text right */}
-            <FeatureVisual>
-              <SourceFetchCard />
-            </FeatureVisual>
+          <div className="flex flex-col gap-4 lg:gap-0 lg:grid lg:grid-cols-2">
+            {/* Row 1: Desktop = Visual left, Text right. Mobile = Text first */}
             <FeatureText
               title="Three sources race, the fastest wins"
               description="We fetch from Wayback Machine, Jina.ai, and direct access simultaneously. First one with the article wins."
+              className="order-1 lg:order-2"
             />
+            <FeatureVisual className="order-2 lg:order-1">
+              <SourceFetchCard />
+            </FeatureVisual>
 
-            {/* Row 2: Text left, Visual right */}
+            {/* Row 2: Desktop = Text left, Visual right. Mobile = Text first */}
             <FeatureText
               title="All the content, none of the clutter"
               description="Paywalls, popups, cookie banners, ads—all gone. Just the article text and images, ready to read."
+              className="order-3 lg:order-3"
             />
-            <FeatureVisual>
+            <FeatureVisual className="order-4 lg:order-4">
               <CleanReadingCard />
             </FeatureVisual>
 
-            {/* Row 3: Visual left, Text right */}
-            <FeatureVisual>
-              <AISummaryCard />
-            </FeatureVisual>
+            {/* Row 3: Desktop = Visual left, Text right. Mobile = Text first */}
             <FeatureText
               title="TL;DR in your language"
               description="AI-powered summaries in 8 languages. Get the key points without reading the full article."
+              className="order-5 lg:order-6"
             />
+            <FeatureVisual className="order-6 lg:order-5">
+              <AISummaryCard />
+            </FeatureVisual>
           </div>
         </div>
 

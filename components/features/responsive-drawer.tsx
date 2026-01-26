@@ -49,7 +49,7 @@ export function ResponsiveDrawer({
   trigger,
   title = "Dialog",
   scrollable = false,
-  showCloseButton: _showCloseButton = true,
+  showCloseButton = true,
   contentClassName,
   nativeButton = true,
   triggerId,
@@ -120,7 +120,7 @@ export function ResponsiveDrawer({
       </div>
       <DialogContent
         id={contentId}
-        showCloseButton={false}
+        showCloseButton={showCloseButton}
         className={cn(
           "flex flex-col border-[0.5px] border-border bg-card p-0 sm:max-w-[420px] sm:max-h-[calc(100vh-2rem)] sm:rounded-xl",
           scrollable ? "overflow-y-auto" : "overflow-hidden",

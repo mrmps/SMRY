@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CheckoutButton, SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
 import { Check, ChevronDown, ArrowLeft, CheckCircle, X } from "lucide-react";
+import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
@@ -100,8 +101,8 @@ function CTAButton({
   onSignedOutClick,
 }: CTAButtonProps) {
   const baseStyles = variant === "desktop"
-    ? "w-full py-3 px-4 rounded-xl bg-foreground text-background font-semibold text-sm shadow-sm"
-    : "w-full py-3.5 px-4 rounded-xl bg-foreground text-background font-semibold text-sm shadow-sm";
+    ? "w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-medium text-sm"
+    : "w-full py-3 px-4 rounded-xl bg-foreground text-background font-medium text-sm";
 
   const interactiveStyles = "hover:bg-foreground/90 active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none";
 
@@ -267,9 +268,6 @@ export function PricingContent() {
   }, []);
 
   const premiumFeatures = [
-    "1,000+ publications",
-    t("unlimitedArticles"),
-    t("unlimitedAiSummaries"),
     t("premiumAiModels"),
     t("bypassIndicator"),
     t("unlimitedHistory"),
@@ -280,12 +278,12 @@ export function PricingContent() {
   const faqs = [
     { q: t("faqHowWorks"), a: t("faqHowWorksAnswer") },
     { q: t("faqPublications"), a: t("faqPublicationsAnswer") },
-    { q: "What if it doesn't work for my favorite site?", a: "Our bypass detection instantly tells you if an article was fully retrieved. If a site isn't working, you can request it and we'll prioritize adding support. With 1,000+ publications already supported, most major sites work great." },
+    { q: t("faqSiteSupport"), a: t("faqSiteSupportAnswer") },
     { q: t("faqCancel"), a: t("faqCancelAnswer") },
     { q: t("faqTrial"), a: t("faqTrialAnswer") },
-    { q: "Is this legal?", a: "Yes. smry works by accessing publicly available content through various legal methods. We don't store or redistribute copyrighted content — we simply help you read articles you've found." },
+    { q: t("faqLegal"), a: t("faqLegalAnswer") },
     { q: t("faqPayment"), a: t("faqPaymentAnswer") },
-    { q: "Why should I pay when there are free alternatives?", a: "Free tools are often slow, unreliable, or filled with ads. smry Pro gives you instant access, premium AI summaries, bypass detection, and a clean reading experience. At $3/month, it pays for itself with a single article from any major publication." },
+    { q: t("faqValue"), a: t("faqValueAnswer") },
   ];
 
   return (
@@ -370,62 +368,62 @@ export function PricingContent() {
         {/* Card */}
         <div className="flex justify-center px-4 pt-6 pb-24 sm:pb-16">
           <div className="w-full max-w-[340px]">
-            <div className={`relative rounded-2xl border ${isProUser ? "border-[var(--p3-gold)]/30 shadow-[0_0_32px_-8px_var(--p3-gold)]" : "border-foreground/[0.1]"} bg-gradient-to-b from-card via-card to-muted/40 px-6 py-7 shadow-lg shadow-foreground/[0.03]`}>
+            <div className={`relative rounded-2xl border ${isProUser ? "border-[var(--p3-gold)]/30 shadow-[0_0_32px_-8px_var(--p3-gold)]" : "border-foreground/[0.08]"} bg-card px-5 py-5 shadow-sm`}>
+
+              {/* Billing Toggle */}
+              <div className="flex justify-center mb-5">
+                <Tabs
+                  value={billingPeriod}
+                  onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
+                >
+                  <TabsList>
+                    <TabsTab value="monthly" className="px-4">
+                      Monthly
+                    </TabsTab>
+                    <TabsTab value="annual" className="gap-1.5 px-4">
+                      Annually
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        -50%
+                      </span>
+                    </TabsTab>
+                  </TabsList>
+                </Tabs>
+              </div>
 
               {/* Price */}
-              <div className="text-center">
-                {billingPeriod === "annual" && !isProUser && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide text-[var(--p3-emerald)] bg-[var(--p3-emerald)]/[0.08] px-2.5 py-1 rounded-full mb-4">
-                    <span className="size-1 rounded-full bg-[var(--p3-emerald)] animate-pulse" />
-                    Limited offer · 50% off
-                  </span>
-                )}
-                <div className="flex items-baseline justify-center gap-2">
+              <div className="text-center mb-5">
+                <div className="flex items-baseline justify-center gap-1">
                   {billingPeriod === "annual" && (
-                    <span className="text-xl text-muted-foreground/30 line-through tabular-nums">${originalAnnualPrice}</span>
+                    <span className="text-xl text-muted-foreground/40 line-through tabular-nums font-medium">${originalAnnualPrice}</span>
                   )}
-                  <span className="text-5xl font-bold tabular-nums tracking-[-0.04em] leading-none">
+                  <span className="text-4xl font-bold tabular-nums tracking-tight">
                     ${billingPeriod === "annual" ? annualPrice : monthlyPrice}
                   </span>
                 </div>
-                <p className="text-[12px] text-muted-foreground mt-1.5">
+                <p className="text-[13px] text-muted-foreground mt-1">
                   {billingPeriod === "annual"
-                    ? <><span className="text-foreground/80 font-medium">${annualMonthly}/mo</span> · billed yearly</>
+                    ? <>Billed as <span className="text-foreground font-medium">${annualPrice}/year</span>, saving <span className="text-foreground font-medium">${originalAnnualPrice - annualPrice}</span></>
                     : "per month"
                   }
                 </p>
               </div>
 
-              {/* Billing Toggle */}
-              <fieldset className="mt-6 mb-5">
-                <legend className="sr-only">Billing period</legend>
-                <div className="flex p-1 bg-muted/50 rounded-xl">
-                  <button
-                    onClick={() => setBillingPeriod("annual")}
-                    className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-all ${
-                      billingPeriod === "annual"
-                        ? "bg-background text-foreground shadow-sm ring-1 ring-foreground/[0.08]"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    type="button"
-                    aria-pressed={billingPeriod === "annual"}
+              {/* Quick stats */}
+              <div className="space-y-1.5 mb-5">
+                {[
+                  { label: "Publications", value: "1,000+" },
+                  { label: "Articles", value: "Unlimited" },
+                  { label: "Features", value: "Everything" },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="flex items-center justify-between h-9 px-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.05]"
                   >
-                    {t("yearly")}
-                  </button>
-                  <button
-                    onClick={() => setBillingPeriod("monthly")}
-                    className={`flex-1 py-2 rounded-lg text-[13px] font-medium transition-all ${
-                      billingPeriod === "monthly"
-                        ? "bg-background text-foreground shadow-sm ring-1 ring-foreground/[0.08]"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    type="button"
-                    aria-pressed={billingPeriod === "monthly"}
-                  >
-                    {t("monthly")}
-                  </button>
-                </div>
-              </fieldset>
+                    <span className="text-[14px] font-medium">{stat.label}</span>
+                    <span className="text-[14px] text-muted-foreground">{stat.value}</span>
+                  </div>
+                ))}
+              </div>
 
               {/* CTA */}
               <div className="hidden sm:block">
@@ -439,18 +437,17 @@ export function PricingContent() {
                   onSubscriptionComplete={() => setShowSuccess(true)}
                   onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
                 />
-
-                <p className="mt-3 text-[11px] text-muted-foreground/60 text-center">
-                  Try free for 7 days · Cancel anytime
+                <p className="mt-2 text-[11px] text-muted-foreground/70 text-center">
+                  7-day free trial · Cancel anytime
                 </p>
               </div>
 
               {/* Features */}
-              <div className="mt-6 pt-5 border-t border-foreground/[0.06]">
-                <ul className="space-y-2.5" aria-label="Pro features">
+              <div className="mt-4 pt-4">
+                <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5" aria-label="Pro features">
                   {premiumFeatures.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2.5 text-[13px] text-foreground/80">
-                      <Check className="size-3.5 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
+                    <li key={feature} className="flex items-center gap-2 text-[12px] text-foreground/70">
+                      <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
                       {feature}
                     </li>
                   ))}
@@ -460,320 +457,224 @@ export function PricingContent() {
           </div>
         </div>
 
-        {/* Free vs Pro Comparison */}
-        <div className="py-10 sm:py-14 px-4 border-t border-border bg-accent/20">
-          <div className="max-w-md mx-auto">
-            <h2 className="text-lg sm:text-xl font-bold text-center mb-6">
-              Free vs Pro
-            </h2>
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="grid grid-cols-3 text-center text-xs font-medium border-b border-border">
-                <div className="p-3 text-muted-foreground">Feature</div>
-                <div className="p-3 border-x border-border text-muted-foreground">Free</div>
-                <div className="p-3 bg-foreground/5 text-foreground">Pro</div>
+        {/* Features Grid - Bento Style */}
+        <div className="mx-auto max-w-[960px] px-5 py-10 border-t border-border">
+          {/* On mobile, stack as complete sections (heading + visual). On desktop, alternate sides */}
+          <div className="flex flex-col gap-6 lg:gap-0 lg:grid lg:grid-cols-2">
+            {/* Section 1: How it works - Desktop: Visual left, Text right */}
+            <div className="order-1 lg:order-2 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
+              <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
+                Start reading in seconds
+              </h2>
+              <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
+                No browser extension needed. Just paste a URL and we handle the rest.
+              </p>
+            </div>
+            <div className="order-2 lg:order-1 flex h-[220px] sm:h-[260px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
+              <div className="flex flex-col gap-3 px-6">
+                {[
+                  { step: "1", text: "Paste article URL", color: "bg-foreground text-background" },
+                  { step: "2", text: "We fetch from 3 sources", color: "bg-muted text-muted-foreground" },
+                  { step: "3", text: "Read without paywall", color: "bg-muted text-muted-foreground" },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-center gap-3">
+                    <span className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${item.color}`}>
+                      {item.step}
+                    </span>
+                    <span className="text-sm text-foreground">{item.text}</span>
+                  </div>
+                ))}
               </div>
-              {[
-                { feature: "Articles per day", free: "3", pro: "Unlimited" },
-                { feature: "AI summaries", free: "Basic", pro: "Premium" },
-                { feature: "Bypass detection", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
-                { feature: "Ad-free reading", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
-                { feature: "Search history", free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
-                { feature: t("prioritySupport"), free: "—", pro: <Check className="size-4 text-success mx-auto" /> },
-              ].map((row, i) => (
-                <div key={i} className={`grid grid-cols-3 text-center text-sm ${i !== 5 ? "border-b border-border" : ""}`}>
-                  <div className="p-3 text-left text-muted-foreground text-xs">{row.feature}</div>
-                  <div className="p-3 border-x border-border text-muted-foreground text-xs">{row.free}</div>
-                  <div className="p-3 bg-foreground/5 font-medium text-xs">{row.pro}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* How it Works - Simple 3 steps */}
-        <div className="py-10 sm:py-16 px-4 border-t border-border">
-          <div className="max-w-2xl mx-auto">
-            <h2 className="text-lg sm:text-xl font-bold text-center mb-8 sm:mb-10">
-              Start reading in 3 simple steps
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4">
-              {[
-                {
-                  step: "1",
-                  title: "Start free trial",
-                  desc: "No credit card required for 7 days",
-                  icon: (
-                    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                    </svg>
-                  ),
-                },
-                {
-                  step: "2",
-                  title: "Paste any article URL",
-                  desc: "Works with 1,000+ publications",
-                  icon: (
-                    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                    </svg>
-                  ),
-                },
-                {
-                  step: "3",
-                  title: "Read the full article",
-                  desc: "Instant access, no paywall",
-                  icon: (
-                    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                    </svg>
-                  ),
-                },
-              ].map((item, i) => (
-                <div key={i} className="flex sm:flex-col items-start sm:items-center gap-4 sm:gap-3 text-left sm:text-center">
-                  <div className="flex items-center justify-center size-12 rounded-2xl bg-accent text-foreground shrink-0">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm mb-0.5">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Publications + Cost Comparison */}
-        <div className="relative py-12 sm:py-20 overflow-hidden border-t border-border">
-          <div className="absolute inset-0 bg-gradient-to-b from-accent/50 via-background to-background" aria-hidden="true" />
-
-          <div className="relative max-w-4xl mx-auto px-4">
-            <p className="text-center text-xs uppercase tracking-widest text-muted-foreground mb-2">
-              {t("worksWith")}
-            </p>
-            <p className="text-center text-2xl sm:text-3xl font-bold mb-6">
-              1,000+ publications
-            </p>
-
-            {/* Publication categories */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12 sm:mb-20">
-              {publicationCategories.map((cat) => (
-                <div key={cat.label} className="rounded-xl border border-border bg-card p-3 sm:p-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{cat.label}</p>
-                  <div className="space-y-1">
-                    {cat.pubs.map((pub) => (
-                      <p key={pub} className="text-xs sm:text-sm text-foreground/80">{pub}</p>
-                    ))}
-                  </div>
-                </div>
-              ))}
             </div>
 
-            {/* Value Calculator */}
-            <div className="max-w-md mx-auto">
-              <div className="rounded-2xl border-2 border-border bg-card p-6 relative overflow-hidden">
-                {/* Background decoration */}
-                <div className="absolute -top-12 -right-12 size-24 bg-success/5 rounded-full blur-2xl" aria-hidden="true" />
-
-                <h3 className="text-center font-semibold mb-4">Your savings calculator</h3>
-
-                {/* Cost breakdown */}
-                <div className="space-y-2 mb-4">
+            {/* Section 2: Comparison - Desktop: Text left, Visual right */}
+            <div className="order-3 lg:order-3 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
+              <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
+                More features, less cost
+              </h2>
+              <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
+                Get unlimited AI summaries, bypass detection, and ad-free reading for ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo.
+              </p>
+            </div>
+            <div className="order-4 lg:order-4 flex h-[180px] sm:h-[220px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
+              <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-white p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)] mx-4">
+                <div className="space-y-2 sm:space-y-2.5">
                   {[
-                    { name: "New York Times", price: "$17" },
-                    { name: "Wall Street Journal", price: "$20" },
-                    { name: "The Atlantic", price: "$10" },
-                    { name: "Washington Post", price: "$10" },
-                  ].map((item) => (
-                    <div key={item.name} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{item.name}</span>
-                      <span className="font-medium text-price-strike line-through opacity-60">{item.price}/mo</span>
+                    { feature: "AI summaries", free: "20/day", pro: "Unlimited" },
+                    { feature: "AI quality", free: "Basic", pro: "Premium" },
+                    { feature: "Bypass detection", free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
+                    { feature: "Ad-free", free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
+                  ].map((row, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs sm:text-sm">
+                      <span className="text-muted-foreground">{row.feature}</span>
+                      <div className="flex items-center gap-2 sm:gap-4">
+                        <span className="text-muted-foreground/50 w-14 sm:w-16 text-right">{row.free}</span>
+                        <span className="text-foreground font-medium w-16 sm:w-20 text-right flex justify-end">{row.pro}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
 
-                <div className="h-px bg-border my-4" />
-
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Typical monthly cost</span>
-                  <span className="font-bold text-price-strike line-through">$57/mo</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">smry Pro</span>
-                  <span className="text-2xl font-bold text-success">
-                    ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo
-                  </span>
-                </div>
-
-                <div className="mt-4 p-3 rounded-xl bg-success/10 text-center">
-                  <p className="text-sm font-semibold text-success">
-                    You save ${57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)}/month
-                  </p>
-                  <p className="text-xs text-success/80 mt-0.5">
-                    That&apos;s ${(57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)) * 12}/year back in your pocket
-                  </p>
-                </div>
+            {/* Section 3: Publications - Desktop: Visual left, Text right */}
+            <div className="order-5 lg:order-6 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
+              <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
+                1,000+ publications
+              </h2>
+              <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
+                From NYT to Wired, The Atlantic to HBR. If it has a soft paywall, we can likely bypass it.
+              </p>
+            </div>
+            <div className="order-6 lg:order-5 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 px-4 sm:px-6 w-full max-w-[320px]">
+                {publicationCategories.map((cat) => (
+                  <div key={cat.label} className="rounded-lg bg-white/80 dark:bg-[#222]/80 p-2 sm:p-2.5">
+                    <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.label}</p>
+                    <div className="space-y-0.5">
+                      {cat.pubs.slice(0, 3).map((pub) => (
+                        <p key={pub} className="text-[10px] sm:text-[11px] text-foreground/80">{pub}</p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Perfect For - Personas */}
-        <div className="py-10 sm:py-14 px-4 border-t border-border">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-lg sm:text-xl font-bold text-center mb-2">
-              Perfect for
-            </h2>
-            <p className="text-sm text-muted-foreground text-center mb-8">
-              Readers who want more without paying more
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Value Comparison */}
+        <div className="py-12 sm:py-16 px-4 border-t border-border">
+          <div className="max-w-md mx-auto">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">The math is simple</h2>
+              <p className="text-sm text-muted-foreground mt-1">One subscription vs. many</p>
+            </div>
+
+            {/* Comparison rows */}
+            <div className="space-y-2 mb-4">
               {[
-                { emoji: "📰", label: "News junkies", desc: "Stay informed daily" },
-                { emoji: "🎓", label: "Researchers", desc: "Access academic sources" },
-                { emoji: "💼", label: "Professionals", desc: "Industry insights" },
-                { emoji: "📚", label: "Curious minds", desc: "Explore any topic" },
-              ].map((persona, i) => (
-                <div key={i} className="rounded-xl border border-border bg-card p-4 text-center hover:border-foreground/20 transition-colors">
-                  <span className="text-2xl mb-2 block" role="img" aria-label={persona.label}>{persona.emoji}</span>
-                  <p className="font-medium text-sm">{persona.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{persona.desc}</p>
+                { pub: "New York Times", price: "$17" },
+                { pub: "Wall Street Journal", price: "$20" },
+                { pub: "The Atlantic", price: "$10" },
+                { pub: "Washington Post", price: "$10" },
+              ].map((item) => (
+                <div
+                  key={item.pub}
+                  className="flex items-center justify-between h-10 px-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.03]"
+                >
+                  <span className="text-[14px] text-muted-foreground">{item.pub}</span>
+                  <span className="text-[14px] text-muted-foreground/50 line-through">{item.price}/mo</span>
                 </div>
               ))}
             </div>
+
+            {/* Total vs smry */}
+            <div className="rounded-xl bg-foreground text-background px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[14px] font-medium">smry Pro</span>
+                  <span className="text-[12px] text-background/60 ml-2">All of the above + 1,000 more</span>
+                </div>
+                <span className="text-lg font-bold tabular-nums">${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo</span>
+              </div>
+            </div>
+
+            {/* Savings callout */}
+            <p className="text-center text-[13px] text-muted-foreground mt-4">
+              That&apos;s <span className="text-foreground font-medium">${57 - (billingPeriod === "annual" ? annualMonthly : monthlyPrice)}/month</span> back in your pocket
+            </p>
           </div>
         </div>
 
         {/* Social Proof */}
-        <div className="py-12 sm:py-20 px-4 border-t border-border bg-accent/30">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-8 sm:mb-12">
-              {/* Star rating */}
-              <div className="flex items-center justify-center gap-1 mb-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <svg key={i} className="size-5 text-amber-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-                <span className="ml-2 text-sm font-medium text-foreground">4.9/5</span>
-              </div>
-              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-                Trusted by 260,000+ readers worldwide
-              </p>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-pretty">{t("lovedByReaders")}</h2>
+        <div className="py-12 sm:py-20 px-4 border-t border-border">
+          <div className="max-w-md mx-auto">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">{t("lovedByReaders")}</h2>
+              <p className="text-sm text-muted-foreground mt-1">Join 260,000+ readers worldwide</p>
             </div>
 
-            {/* Featured metric */}
-            <div className="mb-6 sm:mb-8 p-4 sm:p-6 rounded-2xl bg-card border border-foreground/10 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
-                <div className="flex-1 text-center sm:text-left">
-                  <p className="text-3xl sm:text-4xl font-bold text-foreground mb-1">$89+</p>
-                  <p className="text-sm text-muted-foreground">Average monthly savings per user</p>
+            {/* Stats rows - clean, scannable */}
+            <div className="space-y-2 mb-8">
+              {[
+                { label: "Avg. Monthly Savings", value: "$89+" },
+                { label: "Articles Read", value: "2.4M this month" },
+                { label: "Success Rate", value: "76% on major sites" },
+                { label: "User Rating", value: "4.9/5 stars" },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex items-center justify-between h-10 px-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.03]"
+                >
+                  <span className="text-[14px] font-medium">{stat.label}</span>
+                  <span className="text-[14px] text-muted-foreground">{stat.value}</span>
                 </div>
-                <div className="hidden sm:block w-px h-12 bg-border" />
-                <div className="flex-1 text-center sm:text-left">
-                  <p className="text-3xl sm:text-4xl font-bold text-foreground mb-1">2.4M</p>
-                  <p className="text-sm text-muted-foreground">Articles read this month</p>
-                </div>
-                <div className="hidden sm:block w-px h-12 bg-border" />
-                <div className="flex-1 text-center sm:text-left">
-                  <p className="text-3xl sm:text-4xl font-bold text-foreground mb-1">76%</p>
-                  <p className="text-sm text-muted-foreground">Success rate on major sites</p>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {testimonials.map((item, index) => (
+            {/* Testimonials - compact inline cards */}
+            <div className="space-y-2">
+              {testimonials.slice(0, 3).map((item) => (
                 <a
                   key={item.handle}
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`group rounded-xl border bg-card p-4 sm:p-5 hover:border-foreground/20 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
-                    index === 0 ? "border-foreground/20 shadow-sm" : "border-border"
-                  }`}
+                  className="group flex items-start gap-3 px-4 py-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  {/* Quote mark */}
-                  <svg className="size-6 text-muted-foreground/30 mb-2" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 01-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 01-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z"/>
-                  </svg>
-                  <p className="text-sm text-foreground/90 leading-relaxed mb-3">{item.text}</p>
-                  <div className="flex items-center gap-3">
-                    <Image
-                      src={item.avatar}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="size-9 sm:size-10 rounded-full bg-muted object-cover"
-                      loading="lazy"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.handle}</p>
-                    </div>
-                    <svg className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
+                  <Image
+                    src={item.avatar}
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="size-9 rounded-full bg-muted object-cover shrink-0"
+                    loading="lazy"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] text-foreground/90 leading-snug line-clamp-2">{item.text}</p>
+                    <p className="text-[13px] text-muted-foreground mt-1">{item.name} <span className="opacity-60">{item.handle}</span></p>
                   </div>
+                  <svg className="size-3.5 shrink-0 text-muted-foreground/40 mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
                 </a>
               ))}
             </div>
 
-            {/* Payment methods trust badges */}
-            <div className="mt-10 sm:mt-12 text-center">
-              <p className="text-xs text-muted-foreground mb-3">Secure payment powered by Stripe</p>
-              <div className="flex items-center justify-center gap-3 opacity-60">
-                <svg className="h-6" viewBox="0 0 38 24" fill="currentColor" aria-label="Visa">
-                  <path d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" fill="currentColor" opacity="0.07"/>
-                  <path d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32" fill="currentColor" opacity="0.1"/>
-                  <path d="M28.3 10.1H28c-.4 1-.7 1.5-1 3h1.9c-.3-1.5-.3-2.2-.6-3zm2.9 5.9h-1.7c-.1 0-.1 0-.2-.1l-.2-.9-.1-.2h-2.4c-.1 0-.2 0-.2.2l-.3.9c0 .1-.1.1-.1.1h-2.1l.2-.5L27 8.7c0-.5.3-.7.8-.7h1.5c.1 0 .2 0 .2.2l1.4 6.5c.1.4.2.7.2 1.1.1.1.1.1 0 .2zm-13.4-.3l.4-1.8c.1 0 .2.1.2.1.7.3 1.4.5 2.1.4.2 0 .5-.1.7-.2.5-.2.5-.7.1-1.1-.2-.2-.5-.3-.8-.5-.4-.2-.8-.4-1.1-.7-1.2-1-.8-2.4-.1-3.1.6-.4.9-.8 1.7-.8 1.2 0 2.5 0 3.1.2h.1c-.1.6-.2 1.1-.4 1.7-.5-.2-1-.4-1.5-.4-.3 0-.6 0-.9.1-.2 0-.3.1-.4.2-.2.2-.2.5 0 .7l.5.4c.4.2.8.4 1.1.6.5.3 1 .8 1.1 1.4.2.9-.1 1.7-.9 2.3-.5.4-.7.6-1.4.6-1.4 0-2.5.1-3.4-.2-.1.2-.1.2-.2.1zm-3.5.3c.1-.7.1-.7.2-1 .5-2.2 1-4.5 1.4-6.7.1-.2.1-.3.3-.3H18c-.2 1.2-.4 2.1-.7 3.2-.3 1.5-.6 3-1 4.5 0 .2-.1.2-.3.2M5 8.2c0-.1.2-.2.3-.2h3.4c.5 0 .9.3 1 .8l.9 4.4c0 .1 0 .1.1.2 0-.1.1-.1.1-.1l2.1-5.1c-.1-.1 0-.2.1-.2h2.1c0 .1 0 .1-.1.2l-3.1 7.3c-.1.2-.1.3-.2.4-.1.1-.3 0-.5 0H9.7c-.1 0-.2 0-.2-.2L7.9 9.5c-.2-.2-.5-.5-.9-.6-.6-.3-1.7-.5-1.9-.5L5 8.2z" fill="currentColor"/>
-                </svg>
-                <svg className="h-6" viewBox="0 0 38 24" fill="currentColor" aria-label="Mastercard">
-                  <path d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" fill="currentColor" opacity="0.07"/>
-                  <path d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32" fill="currentColor" opacity="0.1"/>
-                  <circle fill="currentColor" opacity="0.6" cx="15" cy="12" r="7"/>
-                  <circle fill="currentColor" opacity="0.6" cx="23" cy="12" r="7"/>
-                </svg>
-                <svg className="h-6" viewBox="0 0 38 24" fill="currentColor" aria-label="Apple Pay">
-                  <path d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" fill="currentColor" opacity="0.07"/>
-                  <path d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32" fill="currentColor" opacity="0.1"/>
-                  <path d="M12 12.25c0-1.2.5-2.25 1.34-3A3.84 3.84 0 0010.5 8c-1.3 0-2.4.75-3 .75-.65 0-1.65-.73-2.7-.71A4.02 4.02 0 001.5 10.3c-1.45 2.5-.37 6.2 1.02 8.23.7 1 1.5 2.1 2.55 2.06 1.03-.04 1.42-.65 2.66-.65 1.24 0 1.6.65 2.68.63 1.1-.02 1.8-1 2.48-2 .78-1.13 1.1-2.23 1.12-2.29-.03-.01-2.15-.82-2.17-3.25v-.01l.16.43zm-2.02-5.97c.54-.68.92-1.6.82-2.53-.8.03-1.77.53-2.34 1.2-.51.6-.96 1.55-.84 2.46.9.07 1.82-.44 2.36-1.13z" fill="currentColor"/>
-                  <path d="M21.5 17.87h-1.24l-1.36-4.22h-.04l-1.36 4.22H16.3L14.5 11h1.2l1.2 4.52h.04l1.36-4.52h1.16l1.36 4.52h.04l1.2-4.52h1.18l-1.74 6.87z" fill="currentColor"/>
-                </svg>
-              </div>
-            </div>
+            {/* Trust footer */}
+            <p className="text-[13px] text-muted-foreground/60 text-center mt-6">
+              Secure payments via Stripe
+            </p>
           </div>
         </div>
 
         {/* Risk Reversal Guarantee */}
-        <div className="py-10 sm:py-14 px-4 border-t border-border bg-success/5">
-          <div className="max-w-md mx-auto text-center">
-            <div className="inline-flex items-center justify-center size-14 rounded-full bg-success/10 mb-4">
-              <svg className="size-7 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-              </svg>
+        <div className="py-12 sm:py-16 px-4 border-t border-border">
+          <div className="max-w-md mx-auto">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight">Risk-Free Guarantee</h2>
+              <p className="text-sm text-muted-foreground mt-1">Try with confidence</p>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold mb-2">
-              100% Risk-Free Guarantee
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4 text-pretty">
-              Try Pro free for 7 days. If you&apos;re not completely satisfied within 30 days of subscribing,
-              we&apos;ll refund your payment — no questions asked.
-            </p>
-            <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Check className="size-3.5 text-success" />
-                7-day free trial
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="size-3.5 text-success" />
-                30-day refund
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="size-3.5 text-success" />
-                Cancel anytime
-              </span>
+
+            {/* Guarantee rows - clean, scannable */}
+            <div className="space-y-2">
+              {[
+                { label: "Free Trial", value: "7 days, no card required" },
+                { label: "Money Back", value: "30-day full refund" },
+                { label: "Cancellation", value: "Anytime, no questions" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between h-10 px-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.03]"
+                >
+                  <span className="text-[14px] font-medium">{item.label}</span>
+                  <span className="text-[14px] text-muted-foreground">{item.value}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -781,10 +682,10 @@ export function PricingContent() {
         {/* FAQ */}
         <div className="py-12 sm:py-16 px-4 border-t border-border">
           <div className="max-w-xl mx-auto">
-            <h2 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8 text-pretty">{t("faqTitle")}</h2>
-            <div className="space-y-2">
+            <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-center mb-6">{t("faqTitle")}</h2>
+            <div className="space-y-1.5">
               {faqs.map((faq, i) => (
-                <div key={i} className="rounded-xl border border-border overflow-hidden">
+                <div key={i} className="rounded-xl bg-black/[0.025] dark:bg-white/[0.025] overflow-hidden">
                   <button
                     id={`faq-question-${i}`}
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
@@ -794,14 +695,14 @@ export function PricingContent() {
                         setOpenFaq(openFaq === i ? null : i);
                       }
                     }}
-                    className="w-full flex items-center justify-between py-3.5 sm:py-4 px-4 text-left hover:bg-accent/50 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
+                    className="w-full flex items-center justify-between py-3 px-4 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
                     aria-expanded={openFaq === i}
                     aria-controls={`faq-answer-${i}`}
                   >
-                    <span className="text-sm font-medium pr-4">{faq.q}</span>
+                    <span className="text-[14px] font-medium text-foreground pr-4">{faq.q}</span>
                     <ChevronDown
                       aria-hidden="true"
-                      className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${
+                      className={`size-4 shrink-0 text-muted-foreground/40 transition-transform duration-200 motion-reduce:transition-none ${
                         openFaq === i ? "rotate-180" : ""
                       }`}
                     />
@@ -809,13 +710,13 @@ export function PricingContent() {
                   <div
                     id={`faq-answer-${i}`}
                     className={`overflow-hidden transition-all duration-200 motion-reduce:transition-none ${
-                      openFaq === i ? "max-h-96" : "max-h-0"
+                      openFaq === i ? "max-h-[500px]" : "max-h-0"
                     }`}
                     role="region"
                     aria-labelledby={`faq-question-${i}`}
                   >
-                    <div className="px-4 pb-4">
-                      <p className="text-sm text-muted-foreground">{faq.a}</p>
+                    <div className="px-4 pb-3 text-[14px] leading-relaxed text-muted-foreground">
+                      {faq.a}
                     </div>
                   </div>
                 </div>
@@ -825,14 +726,13 @@ export function PricingContent() {
         </div>
 
         {/* Final CTA Section */}
-        <div className="py-12 sm:py-16 px-4 border-t border-border bg-gradient-to-b from-accent/50 to-background pb-32 sm:pb-16">
-          <div className="max-w-lg mx-auto text-center">
-            {/* Compelling closing statement */}
-            <h2 className="text-xl sm:text-2xl font-bold mb-3 text-pretty">
-              Start reading without limits today
+        <div className="py-12 sm:py-16 px-4 border-t border-border pb-32 sm:pb-16">
+          <div className="max-w-md mx-auto text-center">
+            <h2 className="text-lg sm:text-xl font-semibold tracking-tight mb-2">
+              Start reading without limits
             </h2>
-            <p className="text-muted-foreground mb-6 text-pretty">
-              Join 260,000+ readers who save $100+/month on news subscriptions
+            <p className="text-sm text-muted-foreground mb-6">
+              Join 260,000+ readers worldwide
             </p>
 
             {/* Desktop final CTA */}
@@ -882,17 +782,17 @@ export function PricingContent() {
       </main>
 
       {/* Sticky Mobile CTA */}
-      <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden bg-background border-t border-foreground/[0.05] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between mb-2.5">
+      <div className="fixed bottom-0 inset-x-0 z-40 sm:hidden bg-background border-t border-foreground/[0.05] px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[17px] font-semibold tabular-nums tracking-tight">
+            <span className="text-base font-semibold tabular-nums tracking-tight">
               ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo
             </span>
             {billingPeriod === "annual" && (
-              <span className="text-[10px] text-[var(--p3-emerald)] font-medium">50% off</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">50% off</span>
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground/60">7-day free trial</span>
+          <span className="text-[10px] text-muted-foreground">7-day free trial</span>
         </div>
         <CTAButton
           variant="mobile"

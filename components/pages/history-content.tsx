@@ -172,6 +172,53 @@ function getFaviconUrl(domain: string): string {
   return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
 }
 
+function getGoogleFaviconUrl(domain: string): string {
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+}
+
+function FaviconImage({
+  domain,
+  className,
+  fallbackIcon: FallbackIcon = Globe,
+  fallbackClassName,
+}: {
+  domain: string;
+  className?: string;
+  fallbackIcon?: React.ComponentType<{ className?: string }>;
+  fallbackClassName?: string;
+}) {
+  const [errorCount, setErrorCount] = useState(0);
+
+  const src = useMemo(() => {
+    if (errorCount === 0) {
+      return getFaviconUrl(domain);
+    }
+    if (errorCount === 1) {
+      return getGoogleFaviconUrl(domain);
+    }
+    return null;
+  }, [domain, errorCount]);
+
+  if (!src) {
+    return (
+      <div className="size-full flex items-center justify-center">
+        <FallbackIcon className={fallbackClassName ?? className} />
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className={className}
+      loading="lazy"
+      onError={() => setErrorCount((c) => c + 1)}
+    />
+  );
+}
+
 function buildProxyUrlFromHistory(url: string): string {
   try {
     const normalized = normalizeUrl(url);
@@ -357,12 +404,21 @@ function HistoryItemCard({
   onSelect,
   viewMode,
 }: HistoryItemCardProps) {
-  const [imageError, setImageError] = useState(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect();
+    }
+  };
 
   if (viewMode === "compact") {
     return (
       <div
         onClick={onSelect}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
         className={cn(
           "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150",
           isSelected
@@ -372,20 +428,11 @@ function HistoryItemCard({
       >
         {/* Favicon */}
         <div className="size-5 rounded bg-muted/50 overflow-hidden shrink-0">
-          {!imageError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={getFaviconUrl(item.domain)}
-              alt=""
-              className="size-full"
-              loading="lazy"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="size-full flex items-center justify-center">
-              <Globe className="size-3 text-muted-foreground" />
-            </div>
-          )}
+          <FaviconImage
+            domain={item.domain}
+            className="size-full"
+            fallbackClassName="size-3 text-muted-foreground"
+          />
         </div>
 
         {/* Title */}
@@ -438,6 +485,10 @@ function HistoryItemCard({
     return (
       <div
         onClick={onSelect}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
         className={cn(
           "group relative rounded-xl border bg-card p-4 cursor-pointer transition-all duration-150",
           isSelected
@@ -448,20 +499,11 @@ function HistoryItemCard({
         {/* Header with favicon and domain */}
         <div className="flex items-center gap-2 mb-3">
           <div className="size-6 rounded-md bg-muted/50 overflow-hidden shrink-0">
-            {!imageError ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={getFaviconUrl(item.domain)}
-                alt=""
-                className="size-full"
-                loading="lazy"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className="size-full flex items-center justify-center">
-                <Globe className="size-3 text-muted-foreground" />
-              </div>
-            )}
+            <FaviconImage
+              domain={item.domain}
+              className="size-full"
+              fallbackClassName="size-3 text-muted-foreground"
+            />
           </div>
           <span className="text-xs text-muted-foreground truncate flex-1">
             {item.domain}
@@ -510,6 +552,10 @@ function HistoryItemCard({
   return (
     <div
       onClick={onSelect}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
       className={cn(
         "group relative flex items-start gap-3 rounded-xl p-3 cursor-pointer transition-all duration-150",
         isSelected
@@ -520,18 +566,12 @@ function HistoryItemCard({
       {/* Favicon */}
       <div className="relative mt-0.5 shrink-0">
         <div className="size-9 rounded-lg bg-muted/50 p-1.5 ring-1 ring-border/30 overflow-hidden">
-          {!imageError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={getFaviconUrl(item.domain)}
-              alt=""
-              className="size-full rounded-sm"
-              loading="lazy"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <Newspaper className="size-full text-muted-foreground" />
-          )}
+          <FaviconImage
+            domain={item.domain}
+            className="size-full rounded-sm"
+            fallbackIcon={Newspaper}
+            fallbackClassName="size-full text-muted-foreground"
+          />
         </div>
       </div>
 
@@ -798,8 +838,6 @@ function DomainGroupHeader({
   isCollapsed?: boolean;
   onToggle?: () => void;
 }) {
-  const [imageError, setImageError] = useState(false);
-
   return (
     <button
       onClick={onToggle}
@@ -814,18 +852,11 @@ function DomainGroupHeader({
         />
       )}
       <div className="size-4 rounded overflow-hidden shrink-0">
-        {!imageError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={getFaviconUrl(domain)}
-            alt=""
-            className="size-full"
-            loading="lazy"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <Globe className="size-full text-muted-foreground" />
-        )}
+        <FaviconImage
+          domain={domain}
+          className="size-full"
+          fallbackClassName="size-full text-muted-foreground"
+        />
       </div>
       <span className="text-xs font-medium text-muted-foreground truncate">
         {domain}
@@ -1101,9 +1132,18 @@ function HistoryContent() {
     });
   }, []);
 
+  // Build navigation list that matches rendered order
+  const navigationItems = useMemo(() => {
+    if (viewMode === "grid") return filteredHistory;
+    if (grouping === "domain") {
+      return Array.from(groupedByDomain.values()).flatMap(({ items }) => items);
+    }
+    return Array.from(groupedByDate.values()).flatMap((items) => items);
+  }, [filteredHistory, groupedByDate, groupedByDomain, grouping, viewMode]);
+
   // Keyboard navigation
   useKeyboardNavigation(
-    filteredHistory,
+    navigationItems,
     selectedId,
     setSelectedId,
     handleOpenItem

@@ -569,7 +569,19 @@
 /* =============================================================================
  * P3 ACCENT COLORS
  * Wide gamut colors for modern displays with fallbacks
+ * Fallbacks MUST come first so @supports can override them on P3 displays
  * ============================================================================= */
+
+/* Fallback for non-P3 displays */
+:root {
+  --p3-emerald: #2dd4a0;
+  --p3-gold: #fbbf24;
+}
+
+.dark, .magic-blue, .classic-dark {
+  --p3-emerald: #34d399;
+  --p3-gold: #fcd34d;
+}
 
 @supports (color: color(display-p3 1 1 1)) {
   :root {
@@ -581,17 +593,6 @@
     --p3-emerald: color(display-p3 0.2 0.85 0.5);
     --p3-gold: color(display-p3 1 0.85 0.4);
   }
-}
-
-/* Fallback for non-P3 displays */
-:root {
-  --p3-emerald: #2dd4a0;
-  --p3-gold: #fbbf24;
-}
-
-.dark, .magic-blue, .classic-dark {
-  --p3-emerald: #34d399;
-  --p3-gold: #fcd34d;
 }
 
 /* RTL (Right-to-Left) language support */

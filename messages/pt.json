@@ -10,6 +10,7 @@
   "home": {
     "tagline": "Leia artigos com paywall de graça — e obtenha um resumo de IA.",
     "tryIt": "Experimente",
+    "trustedBy": "Mais de 260K leitores mensais",
     "placeholder": "Cole a URL do artigo...",
     "by": "por",
     "support": "Apoiar",
@@ -136,6 +137,12 @@
     "faqTrialAnswer": "Sim! Comece com um teste gratuito de 7 dias. Você não será cobrado até o fim do teste, e pode cancelar a qualquer momento.",
     "faqPayment": "Quais métodos de pagamento vocês aceitam?",
     "faqPaymentAnswer": "Aceitamos todos os principais cartões de crédito e débito através do nosso processador de pagamento seguro.",
+    "faqSiteSupport": "E se não funcionar para o meu site favorito?",
+    "faqSiteSupportAnswer": "Nossa detecção de bypass informa instantaneamente se um artigo foi recuperado completamente. Se um site não estiver funcionando, você pode solicitar e priorizaremos adicionar suporte. Com mais de 1.000 publicações já suportadas, a maioria dos sites principais funciona muito bem.",
+    "faqLegal": "Isso é legal?",
+    "faqLegalAnswer": "Sim. O smry acessa conteúdo publicamente disponível através de vários métodos legais. Não armazenamos nem redistribuímos conteúdo protegido por direitos autorais — simplesmente ajudamos você a ler artigos que encontrou.",
+    "faqValue": "Por que devo pagar quando há alternativas gratuitas?",
+    "faqValueAnswer": "Ferramentas gratuitas costumam ser lentas, não confiáveis ou cheias de anúncios. O smry Pro oferece acesso instantâneo, resumos de IA premium, detecção de bypass e uma experiência de leitura limpa. Por R$15/mês, se paga com um único artigo de qualquer publicação importante.",
     "stillHaveQuestions": "Ainda tem dúvidas?",
     "reachOut": "Entre em contato no X",
     "saveVsSubscriptions": "Economize vs. assinaturas individuais",
@@ -220,11 +227,15 @@
     "changelog": "Alterações",
     "pricing": "Preços",
     "feedback": "Feedback",
+    "contactUs": "Fale conosco",
     "signIn": "Entrar",
     "theme": "Tema",
     "light": "Claro",
     "dark": "Escuro",
-    "system": "Sistema"
+    "system": "Sistema",
+    "searchPlaceholder": "Buscar ajuda...",
+    "whatsNew": "Novidades",
+    "fullChangelog": "Registro completo de alterações"
   },
   "changelog": {
     "title": "Registro de alterações",

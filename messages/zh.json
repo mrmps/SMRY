@@ -10,6 +10,7 @@
   "home": {
     "tagline": "免费阅读付费墙文章，并获取AI摘要。",
     "tryIt": "试试看",
+    "trustedBy": "每月超过26万读者信赖",
     "placeholder": "粘贴文章URL...",
     "by": "作者",
     "support": "支持",
@@ -136,6 +137,12 @@
     "faqTrialAnswer": "有！从7天免费试用开始。试用期结束前不会收费，您可以随时取消。",
     "faqPayment": "接受哪些付款方式？",
     "faqPaymentAnswer": "我们通过安全支付处理器接受所有主要信用卡和借记卡。",
+    "faqSiteSupport": "如果我喜欢的网站不支持怎么办？",
+    "faqSiteSupportAnswer": "我们的绕过检测会立即告诉您文章是否已完全获取。如果某个网站不工作，您可以提出请求，我们会优先添加支持。目前已支持1000多个出版物，大多数主要网站都运行良好。",
+    "faqLegal": "这合法吗？",
+    "faqLegalAnswer": "是的。smry通过各种合法方法访问公开可用的内容。我们不存储或重新分发受版权保护的内容 - 我们只是帮助您阅读您找到的文章。",
+    "faqValue": "既然有免费替代品，为什么要付费？",
+    "faqValueAnswer": "免费工具通常速度慢、不可靠或充满广告。smry Pro为您提供即时访问、优质AI摘要、绕过检测和清爽的阅读体验。每月仅需3美元，一篇来自主要出版物的文章就能值回票价。",
     "stillHaveQuestions": "还有问题？",
     "reachOut": "在X上联系我们",
     "saveVsSubscriptions": "相比单独订阅节省",
@@ -220,11 +227,15 @@
     "changelog": "更新日志",
     "pricing": "价格",
     "feedback": "反馈",
+    "contactUs": "联系我们",
     "signIn": "登录",
     "theme": "主题",
     "light": "浅色",
     "dark": "深色",
-    "system": "系统"
+    "system": "系统",
+    "searchPlaceholder": "搜索帮助...",
+    "whatsNew": "最新动态",
+    "fullChangelog": "完整更新日志"
   },
   "changelog": {
     "title": "更新日志",
