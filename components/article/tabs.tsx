@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ArticleContent } from "./content";
 import { Source, ArticleResponse, SOURCES } from "@/types/api";
 import { UseQueryResult } from "@tanstack/react-query";
@@ -151,6 +151,24 @@ const ArrowTabs: React.FC<TabProps> = ({
   const results = articleResults;
   const { isPremium } = useIsPremium();
 
+  // Shared fullscreen state across all tabs
+  const [isFullScreen, setIsFullScreen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const isMobile = window.innerWidth < 768;
+    return isMobile && viewMode === "html";
+  });
+
+  // Auto-enter fullscreen on mobile when switching to HTML view
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = window.innerWidth < 768;
+    if (isMobile && viewMode === "html") {
+      // Schedule state update to avoid synchronous setState in effect
+      const frameId = requestAnimationFrame(() => setIsFullScreen(true));
+      return () => cancelAnimationFrame(frameId);
+    }
+  }, [viewMode]);
+
   const counts: Record<Source, number | undefined> = {
     "smry-fast": results["smry-fast"].data?.article?.length,
     "smry-slow": results["smry-slow"].data?.article?.length,
@@ -264,6 +282,8 @@ const ArrowTabs: React.FC<TabProps> = ({
             source="smry-fast"
             url={url}
             viewMode={viewMode}
+            isFullScreen={isFullScreen}
+            onFullScreenChange={setIsFullScreen}
           />
         </TabsContent>
         <TabsContent id="article-panel-smry-slow" value={"smry-slow"} keepMounted>
@@ -272,6 +292,8 @@ const ArrowTabs: React.FC<TabProps> = ({
             source="smry-slow"
             url={url}
             viewMode={viewMode}
+            isFullScreen={isFullScreen}
+            onFullScreenChange={setIsFullScreen}
           />
         </TabsContent>
         <TabsContent id="article-panel-wayback" value={"wayback"} keepMounted>
@@ -280,6 +302,8 @@ const ArrowTabs: React.FC<TabProps> = ({
             source="wayback"
             url={url}
             viewMode={viewMode}
+            isFullScreen={isFullScreen}
+            onFullScreenChange={setIsFullScreen}
           />
         </TabsContent>
         <TabsContent id="article-panel-jina" value={"jina.ai"} keepMounted>
@@ -288,6 +312,8 @@ const ArrowTabs: React.FC<TabProps> = ({
             source="jina.ai"
             url={url}
             viewMode={viewMode}
+            isFullScreen={isFullScreen}
+            onFullScreenChange={setIsFullScreen}
           />
         </TabsContent>
       </Tabs>

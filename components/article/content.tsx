@@ -179,6 +179,8 @@ interface ArticleContentProps {
   source: Source;
   url: string;
   viewMode?: "markdown" | "html" | "iframe";
+  isFullScreen?: boolean;
+  onFullScreenChange?: (fullScreen: boolean) => void;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = ({
@@ -186,8 +188,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   source,
   url,
   viewMode = "markdown",
+  isFullScreen = false,
+  onFullScreenChange,
 }) => {
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const { data, isLoading, isError, error } = query;
   const contentRef = React.useRef<HTMLDivElement>(null);
 
@@ -344,7 +347,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               variant="outline"
               size="icon"
               className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
-              onClick={() => setIsFullScreen(!isFullScreen)}
+              onClick={() => onFullScreenChange?.(!isFullScreen)}
               title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
             >
               {isFullScreen ? (
@@ -458,7 +461,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                       variant="outline"
                       size="icon"
                       className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
-                      onClick={() => setIsFullScreen(!isFullScreen)}
+                      onClick={() => onFullScreenChange?.(!isFullScreen)}
                       title={
                         isFullScreen ? "Exit Full Screen" : "Enter Full Screen"
                       }
