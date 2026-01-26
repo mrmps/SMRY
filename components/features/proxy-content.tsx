@@ -355,28 +355,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   );
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [adDismissed, setAdDismissed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
-  const mobileAdRef = useRef<HTMLAnchorElement>(null);
-  const [mobileAdImpression, setMobileAdImpression] = useState(false);
-
-  // Track mobile ad impression
-  useEffect(() => {
-    if (mobileAdImpression || !mobileAdRef.current || !gravityAd) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !mobileAdImpression) {
-          setMobileAdImpression(true);
-          fireImpression(gravityAd.impUrl);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    observer.observe(mobileAdRef.current);
-    return () => observer.disconnect();
-  }, [mobileAdImpression, gravityAd, fireImpression]);
 
   // Resizable panel ref
   const summaryPanelRef = useRef<ImperativePanelHandle>(null);
@@ -717,7 +696,22 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
           ) : (
             // Mobile: Clean article-first layout with bottom bar
             <div className="h-full overflow-y-auto bg-card pb-16">
-              <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6">
+              <div className={cn(
+                viewMode === "html"
+                  ? "h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
+                  : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
+              )}>
+                {/* Mobile ad above tabs - compact and tasteful */}
+                {!isPremium && gravityAd && (
+                  <div className="mb-3">
+                    <GravityAd
+                      ad={gravityAd}
+                      variant="compact"
+                      onVisible={() => fireImpression(gravityAd.impUrl)}
+                    />
+                  </div>
+                )}
+
                 {/* Article content - no inline summary, it's in the drawer now */}
                 <ArrowTabs
                   url={url}
@@ -761,18 +755,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </DrawerContent>
               </Drawer>
 
-              {/* Mobile Ad Bar - minimal, above bottom nav */}
-              {!isPremium && !adDismissed && gravityAd && (
-                <div className="fixed inset-x-0 z-40 bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
-                  <GravityAd
-                    ad={gravityAd}
-                    variant="bar"
-                    onVisible={() => fireImpression(gravityAd.impUrl)}
-                    onDismiss={() => setAdDismissed(true)}
-                  />
-                </div>
-              )}
-
               {/* Mobile Bottom Bar */}
               <MobileBottomBar
                 viewMode={viewMode || "markdown"}
@@ -781,14 +763,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 originalUrl={url}
                 articleTitle={articleTitle}
                 onOpenSettings={() => setSettingsOpen(true)}
-                activeSource={source || "smry-fast"}
-                onSourceChange={handleSourceChange}
-                sourceCharCounts={{
-                  "smry-fast": results["smry-fast"]?.data?.article?.textContent?.length || 0,
-                  "smry-slow": results["smry-slow"]?.data?.article?.textContent?.length || 0,
-                  "wayback": results["wayback"]?.data?.article?.textContent?.length || 0,
-                  "jina.ai": results["jina.ai"]?.data?.article?.textContent?.length || 0,
-                }}
               />
             </div>
           )}

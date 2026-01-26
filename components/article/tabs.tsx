@@ -55,7 +55,7 @@ const EnhancedTabsList: React.FC<{
   };
 
   return (
-    <div className="w-full flex justify-center overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="w-full flex justify-center overflow-x-auto px-4 sm:px-0 pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <TabsPrimitive.List className="flex h-auto w-auto items-center justify-center gap-1 bg-accent p-0.5 rounded-[14px]">
         {sources.map((source, index) => {
           const count = counts[source];
@@ -133,6 +133,8 @@ interface TabProps {
   onSummaryOpenChange: (open: boolean) => void;
   /** Whether to render InlineSummary inside this component. Set false when parent handles summary (e.g., sidebar). */
   showInlineSummary?: boolean;
+  /** Additional class name for the container */
+  className?: string;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
@@ -144,6 +146,7 @@ const ArrowTabs: React.FC<TabProps> = ({
   summaryOpen,
   onSummaryOpenChange,
   showInlineSummary = true,
+  className,
 }) => {
   const results = articleResults;
   const { isPremium } = useIsPremium();
@@ -217,14 +220,21 @@ const ArrowTabs: React.FC<TabProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen pb-12 md:pb-0 px-4 md:px-0">
+    <div className={cn(
+      "relative min-h-screen pb-12 md:pb-0",
+      viewMode === "html" ? "px-0" : "px-4 md:px-0",
+      className
+    )}>
       <Tabs
         id="article-source-tabs"
         value={activeSource}
         onValueChange={(value) => onSourceChange(value as Source)}
       >
         {/* Tabs List - Responsive (Scrollable on mobile) */}
-        <div className="sticky top-0 z-20 mb-4 pb-4 bg-gradient-to-b from-background from-70% to-transparent">
+        <div className={cn(
+          "sticky top-0 z-20 bg-gradient-to-b from-background from-70% to-transparent",
+          viewMode === "html" ? "mb-2 pb-2" : "mb-4 pb-4"
+        )}>
           <EnhancedTabsList
             sources={SOURCES}
             counts={counts}

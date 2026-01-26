@@ -476,7 +476,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                       className={
                         isFullScreen
                           ? "size-full flex-1 rounded-lg border border-border bg-white"
-                          : "h-[85vh] w-full rounded-lg border border-border bg-white"
+                          : "h-[calc(100vh-12rem)] md:h-[85vh] w-full rounded-lg border border-border bg-white"
                       }
                       title="Original article content"
                       sandbox="allow-same-origin"
