@@ -16,8 +16,8 @@ interface GravityAdProps {
   ad: GravityAdType;
   onVisible: () => void;
   className?: string;
-  /** Compact variant for mobile - minimal native styling */
-  variant?: "default" | "compact";
+  /** Compact variant for mobile, sidebar variant for native feel */
+  variant?: "default" | "compact" | "sidebar";
 }
 
 export function GravityAd({ ad, onVisible, className, variant = "default" }: GravityAdProps) {
@@ -89,6 +89,56 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
           </div>
         </a>
       </div>
+    );
+  }
+
+  // Sidebar variant - native feel without card borders
+  if (variant === "sidebar") {
+    return (
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        className={cn(
+          "group block py-1 transition-colors hover:opacity-80",
+          className
+        )}
+      >
+        <div className="flex items-start gap-3">
+          {ad.favicon && (
+            <Image
+              src={ad.favicon}
+              alt=""
+              width={36}
+              height={36}
+              className="size-9 rounded-[10px] shrink-0 shadow-sm"
+              unoptimized
+            />
+          )}
+
+          <div className="flex-1 min-w-0">
+            {/* Single-line attribution */}
+            <p className="text-[11px] leading-tight mb-1.5 flex items-center gap-1.5">
+              <span className="font-medium text-foreground/80 truncate">{ad.brandName}</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="text-muted-foreground/60 shrink-0">Sponsored</span>
+            </p>
+
+            {/* Value proposition */}
+            <p className="text-[14px] leading-snug text-foreground font-medium">
+              {ad.adText || ad.title}
+            </p>
+
+            {/* CTA */}
+            {ad.cta && (
+              <p className="mt-2 text-[13px] font-medium text-foreground">
+                {ad.cta} →
+              </p>
+            )}
+          </div>
+        </div>
+      </a>
     );
   }
 

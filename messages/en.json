@@ -338,8 +338,7 @@
     "footerNote": "Want to see what's coming next? Follow development on"
   },
   "promo": {
-    "features": "No ads, instant bypass check, faster AI",
-    "deadline": "Deal ends Feb 15",
+    "benefit": "No ads, faster AI",
     "cta": "Try Premium for $0.00",
     "dismiss": "Dismiss",
     "sourceBenefit": "Know which sources worked",

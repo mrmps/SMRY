@@ -38,16 +38,14 @@ export function PromoBanner() {
   return (
     <div className="relative z-40 w-full shrink-0 bg-foreground/5 border-b border-border">
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{t("features")}</span>
-        <span className="mx-1.5">·</span>
-        <span>{t("deadline")}</span>
-        <span className="mx-1.5">·</span>
         <Link
           href="/pricing"
           className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
         >
           {t("cta")}
         </Link>
+        <span className="mx-1.5">·</span>
+        <span>{t("benefit")}</span>
       </div>
       <button
         onClick={handleDismiss}

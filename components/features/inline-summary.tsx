@@ -399,7 +399,7 @@ function ExpandedSummary({
       className={cn(
         "overflow-hidden",
         variant === "sidebar"
-          ? "h-full w-full flex flex-col"
+          ? "flex h-full w-full flex-col"
           : "rounded-xl border border-border bg-card shadow-sm mb-6",
       )}
     >
@@ -530,7 +530,6 @@ function ExpandedSummary({
             >
               {summary}
             </Response>
-
           </div>
         )}
 
@@ -543,10 +542,10 @@ function ExpandedSummary({
         )}
       </div>
 
-      {/* Sidebar ad - above footer to prevent layout shift */}
+      {/* Sidebar ad - fixed at bottom */}
       {variant === "sidebar" && ad && onAdVisible && (
         <div className="shrink-0 border-t border-border px-3 py-3">
-          <GravityAd ad={ad} onVisible={onAdVisible} />
+          <GravityAd ad={ad} onVisible={onAdVisible} variant="sidebar" />
         </div>
       )}
 
@@ -565,26 +564,27 @@ function ExpandedSummary({
           {!isPremium && showUsageCounter && usageData && (
             <div
               className={cn(
-                "text-[10px] transition-colors",
+                "flex items-center gap-2 text-[10px] transition-colors",
                 isLoading ? "text-muted-foreground" : "text-muted-foreground/60",
               )}
             >
-              {isLoading && (
-                <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
-              )}
-              {usageData.remaining > 0 ? (
-                <>{usageData.remaining} left</>
-              ) : (
-                <>
-                  {usageData.limit - usageData.remaining}/{usageData.limit}
-                </>
-              )}
-              <span className="mx-1">·</span>
+              <span className="flex items-center">
+                {isLoading && (
+                  <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
+                )}
+                {usageData.remaining > 0 ? (
+                  <>
+                    {usageData.remaining}/{usageData.limit} summaries
+                  </>
+                ) : (
+                  <>0 summaries left</>
+                )}
+              </span>
               <Link
                 href="/pricing"
-                className="font-medium text-primary hover:underline"
+                className="rounded-sm bg-primary/10 px-1.5 py-0.5 font-medium text-primary hover:bg-primary/20"
               >
-                No ads + faster AI
+                Upgrade
               </Link>
             </div>
           )}

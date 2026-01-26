@@ -257,10 +257,10 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   const preparedHtmlContent = data?.article?.htmlContent ?? null;
 
   return (
-    <div className="mt-2">
+    <div className={viewMode === "markdown" ? "mt-2" : "-mt-2"}>
       <article>
-        {/* Header - Title and Links (Only if data available, skip for original HTML view) */}
-        {data && !isError && data.article && viewMode !== "html" && (
+        {/* Header - Title and Links (Only shown in markdown/reader view) */}
+        {data && !isError && data.article && viewMode === "markdown" && (
           <div
             className="mb-8 space-y-6 border-b border-border pb-6"
             dir={data.article.dir || "ltr"}
@@ -336,7 +336,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               viewMode === "iframe"
                 ? isFullScreen
                   ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-background p-2 sm:p-4"
-                  : "relative mt-6 w-full"
+                  : "relative w-full"
                 : "hidden"
             }
           >
@@ -451,7 +451,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                     className={
                       isFullScreen
                         ? "fixed inset-0 z-50 flex flex-col bg-background p-2 sm:p-4"
-                        : "relative mt-6 w-full"
+                        : "relative w-full"
                     }
                   >
                     <Button
