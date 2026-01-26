@@ -30,12 +30,21 @@ export const metadata: Metadata = {
     url: "https://smry.ai",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
+    images: [
+      {
+        url: "https://smry.ai/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Smry - Read Any Article, Anywhere",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Read Anything, Summarize Everything | Smry",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
+    images: ["https://smry.ai/og-image.png"],
   },
 };
 
