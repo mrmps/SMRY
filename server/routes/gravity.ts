@@ -16,7 +16,7 @@ import { trackAdEvent, type AdEventStatus } from "../../lib/clickhouse";
 const logger = createLogger("api:gravity");
 
 const GRAVITY_API_URL = "https://server.trygravity.ai/api/v1/ad";
-const GRAVITY_TIMEOUT_MS = 3000;
+const GRAVITY_TIMEOUT_MS = 6000;
 
 // Use test ads in development
 const USE_TEST_ADS = env.NODE_ENV === "development";

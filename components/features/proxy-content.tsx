@@ -35,7 +35,7 @@ import { useTheme } from "next-themes";
 import ArrowTabs from "@/components/article/tabs";
 import { InlineSummary } from "@/components/features/inline-summary";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
-import { SettingsDrawer } from "@/components/features/settings-drawer";
+import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -354,7 +354,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     [setQuery]
   );
 
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const settingsDrawerRef = React.useRef<SettingsDrawerHandle>(null);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
 
@@ -523,6 +523,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
               <ShareButton
                 url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
+                originalUrl={url}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}
@@ -746,8 +747,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     <SummaryIcon className="size-5" />
                   </button>
                   <SettingsDrawer
-                    open={settingsOpen}
-                    onOpenChange={setSettingsOpen}
+                    ref={settingsDrawerRef}
                     viewMode={viewMode}
                     onViewModeChange={handleViewModeChange}
                   />
@@ -825,7 +825,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 smryUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 originalUrl={url}
                 articleTitle={articleTitle}
-                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenSettings={() => settingsDrawerRef.current?.open()}
               />
             </div>
           )}

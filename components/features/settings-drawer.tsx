@@ -48,9 +48,12 @@ const languageNames: Record<Locale, string> = {
   nl: "Nederlands",
 };
 
+export interface SettingsDrawerHandle {
+  open: () => void;
+  close: () => void;
+}
+
 interface SettingsDrawerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   children?: React.ReactNode;
@@ -354,24 +357,25 @@ function AccountSection({ onAction }: { onAction?: () => void }) {
   );
 }
 
-export function SettingsDrawer({
-  open,
-  onOpenChange,
-  viewMode,
-  onViewModeChange,
-  children,
-}: SettingsDrawerProps) {
-  const locale = useLocale() as Locale;
-  const [languageOpen, setLanguageOpen] = React.useState(false);
+export const SettingsDrawer = React.forwardRef<SettingsDrawerHandle, SettingsDrawerProps>(
+  function SettingsDrawer({ viewMode, onViewModeChange, children }, ref) {
+    const locale = useLocale() as Locale;
+    const [open, setOpen] = React.useState(false);
+    const [languageOpen, setLanguageOpen] = React.useState(false);
 
-  const viewModeOptions = [
-    { value: "markdown" as const, label: "Reader", icon: <BookOpen className="size-4" /> },
-    { value: "html" as const, label: "Original", icon: <FileText className="size-4" /> },
-    { value: "iframe" as const, label: "Frame", icon: <MonitorPlay className="size-4" /> },
-  ];
+    React.useImperativeHandle(ref, () => ({
+      open: () => setOpen(true),
+      close: () => setOpen(false),
+    }));
 
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    const viewModeOptions = [
+      { value: "markdown" as const, label: "Reader", icon: <BookOpen className="size-4" /> },
+      { value: "html" as const, label: "Original", icon: <FileText className="size-4" /> },
+      { value: "iframe" as const, label: "Frame", icon: <MonitorPlay className="size-4" /> },
+    ];
+
+    return (
+      <Drawer open={open} onOpenChange={setOpen}>
       {children}
       <DrawerContent className="max-h-[85vh]">
         {/* Visually hidden but accessible header */}
@@ -379,7 +383,7 @@ export function SettingsDrawer({
           <DrawerTitle>Settings</DrawerTitle>
         </DrawerHeader>
 
-        <div className="px-4 pt-2 pb-8 space-y-6 overflow-y-auto">
+        <div className="px-4 pb-8 space-y-6 overflow-y-auto">
           {/* Reading Section */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -418,7 +422,7 @@ export function SettingsDrawer({
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Account
             </h3>
-            <AccountSection onAction={() => onOpenChange(false)} />
+            <AccountSection onAction={() => setOpen(false)} />
           </section>
 
           {/* Support Section */}
@@ -429,7 +433,7 @@ export function SettingsDrawer({
                 label="Send Feedback"
                 href="https://smryai.userjot.com/"
                 external
-                onClick={() => onOpenChange(false)}
+                onClick={() => setOpen(false)}
               />
             </Card>
           </section>
@@ -446,7 +450,7 @@ export function SettingsDrawer({
       </DrawerContent>
     </Drawer>
   );
-}
+});
 
 // Export the trigger for use in parent components
 export { DrawerTrigger as SettingsDrawerTrigger };

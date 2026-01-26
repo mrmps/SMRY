@@ -38,6 +38,7 @@ const XIcon = ({ className }: { className?: string }) => (
 
 interface ShareButtonDataProps {
   url: string;
+  originalUrl?: string;
   articleTitle?: string;
   source?: Source;
   viewMode?: string;
@@ -60,6 +61,7 @@ const hasNativeShareSupport =
 export const ShareContent: React.FC<ShareContentProps> = React.memo(
   function ShareContent({
     url,
+    originalUrl,
     articleTitle = "Article",
     source = "smry-fast",
     onActionComplete,
@@ -98,7 +100,7 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
       {
         name: "X",
         icon: <XIcon className="size-3.5" />,
-        href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(finalUrl)}`,
+        href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`smry.ai/${originalUrl || ""}`)}`,
       },
       {
         name: "LinkedIn",

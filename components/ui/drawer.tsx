@@ -7,10 +7,14 @@ import { cn } from "@/lib/utils"
 
 const Drawer = ({
   shouldScaleBackground = true,
+  scrollLockTimeout = 100,
+  closeThreshold = 0.15,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
     shouldScaleBackground={shouldScaleBackground}
+    scrollLockTimeout={scrollLockTimeout}
+    closeThreshold={closeThreshold}
     {...props}
   />
 )
@@ -50,7 +54,10 @@ const DrawerContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      {/* Larger drag handle area for easier swipe-to-close */}
+      <div className="flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing">
+        <div className="h-2 w-[100px] rounded-full bg-muted" />
+      </div>
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>

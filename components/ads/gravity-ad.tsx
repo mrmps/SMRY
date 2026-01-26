@@ -78,7 +78,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
               alt=""
               width={18}
               height={18}
-              className="size-[18px] rounded shrink-0 mt-0.5"
+              className="size-[18px] rounded shrink-0 mt-0.5 bg-white dark:bg-white/90"
               unoptimized
             />
           )}
@@ -121,7 +121,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
               alt=""
               width={28}
               height={28}
-              className="size-7 rounded-[8px] shrink-0 shadow-sm"
+              className="size-7 rounded-[8px] shrink-0 shadow-sm bg-white dark:bg-white/90"
               unoptimized
             />
           )}
@@ -162,7 +162,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
               alt=""
               width={36}
               height={36}
-              className="size-9 rounded-[10px] shrink-0 shadow-sm"
+              className="size-9 rounded-[10px] shrink-0 shadow-sm bg-white dark:bg-white/90"
               unoptimized
             />
           )}
@@ -211,7 +211,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
             alt=""
             width={36}
             height={36}
-            className="size-9 rounded-[10px] shrink-0 shadow-sm ring-1 ring-black/[0.04]"
+            className="size-9 rounded-[10px] shrink-0 shadow-sm ring-1 ring-black/[0.04] bg-white dark:bg-white/90"
             unoptimized
           />
         )}
