@@ -3,13 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
-import { changelog, type ChangeType } from "@/lib/changelog";
-
-const TYPE_STYLES: Record<ChangeType, string> = {
-  new: "bg-emerald-500",
-  fix: "bg-orange-500",
-  improved: "bg-blue-500",
-};
+import { changelog } from "@/lib/changelog";
 
 export function ChangelogContent() {
   const t = useTranslations("changelog");
@@ -64,10 +58,7 @@ export function ChangelogContent() {
               <time className="text-sm font-medium text-muted-foreground">{entry.date}</time>
               <ul className="mt-4 space-y-4">
                 {entry.changes.map((change, j) => (
-                  <li key={j} className="flex items-start gap-3">
-                    <span
-                      className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${TYPE_STYLES[change.type]}`}
-                    />
+                  <li key={j}>
                     <div>
                       <p className="text-[15px] leading-relaxed">
                         <span className="font-medium">{change.text}</span>

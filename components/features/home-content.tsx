@@ -234,7 +234,7 @@ function useIsDesktop() {
       const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
       return isWideScreen && !isTouchDevice;
     },
-    () => true // Assume desktop on server
+    () => false // Return false on server to prevent autoFocus in SSR HTML
   );
 }
 
@@ -287,6 +287,13 @@ export function HomeContent() {
 
   // Display either submit-triggered error or debounced error
   const displayError = urlError ?? debouncedError;
+
+  // Focus input on desktop only (after hydration to avoid mobile keyboard popup)
+  useEffect(() => {
+    if (isDesktop) {
+      inputRef.current?.focus();
+    }
+  }, [isDesktop]);
 
   // Global paste handler - allows pasting from anywhere on the page
   useEffect(() => {
@@ -390,7 +397,6 @@ export function HomeContent() {
                 value={url}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                autoFocus={isDesktop}
                 autoComplete="off"
                 aria-invalid={Boolean(displayError)}
                 aria-describedby={displayError ? "url-error" : undefined}

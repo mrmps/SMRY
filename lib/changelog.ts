@@ -14,6 +14,29 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "Jan 25, 2025",
+    changes: [
+      {
+        type: "new",
+        text: "Language switcher on article page",
+        detail:
+          "Switch languages directly from the reader view without returning to the homepage.",
+      },
+      {
+        type: "fix",
+        text: "Fixed language switching",
+        detail:
+          "Language switching now works reliably across all pages and preserves your current article.",
+      },
+      {
+        type: "fix",
+        text: "Fixed mobile keyboard behavior",
+        detail:
+          "The keyboard no longer auto-opens on mobile when visiting the homepage, avoiding an annoying UX issue.",
+      },
+    ],
+  },
+  {
     date: "Jan 11, 2025",
     changes: [
       {

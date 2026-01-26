@@ -224,24 +224,33 @@ function WhatsNewItem({
   children,
   href,
   isNew,
+  showArrow,
 }: {
   children: React.ReactNode;
   href?: string;
   isNew?: boolean;
+  showArrow?: boolean;
 }) {
-  const Wrapper = href ? "a" : "div";
-  const wrapperProps = href
-    ? { href, target: "_blank", rel: "noopener noreferrer" }
-    : {};
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="flex items-start gap-2 py-1 text-[13px] hover:text-foreground cursor-pointer"
+      >
+        <div
+          className={cn(
+            "mt-[7px] size-[5px] rounded-full shrink-0",
+            isNew ? "bg-blue-400" : "bg-muted-foreground/50"
+          )}
+        />
+        <span className="text-muted-foreground leading-snug">{children}</span>
+        {showArrow && <ArrowUpRight className="size-3 text-muted-foreground/50 mt-0.5 shrink-0" />}
+      </Link>
+    );
+  }
 
   return (
-    <Wrapper
-      {...wrapperProps}
-      className={cn(
-        "flex items-start gap-2 py-1 text-[13px]",
-        href && "hover:text-foreground cursor-pointer"
-      )}
-    >
+    <div className="flex items-start gap-2 py-1 text-[13px]">
       <div
         className={cn(
           "mt-[7px] size-[5px] rounded-full shrink-0",
@@ -249,8 +258,7 @@ function WhatsNewItem({
         )}
       />
       <span className="text-muted-foreground leading-snug">{children}</span>
-      {href && <ArrowUpRight className="size-3 text-muted-foreground/50 mt-0.5 shrink-0" />}
-    </Wrapper>
+    </div>
   );
 }
 
@@ -333,12 +341,13 @@ function HelpPopoverContent() {
   ];
 
   const recentChanges = getRecentChanges(2);
-  const whatsNewItems: { text: string; isNew?: boolean; href?: string }[] = [
+  const whatsNewItems: { text: string; isNew?: boolean; href?: string; showArrow?: boolean }[] = [
     ...recentChanges.map((change, i) => ({
       text: change.text,
       isNew: i === 0,
+      href: "/changelog",
     })),
-    { text: t("fullChangelog"), href: "/changelog" },
+    { text: t("fullChangelog"), href: "/changelog", showArrow: true },
   ];
 
   const filteredMenuItems = query
@@ -405,7 +414,7 @@ function HelpPopoverContent() {
             {t("whatsNew")}
           </div>
           {filteredWhatsNew.map((item) => (
-            <WhatsNewItem key={item.text} isNew={item.isNew} href={item.href}>
+            <WhatsNewItem key={item.text} isNew={item.isNew} href={item.href} showArrow={item.showArrow}>
               {item.text}
             </WhatsNewItem>
           ))}
