@@ -9,18 +9,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 interface GravityAdProps {
   ad: GravityAdType;
   onVisible: () => void;
+  onDismiss?: () => void;
   className?: string;
-  /** Compact variant for mobile, sidebar variant for native feel */
-  variant?: "default" | "compact" | "sidebar";
+  /** Compact variant for mobile, sidebar variant for native feel, bar for minimal bottom placement */
+  variant?: "default" | "compact" | "sidebar" | "bar";
 }
 
-export function GravityAd({ ad, onVisible, className, variant = "default" }: GravityAdProps) {
+export function GravityAd({ ad, onVisible, onDismiss, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
 
@@ -54,6 +56,55 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
     };
   }, [hasTrackedImpression, onVisible]);
 
+  // Bar variant - ultra-compact for bottom placement with dismiss
+  if (variant === "bar") {
+    return (
+      <div
+        className={cn(
+          "flex items-start gap-2 px-3 py-1.5 bg-card border-t border-border/40",
+          className
+        )}
+      >
+        <a
+          ref={adRef}
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          className="flex-1 flex items-start gap-2 min-w-0 group py-0.5"
+        >
+          {ad.favicon && (
+            <Image
+              src={ad.favicon}
+              alt=""
+              width={18}
+              height={18}
+              className="size-[18px] rounded shrink-0 mt-0.5 bg-white dark:bg-white/90"
+              unoptimized
+            />
+          )}
+          <span className="flex-1 text-[12px] leading-[1.35] text-muted-foreground group-hover:text-foreground transition-colors line-clamp-2">
+            {ad.adText || ad.title}
+            <span className="text-[10px] opacity-50 ml-1">· Ad</span>
+          </span>
+        </a>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDismiss();
+            }}
+            className="p-1 -m-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0"
+            aria-label="Dismiss ad"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // Compact variant - refined native styling
   if (variant === "compact") {
     return (
@@ -71,7 +122,7 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
               alt=""
               width={28}
               height={28}
-              className="size-7 rounded-[8px] shrink-0 shadow-sm"
+              className="size-7 rounded-[8px] shrink-0 shadow-sm bg-white dark:bg-white/90"
               unoptimized
             />
           )}
@@ -112,7 +163,7 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
               alt=""
               width={36}
               height={36}
-              className="size-9 rounded-[10px] shrink-0 shadow-sm"
+              className="size-9 rounded-[10px] shrink-0 shadow-sm bg-white dark:bg-white/90"
               unoptimized
             />
           )}
@@ -161,7 +212,7 @@ export function GravityAd({ ad, onVisible, className, variant = "default" }: Gra
             alt=""
             width={36}
             height={36}
-            className="size-9 rounded-[10px] shrink-0 shadow-sm ring-1 ring-black/[0.04]"
+            className="size-9 rounded-[10px] shrink-0 shadow-sm ring-1 ring-black/[0.04] bg-white dark:bg-white/90"
             unoptimized
           />
         )}

@@ -22,15 +22,14 @@ import {
   Grid3X3,
   List,
   LayoutGrid,
-  Sparkles,
   BookMarked,
   TrendingUp,
   Calendar,
   Command,
   CornerDownLeft,
-  Globe,
   RotateCcw,
 } from "lucide-react";
+import { GlobeIcon } from "@/components/ui/custom-icons";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -179,7 +178,7 @@ function getGoogleFaviconUrl(domain: string): string {
 function FaviconImage({
   domain,
   className,
-  fallbackIcon: FallbackIcon = Globe,
+  fallbackIcon: FallbackIcon = GlobeIcon,
   fallbackClassName,
 }: {
   domain: string;
@@ -364,7 +363,6 @@ function RevisitSuggestion({
             <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
               Revisit this
             </span>
-            <Sparkles className="size-3 text-primary" />
           </div>
           <Link
             href={buildProxyUrlFromHistory(suggestion.url)}
@@ -732,7 +730,7 @@ function CommandBar({
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Globe className="size-3.5" />
+              <GlobeIcon className="size-3.5" />
               <span className="hidden sm:inline">Source</span>
             </button>
           </div>

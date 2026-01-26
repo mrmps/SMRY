@@ -434,7 +434,7 @@ export function HomeContent() {
             <h2 className="text-center text-[15px] font-medium text-foreground/90">
               {t("valuePropTitle")}
             </h2>
-            <p className="mt-2.5 text-center text-[13px] leading-relaxed text-muted-foreground/70">
+            <p className="mt-2.5 text-balance text-center text-[13px] leading-relaxed text-muted-foreground/70">
               {t("valuePropDescription")}
             </p>
             <div className="mt-4 flex justify-center">

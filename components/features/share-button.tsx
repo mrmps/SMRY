@@ -8,6 +8,7 @@ import {
   Linkedin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { generateShareUrls } from "@/lib/share-urls";
 import { Button } from "@/components/ui/button";
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
 
@@ -38,6 +39,7 @@ const XIcon = ({ className }: { className?: string }) => (
 
 interface ShareButtonDataProps {
   url: string;
+  originalUrl?: string;
   articleTitle?: string;
   source?: Source;
   viewMode?: string;
@@ -60,6 +62,7 @@ const hasNativeShareSupport =
 export const ShareContent: React.FC<ShareContentProps> = React.memo(
   function ShareContent({
     url,
+    originalUrl,
     articleTitle = "Article",
     source = "smry-fast",
     onActionComplete,
@@ -94,21 +97,22 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
       }
     };
 
+    const shareUrls = generateShareUrls(originalUrl || "");
     const socialLinks = [
       {
         name: "X",
         icon: <XIcon className="size-3.5" />,
-        href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(finalUrl)}`,
+        href: shareUrls.x,
       },
       {
         name: "LinkedIn",
         icon: <Linkedin className="size-3.5" />,
-        href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(finalUrl)}`,
+        href: shareUrls.linkedin,
       },
       {
         name: "Reddit",
         icon: <RedditIcon className="size-3.5" />,
-        href: `https://www.reddit.com/submit?url=${encodeURIComponent(finalUrl)}`,
+        href: shareUrls.reddit,
       },
     ];
 
@@ -242,6 +246,7 @@ const ShareTrigger = React.memo(
 const ShareModalContent = React.memo(function ShareModalContent({
   articleTitle,
   url,
+  originalUrl,
   source,
   viewMode,
   sidebarOpen,
@@ -281,6 +286,7 @@ const ShareModalContent = React.memo(function ShareModalContent({
         <div className="flex flex-1 flex-col gap-1.5 px-3 pb-4 md:pb-0 max-w-full">
           <ShareContent
             url={url}
+            originalUrl={originalUrl}
             articleTitle={articleTitle}
             source={source}
             viewMode={viewMode}

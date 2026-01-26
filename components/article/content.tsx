@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -14,7 +14,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/solid";
 import { Skeleton } from "../ui/skeleton";
-import { UseQueryResult } from "@tanstack/react-query";
 import { ArticleResponse, Source } from "@/types/api";
 import { ErrorDisplay } from "../shared/error-display";
 import { DebugPanel } from "../shared/debug-panel";
@@ -119,6 +118,7 @@ const DOMPURIFY_CONFIG = {
 // Lazy-loaded DOMPurify instance (client-side only)
 let DOMPurify: typeof import("dompurify").default | null = null;
 let hooksConfigured = false;
+const sanitizedHtmlCache = new Map<string, string>();
 
 /**
  * Initialize DOMPurify on the client side only
@@ -151,50 +151,61 @@ async function initDOMPurify() {
  * Hook to get sanitized HTML content (client-side only)
  */
 function useSanitizedHtml(html: string | undefined | null): string | null {
-  const [sanitized, setSanitized] = useState<string | null>(null);
+  const cachedValue = html ? sanitizedHtmlCache.get(html) : null;
+  const [sanitized, setSanitized] = useState<string | null>(() => {
+    if (!html) return null;
+    return cachedValue ?? null;
+  });
 
   useEffect(() => {
-    // Skip if no content
-    if (!html) return;
+    if (!html || cachedValue) return;
 
     let cancelled = false;
-
     initDOMPurify().then((dp) => {
       if (dp && !cancelled) {
-        setSanitized(dp.sanitize(html, DOMPURIFY_CONFIG) as string);
+        const sanitizedHtml = dp.sanitize(html, DOMPURIFY_CONFIG) as string;
+        sanitizedHtmlCache.set(html, sanitizedHtml);
+        setSanitized(sanitizedHtml);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [html]);
+  }, [html, cachedValue]);
 
-  // Return null when html is empty/null, otherwise return sanitized content
-  return html ? sanitized : null;
+  if (!html) return null;
+  return cachedValue ?? sanitized;
 }
 
 interface ArticleContentProps {
-  query: UseQueryResult<ArticleResponse, Error>;
+  data: ArticleResponse | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
   source: Source;
   url: string;
   viewMode?: "markdown" | "html" | "iframe";
+  isFullScreen?: boolean;
+  onFullScreenChange?: (fullScreen: boolean) => void;
 }
 
-export const ArticleContent: React.FC<ArticleContentProps> = ({
-  query,
+export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
+  data,
+  isLoading,
+  isError,
+  error,
   source,
   url,
   viewMode = "markdown",
-}) => {
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const { data, isLoading, isError, error } = query;
+  isFullScreen = false,
+  onFullScreenChange,
+}) {
   const contentRef = React.useRef<HTMLDivElement>(null);
+  const articleContent = data?.article?.content;
+  const sanitizedArticleContent = useSanitizedHtml(articleContent);
 
-  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
-
-  // Add click-to-expand functionality to images
-  // Must depend on sanitizedArticleContent since that's what's actually rendered
+  // Add click-to-expand for images
   useEffect(() => {
     if (!contentRef.current || !sanitizedArticleContent) return;
 
@@ -221,20 +232,15 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     };
   }, [sanitizedArticleContent]);
 
-  // Extract debug context from error if available
-  const debugContext =
-    error instanceof ArticleFetchError
-      ? error.debugContext
-      : data?.debugContext;
+  const debugContext = useMemo(() =>
+    error instanceof ArticleFetchError ? error.debugContext : data?.debugContext,
+    [error, data?.debugContext]
+  );
 
-  // Helper function to get cacheURL, constructing it if needed
-  const getCacheURL = (): string | undefined => {
-    // First try to get from data
-    if (data?.cacheURL) {
-      return data.cacheURL;
-    }
+  const dataCacheURL = data?.cacheURL;
+  const cacheURL = useMemo(() => {
+    if (dataCacheURL) return dataCacheURL;
 
-    // If not available, construct based on source
     switch (source) {
       case "wayback":
         return `https://web.archive.org/web/2/${url}`;
@@ -245,28 +251,22 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       default:
         return url;
     }
-  };
+  }, [dataCacheURL, source, url]);
 
-  const cacheURL = getCacheURL();
-
-  // Get the raw HTML content for the "Original" view
-  // No sanitization needed - it's rendered in a sandboxed iframe which:
-  // - Blocks all script execution (sandbox without allow-scripts)
-  // - Prevents navigation/popups
-  // - Isolates from parent page completely
-  const preparedHtmlContent = data?.article?.htmlContent ?? null;
+  const preparedHtmlContent = useMemo(
+    () => data?.article?.htmlContent ?? null,
+    [data?.article?.htmlContent]
+  );
 
   return (
     <div className={viewMode === "markdown" ? "mt-2" : "-mt-2"}>
       <article>
-        {/* Header - Title and Links (Only shown in markdown/reader view) */}
         {data && !isError && data.article && viewMode === "markdown" && (
           <div
             className="mb-8 space-y-6 border-b border-border pb-6"
             dir={data.article.dir || "ltr"}
             lang={data.article.lang || undefined}
           >
-            {/* Top Row: Favicon + Site Name */}
             <div className="flex items-center gap-3">
               <div className="size-5 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -294,14 +294,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               </a>
             </div>
 
-            {/* Title */}
             {data.article.title && (
               <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl font-serif">
                 {data.article.title}
               </h1>
             )}
 
-            {/* Metadata Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 {data.article.byline && (
@@ -329,7 +327,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           </div>
         )}
 
-        {/* Iframe - Always rendered but hidden if not in iframe mode */}
         {cacheURL && (
           <div
             className={
@@ -344,7 +341,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               variant="outline"
               size="icon"
               className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
-              onClick={() => setIsFullScreen(!isFullScreen)}
+              onClick={() => onFullScreenChange?.(!isFullScreen)}
               title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
             >
               {isFullScreen ? (
@@ -367,7 +364,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           </div>
         )}
 
-        {/* Iframe Error State - only if visible and no cacheURL */}
         {viewMode === "iframe" && !cacheURL && (
           <div className="mt-6 flex items-center space-x-2">
             <p className="text-gray-600">Iframe URL not available.</p>
@@ -391,7 +387,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           </div>
         )}
 
-        {/* Main Content / Loading / Error - Hidden if in iframe mode */}
         <div className={viewMode !== "iframe" ? "block" : "hidden"}>
           {isLoading && (
             <div className="mt-8 space-y-3">
@@ -458,7 +453,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                       variant="outline"
                       size="icon"
                       className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
-                      onClick={() => setIsFullScreen(!isFullScreen)}
+                      onClick={() => onFullScreenChange?.(!isFullScreen)}
                       title={
                         isFullScreen ? "Exit Full Screen" : "Enter Full Screen"
                       }
@@ -469,14 +464,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                         <ArrowsPointingOutIcon className="size-4" />
                       )}
                     </Button>
-                    {/* Use iframe with srcdoc for complete style isolation */}
-                    {/* This renders the article exactly as it appeared originally */}
                     <iframe
                       srcDoc={preparedHtmlContent}
                       className={
                         isFullScreen
                           ? "size-full flex-1 rounded-lg border border-border bg-white"
-                          : "h-[85vh] w-full rounded-lg border border-border bg-white"
+                          : "h-[calc(100vh-12rem)] md:h-[85vh] w-full rounded-lg border border-border bg-white"
                       }
                       title="Original article content"
                       sandbox="allow-same-origin"
@@ -521,7 +514,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                       __html: sanitizedArticleContent,
                     }}
                   />
-                  {/* Upgrade CTA - shows only for non-premium users */}
                   <UpgradeCTA />
                 </>
               ) : (
@@ -553,6 +545,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       )}
     </div>
   );
-};
+});
 
 export default ArticleContent;

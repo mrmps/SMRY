@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  memo,
 } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
@@ -24,13 +25,13 @@ import { Response } from "../ai/response";
 import {
   ChevronDown,
   ChevronUp,
-  Globe,
   Database,
   AlertCircle,
   Zap,
   Infinity,
   PanelRightClose,
 } from "lucide-react";
+import { LanguageIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
 import { SummaryError } from "@/lib/errors/summary";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -247,7 +248,7 @@ interface InlineSummaryProps {
   onAdVisible?: () => void;
 }
 
-function CollapsedSummary({
+const CollapsedSummary = memo(function CollapsedSummary({
   onExpand,
   disabled,
 }: {
@@ -275,9 +276,9 @@ function CollapsedSummary({
       </button>
     </div>
   );
-}
+});
 
-function ExpandedSummary({
+const ExpandedSummary = memo(function ExpandedSummary({
   urlProp,
   articleResults,
   onCollapse,
@@ -472,7 +473,7 @@ function ExpandedSummary({
             disabled={isLoading}
           >
             <SelectTrigger className="h-7 w-auto min-w-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium shadow-sm">
-              <Globe className="size-3" />
+              <LanguageIcon className="size-3" />
               <span className="truncate">
                 {LANGUAGES.find((l) => l.code === preferredLanguage)?.name ||
                   "Lang"}
@@ -606,9 +607,9 @@ function ExpandedSummary({
       )}
     </div>
   );
-}
+});
 
-export function InlineSummary({
+export const InlineSummary = memo(function InlineSummary({
   urlProp,
   articleResults,
   isOpen,
@@ -647,4 +648,4 @@ export function InlineSummary({
       onAdVisible={onAdVisible}
     />
   );
-}
+});

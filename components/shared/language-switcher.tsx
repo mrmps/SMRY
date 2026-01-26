@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Globe } from "lucide-react";
+import { LanguageIcon } from "@/components/ui/custom-icons";
 
 const languageNames: Record<Locale, string> = {
   en: "English",
@@ -57,7 +57,7 @@ export function LanguageSwitcher() {
   return (
     <Select value={locale} onValueChange={handleChange}>
       <SelectTrigger className="w-auto gap-2 border border-zinc-300 dark:border-zinc-700 bg-secondary px-2 shadow-sm hover:bg-accent">
-        <Globe className="size-4 text-muted-foreground" />
+        <LanguageIcon className="size-4 text-muted-foreground" />
         <span className="hidden sm:inline">{languageNames[locale]}</span>
         <span className="sm:hidden">{languageFlags[locale]}</span>
         <SelectValue className="sr-only" />

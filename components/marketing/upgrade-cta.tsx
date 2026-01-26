@@ -5,7 +5,6 @@ import { X } from "lucide-react";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 interface UpgradeCTAProps {
@@ -31,17 +30,17 @@ export function UpgradeCTA({ className }: UpgradeCTAProps) {
         className
       )}
     >
-      <Image src="/crown.png" alt="" width={20} height={20} className="shrink-0" />
       <span className="flex-1 text-[13px] tracking-[-0.01em] text-foreground/60">
         {t("sourceBenefit")}
       </span>
       <Link
         href="/pricing"
         className={cn(
-          "shrink-0 rounded-md px-3 py-1 text-[13px] font-medium",
-          "bg-white text-slate-900",
-          "shadow-[0_1px_2px_rgba(0,0,0,0.1)]",
-          "transition-all hover:shadow-[0_2px_4px_rgba(0,0,0,0.15)] hover:brightness-105"
+          "shrink-0 flex items-center justify-center rounded-lg px-4 py-1.5 text-[14px] font-semibold",
+          "bg-gradient-to-b from-[#ffdd73] to-[#ffbe25] text-black",
+          "shadow-[inset_0_0_1px_1px_rgba(255,255,255,0.14),0_0_0_1px_rgba(0,0,0,0.08),0_2px_2px_rgba(0,0,0,0.04),0_0_0_1px_#fac83e]",
+          "transition-all hover:brightness-105",
+          "[text-shadow:0_0.5px_0_rgba(255,255,255,0.48)]"
         )}
       >
         {t("upgrade")}
