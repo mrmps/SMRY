@@ -17,11 +17,10 @@ import {
   Check,
   Crown,
   BookOpen,
-  Zap,
-  Globe,
   ArrowUpRight,
   Bookmark,
 } from "lucide-react";
+import { LanguageIcon } from "@/components/ui/custom-icons";
 import type { DragEvent, MouseEvent } from "react";
 import {
   SignedIn,
@@ -121,7 +120,7 @@ function LanguagePopover() {
         )}
         aria-label="Language"
       >
-        <Globe className="size-3.5" strokeWidth={1.5} />
+        <LanguageIcon className="size-3.5" />
       </PopoverTrigger>
       <PopoverPopup
         side="top"
@@ -450,7 +449,7 @@ function HelpPopoverContent() {
                   href="/pricing"
                   className="flex items-center gap-1 rounded-full border border-border bg-accent px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <Zap className="size-3" />
+                  <Crown className="size-3" />
                   {t("freePlanBadge")}
                 </Link>
               )}

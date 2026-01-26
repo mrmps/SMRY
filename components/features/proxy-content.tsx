@@ -3,8 +3,7 @@
 import React, { useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
-import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
-import { useAuth, SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import {
@@ -15,14 +14,12 @@ import {
   History as HistoryIcon,
   MoreHorizontal,
   ExternalLink,
-  MessageSquare,
   PanelRightOpen,
   X,
-  Zap,
-  LogIn,
-  Globe,
   Check,
+  ArrowLeft,
 } from "lucide-react";
+import { FeedbackIcon, SummaryIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,22 +30,20 @@ import { routing, type Locale } from "@/i18n/routing";
 import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import ShareButton from "@/components/features/share-button";
 import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
-import { buttonVariants, Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import ArrowTabs from "@/components/article/tabs";
 import { InlineSummary } from "@/components/features/inline-summary";
+import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
+import { SettingsDrawer } from "@/components/features/settings-drawer";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
-import { storeReturnUrl } from "@/lib/hooks/use-return-url";
 import {
   Drawer,
   DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
   Menu,
@@ -72,48 +67,6 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
-
-
-// History button that links to /history for signed-in users, /pricing for signed-out
-function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
-  const { isSignedIn, isLoaded } = useAuth();
-  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
-
-  const isDesktop = variant === "desktop";
-  // Use consistent values for SSR, then update after mount when auth is known
-  const isAuthed = mounted && isLoaded && isSignedIn;
-  const href = isAuthed ? "/history" : "/pricing";
-  const title = isAuthed ? "History" : "History (Premium)";
-  const showBadge = mounted && isLoaded && !isSignedIn;
-
-  return (
-    <Link
-      href={href}
-      className={cn(
-        buttonVariants({ variant: "ghost", size: "icon" }),
-        isDesktop
-          ? "h-9 w-9 text-muted-foreground hover:text-foreground relative"
-          : "h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground relative"
-      )}
-      title={title}
-    >
-      <HistoryIcon className="size-4" />
-      {!isDesktop && <span className="sr-only">History</span>}
-      {/* Premium badge for non-signed-in users - always reserve space to prevent shift */}
-      <span
-        className={cn(
-          "absolute -bottom-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm transition-opacity",
-          showBadge
-            ? "bg-linear-to-r from-amber-400 to-orange-500 opacity-100"
-            : "opacity-0 pointer-events-none"
-        )}
-        aria-hidden={!showBadge}
-      >
-        ★
-      </span>
-    </Link>
-  );
-}
 
 // Helper to detect client-side rendering without setState in effect
 const emptySubscribe = () => () => {};
@@ -211,38 +164,6 @@ function LanguageMenuItems() {
   );
 }
 
-// Language section for mobile drawer
-function LanguageSection({ onSelect }: { onSelect?: () => void }) {
-  const locale = useLocale() as Locale;
-  const switchLocale = useLocaleSwitch();
-
-  const handleSelect = (loc: Locale) => {
-    switchLocale(loc);
-    onSelect?.();
-  };
-
-  return (
-    <div className="space-y-3">
-      <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-        <Globe className="size-4" />
-        Language
-      </label>
-      <div className="grid grid-cols-3 gap-2">
-        {routing.locales.map((loc) => (
-          <Button
-            key={loc}
-            variant={locale === loc ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => handleSelect(loc)}
-            className="w-full justify-center"
-          >
-            {languageNames[loc]}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // Theme menu items for the More dropdown
 function ThemeMenuItems() {
@@ -311,7 +232,6 @@ interface ProxyContentProps {
 
 export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentProps) {
   const { results } = useArticles(url);
-  const { theme, setTheme } = useTheme();
   const { isPremium } = useIsPremium();
   const isDesktop = useIsDesktop();
 
@@ -436,6 +356,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [adDismissed, setAdDismissed] = useState(false);
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const mobileAdRef = useRef<HTMLAnchorElement>(null);
   const [mobileAdImpression, setMobileAdImpression] = useState(false);
 
@@ -482,8 +403,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
-          {/* Left: Logo */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Mobile Header - Clean with back button */}
+          <div className="md:hidden flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => window.history.back()}
+              className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
+          </div>
+
+          {/* Desktop Header - Logo */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
             <Link
               href="/"
               className="flex items-center gap-2 transition-opacity hover:opacity-80"
@@ -542,8 +474,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             </div>
           </div>
 
-          {/* Center: Spacer */}
-          <div className="flex-1" />
+          {/* Center: Domain on mobile, Spacer on desktop */}
+          <div className="flex-1 flex items-center justify-center md:justify-start">
+            {/* Mobile: Show source domain */}
+            <span className="md:hidden text-sm font-medium text-muted-foreground truncate max-w-[200px]">
+              {(() => {
+                try {
+                  return new URL(url).hostname.replace('www.', '').toUpperCase();
+                } catch {
+                  return '';
+                }
+              })()}
+            </span>
+          </div>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
@@ -643,7 +586,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                           rel="noreferrer"
                           className={cn(className, "flex items-center gap-2 w-full px-3")}
                         >
-                          <MessageSquare className="size-4" />
+                          <FeedbackIcon className="size-4" />
                           <span className="flex-1">Send Feedback</span>
                           <ExternalLink className="size-3 opacity-50 shrink-0" />
                         </a>
@@ -654,230 +597,29 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               </Menu>
             </div>
 
-            {/* Mobile Actions */}
+            {/* Mobile Actions - Simplified header with summary trigger */}
             <div className="md:hidden flex items-center gap-1.5">
-              <ShareButton
-                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
-                source={source || "smry-fast"}
-                viewMode={viewMode || "markdown"}
-                sidebarOpen={sidebarOpen}
-                articleTitle={articleTitle}
-                triggerVariant="icon"
-              />
+              {/* Summary trigger button */}
+              <button
+                onClick={() => setMobileSummaryOpen(true)}
+                className={cn(
+                  "size-9 flex items-center justify-center rounded-full transition-colors",
+                  mobileSummaryOpen
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                aria-label="Open summary"
+              >
+                <SummaryIcon className="size-5" />
+              </button>
 
-              <CopyPageDropdown
-                url={url}
-                articleTitle={articleTitle}
-                textContent={articleTextContent}
-                source={source}
+              {/* Settings drawer - triggered from bottom bar */}
+              <SettingsDrawer
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
                 viewMode={viewMode}
-                triggerVariant="icon"
+                onViewModeChange={handleViewModeChange}
               />
-
-              <HistoryButton variant="mobile" />
-              
-              <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
-                <DrawerTrigger
-                  id="settings-drawer-trigger"
-                  render={(renderProps) => {
-                    const { className, ...triggerProps } = renderProps;
-                    const { key, ...restProps } = triggerProps as typeof triggerProps & {
-                      key?: React.Key;
-                    };
-                    return (
-                      <Button
-                        {...restProps}
-                        key={key}
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "h-8 w-8 rounded-lg hover:bg-accent",
-                          className
-                        )}
-                      >
-                        <EllipsisHorizontalIcon key={"settings-icon"} className="size-6 text-muted-foreground" />
-                        <span key={"settings-text"} className="sr-only">Settings</span>
-                      </Button>
-                    );
-                  }}
-                />
-                <DrawerContent>
-                  <DrawerHeader className="text-left border-b border-border pb-4">
-                    <DrawerTitle>Settings</DrawerTitle>
-                    <DrawerDescription>
-                      Customize view and appearance
-                    </DrawerDescription>
-                  </DrawerHeader>
-                  <div className="p-4 space-y-6 pb-8">
-                    {/* Account Section */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Account
-                      </label>
-                      <SignedIn>
-                        <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                          <UserButton
-                            appearance={{
-                              elements: {
-                                avatarBox: "size-9",
-                              },
-                            }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">Signed in</p>
-                            {!isPremium && (
-                              <Link
-                                href="/pricing"
-                                className="text-xs text-primary hover:underline"
-                                onClick={() => setSettingsOpen(false)}
-                              >
-                                Upgrade to Pro
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      </SignedIn>
-                      <SignedOut>
-                        <div className="grid grid-cols-2 gap-2">
-                          <SignInButton mode="modal" fallbackRedirectUrl="/">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full gap-2"
-                              onClick={() => {
-                                storeReturnUrl();
-                                setSettingsOpen(false);
-                              }}
-                            >
-                              <LogIn className="size-4" />
-                              Sign In
-                            </Button>
-                          </SignInButton>
-                          <Link
-                            href="/pricing"
-                            onClick={() => {
-                              storeReturnUrl();
-                              setSettingsOpen(false);
-                            }}
-                            className={cn(
-                              buttonVariants({ variant: "default", size: "sm" }),
-                              "w-full gap-2"
-                            )}
-                          >
-                            <Zap className="size-4" />
-                            Get Pro
-                          </Link>
-                        </div>
-                      </SignedOut>
-                    </div>
-
-                    {/* View Mode Section */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium text-muted-foreground">
-                        View Mode
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Button
-                          variant={
-                            viewMode === "markdown" ? "secondary" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            handleViewModeChange("markdown");
-                            setSettingsOpen(false);
-                          }}
-                          className="w-full"
-                        >
-                          Reader
-                        </Button>
-                        <Button
-                          variant={viewMode === "html" ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            handleViewModeChange("html");
-                            setSettingsOpen(false);
-                          }}
-                          className="w-full"
-                        >
-                          Original
-                        </Button>
-                        <Button
-                          variant={
-                            viewMode === "iframe" ? "secondary" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            handleViewModeChange("iframe");
-                            setSettingsOpen(false);
-                          }}
-                          className="w-full"
-                        >
-                          Iframe
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Appearance Section */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Appearance
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Button
-                          variant={theme === "light" ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={() => setTheme("light")}
-                          className="w-full"
-                        >
-                          <Sun className="mr-2 size-4" />
-                          Light
-                        </Button>
-                        <Button
-                          variant={theme === "dark" ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={() => setTheme("dark")}
-                          className="w-full"
-                        >
-                          <Moon className="mr-2 size-4" />
-                          Dark
-                        </Button>
-                        <Button
-                          variant={theme === "system" ? "secondary" : "outline"}
-                          size="sm"
-                          onClick={() => setTheme("system")}
-                          className="w-full"
-                        >
-                          <Laptop className="mr-2 size-4" />
-                          System
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Language Section */}
-                    <LanguageSection onSelect={() => setSettingsOpen(false)} />
-
-                    {/* Support Section */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Support
-                      </label>
-                      <a
-                        href="https://smryai.userjot.com/"
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn(
-                          buttonVariants({ variant: "outline", size: "sm" }),
-                          "w-full justify-start gap-2"
-                        )}
-                        onClick={() => setSettingsOpen(false)}
-                      >
-                        <BugIcon className="size-4" />
-                        Report Bug / Feedback
-                      </a>
-                    </div>
-                  </div>
-                </DrawerContent>
-              </Drawer>
             </div>
           </div>
         </header>
@@ -973,74 +715,81 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
             </div>
           ) : (
-            // Mobile: Simple layout with floating bottom ad
-            <div className="h-full overflow-y-auto bg-card pb-20">
+            // Mobile: Clean article-first layout with bottom bar
+            <div className="h-full overflow-y-auto bg-card pb-16">
               <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6">
-                <InlineSummary
-                  urlProp={url}
-                  articleResults={results}
-                  isOpen={sidebarOpen}
-                  onOpenChange={handleSidebarChange}
-                  variant="inline"
-                />
+                {/* Article content - no inline summary, it's in the drawer now */}
                 <ArrowTabs
                   url={url}
                   articleResults={results}
                   viewMode={viewMode}
                   activeSource={source}
                   onSourceChange={handleSourceChange}
-                  summaryOpen={sidebarOpen}
-                  onSummaryOpenChange={handleSidebarChange}
+                  summaryOpen={false}
+                  onSummaryOpenChange={() => {}}
                   showInlineSummary={false}
                 />
               </div>
 
-              {/* Floating bottom ad - Redesigned for maximum clarity and conversion */}
-              {!isPremium && gravityAd && !adDismissed && (
-                <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/98 backdrop-blur-xl safe-area-bottom">
-                  <div className="mx-auto max-w-3xl px-3 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <a
-                        href={gravityAd.clickUrl}
-                        target="_blank"
-                        rel="sponsored noopener"
-                        className="group flex flex-1 items-center gap-2.5 min-w-0 -my-0.5 py-0.5 rounded-lg transition-colors"
-                        ref={mobileAdRef}
-                      >
-                        {gravityAd.favicon && (
-                          <Image
-                            src={gravityAd.favicon}
-                            alt=""
-                            width={32}
-                            height={32}
-                            className="size-8 rounded-[10px] shrink-0 shadow-sm"
-                            unoptimized
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          {/* Single-line attribution: Brand · Sponsored */}
-                          <p className="text-[11px] leading-tight text-muted-foreground/70 mb-0.5 flex items-center gap-1">
-                            <span className="font-medium text-muted-foreground truncate">{gravityAd.brandName}</span>
-                            <span className="opacity-50">·</span>
-                            <span className="shrink-0">Sponsored</span>
-                          </p>
-                          {/* Value proposition - the compelling offer */}
-                          <p className="text-[13px] leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                            {gravityAd.adText || gravityAd.title}
-                          </p>
-                        </div>
-                      </a>
-                      <button
-                        onClick={() => setAdDismissed(true)}
-                        className="shrink-0 size-7 flex items-center justify-center rounded-full text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors -mr-1"
-                        aria-label="Dismiss ad"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
+              {/* Summary Drawer */}
+              <Drawer open={mobileSummaryOpen} onOpenChange={setMobileSummaryOpen}>
+                <DrawerContent className="h-[85vh] flex flex-col">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border shrink-0">
+                    <button
+                      onClick={() => setMobileSummaryOpen(false)}
+                      className="size-8 flex items-center justify-center rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                    <DrawerTitle className="text-lg font-semibold">Summary</DrawerTitle>
+                    <div className="size-8" />
                   </div>
+
+                  {/* Content - renders InlineSummary in drawer mode */}
+                  <div className="flex-1 overflow-y-auto">
+                    <InlineSummary
+                      urlProp={url}
+                      articleResults={results}
+                      isOpen={true}
+                      onOpenChange={() => setMobileSummaryOpen(false)}
+                      variant="sidebar"
+                      ad={!isPremium ? gravityAd : null}
+                      onAdVisible={gravityAd ? () => fireImpression(gravityAd.impUrl) : undefined}
+                    />
+                  </div>
+                </DrawerContent>
+              </Drawer>
+
+              {/* Mobile Ad Bar - minimal, above bottom nav */}
+              {!isPremium && !adDismissed && gravityAd && (
+                <div className="fixed inset-x-0 z-40 bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+                  <GravityAd
+                    ad={gravityAd}
+                    variant="bar"
+                    onVisible={() => fireImpression(gravityAd.impUrl)}
+                    onDismiss={() => setAdDismissed(true)}
+                  />
                 </div>
               )}
+
+              {/* Mobile Bottom Bar */}
+              <MobileBottomBar
+                viewMode={viewMode || "markdown"}
+                onViewModeChange={handleViewModeChange}
+                smryUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
+                originalUrl={url}
+                articleTitle={articleTitle}
+                onOpenSettings={() => setSettingsOpen(true)}
+                activeSource={source || "smry-fast"}
+                onSourceChange={handleSourceChange}
+                sourceCharCounts={{
+                  "smry-fast": results["smry-fast"]?.data?.article?.textContent?.length || 0,
+                  "smry-slow": results["smry-slow"]?.data?.article?.textContent?.length || 0,
+                  "wayback": results["wayback"]?.data?.article?.textContent?.length || 0,
+                  "jina.ai": results["jina.ai"]?.data?.article?.textContent?.length || 0,
+                }}
+              />
             </div>
           )}
         </main>
