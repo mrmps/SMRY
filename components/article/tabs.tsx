@@ -52,8 +52,6 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
   bypassLoadingStates: Record<Source, boolean>;
   bypassErrorStates: Record<Source, boolean>;
 }) {
-
-  // Helper to format word count minimally
   const formatWordCount = (count: number | undefined): string | null => {
     if (count === undefined || count === null) return null;
 
@@ -140,11 +138,8 @@ interface TabProps {
   onSourceChange: (source: Source) => void;
   summaryOpen: boolean;
   onSummaryOpenChange: (open: boolean) => void;
-  /** Whether to render InlineSummary inside this component. Set false when parent handles summary (e.g., sidebar). */
   showInlineSummary?: boolean;
-  /** Additional class name for the container */
   className?: string;
-  /** Whether mobile header is visible - controls tabs sticky position */
   mobileHeaderVisible?: boolean;
 }
 
@@ -163,36 +158,30 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
   const results = articleResults;
   const { isPremium } = useIsPremium();
 
-  // Extract individual result objects for cleaner dependency tracking
   const smryFastResult = results["smry-fast"];
   const smrySlowResult = results["smry-slow"];
   const waybackResult = results.wayback;
   const jinaResult = results["jina.ai"];
 
-  // Shared fullscreen state across all tabs
   const [isFullScreen, setIsFullScreen] = useState(() => {
     if (typeof window === "undefined") return false;
     const isMobile = window.innerWidth < 768;
     return isMobile && viewMode === "html";
   });
 
-  // Stable callback for fullscreen changes
   const handleFullScreenChange = useCallback((fullScreen: boolean) => {
     setIsFullScreen(fullScreen);
   }, []);
 
-  // Auto-enter fullscreen on mobile when switching to HTML view
   useEffect(() => {
     if (typeof window === "undefined") return;
     const isMobile = window.innerWidth < 768;
     if (isMobile && viewMode === "html") {
-      // Schedule state update to avoid synchronous setState in effect
       const frameId = requestAnimationFrame(() => setIsFullScreen(true));
       return () => cancelAnimationFrame(frameId);
     }
   }, [viewMode]);
 
-  // Extract values for memoization dependencies
   const smryFastLength = smryFastResult.data?.article?.length;
   const smrySlowLength = smrySlowResult.data?.article?.length;
   const waybackLength = waybackResult.data?.article?.length;
@@ -208,7 +197,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
   const waybackError = waybackResult.isError;
   const jinaError = jinaResult.isError;
 
-  // Memoize derived state objects to prevent unnecessary re-renders
   const counts = useMemo<Record<Source, number | undefined>>(() => ({
     "smry-fast": smryFastLength,
     "smry-slow": smrySlowLength,
@@ -230,7 +218,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
     "jina.ai": jinaError,
   }), [smryFastError, smrySlowError, waybackError, jinaError]);
 
-  // Bypass detection for premium users - run for all sources so user can compare
   const bypassFast = useBypassDetection({
     url,
     source: "smry-fast",
@@ -303,10 +290,8 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
         value={activeSource}
         onValueChange={(value) => onSourceChange(value as Source)}
       >
-        {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div className={cn(
           "sticky z-20 bg-gradient-to-b from-background from-70% to-transparent transition-[top] duration-300 ease-out",
-          // On mobile: top-14 when header visible, top-0 when hidden. On desktop: always top-0
           mobileHeaderVisible ? "top-14 md:top-0" : "top-0",
           viewMode === "html" ? "mb-2 pb-2" : ""
         )}>
@@ -322,7 +307,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
           />
         </div>
 
-        {/* Inline Summary - only rendered when showInlineSummary is true */}
         {showInlineSummary && (
           <InlineSummary
             urlProp={url}

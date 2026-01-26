@@ -151,22 +151,16 @@ async function initDOMPurify() {
  * Hook to get sanitized HTML content (client-side only)
  */
 function useSanitizedHtml(html: string | undefined | null): string | null {
-  // Check cache synchronously - this runs on every render but is fast (Map lookup)
   const cachedValue = html ? sanitizedHtmlCache.get(html) : null;
-
   const [sanitized, setSanitized] = useState<string | null>(() => {
     if (!html) return null;
     return cachedValue ?? null;
   });
 
   useEffect(() => {
-    // Skip effect when no content or when we have a cached value
-    if (!html || cachedValue) {
-      return;
-    }
+    if (!html || cachedValue) return;
 
     let cancelled = false;
-
     initDOMPurify().then((dp) => {
       if (dp && !cancelled) {
         const sanitizedHtml = dp.sanitize(html, DOMPURIFY_CONFIG) as string;
@@ -180,20 +174,14 @@ function useSanitizedHtml(html: string | undefined | null): string | null {
     };
   }, [html, cachedValue]);
 
-  // Return cached value if available (handles re-renders), otherwise state
-  // Return null when html is empty/null
   if (!html) return null;
   return cachedValue ?? sanitized;
 }
 
 interface ArticleContentProps {
-  /** Article data from query - stable reference that only changes when data changes */
   data: ArticleResponse | undefined;
-  /** Loading state - primitive boolean */
   isLoading: boolean;
-  /** Error state - primitive boolean */
   isError: boolean;
-  /** Error object - stable reference */
   error: Error | null;
   source: Source;
   url: string;
@@ -214,13 +202,10 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   onFullScreenChange,
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
-
-  // Memoize the article content to avoid unnecessary sanitization triggers
   const articleContent = data?.article?.content;
   const sanitizedArticleContent = useSanitizedHtml(articleContent);
 
-  // Add click-to-expand functionality to images
-  // Must depend on sanitizedArticleContent since that's what's actually rendered
+  // Add click-to-expand for images
   useEffect(() => {
     if (!contentRef.current || !sanitizedArticleContent) return;
 
@@ -247,25 +232,15 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
     };
   }, [sanitizedArticleContent]);
 
-  // Extract debug context from error if available - memoized to prevent re-computation
   const debugContext = useMemo(() =>
-    error instanceof ArticleFetchError
-      ? error.debugContext
-      : data?.debugContext,
+    error instanceof ArticleFetchError ? error.debugContext : data?.debugContext,
     [error, data?.debugContext]
   );
 
-  // Extract cacheURL from data for stable dependency
   const dataCacheURL = data?.cacheURL;
-
-  // Memoize cacheURL computation
   const cacheURL = useMemo(() => {
-    // First try to get from data
-    if (dataCacheURL) {
-      return dataCacheURL;
-    }
+    if (dataCacheURL) return dataCacheURL;
 
-    // If not available, construct based on source
     switch (source) {
       case "wayback":
         return `https://web.archive.org/web/2/${url}`;
@@ -278,11 +253,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
     }
   }, [dataCacheURL, source, url]);
 
-  // Get the raw HTML content for the "Original" view - memoized
-  // No sanitization needed - it's rendered in a sandboxed iframe which:
-  // - Blocks all script execution (sandbox without allow-scripts)
-  // - Prevents navigation/popups
-  // - Isolates from parent page completely
   const preparedHtmlContent = useMemo(
     () => data?.article?.htmlContent ?? null,
     [data?.article?.htmlContent]
@@ -291,14 +261,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   return (
     <div className={viewMode === "markdown" ? "mt-2" : "-mt-2"}>
       <article>
-        {/* Header - Title and Links (Only shown in markdown/reader view) */}
         {data && !isError && data.article && viewMode === "markdown" && (
           <div
             className="mb-8 space-y-6 border-b border-border pb-6"
             dir={data.article.dir || "ltr"}
             lang={data.article.lang || undefined}
           >
-            {/* Top Row: Favicon + Site Name */}
             <div className="flex items-center gap-3">
               <div className="size-5 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -326,14 +294,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
               </a>
             </div>
 
-            {/* Title */}
             {data.article.title && (
               <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl font-serif">
                 {data.article.title}
               </h1>
             )}
 
-            {/* Metadata Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 {data.article.byline && (
@@ -361,7 +327,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
           </div>
         )}
 
-        {/* Iframe - Always rendered but hidden if not in iframe mode */}
         {cacheURL && (
           <div
             className={
@@ -399,7 +364,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
           </div>
         )}
 
-        {/* Iframe Error State - only if visible and no cacheURL */}
         {viewMode === "iframe" && !cacheURL && (
           <div className="mt-6 flex items-center space-x-2">
             <p className="text-gray-600">Iframe URL not available.</p>
@@ -423,7 +387,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
           </div>
         )}
 
-        {/* Main Content / Loading / Error - Hidden if in iframe mode */}
         <div className={viewMode !== "iframe" ? "block" : "hidden"}>
           {isLoading && (
             <div className="mt-8 space-y-3">
@@ -501,8 +464,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                         <ArrowsPointingOutIcon className="size-4" />
                       )}
                     </Button>
-                    {/* Use iframe with srcdoc for complete style isolation */}
-                    {/* This renders the article exactly as it appeared originally */}
                     <iframe
                       srcDoc={preparedHtmlContent}
                       className={
@@ -553,7 +514,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                       __html: sanitizedArticleContent,
                     }}
                   />
-                  {/* Upgrade CTA - shows only for non-premium users */}
                   <UpgradeCTA />
                 </>
               ) : (
