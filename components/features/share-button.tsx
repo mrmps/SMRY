@@ -6,7 +6,6 @@ import {
   Link as LinkIcon,
   Check as CheckIcon,
   Linkedin,
-  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,22 +62,11 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
     url,
     articleTitle = "Article",
     source = "smry-fast",
-    viewMode = "markdown",
-    sidebarOpen = true,
     onActionComplete,
   }) {
     const [copied, setCopied] = useState(false);
 
-    const getShareUrl = () => {
-      const shareUrl = new URL(url);
-      if (source) shareUrl.searchParams.set("source", source);
-      if (viewMode) shareUrl.searchParams.set("view", viewMode);
-      if (sidebarOpen !== undefined)
-        shareUrl.searchParams.set("sidebar", String(sidebarOpen));
-      return shareUrl.toString();
-    };
-
-    const finalUrl = getShareUrl();
+    const finalUrl = url;
 
     const handleCopy = async () => {
       try {
@@ -97,8 +85,6 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
       if (navigator.share) {
         try {
           await navigator.share({
-            title: articleTitle,
-            text: "Check out this article on smry.ai",
             url: finalUrl,
           });
           if (onActionComplete) onActionComplete();
@@ -111,69 +97,93 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
     const socialLinks = [
       {
         name: "X",
-        icon: <XIcon className="size-5" />,
-        href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(articleTitle)}&url=${encodeURIComponent(finalUrl)}`,
+        icon: <XIcon className="size-3.5" />,
+        href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(finalUrl)}`,
       },
       {
         name: "LinkedIn",
-        icon: <Linkedin className="size-5" />,
+        icon: <Linkedin className="size-3.5" />,
         href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(finalUrl)}`,
       },
       {
         name: "Reddit",
-        icon: <RedditIcon className="size-5" />,
-        href: `https://www.reddit.com/submit?url=${encodeURIComponent(finalUrl)}&title=${encodeURIComponent(articleTitle)}`,
+        icon: <RedditIcon className="size-3.5" />,
+        href: `https://www.reddit.com/submit?url=${encodeURIComponent(finalUrl)}`,
       },
     ];
 
     return (
-      <div className="flex flex-col gap-6">
-        {/* Preview Card - Simple, no external images */}
-        <div className="rounded-xl bg-zinc-100 dark:bg-zinc-900 p-4 border border-border">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background border border-border">
-              <FileText className="size-5 text-muted-foreground" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-base leading-snug text-foreground line-clamp-2">
-                {articleTitle}
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                smry.ai · {source}
-              </p>
+      <div className="flex flex-col">
+        {/* Article title preview - Linear-style input look */}
+        <div className="flex flex-row items-start gap-1 pt-0.5">
+          <div className="flex-1 self-start min-w-0 pt-0.5">
+            <div className="min-h-0">
+              <div
+                className="text-[18px] font-semibold leading-6 text-foreground break-words"
+                style={{ letterSpacing: '-0.12px' }}
+              >
+                {articleTitle || "Untitled article"}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-5 gap-2 sm:flex sm:items-center sm:justify-center sm:gap-8 px-2">
-          <button
-            onClick={handleCopy}
-            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group col-span-1"
+        {/* Source info - Linear-style muted text */}
+        <div className="pt-1.5 pb-4">
+          <p
+            className="text-[15px] font-[450] text-muted-foreground leading-[22.5px] break-words"
+            style={{ letterSpacing: '-0.1px' }}
           >
-            <div className="size-12 rounded-full bg-secondary flex items-center justify-center group-hover:bg-accent group-hover:scale-110 transition-all duration-200">
-              {copied ? (
-                <CheckIcon className="size-5 text-green-600" />
-              ) : (
-                <LinkIcon className="size-5" />
-              )}
-            </div>
-            <span className="text-xs font-medium text-center w-full truncate">
-              {copied ? "Copied" : "Copy"}
-            </span>
-          </button>
+            smry.ai · {source}
+          </p>
+        </div>
 
+        {/* URL Preview - Copy button inline */}
+        <div className="mb-5">
+          <div className="mb-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              Link
+            </span>
+          </div>
+          <div className="flex items-center gap-2 rounded-[5px] border-[0.5px] border-border bg-muted/30 px-3 py-2.5">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-[450] text-muted-foreground truncate">
+                {finalUrl}
+              </p>
+            </div>
+            <button
+              onClick={handleCopy}
+              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent"
+            >
+              {copied ? (
+                <>
+                  <CheckIcon className="size-3.5 text-green-500" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <LinkIcon className="size-3.5" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Share buttons - Linear-style toolbar */}
+        <div className="mb-2">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            Share to
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 pb-2">
           {hasNativeShareSupport && (
             <button
               onClick={handleNativeShare}
-              className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group col-span-1"
+              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
             >
-              <div className="size-12 rounded-full bg-secondary flex items-center justify-center group-hover:bg-accent group-hover:scale-110 transition-all duration-200">
-                <ShareIcon className="size-5" />
-              </div>
-              <span className="text-xs font-medium text-center w-full truncate">
-                More
-              </span>
+              <ShareIcon className="size-3.5" />
+              <span>More</span>
             </button>
           )}
 
@@ -183,15 +193,11 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
               href={social.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group col-span-1"
               onClick={onActionComplete}
+              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
             >
-              <div className="size-12 rounded-full bg-secondary flex items-center justify-center group-hover:bg-accent group-hover:scale-110 transition-all duration-200">
-                {social.icon}
-              </div>
-              <span className="text-xs font-medium text-center w-full truncate">
-                {social.name}
-              </span>
+              {social.icon}
+              <span>{social.name}</span>
             </a>
           ))}
         </div>
@@ -242,24 +248,60 @@ const ShareModalContent = React.memo(function ShareModalContent({
   onClose,
 }: ShareButtonDataProps & { onClose: () => void }) {
   return (
-    <div className="flex h-full flex-col bg-card">
-      <div className="border-b border-border px-6 py-4">
-        <h2 className="text-base font-semibold text-foreground">
-          {articleTitle || "Share article"}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Share this summary with others
-        </p>
+    <div className="flex h-full flex-col">
+      {/* Linear-style header with row-reverse for close button positioning */}
+      <div className="flex flex-row-reverse items-center px-3 pt-3 pb-1.5">
+        {/* Close button group - right side */}
+        <div className="flex shrink-0 items-center gap-1.5 pl-3">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <span className="flex size-4 items-center justify-center" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16">
+                <path d="M2.96967 2.96967C3.26256 2.67678 3.73744 2.67678 4.03033 2.96967L8 6.939L11.9697 2.96967C12.2626 2.67678 12.7374 2.67678 13.0303 2.96967C13.3232 3.26256 13.3232 3.73744 13.0303 4.03033L9.061 8L13.0303 11.9697C13.2966 12.2359 13.3208 12.6526 13.1029 12.9462L13.0303 13.0303C12.7374 13.3232 12.2626 13.3232 11.9697 13.0303L8 9.061L4.03033 13.0303C3.73744 13.3232 3.26256 13.3232 2.96967 13.0303C2.67678 12.7374 2.67678 12.2626 2.96967 11.9697L6.939 8L2.96967 4.03033C2.7034 3.76406 2.6792 3.3474 2.89705 3.05379L2.96967 2.96967Z" />
+              </svg>
+            </span>
+          </button>
+        </div>
+        {/* Title breadcrumb - left side, grows to fill */}
+        <div className="flex flex-1 min-w-0 items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="flex size-4 items-center justify-center text-muted-foreground">
+              <ShareIcon className="size-3.5" />
+            </span>
+            <span className="text-[13px] font-[450] text-foreground">Share article</span>
+          </div>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <ShareContent
-          url={url}
-          articleTitle={articleTitle}
-          source={source}
-          viewMode={viewMode}
-          sidebarOpen={sidebarOpen}
-          onActionComplete={onClose}
-        />
+      {/* Content area */}
+      <div className="flex flex-1 flex-col overflow-hidden px-1.5">
+        <div className="flex flex-1 flex-col gap-1.5 px-3 max-w-full">
+          <ShareContent
+            url={url}
+            articleTitle={articleTitle}
+            source={source}
+            viewMode={viewMode}
+            sidebarOpen={sidebarOpen}
+            onActionComplete={onClose}
+          />
+        </div>
+      </div>
+
+      {/* Linear-style footer divider */}
+      <div className="flex w-full border-t-[0.5px] border-border" />
+
+      {/* Footer with done button */}
+      <div className="flex items-center justify-end gap-3 px-3 py-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-7 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-glow/40 bg-glow px-3.5 text-[12px] font-medium text-white shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-glow/90"
+        >
+          Done
+        </button>
       </div>
     </div>
   );
@@ -285,7 +327,7 @@ const ShareButton: React.FC<ShareButtonProps> = React.memo(
     );
 
     return (
-      <ResponsiveDrawer open={open} onOpenChange={setOpen} trigger={trigger} triggerId="share-modal-trigger">
+      <ResponsiveDrawer open={open} onOpenChange={setOpen} trigger={trigger} triggerId="share-modal-trigger" showCloseButton={false}>
         <ShareModalContent {...shareProps} onClose={handleClose} />
       </ResponsiveDrawer>
     );

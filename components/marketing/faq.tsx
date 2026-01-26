@@ -1,15 +1,12 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function FAQ() {
   const t = useTranslations("faq");
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const faqData = [
     { question: t("q1"), answer: t("a1") },
@@ -24,7 +21,7 @@ export function FAQ() {
             href="https://github.com/mrmps/SMRY"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-foreground underline underline-offset-2 hover:text-muted-foreground"
+            className="text-foreground underline underline-offset-4 decoration-muted-foreground/30 hover:decoration-foreground/50 transition-colors"
           >
             https://github.com/mrmps/SMRY
           </a>
@@ -48,7 +45,7 @@ export function FAQ() {
               }).split("{code}").map((part, i) =>
                 i === 0 ? part : (
                   <span key={i}>
-                    <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs text-neutral-800 dark:bg-yellow-900 dark:text-neutral-200">
+                    <code className="rounded bg-foreground/5 px-1.5 py-0.5 font-mono text-xs">
                       http://smry.ai/
                     </code>
                     {part}
@@ -66,45 +63,63 @@ export function FAQ() {
   ];
 
   return (
-    <div className="mx-auto mt-12 w-full max-w-3xl">
-      <h2 className="mb-8 text-center text-2xl font-semibold text-foreground">
+    <div className="mx-auto w-full max-w-xl">
+      <h2 className="mb-6 text-center text-lg sm:text-xl font-semibold tracking-tight text-foreground">
         {t("title")}
       </h2>
-      <Accordion id="faq-accordion" type="single" collapsible className="w-full">
+      <div className="space-y-1.5">
         {faqData.map((item, index) => (
-          <AccordionItem id={`faq-item-${index}`} key={index} value={`item-${index}`}>
-            <AccordionTrigger id={`faq-trigger-${index}`} className="text-left font-medium text-foreground">
-              {item.question}
-            </AccordionTrigger>
-            <AccordionContent className="text-muted-foreground">
-              {item.answer}
-            </AccordionContent>
-          </AccordionItem>
+          <div
+            key={index}
+            className="rounded-xl bg-black/[0.025] dark:bg-white/[0.025] overflow-hidden"
+          >
+            <button
+              id={`faq-question-${index}`}
+              onClick={() => setOpenIndex(openIndex === index ? null : index)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpenIndex(openIndex === index ? null : index);
+                }
+              }}
+              className="w-full flex items-center justify-between py-3 px-4 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
+              aria-expanded={openIndex === index}
+              aria-controls={`faq-answer-${index}`}
+            >
+              <span className="text-[14px] font-medium text-foreground pr-4">{item.question}</span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`size-4 shrink-0 text-muted-foreground/40 transition-transform duration-200 motion-reduce:transition-none ${
+                  openIndex === index ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            <div
+              id={`faq-answer-${index}`}
+              className={`overflow-hidden transition-all duration-200 motion-reduce:transition-none ${
+                openIndex === index ? "max-h-[500px]" : "max-h-0"
+              }`}
+              role="region"
+              aria-labelledby={`faq-question-${index}`}
+            >
+              <div className="px-4 pb-3 text-[14px] leading-relaxed text-muted-foreground">
+                {item.answer}
+              </div>
+            </div>
+          </div>
         ))}
-      </Accordion>
-      <div className="mt-12 space-y-2 text-center">
-        <p className="text-muted-foreground">
-          {t("feedbackPrompt")}{" "}
-          <a
-            href="https://smryai.userjot.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
-          >
-            {t("shareThoughts")}
-          </a>
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {t("sponsorships")}{" "}
-          <a
-            href="mailto:contact@smry.ai"
-            className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
-          >
-            contact@smry.ai
-          </a>
-        </p>
       </div>
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        {t("feedbackPrompt")}{" "}
+        <a
+          href="https://smryai.userjot.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-foreground underline underline-offset-4 decoration-muted-foreground/30 hover:decoration-foreground/50 transition-colors"
+        >
+          {t("shareThoughts")}
+        </a>
+      </p>
     </div>
   );
 }
-

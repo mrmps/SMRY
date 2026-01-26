@@ -1,7 +1,13 @@
 "use client";
 
 import { useHistory, type HistoryItem } from "@/lib/hooks/use-history";
-import { SignedIn, SignedOut, SignInButton, UserButton, useAuth } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  useAuth,
+} from "@clerk/nextjs";
 import { storeReturnUrl } from "@/lib/hooks/use-return-url";
 import {
   ArrowLeft,
@@ -11,62 +17,80 @@ import {
   Crown,
   Search,
   X,
-  Clock,
   Newspaper,
-  BookOpen,
+  ChevronRight,
+  Grid3X3,
+  List,
+  LayoutGrid,
+  Sparkles,
+  BookMarked,
+  TrendingUp,
+  Calendar,
+  Command,
+  CornerDownLeft,
+  Globe,
+  RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { normalizeUrl } from "@/lib/validation/url";
 
-/**
- * Format a date to relative time (e.g., "2 hours ago", "3 days ago")
- */
+// ============================================================================
+// ROUND 1: Clean typography and visual hierarchy
+// ============================================================================
+
 function formatRelativeTime(date: Date): string {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (diffInSeconds < 60) {
-    return "just now";
-  }
+  if (diffInSeconds < 60) return "just now";
 
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`;
-  }
+  if (diffInMinutes < 60) return `${diffInMinutes}m`;
 
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`;
-  }
+  if (diffInHours < 24) return `${diffInHours}h`;
 
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays}d ago`;
-  }
+  if (diffInDays < 7) return `${diffInDays}d`;
 
   const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 4) {
-    return `${diffInWeeks}w ago`;
-  }
+  if (diffInWeeks < 4) return `${diffInWeeks}w`;
 
   const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) {
-    return `${diffInMonths}mo ago`;
-  }
+  if (diffInMonths < 12) return `${diffInMonths}mo`;
 
-  const diffInYears = Math.floor(diffInDays / 365);
-  return `${diffInYears}y ago`;
+  return `${Math.floor(diffInDays / 365)}y`;
 }
 
-/**
- * Get date group label for an item
- */
-function getDateGroup(date: Date): string {
+function formatFullDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+type DateGroup =
+  | "Today"
+  | "Yesterday"
+  | "This Week"
+  | "This Month"
+  | "Earlier";
+
+function getDateGroup(date: Date): DateGroup {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
@@ -79,29 +103,26 @@ function getDateGroup(date: Date): string {
   const itemDate = new Date(
     date.getFullYear(),
     date.getMonth(),
-    date.getDate(),
+    date.getDate()
   );
 
-  if (itemDate >= today) {
-    return "Today";
-  } else if (itemDate >= yesterday) {
-    return "Yesterday";
-  } else if (itemDate >= weekAgo) {
-    return "This Week";
-  } else if (itemDate >= monthAgo) {
-    return "This Month";
-  }
+  if (itemDate >= today) return "Today";
+  if (itemDate >= yesterday) return "Yesterday";
+  if (itemDate >= weekAgo) return "This Week";
+  if (itemDate >= monthAgo) return "This Month";
   return "Earlier";
 }
 
-/**
- * Group items by date
- */
-function groupByDate(items: HistoryItem[]): Map<string, HistoryItem[]> {
-  const groups = new Map<string, HistoryItem[]>();
-  const order = ["Today", "Yesterday", "This Week", "This Month", "Earlier"];
+function groupByDate(items: HistoryItem[]): Map<DateGroup, HistoryItem[]> {
+  const groups = new Map<DateGroup, HistoryItem[]>();
+  const order: DateGroup[] = [
+    "Today",
+    "Yesterday",
+    "This Week",
+    "This Month",
+    "Earlier",
+  ];
 
-  // Initialize groups in order
   order.forEach((group) => groups.set(group, []));
 
   items.forEach((item) => {
@@ -111,7 +132,6 @@ function groupByDate(items: HistoryItem[]): Map<string, HistoryItem[]> {
     groups.set(group, existing);
   });
 
-  // Remove empty groups
   order.forEach((group) => {
     if (groups.get(group)?.length === 0) {
       groups.delete(group);
@@ -121,137 +141,743 @@ function groupByDate(items: HistoryItem[]): Map<string, HistoryItem[]> {
   return groups;
 }
 
-/**
- * Get favicon URL for a domain using DuckDuckGo's icon service
- * This is more reliable than Google's favicon service
- */
+// ============================================================================
+// ROUND 6: Smart grouping by domain
+// ============================================================================
+
+function groupByDomain(
+  items: HistoryItem[]
+): Map<string, { items: HistoryItem[]; count: number }> {
+  const groups = new Map<string, { items: HistoryItem[]; count: number }>();
+
+  items.forEach((item) => {
+    const existing = groups.get(item.domain);
+    if (existing) {
+      existing.items.push(item);
+      existing.count++;
+    } else {
+      groups.set(item.domain, { items: [item], count: 1 });
+    }
+  });
+
+  // Sort by count (most read domains first)
+  const sorted = new Map(
+    [...groups.entries()].sort((a, b) => b[1].count - a[1].count)
+  );
+
+  return sorted;
+}
+
 function getFaviconUrl(domain: string): string {
   return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
 }
 
-/**
- * Build proxy URL from history item URL, normalizing it first
- */
+function getGoogleFaviconUrl(domain: string): string {
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+}
+
+function FaviconImage({
+  domain,
+  className,
+  fallbackIcon: FallbackIcon = Globe,
+  fallbackClassName,
+}: {
+  domain: string;
+  className?: string;
+  fallbackIcon?: React.ComponentType<{ className?: string }>;
+  fallbackClassName?: string;
+}) {
+  const [errorCount, setErrorCount] = useState(0);
+
+  const src = useMemo(() => {
+    if (errorCount === 0) {
+      return getFaviconUrl(domain);
+    }
+    if (errorCount === 1) {
+      return getGoogleFaviconUrl(domain);
+    }
+    return null;
+  }, [domain, errorCount]);
+
+  if (!src) {
+    return (
+      <div className="size-full flex items-center justify-center">
+        <FallbackIcon className={fallbackClassName ?? className} />
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className={className}
+      loading="lazy"
+      onError={() => setErrorCount((c) => c + 1)}
+    />
+  );
+}
+
 function buildProxyUrlFromHistory(url: string): string {
   try {
     const normalized = normalizeUrl(url);
     return `/proxy?url=${encodeURIComponent(normalized)}`;
   } catch {
-    // Fallback to original URL if normalization fails
     return `/proxy?url=${encodeURIComponent(url)}`;
   }
 }
 
-function HistoryItemCard({
-  item,
-  onRemove,
-  index,
+// ============================================================================
+// ROUND 9: Reading stats
+// ============================================================================
+
+function ReadingStats({
+  history,
+  className,
 }: {
-  item: HistoryItem;
-  onRemove: (id: string) => void;
-  index: number;
+  history: HistoryItem[];
+  className?: string;
 }) {
+  const stats = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const todayCount = history.filter(
+      (item) => new Date(item.accessedAt) >= today
+    ).length;
+    const weekCount = history.filter(
+      (item) => new Date(item.accessedAt) >= weekAgo
+    ).length;
+
+    // Top domains
+    const domainCounts = new Map<string, number>();
+    history.forEach((item) => {
+      domainCounts.set(item.domain, (domainCounts.get(item.domain) || 0) + 1);
+    });
+    const topDomains = [...domainCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    return { todayCount, weekCount, topDomains, totalCount: history.length };
+  }, [history]);
+
+  if (history.length === 0) return null;
+
   return (
-    <div
-      className="group animate-in fade-in slide-in-from-bottom-2 duration-200"
-      style={{
-        animationDelay: `${index * 30}ms`,
-        animationFillMode: "backwards",
-      }}
-    >
-      <div
-        className={cn(
-          "relative flex items-start gap-3 rounded-xl p-3 transition-all duration-200",
-          "hover:bg-accent/50 dark:hover:bg-accent/30",
-          "border border-transparent hover:border-border/50",
-        )}
-      >
-        {/* Favicon */}
-        <div className="relative mt-0.5 shrink-0">
-          <div className="size-8 rounded-lg bg-muted/50 p-1.5 ring-1 ring-border/50 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getFaviconUrl(item.domain)}
-              alt=""
-              className="size-full rounded"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = "none";
-                const sibling = target.nextElementSibling;
-                if (sibling) sibling.classList.remove("hidden");
-              }}
-            />
-            <Newspaper className="hidden size-full text-muted-foreground" />
-          </div>
+    <div className={cn("grid grid-cols-3 gap-3", className)}>
+      <div className="rounded-xl border bg-card/50 p-3">
+        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          <Calendar className="size-3.5" />
+          <span className="text-[11px] font-medium uppercase tracking-wider">
+            Today
+          </span>
         </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <Link href={buildProxyUrlFromHistory(item.url)} className="block">
-            <h3 className="font-medium text-[15px] text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-              {item.title}
-            </h3>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="truncate max-w-[180px]">{item.domain}</span>
-              <span className="text-border">•</span>
-              <Clock className="size-3" />
-              <span>{formatRelativeTime(new Date(item.accessedAt))}</span>
-            </div>
-          </Link>
+        <div className="text-2xl font-semibold tabular-nums">
+          {stats.todayCount}
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              "h-7 w-7 flex items-center justify-center rounded-md",
-              "text-muted-foreground hover:text-foreground hover:bg-background",
-              "transition-colors",
-            )}
-            title="Open original"
-          >
-            <ExternalLink className="size-3.5" />
-          </a>
-          <button
-            onClick={() => onRemove(item.id)}
-            className={cn(
-              "h-7 w-7 flex items-center justify-center rounded-md",
-              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-              "transition-colors",
-            )}
-            title="Remove"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+      </div>
+      <div className="rounded-xl border bg-card/50 p-3">
+        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          <TrendingUp className="size-3.5" />
+          <span className="text-[11px] font-medium uppercase tracking-wider">
+            This Week
+          </span>
+        </div>
+        <div className="text-2xl font-semibold tabular-nums">
+          {stats.weekCount}
+        </div>
+      </div>
+      <div className="rounded-xl border bg-card/50 p-3">
+        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+          <BookMarked className="size-3.5" />
+          <span className="text-[11px] font-medium uppercase tracking-wider">
+            Total
+          </span>
+        </div>
+        <div className="text-2xl font-semibold tabular-nums">
+          {stats.totalCount}
         </div>
       </div>
     </div>
   );
 }
 
-function DateGroupHeader({ label }: { label: string }) {
+// ============================================================================
+// ROUND 10: Random article suggestion (Readwise-style "revisit")
+// ============================================================================
+
+function RevisitSuggestion({
+  history,
+  className,
+}: {
+  history: HistoryItem[];
+  className?: string;
+}) {
+  const [suggestion, setSuggestion] = useState<HistoryItem | null>(null);
+  const [isVisible, setIsVisible] = useState(true);
+
+  // Pick a random article from history on mount (prefer older ones)
+  const randomIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (history.length < 5) return;
+
+    // Only pick random once
+    if (randomIndexRef.current === null) {
+      // Bias towards older articles (more likely to be forgotten)
+      const olderItems = history.slice(Math.floor(history.length / 3));
+      randomIndexRef.current = Math.floor(Math.random() * olderItems.length);
+    }
+
+    const olderItems = history.slice(Math.floor(history.length / 3));
+    const item = olderItems[randomIndexRef.current];
+    if (item) {
+      setSuggestion(item);
+    }
+  }, [history]);
+
+  if (!suggestion || !isVisible || history.length < 5) return null;
+
   return (
-    <div className="sticky top-0 z-10 -mx-2 px-2 py-2 bg-background/80 backdrop-blur-sm">
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-        {label}
-      </span>
+    <div
+      className={cn(
+        "relative rounded-xl border bg-gradient-to-br from-primary/5 via-transparent to-primary/5 p-4",
+        "animate-in fade-in slide-in-from-top-2 duration-300",
+        className
+      )}
+    >
+      <button
+        onClick={() => setIsVisible(false)}
+        className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <X className="size-3.5" />
+      </button>
+      <div className="flex items-start gap-3">
+        <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <RotateCcw className="size-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+              Revisit this
+            </span>
+            <Sparkles className="size-3 text-primary" />
+          </div>
+          <Link
+            href={buildProxyUrlFromHistory(suggestion.url)}
+            className="block group"
+          >
+            <h4 className="font-medium text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+              {suggestion.title}
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {suggestion.domain} ·{" "}
+              {formatRelativeTime(new Date(suggestion.accessedAt))} ago
+            </p>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
+
+// ============================================================================
+// ROUND 2 & 8: Enhanced history item with keyboard navigation support
+// ============================================================================
+
+interface HistoryItemCardProps {
+  item: HistoryItem;
+  onRemove: (id: string) => void;
+  isSelected: boolean;
+  onSelect: () => void;
+  showPreview?: boolean;
+  viewMode: "list" | "compact" | "grid";
+}
+
+function HistoryItemCard({
+  item,
+  onRemove,
+  isSelected,
+  onSelect,
+  viewMode,
+}: HistoryItemCardProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect();
+    }
+  };
+
+  if (viewMode === "compact") {
+    return (
+      <div
+        onClick={onSelect}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        className={cn(
+          "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150",
+          isSelected
+            ? "bg-primary/10 ring-1 ring-primary/30"
+            : "hover:bg-accent/50"
+        )}
+      >
+        {/* Favicon */}
+        <div className="size-5 rounded bg-muted/50 overflow-hidden shrink-0">
+          <FaviconImage
+            domain={item.domain}
+            className="size-full"
+            fallbackClassName="size-3 text-muted-foreground"
+          />
+        </div>
+
+        {/* Title */}
+        <Link
+          href={buildProxyUrlFromHistory(item.url)}
+          className="flex-1 min-w-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="text-sm font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+            {item.title}
+          </span>
+        </Link>
+
+        {/* Meta */}
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="text-xs text-muted-foreground hidden sm:block">
+            {item.domain}
+          </span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {formatRelativeTime(new Date(item.accessedAt))}
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+          >
+            <ExternalLink className="size-3.5" />
+          </a>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(item.id);
+            }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (viewMode === "grid") {
+    return (
+      <div
+        onClick={onSelect}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        className={cn(
+          "group relative rounded-xl border bg-card p-4 cursor-pointer transition-all duration-150",
+          isSelected
+            ? "ring-2 ring-primary shadow-lg shadow-primary/10"
+            : "hover:border-border hover:shadow-md"
+        )}
+      >
+        {/* Header with favicon and domain */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="size-6 rounded-md bg-muted/50 overflow-hidden shrink-0">
+            <FaviconImage
+              domain={item.domain}
+              className="size-full"
+              fallbackClassName="size-3 text-muted-foreground"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground truncate flex-1">
+            {item.domain}
+          </span>
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {formatRelativeTime(new Date(item.accessedAt))}
+          </span>
+        </div>
+
+        {/* Title */}
+        <Link
+          href={buildProxyUrlFromHistory(item.url)}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+            {item.title}
+          </h3>
+        </Link>
+
+        {/* Hover actions */}
+        <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-1.5 rounded-md bg-background/80 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ExternalLink className="size-3" />
+          </a>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(item.id);
+            }}
+            className="p-1.5 rounded-md bg-background/80 text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <Trash2 className="size-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Default list view
+  return (
+    <div
+      onClick={onSelect}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      className={cn(
+        "group relative flex items-start gap-3 rounded-xl p-3 cursor-pointer transition-all duration-150",
+        isSelected
+          ? "bg-primary/10 ring-1 ring-primary/30"
+          : "hover:bg-accent/50"
+      )}
+    >
+      {/* Favicon */}
+      <div className="relative mt-0.5 shrink-0">
+        <div className="size-9 rounded-lg bg-muted/50 p-1.5 ring-1 ring-border/30 overflow-hidden">
+          <FaviconImage
+            domain={item.domain}
+            className="size-full rounded-sm"
+            fallbackIcon={Newspaper}
+            fallbackClassName="size-full text-muted-foreground"
+          />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <Link
+          href={buildProxyUrlFromHistory(item.url)}
+          className="block"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="font-medium text-[15px] text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+            {item.title}
+          </h3>
+        </Link>
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate max-w-[200px]">{item.domain}</span>
+          <span className="text-border/60">·</span>
+          <span
+            className="tabular-nums"
+            title={formatFullDate(new Date(item.accessedAt))}
+          >
+            {formatRelativeTime(new Date(item.accessedAt))}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+          title="Open original"
+        >
+          <ExternalLink className="size-3.5" />
+        </a>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(item.id);
+          }}
+          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          title="Remove"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ROUND 3: Enhanced search with filters
+// ============================================================================
+
+type GroupingMode = "date" | "domain";
+
+function CommandBar({
+  value,
+  onChange,
+  onClear,
+  grouping,
+  onGroupingChange,
+  viewMode,
+  onViewModeChange,
+  resultCount,
+  totalCount,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+  grouping: GroupingMode;
+  onGroupingChange: (mode: GroupingMode) => void;
+  viewMode: "list" | "compact" | "grid";
+  onViewModeChange: (mode: "list" | "compact" | "grid") => void;
+  resultCount?: number;
+  totalCount?: number;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+      if (e.key === "Escape" && document.activeElement === inputRef.current) {
+        inputRef.current?.blur();
+        onClear();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClear]);
+
+  return (
+    <div className="space-y-3">
+      {/* Main search bar */}
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5",
+          "transition-all duration-200",
+          isFocused && "ring-2 ring-primary/20 border-primary/50"
+        )}
+      >
+        <Search className="size-4 text-muted-foreground shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Search articles..."
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+        />
+        {value ? (
+          <button
+            onClick={onClear}
+            className="shrink-0 p-1 rounded-md hover:bg-accent transition-colors"
+          >
+            <X className="size-3.5 text-muted-foreground" />
+          </button>
+        ) : (
+          <kbd className="hidden sm:flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-medium text-muted-foreground">
+            <Command className="size-3" />K
+          </kbd>
+        )}
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {/* Grouping toggle */}
+          <div className="flex items-center rounded-lg border bg-card p-0.5">
+            <button
+              onClick={() => onGroupingChange("date")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                grouping === "date"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Calendar className="size-3.5" />
+              <span className="hidden sm:inline">Date</span>
+            </button>
+            <button
+              onClick={() => onGroupingChange("domain")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                grouping === "domain"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Globe className="size-3.5" />
+              <span className="hidden sm:inline">Source</span>
+            </button>
+          </div>
+
+          {/* View mode toggle */}
+          <div className="flex items-center rounded-lg border bg-card p-0.5">
+            <button
+              onClick={() => onViewModeChange("list")}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                viewMode === "list"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="List view"
+            >
+              <List className="size-4" />
+            </button>
+            <button
+              onClick={() => onViewModeChange("compact")}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                viewMode === "compact"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Compact view"
+            >
+              <Grid3X3 className="size-4" />
+            </button>
+            <button
+              onClick={() => onViewModeChange("grid")}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                viewMode === "grid"
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Grid view"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Result count */}
+        {value && resultCount !== undefined && totalCount !== undefined && (
+          <span className="text-xs text-muted-foreground">
+            {resultCount} of {totalCount}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ROUND 1: Date group header
+// ============================================================================
+
+function DateGroupHeader({
+  label,
+  count,
+  isCollapsed,
+  onToggle,
+}: {
+  label: string;
+  count: number;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="sticky top-0 z-10 -mx-2 px-2 py-2 flex items-center gap-2 w-full bg-background/95 backdrop-blur-sm hover:bg-accent/30 transition-colors rounded-md group"
+    >
+      {onToggle && (
+        <ChevronRight
+          className={cn(
+            "size-3.5 text-muted-foreground transition-transform",
+            !isCollapsed && "rotate-90"
+          )}
+        />
+      )}
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-xs text-muted-foreground/60 tabular-nums">
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function DomainGroupHeader({
+  domain,
+  count,
+  isCollapsed,
+  onToggle,
+}: {
+  domain: string;
+  count: number;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="sticky top-0 z-10 -mx-2 px-2 py-2 flex items-center gap-2 w-full bg-background/95 backdrop-blur-sm hover:bg-accent/30 transition-colors rounded-md group"
+    >
+      {onToggle && (
+        <ChevronRight
+          className={cn(
+            "size-3.5 text-muted-foreground transition-transform",
+            !isCollapsed && "rotate-90"
+          )}
+        />
+      )}
+      <div className="size-4 rounded overflow-hidden shrink-0">
+        <FaviconImage
+          domain={domain}
+          className="size-full"
+          fallbackClassName="size-full text-muted-foreground"
+        />
+      </div>
+      <span className="text-xs font-medium text-muted-foreground truncate">
+        {domain}
+      </span>
+      <span className="text-xs text-muted-foreground/60 tabular-nums">
+        {count}
+      </span>
+    </button>
+  );
+}
+
+// ============================================================================
+// Empty and no results states
+// ============================================================================
 
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-300">
       <div className="mb-6 relative">
-        <div className="size-20 rounded-2xl bg-linear-to-br from-muted to-muted/50 flex items-center justify-center">
+        <div className="size-20 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
           <History className="size-10 text-muted-foreground/50" />
-        </div>
-        <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-primary/10 flex items-center justify-center">
-          <BookOpen className="size-3 text-primary" />
         </div>
       </div>
       <h3 className="text-lg font-semibold">No reading history yet</h3>
@@ -283,68 +909,9 @@ function NoSearchResults({ query }: { query: string }) {
   );
 }
 
-function SearchBar({
-  value,
-  onChange,
-  onClear,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onClear: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Keyboard shortcut: Cmd/Ctrl + K to focus search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-      if (e.key === "Escape" && document.activeElement === inputRef.current) {
-        inputRef.current?.blur();
-        onClear();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClear]);
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 rounded-xl border bg-card px-3 py-2",
-        "transition-all duration-200",
-        "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50",
-      )}
-    >
-      <Search className="size-4 text-muted-foreground shrink-0" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Search history..."
-        className={cn(
-          "flex-1 bg-transparent text-sm outline-none",
-          "placeholder:text-muted-foreground/60",
-        )}
-      />
-      {value && (
-        <button
-          onClick={onClear}
-          className="shrink-0 p-0.5 rounded hover:bg-accent transition-colors"
-        >
-          <X className="size-3.5 text-muted-foreground" />
-        </button>
-      )}
-      <kbd className="hidden sm:flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground">
-        <span className="text-xs">⌘</span>K
-      </kbd>
-    </div>
-  );
-}
+// ============================================================================
+// ROUND 7: Clear confirmation dialog
+// ============================================================================
 
 function ClearConfirmDialog({
   open,
@@ -355,7 +922,6 @@ function ClearConfirmDialog({
   onClose: () => void;
   onConfirm: () => void;
 }) {
-  // Handle escape key
   useEffect(() => {
     if (!open) return;
 
@@ -401,7 +967,107 @@ function ClearConfirmDialog({
   );
 }
 
+// ============================================================================
+// ROUND 2: Keyboard navigation hook
+// ============================================================================
+
+function useKeyboardNavigation(
+  items: HistoryItem[],
+  selectedId: string | null,
+  onSelect: (id: string) => void,
+  onOpen: (item: HistoryItem) => void
+) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if focused on input
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      const currentIndex = selectedId
+        ? items.findIndex((item) => item.id === selectedId)
+        : -1;
+
+      switch (e.key) {
+        case "j":
+        case "ArrowDown": {
+          e.preventDefault();
+          const nextIndex = Math.min(currentIndex + 1, items.length - 1);
+          if (items[nextIndex]) {
+            onSelect(items[nextIndex].id);
+          }
+          break;
+        }
+        case "k":
+        case "ArrowUp": {
+          e.preventDefault();
+          const prevIndex = Math.max(currentIndex - 1, 0);
+          if (items[prevIndex]) {
+            onSelect(items[prevIndex].id);
+          }
+          break;
+        }
+        case "Enter": {
+          e.preventDefault();
+          const selectedItem = items.find((item) => item.id === selectedId);
+          if (selectedItem) {
+            onOpen(selectedItem);
+          }
+          break;
+        }
+        case "Escape": {
+          e.preventDefault();
+          onSelect("");
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [items, selectedId, onSelect, onOpen]);
+}
+
+// ============================================================================
+// ROUND 5: Keyboard shortcuts help
+// ============================================================================
+
+function KeyboardHints({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "hidden lg:flex items-center gap-4 text-xs text-muted-foreground",
+        className
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <kbd className="px-1.5 py-0.5 rounded bg-muted font-medium">↑</kbd>
+        <kbd className="px-1.5 py-0.5 rounded bg-muted font-medium">↓</kbd>
+        <span>Navigate</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <kbd className="px-1.5 py-0.5 rounded bg-muted font-medium">
+          <CornerDownLeft className="size-3" />
+        </kbd>
+        <span>Open</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <kbd className="px-1.5 py-0.5 rounded bg-muted font-medium">esc</kbd>
+        <span>Clear</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Main History Content
+// ============================================================================
+
 function HistoryContent() {
+  const router = useRouter();
   const { has, isLoaded } = useAuth();
   const isPremium = isLoaded && (has?.({ plan: "premium" }) ?? false);
 
@@ -416,6 +1082,12 @@ function HistoryContent() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [grouping, setGrouping] = useState<GroupingMode>("date");
+  const [viewMode, setViewMode] = useState<"list" | "compact" | "grid">("list");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
 
   // Filter history based on search
   const filteredHistory = useMemo(() => {
@@ -425,17 +1097,57 @@ function HistoryContent() {
     return history.filter(
       (item) =>
         item.title.toLowerCase().includes(query) ||
-        item.domain.toLowerCase().includes(query),
+        item.domain.toLowerCase().includes(query)
     );
   }, [history, searchQuery]);
 
-  // Group filtered items by date
-  const groupedHistory = useMemo(
+  // Group items
+  const groupedByDate = useMemo(
     () => groupByDate(filteredHistory),
-    [filteredHistory],
+    [filteredHistory]
+  );
+  const groupedByDomain = useMemo(
+    () => groupByDomain(filteredHistory),
+    [filteredHistory]
   );
 
   const handleClearSearch = useCallback(() => setSearchQuery(""), []);
+
+  const handleOpenItem = useCallback(
+    (item: HistoryItem) => {
+      router.push(buildProxyUrlFromHistory(item.url));
+    },
+    [router]
+  );
+
+  const toggleGroup = useCallback((group: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) {
+        next.delete(group);
+      } else {
+        next.add(group);
+      }
+      return next;
+    });
+  }, []);
+
+  // Build navigation list that matches rendered order
+  const navigationItems = useMemo(() => {
+    if (viewMode === "grid") return filteredHistory;
+    if (grouping === "domain") {
+      return Array.from(groupedByDomain.values()).flatMap(({ items }) => items);
+    }
+    return Array.from(groupedByDate.values()).flatMap((items) => items);
+  }, [filteredHistory, groupedByDate, groupedByDomain, grouping, viewMode]);
+
+  // Keyboard navigation
+  useKeyboardNavigation(
+    navigationItems,
+    selectedId,
+    setSelectedId,
+    handleOpenItem
+  );
 
   if (!historyLoaded) {
     return (
@@ -456,32 +1168,44 @@ function HistoryContent() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Search and actions bar - Grid layout to prevent shifts */}
-      <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
-        {/* Search bar column */}
-        <div className="grid grid-rows-[auto_auto] gap-2">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onClear={handleClearSearch}
-          />
-          {/* Result count - always reserve space to prevent layout shift */}
-          <div className="h-5 flex items-center">
-            {searchQuery && (
-              <div className="text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-150">
-                {filteredHistory.length} of {history.length} articles
-              </div>
-            )}
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Stats dashboard - Round 9 */}
+      <ReadingStats history={history} />
 
-        {/* Clear button column - aligned to search bar */}
-        <div className="pt-0">
+      {/* Revisit suggestion - Round 10 */}
+      <RevisitSuggestion history={history} />
+
+      {/* Command bar with search, filters, and view toggle */}
+      <CommandBar
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onClear={handleClearSearch}
+        grouping={grouping}
+        onGroupingChange={setGrouping}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        resultCount={searchQuery ? filteredHistory.length : undefined}
+        totalCount={searchQuery ? history.length : undefined}
+      />
+
+      {/* Stats and actions bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>
+            {totalCount} {totalCount === 1 ? "article" : "articles"}
+          </span>
+          {hiddenCount > 0 && (
+            <span className="text-amber-500/80">
+              +{hiddenCount} hidden (free tier)
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <KeyboardHints />
           <Button
             variant="ghost"
             size="sm"
-            className="h-[38px] text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive"
             onClick={() => setShowClearConfirm(true)}
           >
             <Trash2 className="size-4" />
@@ -490,44 +1214,89 @@ function HistoryContent() {
         </div>
       </div>
 
-      {/* Stats bar - fixed position, no conditional spacing */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span>
-          {totalCount} {totalCount === 1 ? "article" : "articles"}
-        </span>
-        {hiddenCount > 0 && (
-          <span className="text-amber-500">
-            +{hiddenCount} hidden (free tier)
-          </span>
-        )}
-      </div>
-
       {/* History list */}
       {filteredHistory.length === 0 && searchQuery ? (
         <NoSearchResults query={searchQuery} />
-      ) : (
-        <div className="space-y-1 -mx-2">
-          {Array.from(groupedHistory.entries()).map(([group, items]) => (
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {filteredHistory.map((item) => (
+            <HistoryItemCard
+              key={item.id}
+              item={item}
+              onRemove={removeFromHistory}
+              isSelected={selectedId === item.id}
+              onSelect={() =>
+                setSelectedId(selectedId === item.id ? null : item.id)
+              }
+              viewMode={viewMode}
+            />
+          ))}
+        </div>
+      ) : grouping === "date" ? (
+        <div className="space-y-1">
+          {Array.from(groupedByDate.entries()).map(([group, items]) => (
             <div key={group}>
-              <DateGroupHeader label={group} />
-              {items.map((item, idx) => (
-                <HistoryItemCard
-                  key={item.id}
-                  item={item}
-                  onRemove={removeFromHistory}
-                  index={idx}
-                />
-              ))}
+              <DateGroupHeader
+                label={group}
+                count={items.length}
+                isCollapsed={collapsedGroups.has(group)}
+                onToggle={() => toggleGroup(group)}
+              />
+              {!collapsedGroups.has(group) && (
+                <div className="space-y-0.5 mt-1">
+                  {items.map((item) => (
+                    <HistoryItemCard
+                      key={item.id}
+                      item={item}
+                      onRemove={removeFromHistory}
+                      isSelected={selectedId === item.id}
+                      onSelect={() =>
+                        setSelectedId(selectedId === item.id ? null : item.id)
+                      }
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {Array.from(groupedByDomain.entries()).map(([domain, { items }]) => (
+            <div key={domain}>
+              <DomainGroupHeader
+                domain={domain}
+                count={items.length}
+                isCollapsed={collapsedGroups.has(domain)}
+                onToggle={() => toggleGroup(domain)}
+              />
+              {!collapsedGroups.has(domain) && (
+                <div className="space-y-0.5 mt-1">
+                  {items.map((item) => (
+                    <HistoryItemCard
+                      key={item.id}
+                      item={item}
+                      onRemove={removeFromHistory}
+                      isSelected={selectedId === item.id}
+                      onSelect={() =>
+                        setSelectedId(selectedId === item.id ? null : item.id)
+                      }
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {/* Hidden count banner for free users */}
+      {/* Premium upsell banner */}
       {hiddenCount > 0 && !searchQuery && (
-        <div className="rounded-2xl border border-amber-500/20 bg-linear-to-br from-amber-500/5 to-orange-500/5 p-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="flex items-start gap-4">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/20">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/20">
               <Crown className="size-5 text-white" />
             </div>
             <div className="flex-1">
@@ -558,11 +1327,15 @@ function HistoryContent() {
   );
 }
 
+// ============================================================================
+// Signed out content
+// ============================================================================
+
 function SignedOutContent() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="mb-6 relative">
-        <div className="size-20 rounded-2xl bg-linear-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center">
+        <div className="size-20 rounded-2xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center">
           <Crown className="size-10 text-amber-500" />
         </div>
       </div>
@@ -573,10 +1346,7 @@ function SignedOutContent() {
       </p>
       <div className="flex items-center gap-3 mt-6">
         <SignInButton mode="modal" fallbackRedirectUrl="/history">
-          <Button
-            variant="outline"
-            onClick={() => storeReturnUrl("/history")}
-          >
+          <Button variant="outline" onClick={() => storeReturnUrl("/history")}>
             Sign In
           </Button>
         </SignInButton>
@@ -587,6 +1357,10 @@ function SignedOutContent() {
     </div>
   );
 }
+
+// ============================================================================
+// Main export
+// ============================================================================
 
 export function HistoryPageContent() {
   const router = useRouter();
@@ -632,7 +1406,7 @@ export function HistoryPageContent() {
           {/* Page title */}
           <div className="mb-6">
             <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 flex items-center justify-center ring-1 ring-primary/10">
+              <div className="size-10 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center ring-1 ring-primary/10">
                 <History className="size-5 text-primary" />
               </div>
               <div>

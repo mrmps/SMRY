@@ -1,8 +1,11 @@
 "use client";
 
 import { useLocale } from "next-intl";
+import { useParams } from "next/navigation";
+import { useTransition } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type Locale } from "@/i18n/routing";
+import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import {
   Select,
   SelectContent,
@@ -33,12 +36,22 @@ const languageFlags: Record<Locale, string> = {
 export function LanguageSwitcher() {
   const locale = useLocale() as Locale;
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = stripLocaleFromPathname(rawPathname);
+  const params = useParams();
+  const [, startTransition] = useTransition();
 
   const handleChange = (newLocale: Locale | null) => {
     if (!newLocale) return;
-
-    router.replace(pathname, { locale: newLocale });
+    startTransition(() => {
+      router.replace(
+        // @ts-expect-error -- TypeScript will validate that only known `params`
+        // are used in combination with a given `pathname`. Since the two will
+        // always match for the current route, we can skip runtime checks.
+        { pathname, params },
+        { locale: newLocale }
+      );
+    });
   };
 
   return (
@@ -49,7 +62,7 @@ export function LanguageSwitcher() {
         <span className="sm:hidden">{languageFlags[locale]}</span>
         <SelectValue className="sr-only" />
       </SelectTrigger>
-      <SelectContent alignItemWithTrigger={false}>
+      <SelectContent alignItemWithTrigger={false} className="p-0 [&_[data-slot=select-item]]:h-7 [&_[data-slot=select-item]]:py-0">
         {routing.locales.map((loc) => (
           <SelectItem key={loc} value={loc}>
             <span className="mr-2">{languageFlags[loc]}</span>

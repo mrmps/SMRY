@@ -81,13 +81,13 @@ export function ResponsiveDrawer({
         </div>
         <DrawerContent
           id={contentId}
-          className={cn("flex h-[85vh] flex-col bg-background", contentClassName)}
+          className={cn("flex h-[85vh] flex-col bg-card", contentClassName)}
         >
           <DrawerTitle className="sr-only">{title}</DrawerTitle>
           <div className={cn("flex min-h-0 flex-1 flex-col", scrollable && "overflow-y-auto")}>
             {children}
           </div>
-          <DrawerFooter className="pb-safe shrink-0 border-t border-zinc-100 bg-white pt-3 dark:border-zinc-800 dark:bg-zinc-950">
+          <DrawerFooter className="pb-safe shrink-0 border-t-[0.5px] border-border bg-card pt-3">
             <DrawerClose
               render={(renderProps) => {
                 const { className, ...closeProps } = renderProps;
@@ -98,7 +98,7 @@ export function ResponsiveDrawer({
                     key={key}
                     variant="ghost"
                     className={cn(
-                      "h-9 w-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50",
+                      "h-9 w-full rounded-[5px] text-muted-foreground hover:bg-accent hover:text-foreground",
                       className
                     )}
                   >
@@ -122,7 +122,7 @@ export function ResponsiveDrawer({
         id={contentId}
         showCloseButton={showCloseButton}
         className={cn(
-          "flex flex-col border-l border-zinc-100 bg-zinc-50 p-0 dark:border-zinc-800 dark:bg-zinc-950 sm:max-w-[480px] sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl",
+          "flex flex-col border-[0.5px] border-border bg-card p-0 sm:max-w-[420px] sm:max-h-[calc(100vh-2rem)] sm:rounded-xl",
           scrollable ? "overflow-y-auto" : "overflow-hidden",
           contentClassName
         )}

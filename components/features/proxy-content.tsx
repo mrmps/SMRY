@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import React, { useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
 import { useArticles } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline";
@@ -21,10 +20,16 @@ import {
   X,
   Zap,
   LogIn,
+  Globe,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "@/i18n/navigation";
+import { useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { routing, type Locale, defaultLocale } from "@/i18n/routing";
 import ShareButton from "@/components/features/share-button";
 import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
@@ -49,6 +54,9 @@ import {
   MenuTrigger,
   MenuPopup,
   MenuItem,
+  MenuSeparator,
+  MenuGroup,
+  MenuGroupLabel,
 } from "@/components/ui/menu";
 import {
   useQueryStates,
@@ -64,26 +72,19 @@ import {
 } from "@/components/ui/resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
 
-const ModeToggle = dynamic(
-  () => import("@/components/shared/mode-toggle").then((mod) => mod.ModeToggle),
-  { ssr: false, loading: () => <div className="size-9" /> }
-);
 
 // History button that links to /history for signed-in users, /pricing for signed-out
 function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
   const { isSignedIn, isLoaded } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard mounted detection pattern for hydration
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
 
   const isDesktop = variant === "desktop";
-  const href = isSignedIn ? "/history" : "/pricing";
-  // Only show badge after mount to avoid hydration mismatch (auth state is client-only)
+  // Use consistent values for SSR, then update after mount when auth is known
+  const isAuthed = mounted && isLoaded && isSignedIn;
+  const href = isAuthed ? "/history" : "/pricing";
+  const title = isAuthed ? "History" : "History (Premium)";
   const showBadge = mounted && isLoaded && !isSignedIn;
-  
+
   return (
     <Link
       href={href}
@@ -93,7 +94,7 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
           ? "h-9 w-9 text-muted-foreground hover:text-foreground relative"
           : "h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground relative"
       )}
-      title={isSignedIn ? "History" : "History (Premium)"}
+      title={title}
     >
       <HistoryIcon className="size-4" />
       {!isDesktop && <span className="sr-only">History</span>}
@@ -110,6 +111,190 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
         ★
       </span>
     </Link>
+  );
+}
+
+// Helper to detect client-side rendering without setState in effect
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+// History menu item for the More dropdown
+function HistoryMenuItem() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+
+  const href = isSignedIn ? "/history" : "/pricing";
+  const showBadge = mounted && isLoaded && !isSignedIn;
+
+  return (
+    <MenuItem
+      render={(props) => {
+        const { key, className, ...rest } = props as typeof props & {
+          key?: React.Key;
+          className?: string;
+        };
+        return (
+          <Link
+            key={key}
+            {...rest}
+            href={href}
+            className={cn(className, "flex items-center gap-2 w-full px-3")}
+          >
+            <HistoryIcon className="size-4" />
+            <span className="flex-1">History</span>
+            {showBadge && (
+              <span className="text-[10px] font-medium text-amber-500">PRO</span>
+            )}
+          </Link>
+        );
+      }}
+    />
+  );
+}
+
+const languageNames: Record<Locale, string> = {
+  en: "English",
+  pt: "Português",
+  de: "Deutsch",
+  zh: "中文",
+  es: "Español",
+  nl: "Nederlands",
+};
+
+// URL-based locale switching that preserves query params
+function useLocaleSwitch() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  return (newLocale: Locale) => {
+    // Build the new URL with locale prefix (or none for default)
+    const localePrefix = newLocale === defaultLocale ? '' : `/${newLocale}`;
+    const search = searchParams.toString();
+    const newUrl = `${localePrefix}${pathname}${search ? `?${search}` : ''}`;
+
+    // Navigate to the new locale URL (preserves all query state)
+    window.location.href = newUrl;
+  };
+}
+
+// Language menu items for the More dropdown
+function LanguageMenuItems() {
+  const locale = useLocale() as Locale;
+  const switchLocale = useLocaleSwitch();
+
+  return (
+    <>
+      <MenuSeparator />
+      <MenuGroup>
+        <MenuGroupLabel>Language</MenuGroupLabel>
+        <div className="px-1 pb-1 space-y-0.5">
+          {routing.locales.map((loc) => (
+            <MenuItem
+              key={loc}
+              onClick={() => switchLocale(loc)}
+              className={cn(
+                "flex items-center justify-between w-full px-2 rounded cursor-pointer",
+                locale === loc && "bg-accent"
+              )}
+            >
+              <span>{languageNames[loc]}</span>
+              {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
+            </MenuItem>
+          ))}
+        </div>
+      </MenuGroup>
+    </>
+  );
+}
+
+// Language section for mobile drawer
+function LanguageSection({ onSelect }: { onSelect?: () => void }) {
+  const locale = useLocale() as Locale;
+  const switchLocale = useLocaleSwitch();
+
+  const handleSelect = (loc: Locale) => {
+    switchLocale(loc);
+    onSelect?.();
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+        <Globe className="size-4" />
+        Language
+      </label>
+      <div className="grid grid-cols-3 gap-2">
+        {routing.locales.map((loc) => (
+          <Button
+            key={loc}
+            variant={locale === loc ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => handleSelect(loc)}
+            className="w-full justify-center"
+          >
+            {languageNames[loc]}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Theme menu items for the More dropdown
+function ThemeMenuItems() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+
+  if (!mounted) return null;
+
+  const isDark = resolvedTheme === "dark" || resolvedTheme === "magic-blue" || resolvedTheme === "classic-dark";
+
+  return (
+    <>
+      <MenuSeparator />
+      <MenuGroup>
+        <MenuGroupLabel>Theme</MenuGroupLabel>
+        <div className="flex items-center gap-1 px-3 pb-1">
+          <button
+            onClick={() => setTheme("light")}
+            className={cn(
+              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              theme === "light" || (theme === "system" && !isDark)
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent/50 text-muted-foreground"
+            )}
+            title="Light"
+          >
+            <Sun className="size-4" />
+          </button>
+          <button
+            onClick={() => setTheme("dark")}
+            className={cn(
+              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              theme === "dark" || theme === "magic-blue" || theme === "classic-dark"
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent/50 text-muted-foreground"
+            )}
+            title="Dark"
+          >
+            <Moon className="size-4" />
+          </button>
+          <button
+            onClick={() => setTheme("system")}
+            className={cn(
+              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              theme === "system"
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent/50 text-muted-foreground"
+            )}
+            title="System"
+          >
+            <Laptop className="size-4" />
+          </button>
+        </div>
+      </MenuGroup>
+    </>
   );
 }
 
@@ -375,7 +560,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
 
               <ShareButton
-                url={`https://smry.ai/${url}`}
+                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}
@@ -389,13 +574,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 source={source}
                 viewMode={viewMode}
               />
-
-              {/* Separator */}
-              <div className="w-px h-5 bg-border/60 mx-1" />
-
-              {/* Secondary Actions */}
-              <HistoryButton variant="desktop" />
-              <ModeToggle />
 
               {/* User Section */}
               <AuthBar variant="compact" showUpgrade={false} className="ml-1" />
@@ -420,10 +598,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     );
                   }}
                 />
-                <MenuPopup side="bottom" align="end">
+                <MenuPopup side="bottom" align="end" className="min-w-[180px]">
+                  <HistoryMenuItem />
+                  <LanguageMenuItems />
+                  <ThemeMenuItems />
+                  <MenuSeparator />
                   <MenuItem
                     render={(props) => {
-                      const { key, ...rest } = props as typeof props & { key?: React.Key };
+                      const { key, className, ...rest } = props as typeof props & {
+                        key?: React.Key;
+                        className?: string;
+                      };
                       return (
                         <a
                           key={key}
@@ -431,7 +616,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                           href="https://smryai.userjot.com/"
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-2 w-full"
+                          className={cn(className, "flex items-center gap-2 w-full px-3")}
                         >
                           <BugIcon className="size-4" />
                           <span className="flex-1">Report Bug</span>
@@ -442,7 +627,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   />
                   <MenuItem
                     render={(props) => {
-                      const { key, ...rest } = props as typeof props & { key?: React.Key };
+                      const { key, className, ...rest } = props as typeof props & {
+                        key?: React.Key;
+                        className?: string;
+                      };
                       return (
                         <a
                           key={key}
@@ -450,7 +638,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                           href="https://smryai.userjot.com/"
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-2 w-full"
+                          className={cn(className, "flex items-center gap-2 w-full px-3")}
                         >
                           <MessageSquare className="size-4" />
                           <span className="flex-1">Send Feedback</span>
@@ -466,7 +654,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             {/* Mobile Actions */}
             <div className="md:hidden flex items-center gap-1.5">
               <ShareButton
-                url={`https://smry.ai/${url}`}
+                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
                 sidebarOpen={sidebarOpen}
@@ -661,6 +849,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         </Button>
                       </div>
                     </div>
+
+                    {/* Language Section */}
+                    <LanguageSection onSelect={() => setSettingsOpen(false)} />
 
                     {/* Support Section */}
                     <div className="space-y-3">

@@ -189,6 +189,37 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { data, isLoading, isError, error } = query;
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
+
+  // Add click-to-expand functionality to images
+  // Must depend on sanitizedArticleContent since that's what's actually rendered
+  useEffect(() => {
+    if (!contentRef.current || !sanitizedArticleContent) return;
+
+    const images = contentRef.current.querySelectorAll("img");
+    const handleClick = (e: Event) => {
+      const img = e.target as HTMLImageElement;
+      // Don't expand if image is inside a link - let the link navigate instead
+      if (img.closest("a")) return;
+      img.classList.toggle("expanded");
+    };
+
+    images.forEach((img) => {
+      // Only add expand behavior to images not inside links
+      if (!img.closest("a")) {
+        img.addEventListener("click", handleClick);
+        img.title = "Click to expand/collapse";
+      }
+    });
+
+    return () => {
+      images.forEach((img) => {
+        img.removeEventListener("click", handleClick);
+      });
+    };
+  }, [sanitizedArticleContent]);
 
   // Extract debug context from error if available
   const debugContext =
@@ -217,10 +248,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   };
 
   const cacheURL = getCacheURL();
-
-  // Sanitize article content for markdown view (prevents XSS)
-  // Uses client-side DOMPurify to avoid SSR issues with jsdom
-  const sanitizedArticleContent = useSanitizedHtml(data?.article?.content);
 
   // Get the raw HTML content for the "Original" view
   // No sanitization needed - it's rendered in a sandboxed iframe which:
@@ -486,6 +513,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               ) : sanitizedArticleContent ? (
                 <>
                   <div
+                    ref={contentRef}
                     className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
                     dir={data?.article?.dir || "ltr"}
                     lang={data?.article?.lang || undefined}
