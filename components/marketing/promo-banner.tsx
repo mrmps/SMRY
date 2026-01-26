@@ -40,8 +40,6 @@ export function PromoBanner() {
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{t("features")}</span>
         <span className="mx-1.5">·</span>
-        <span>{t("pricing")}</span>
-        <span className="mx-1.5">·</span>
         <span>{t("deadline")}</span>
         <span className="mx-1.5">·</span>
         <Link
