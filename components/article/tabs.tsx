@@ -135,6 +135,8 @@ interface TabProps {
   showInlineSummary?: boolean;
   /** Additional class name for the container */
   className?: string;
+  /** Whether mobile header is visible - controls tabs sticky position */
+  mobileHeaderVisible?: boolean;
 }
 
 const ArrowTabs: React.FC<TabProps> = ({
@@ -146,6 +148,7 @@ const ArrowTabs: React.FC<TabProps> = ({
   summaryOpen,
   onSummaryOpenChange,
   showInlineSummary = true,
+  mobileHeaderVisible = true,
   className,
 }) => {
   const results = articleResults;
@@ -240,7 +243,7 @@ const ArrowTabs: React.FC<TabProps> = ({
   return (
     <div className={cn(
       "relative min-h-screen pb-12 md:pb-0",
-      viewMode === "html" ? "px-0" : "px-4 md:px-0",
+      viewMode === "html" ? "px-0" : "md:px-0",
       className
     )}>
       <Tabs
@@ -250,8 +253,10 @@ const ArrowTabs: React.FC<TabProps> = ({
       >
         {/* Tabs List - Responsive (Scrollable on mobile) */}
         <div className={cn(
-          "sticky top-0 z-20 bg-gradient-to-b from-background from-70% to-transparent",
-          viewMode === "html" ? "mb-2 pb-2" : "mb-4 pb-4"
+          "sticky z-20 bg-gradient-to-b from-background from-70% to-transparent transition-[top] duration-300 ease-out",
+          // On mobile: top-14 when header visible, top-0 when hidden. On desktop: always top-0
+          mobileHeaderVisible ? "top-14 md:top-0" : "top-0",
+          viewMode === "html" ? "mb-2 pb-2" : ""
         )}>
           <EnhancedTabsList
             sources={SOURCES}

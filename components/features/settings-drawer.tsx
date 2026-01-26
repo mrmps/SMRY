@@ -288,7 +288,7 @@ function ThemePicker({ className }: { className?: string }) {
 
 // Account section that adapts to auth state
 function AccountSection({ onAction }: { onAction?: () => void }) {
-  const isPremium = useIsPremium();
+  const { isPremium } = useIsPremium();
 
   return (
     <>

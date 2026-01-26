@@ -356,6 +356,67 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
+
+  // Mobile header hide-on-scroll state
+  const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const lastScrollY = useRef(0);
+  const scrollDeltaAccum = useRef(0);
+  const headerVisibleRef = useRef(true);
+  const lastToggleTime = useRef(0); // Cooldown to prevent mid-animation reversal
+
+  // Track scroll direction to hide/show mobile header (like X/Twitter)
+  useEffect(() => {
+    const scrollEl = mobileScrollRef.current;
+    if (!scrollEl || isDesktop !== false) return;
+
+    const handleScroll = () => {
+      const currentY = scrollEl.scrollTop;
+      const delta = currentY - lastScrollY.current;
+      const now = Date.now();
+      lastScrollY.current = currentY;
+
+      // Cooldown: ignore state changes for 300ms after last toggle (animation duration)
+      const inCooldown = now - lastToggleTime.current < 300;
+
+      // Always show at top (bypass cooldown for this)
+      if (currentY < 50) {
+        if (!headerVisibleRef.current) {
+          headerVisibleRef.current = true;
+          setMobileHeaderVisible(true);
+          lastToggleTime.current = now;
+        }
+        scrollDeltaAccum.current = 0;
+        return;
+      }
+
+      // Accumulate scroll in same direction, reset on direction change
+      if ((delta > 0 && scrollDeltaAccum.current < 0) || (delta < 0 && scrollDeltaAccum.current > 0)) {
+        scrollDeltaAccum.current = 0;
+      }
+      scrollDeltaAccum.current += delta;
+
+      // Skip state changes during cooldown
+      if (inCooldown) return;
+
+      // Trigger after accumulating ~60px in one direction (hysteresis)
+      if (scrollDeltaAccum.current > 60 && headerVisibleRef.current) {
+        headerVisibleRef.current = false;
+        setMobileHeaderVisible(false);
+        scrollDeltaAccum.current = 0;
+        lastToggleTime.current = now;
+      } else if (scrollDeltaAccum.current < -60 && !headerVisibleRef.current) {
+        headerVisibleRef.current = true;
+        setMobileHeaderVisible(true);
+        scrollDeltaAccum.current = 0;
+        lastToggleTime.current = now;
+      }
+    };
+
+    scrollEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", handleScroll);
+  }, [isDesktop]);
 
   // Resizable panel ref
   const summaryPanelRef = useRef<ImperativePanelHandle>(null);
@@ -381,20 +442,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       <PromoBanner />
 
       <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="z-30 flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
-          {/* Mobile Header - Clean with back button */}
-          <div className="md:hidden flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => window.history.back()}
-              className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="size-5" />
-            </button>
-          </div>
-
+        <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
           {/* Desktop Header - Logo */}
-          <div className="hidden md:flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/"
               className="flex items-center gap-2 transition-opacity hover:opacity-80"
@@ -409,8 +459,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               />
             </Link>
 
-            {/* View Mode Pills - Desktop: more visible with solid background */}
-            <div className="hidden md:flex items-center p-1 bg-muted rounded-xl" role="group" aria-label="View mode">
+            {/* View Mode Pills */}
+            <div className="flex items-center p-1 bg-muted rounded-xl" role="group" aria-label="View mode">
               <button
                 onClick={() => handleViewModeChange("markdown")}
                 aria-label="Reader view mode"
@@ -453,24 +503,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             </div>
           </div>
 
-          {/* Center: Domain on mobile, Spacer on desktop */}
-          <div className="flex-1 flex items-center justify-center md:justify-start">
-            {/* Mobile: Show source domain */}
-            <span className="md:hidden text-sm font-medium text-muted-foreground truncate max-w-[200px]">
-              {(() => {
-                try {
-                  return new URL(url).hostname.replace('www.', '').toUpperCase();
-                } catch {
-                  return '';
-                }
-              })()}
-            </span>
-          </div>
+          {/* Spacer */}
+          <div className="flex-1" />
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2">
-            {/* Desktop Actions - Reorganized with overflow menu */}
-            <div className="hidden md:flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
               {/* Summary button - shows when sidebar is closed */}
               {!sidebarOpen && (
                 <Button
@@ -574,32 +611,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   />
                 </MenuPopup>
               </Menu>
-            </div>
-
-            {/* Mobile Actions - Simplified header with summary trigger */}
-            <div className="md:hidden flex items-center gap-1.5">
-              {/* Summary trigger button */}
-              <button
-                onClick={() => setMobileSummaryOpen(true)}
-                className={cn(
-                  "size-9 flex items-center justify-center rounded-full transition-colors",
-                  mobileSummaryOpen
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Open summary"
-              >
-                <SummaryIcon className="size-5" />
-              </button>
-
-              {/* Settings drawer - triggered from bottom bar */}
-              <SettingsDrawer
-                open={settingsOpen}
-                onOpenChange={setSettingsOpen}
-                viewMode={viewMode}
-                onViewModeChange={handleViewModeChange}
-              />
-            </div>
           </div>
         </header>
 
@@ -695,23 +706,59 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             </div>
           ) : (
             // Mobile: Clean article-first layout with bottom bar
-            <div className="h-full overflow-y-auto bg-card pb-16">
+            <div ref={mobileScrollRef} className="h-full overflow-y-auto bg-card pb-16">
+              {/* Mobile sticky header with hide-on-scroll */}
+              <header className={cn(
+                "sticky top-0 z-30 flex h-14 items-center bg-background px-4 transition-transform duration-300 ease-out",
+                !mobileHeaderVisible && "-translate-y-full"
+              )}>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => window.history.back()}
+                    className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    aria-label="Go back"
+                  >
+                    <ArrowLeft className="size-5" />
+                  </button>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px]">
+                    {(() => {
+                      try {
+                        return new URL(url).hostname.replace('www.', '').toUpperCase();
+                      } catch {
+                        return '';
+                      }
+                    })()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setMobileSummaryOpen(true)}
+                    className={cn(
+                      "size-9 flex items-center justify-center rounded-full transition-colors",
+                      mobileSummaryOpen
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    aria-label="Open summary"
+                  >
+                    <SummaryIcon className="size-5" />
+                  </button>
+                  <SettingsDrawer
+                    open={settingsOpen}
+                    onOpenChange={setSettingsOpen}
+                    viewMode={viewMode}
+                    onViewModeChange={handleViewModeChange}
+                  />
+                </div>
+              </header>
+
               <div className={cn(
                 viewMode === "html"
                   ? "h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
                   : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
               )}>
-                {/* Mobile ad above tabs - compact and tasteful */}
-                {!isPremium && gravityAd && (
-                  <div className="mb-3">
-                    <GravityAd
-                      ad={gravityAd}
-                      variant="compact"
-                      onVisible={() => fireImpression(gravityAd.impUrl)}
-                    />
-                  </div>
-                )}
-
                 {/* Article content - no inline summary, it's in the drawer now */}
                 <ArrowTabs
                   url={url}
@@ -722,6 +769,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   summaryOpen={false}
                   onSummaryOpenChange={() => {}}
                   showInlineSummary={false}
+                  mobileHeaderVisible={mobileHeaderVisible}
                 />
               </div>
 
@@ -754,6 +802,21 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   </div>
                 </DrawerContent>
               </Drawer>
+
+              {/* Fixed ad above bottom bar */}
+              {!isPremium && gravityAd && !mobileAdDismissed && (
+                <div
+                  className="fixed left-0 right-0 z-20"
+                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}
+                >
+                  <GravityAd
+                    ad={gravityAd}
+                    variant="bar"
+                    onVisible={() => fireImpression(gravityAd.impUrl)}
+                    onDismiss={() => setMobileAdDismissed(true)}
+                  />
+                </div>
+              )}
 
               {/* Mobile Bottom Bar */}
               <MobileBottomBar
