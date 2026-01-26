@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BottomCornerNav } from "@/components/shared/bottom-corner-nav";
 import { FAQ } from "@/components/marketing/faq";
+import { AuthBar } from "@/components/shared/auth-bar";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -339,6 +340,9 @@ export function HomeContent() {
   return (
     <>
       <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
+
+        {/* Auth - top right */}
+        <AuthBar className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6" />
 
         {/* Film grain texture - dark mode only */}
         <svg
