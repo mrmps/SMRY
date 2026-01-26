@@ -89,6 +89,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
         </a>
         {onDismiss && (
           <button
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

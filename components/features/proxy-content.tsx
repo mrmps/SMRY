@@ -789,6 +789,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     <button
                       onClick={() => setMobileSummaryOpen(false)}
                       className="size-8 flex items-center justify-center rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
+                      aria-label="Close summary"
                     >
                       <X className="size-4" />
                     </button>
@@ -829,7 +830,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               <MobileBottomBar
                 viewMode={viewMode || "markdown"}
                 onViewModeChange={handleViewModeChange}
-                smryUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
+                smryUrl={`https://smry.ai/${url}`}
                 originalUrl={url}
                 articleTitle={articleTitle}
                 onOpenSettings={() => settingsDrawerRef.current?.open()}

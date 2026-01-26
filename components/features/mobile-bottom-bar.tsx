@@ -72,8 +72,10 @@ export function MobileBottomBar({
   };
 
   const handleTweet = () => {
-    const tweetUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(smryUrl)}&text=${encodeURIComponent(articleTitle || "")}`;
-    window.open(tweetUrl, "_blank");
+    // Use short format without https:// for cleaner tweets
+    const xShareText = `smry.ai/${originalUrl}`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(xShareText)}`;
+    window.open(tweetUrl, "_blank", "noopener,noreferrer");
     setShareDrawerOpen(false);
   };
 
@@ -181,7 +183,7 @@ export function MobileBottomBar({
                 <div className="relative">
                   <button
                     onClick={() => {
-                      window.open(originalUrl, "_blank");
+                      window.open(originalUrl, "_blank", "noopener,noreferrer");
                       setShareDrawerOpen(false);
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70"

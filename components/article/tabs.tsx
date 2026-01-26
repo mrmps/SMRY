@@ -179,8 +179,11 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
     if (isMobile && viewMode === "html") {
       const frameId = requestAnimationFrame(() => setIsFullScreen(true));
       return () => cancelAnimationFrame(frameId);
+    } else if (isMobile && viewMode !== "html" && isFullScreen) {
+      const frameId = requestAnimationFrame(() => setIsFullScreen(false));
+      return () => cancelAnimationFrame(frameId);
     }
-  }, [viewMode]);
+  }, [viewMode, isFullScreen]);
 
   const smryFastLength = smryFastResult.data?.article?.length;
   const smrySlowLength = smrySlowResult.data?.article?.length;
