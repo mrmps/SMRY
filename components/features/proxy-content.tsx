@@ -26,8 +26,10 @@ import {
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
-import { routing, type Locale } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
+import { routing, type Locale, defaultLocale } from "@/i18n/routing";
 import ShareButton from "@/components/features/share-button";
 import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
 import { buttonVariants, Button } from "@/components/ui/button";
@@ -163,13 +165,19 @@ const languageNames: Record<Locale, string> = {
   nl: "Nederlands",
 };
 
-// Cookie-based locale switching (doesn't change URL, preserves state)
+// URL-based locale switching that preserves query params
 function useLocaleSwitch() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   return (newLocale: Locale) => {
-    // Set the NEXT_LOCALE cookie (next-intl respects this)
-    document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000`;
-    // Hard refresh to trigger middleware with new cookie
-    window.location.reload();
+    // Build the new URL with locale prefix (or none for default)
+    const localePrefix = newLocale === defaultLocale ? '' : `/${newLocale}`;
+    const search = searchParams.toString();
+    const newUrl = `${localePrefix}${pathname}${search ? `?${search}` : ''}`;
+
+    // Navigate to the new locale URL (preserves all query state)
+    window.location.href = newUrl;
   };
 }
 
