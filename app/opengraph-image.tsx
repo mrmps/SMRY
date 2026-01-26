@@ -26,10 +26,10 @@ function noise2D(x: number, y: number, seed: number): number {
   return ((n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v + 1) / 2;
 }
 
-// Halftone: visible texture pattern
+// Halftone: premium dot grid pattern
 function generateHalftone(seed: number, width: number, height: number) {
   const dots: { x: number; y: number; size: number; opacity: number }[] = [];
-  const spacing = 20;
+  const spacing = 24;
   const centerX = width / 2, centerY = height / 2;
 
   for (let y = 0; y < height; y += spacing) {
@@ -38,19 +38,17 @@ function generateHalftone(seed: number, width: number, height: number) {
       const dy = (y - centerY) / (height / 2);
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < 0.3) continue;
+      if (dist < 0.35) continue;
 
-      const edgeFade = Math.min(1, (dist - 0.3) / 0.7);
-      const n = noise2D(x * 0.012, y * 0.012, seed);
+      const edgeFade = Math.min(1, (dist - 0.35) / 0.5);
+      const n = noise2D(x * 0.008, y * 0.008, seed);
 
-      if (n > 0.25) {
-        const intensity = (n - 0.25) / 0.75 * edgeFade;
-        dots.push({
-          x, y,
-          size: 4 + intensity * 6,
-          opacity: 0.35 + intensity * 0.45,
-        });
-      }
+      const baseSize = 5;
+      const sizeVariation = n * 2;
+      const size = baseSize + sizeVariation * edgeFade;
+      const opacity = 0.4 + edgeFade * 0.35;
+
+      dots.push({ x, y, size, opacity });
     }
   }
   return dots;
@@ -122,7 +120,7 @@ export default async function OGImage() {
               fontWeight: 500,
               color: "#d4d4d8",
               marginTop: 20,
-              letterSpacing: "0.01em",
+              letterSpacing: "-0.02em",
             }}
           >
             Read anything. Summarize everything.
@@ -132,10 +130,10 @@ export default async function OGImage() {
             style={{
               display: "flex",
               marginTop: 56,
-              padding: "14px 24px",
+              padding: "14px 28px",
               borderRadius: 10,
-              backgroundColor: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
+              backgroundColor: "#18181b",
+              border: "1px solid #27272a",
             }}
           >
             <span
@@ -143,7 +141,7 @@ export default async function OGImage() {
                 fontFamily: "Inter",
                 fontSize: 20,
                 fontWeight: 500,
-                color: "#d4d4d8",
+                color: "#e4e4e7",
                 letterSpacing: "-0.01em",
               }}
             >
