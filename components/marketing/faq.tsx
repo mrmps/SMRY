@@ -41,7 +41,7 @@ export function FAQ() {
             <li>
               {t("a8Option1", {
                 code: "smry.ai/",
-                example: "smry.ai/example.com/2024/any-article"
+                example: "smry.ai/example.com/2026/any-article"
               }).split("{code}").map((part, i) =>
                 i === 0 ? part : (
                   <span key={i}>

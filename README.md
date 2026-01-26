@@ -13,7 +13,7 @@ SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered
 
 ## Quick Start
 
-1. **Prepend the prefix**: Add `smry.ai/` before any article URL (e.g. `smry.ai/example.com/2024/any-article`) to jump straight into SMRY.
+1. **Prepend the prefix**: Add `smry.ai/` before any article URL (e.g. `smry.ai/example.com/2026/any-article`) to jump straight into SMRY.
 2. **Paste a link on the homepage**: smry.ai will fetch it, clean it, and let you generate summaries.
 3. **Use the bookmarklet**: Drag the provided bookmarklet to your bookmarks bar; click it on any page to wrap it in SMRY.
 4. **Call the proxy route directly**: `https://your-domain.com/proxy?url=https://example.com/article` works for deep linking and integrations.
