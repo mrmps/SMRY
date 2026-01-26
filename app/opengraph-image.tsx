@@ -26,10 +26,10 @@ function noise2D(x: number, y: number, seed: number): number {
   return ((n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v + 1) / 2;
 }
 
-// Halftone: subtle texture, not a feature
+// Halftone: visible texture pattern
 function generateHalftone(seed: number, width: number, height: number) {
   const dots: { x: number; y: number; size: number; opacity: number }[] = [];
-  const spacing = 16;
+  const spacing = 20;
   const centerX = width / 2, centerY = height / 2;
 
   for (let y = 0; y < height; y += spacing) {
@@ -38,17 +38,17 @@ function generateHalftone(seed: number, width: number, height: number) {
       const dy = (y - centerY) / (height / 2);
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < 0.45) continue;
+      if (dist < 0.3) continue;
 
-      const edgeFade = Math.min(1, (dist - 0.45) / 0.55);
-      const n = noise2D(x * 0.015, y * 0.015, seed);
+      const edgeFade = Math.min(1, (dist - 0.3) / 0.7);
+      const n = noise2D(x * 0.012, y * 0.012, seed);
 
-      if (n > 0.35) {
-        const intensity = (n - 0.35) / 0.65 * edgeFade;
+      if (n > 0.25) {
+        const intensity = (n - 0.25) / 0.75 * edgeFade;
         dots.push({
           x, y,
-          size: 2 + intensity * 3,
-          opacity: 0.15 + intensity * 0.25,
+          size: 4 + intensity * 6,
+          opacity: 0.35 + intensity * 0.45,
         });
       }
     }
@@ -106,10 +106,10 @@ export default async function OGImage() {
           <div
             style={{
               fontFamily: "Syne",
-              fontSize: 108,
+              fontSize: 140,
               fontWeight: 700,
-              color: "#fafafa",
-              letterSpacing: "-0.03em",
+              color: "#ffffff",
+              letterSpacing: "-0.02em",
             }}
           >
             smry
@@ -118,10 +118,10 @@ export default async function OGImage() {
           <div
             style={{
               fontFamily: "Inter",
-              fontSize: 24,
-              fontWeight: 400,
-              color: "#a1a1aa",
-              marginTop: 16,
+              fontSize: 32,
+              fontWeight: 500,
+              color: "#d4d4d8",
+              marginTop: 20,
               letterSpacing: "0.01em",
             }}
           >
@@ -131,19 +131,19 @@ export default async function OGImage() {
           <div
             style={{
               display: "flex",
-              marginTop: 48,
-              padding: "10px 18px",
-              borderRadius: 8,
-              backgroundColor: "rgba(255, 255, 255, 0.025)",
-              border: "1px solid rgba(255, 255, 255, 0.06)",
+              marginTop: 56,
+              padding: "14px 24px",
+              borderRadius: 10,
+              backgroundColor: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
             }}
           >
             <span
               style={{
                 fontFamily: "Inter",
-                fontSize: 15,
-                fontWeight: 400,
-                color: "#a1a1aa",
+                fontSize: 20,
+                fontWeight: 500,
+                color: "#d4d4d8",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -152,9 +152,9 @@ export default async function OGImage() {
             <span
               style={{
                 fontFamily: "Inter",
-                fontSize: 15,
+                fontSize: 20,
                 fontWeight: 400,
-                color: "#52525b",
+                color: "#71717a",
                 letterSpacing: "-0.01em",
               }}
             >
