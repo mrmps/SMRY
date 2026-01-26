@@ -39,19 +39,15 @@ export function FAQ() {
           {t("a8")}
           <ol className="mt-3 list-decimal space-y-2 pl-5">
             <li>
-              {t("a8Option1", {
-                code: "smry.ai/",
-                example: "smry.ai/example.com/2026/any-article"
-              }).split("{code}").map((part, i) =>
-                i === 0 ? part : (
-                  <span key={i}>
-                    <code className="rounded bg-foreground/5 px-1.5 py-0.5 font-mono text-xs">
-                      smry.ai/
-                    </code>
-                    {part}
-                  </span>
-                )
-              )}
+              Prepend{" "}
+              <code className="rounded bg-foreground/5 px-1.5 py-0.5 font-mono text-xs">
+                smry.ai/
+              </code>{" "}
+              to any article URL. For example:{" "}
+              <code className="rounded bg-foreground/5 px-1.5 py-0.5 font-mono text-xs whitespace-nowrap">
+                <span className="text-foreground font-semibold">smry.ai/</span>
+                <span className="text-muted-foreground">news-site.com/article</span>
+              </code>
             </li>
             <li>{t("a8Option2")}</li>
             <li>{t("a8Option3")}</li>
