@@ -1,231 +1,174 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
-export const alt = "Smry - AI-powered reader for any article";
-export const size = {
-  width: 1200,
-  height: 630,
-};
+export const alt = "smry - Read Anything, Summarize Everything";
+export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default async function Image() {
-  // Load Inter font (reliable Google font) for body text
-  const interSemiBold = fetch(
-    new URL("https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYAZ9hiJ-Ek-_EeA.woff2")
-  ).then((res) => res.arrayBuffer());
+// Subtle noise for organic variation
+function noise2D(x: number, y: number, seed: number): number {
+  const gradients = [
+    [1, 1], [-1, 1], [1, -1], [-1, -1],
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+  ];
+  const dot = (gx: number, gy: number, dx: number, dy: number) => gx * dx + gy * dy;
+  const getGradient = (ix: number, iy: number) => {
+    const hash = Math.abs(Math.sin(ix * 12.9898 + iy * 78.233 + seed) * 43758.5453) % 1;
+    return gradients[Math.floor(hash * 8)];
+  };
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const sx = x - x0, sy = y - y0;
+  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+  const u = fade(sx), v = fade(sy);
+  const g00 = getGradient(x0, y0), g10 = getGradient(x0 + 1, y0);
+  const g01 = getGradient(x0, y0 + 1), g11 = getGradient(x0 + 1, y0 + 1);
+  const n00 = dot(g00[0], g00[1], sx, sy), n10 = dot(g10[0], g10[1], sx - 1, sy);
+  const n01 = dot(g01[0], g01[1], sx, sy - 1), n11 = dot(g11[0], g11[1], sx - 1, sy - 1);
+  return ((n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v + 1) / 2;
+}
 
-  const interMedium = fetch(
-    new URL("https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff2")
-  ).then((res) => res.arrayBuffer());
+// Halftone: subtle texture, not a feature
+function generateHalftone(seed: number, width: number, height: number) {
+  const dots: { x: number; y: number; size: number; opacity: number }[] = [];
+  const spacing = 16;
+  const centerX = width / 2, centerY = height / 2;
 
-  const [interSemiBoldData, interMediumData] = await Promise.all([
-    interSemiBold,
-    interMedium,
+  for (let y = 0; y < height; y += spacing) {
+    for (let x = 0; x < width; x += spacing) {
+      const dx = (x - centerX) / (width / 2);
+      const dy = (y - centerY) / (height / 2);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < 0.45) continue;
+
+      const edgeFade = Math.min(1, (dist - 0.45) / 0.55);
+      const n = noise2D(x * 0.015, y * 0.015, seed);
+
+      if (n > 0.35) {
+        const intensity = (n - 0.35) / 0.65 * edgeFade;
+        dots.push({
+          x, y,
+          size: 2 + intensity * 3,
+          opacity: 0.15 + intensity * 0.25,
+        });
+      }
+    }
+  }
+  return dots;
+}
+
+export default async function TwitterImage() {
+  const [syneBold, interRegular] = await Promise.all([
+    fetch("https://fonts.gstatic.com/s/syne/v24/8vIS7w4qzmVxsWxjBZRjr0FKM_3fvj6k.ttf").then(r => r.arrayBuffer()),
+    fetch("https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf").then(r => r.arrayBuffer()),
   ]);
 
-  // Content types that smry can read - showing breadth/power
-  const contentTypes = [
-    "Paywalled News",
-    "Research Papers",
-    "Academic Journals",
-    "Long-form Articles",
-  ];
+  const dots = generateHalftone(42, size.width, size.height);
 
   return new ImageResponse(
     (
       <div
         style={{
-          height: "100%",
           width: "100%",
+          height: "100%",
           display: "flex",
           flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           backgroundColor: "#09090b",
-          padding: "56px 72px",
           position: "relative",
         }}
       >
-        {/* Subtle gradient glow from top */}
-        <div
-          style={{
-            position: "absolute",
-            top: "-200px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "800px",
-            height: "500px",
-            background: "radial-gradient(ellipse at center, rgba(120, 119, 198, 0.12) 0%, transparent 70%)",
-          }}
-        />
+        {/* Subtle halftone texture */}
+        {dots.map((dot, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: dot.x - dot.size / 2,
+              top: dot.y - dot.size / 2,
+              width: dot.size,
+              height: dot.size,
+              borderRadius: "50%",
+              backgroundColor: `rgba(94, 105, 209, ${dot.opacity})`,
+            }}
+          />
+        ))}
 
-        {/* Secondary glow from bottom right */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-100px",
-            right: "-100px",
-            width: "400px",
-            height: "400px",
-            background: "radial-gradient(circle at center, rgba(59, 130, 246, 0.08) 0%, transparent 70%)",
-          }}
-        />
-
-        {/* Top bar - brand and tagline */}
+        {/* Content */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
+            flexDirection: "column",
             alignItems: "center",
-            width: "100%",
+            zIndex: 10,
           }}
         >
-          <span
+          <div
             style={{
-              fontFamily: "Inter",
-              fontSize: 42,
-              fontWeight: 600,
+              fontFamily: "Syne",
+              fontSize: 108,
+              fontWeight: 700,
               color: "#fafafa",
-              letterSpacing: "-0.04em",
+              letterSpacing: "-0.03em",
             }}
           >
             smry
-          </span>
+          </div>
+
+          <div
+            style={{
+              fontFamily: "Inter",
+              fontSize: 24,
+              fontWeight: 400,
+              color: "#a1a1aa",
+              marginTop: 16,
+              letterSpacing: "0.01em",
+            }}
+          >
+            Read anything. Summarize everything.
+          </div>
+
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 16px",
+              marginTop: 48,
+              padding: "10px 18px",
               borderRadius: 8,
-              backgroundColor: "rgba(255, 255, 255, 0.06)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
+              backgroundColor: "rgba(255, 255, 255, 0.025)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
             }}
           >
             <span
               style={{
                 fontFamily: "Inter",
                 fontSize: 15,
-                fontWeight: 500,
-                color: "rgba(250, 250, 250, 0.6)",
-                letterSpacing: "0.02em",
+                fontWeight: 400,
+                color: "#a1a1aa",
+                letterSpacing: "-0.01em",
               }}
             >
-              AI-POWERED READER
+              smry.ai/
+            </span>
+            <span
+              style={{
+                fontFamily: "Inter",
+                fontSize: 15,
+                fontWeight: 400,
+                color: "#52525b",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              paste any article URL
             </span>
           </div>
-        </div>
-
-        {/* Main headline */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            justifyContent: "center",
-            gap: 8,
-            marginTop: -20,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "Inter",
-              fontSize: 80,
-              fontWeight: 600,
-              color: "#fafafa",
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-            }}
-          >
-            Read anything.
-          </span>
-          <span
-            style={{
-              fontFamily: "Inter",
-              fontSize: 80,
-              fontWeight: 600,
-              background: "linear-gradient(90deg, rgba(250, 250, 250, 0.5) 0%, rgba(250, 250, 250, 0.25) 100%)",
-              backgroundClip: "text",
-              color: "transparent",
-              letterSpacing: "-0.04em",
-              lineHeight: 1.05,
-            }}
-          >
-            Summarize instantly.
-          </span>
-        </div>
-
-        {/* Bottom section: badges + domain */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            width: "100%",
-          }}
-        >
-          {/* Content type badges */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            {contentTypes.map((type) => (
-              <div
-                key={type}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "10px 18px",
-                  borderRadius: 100,
-                  backgroundColor: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "Inter",
-                    fontSize: 15,
-                    fontWeight: 500,
-                    color: "rgba(250, 250, 250, 0.7)",
-                  }}
-                >
-                  {type}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Domain */}
-          <span
-            style={{
-              fontFamily: "Inter",
-              fontSize: 18,
-              fontWeight: 500,
-              color: "rgba(250, 250, 250, 0.4)",
-            }}
-          >
-            smry.ai
-          </span>
         </div>
       </div>
     ),
     {
       ...size,
       fonts: [
-        {
-          name: "Inter",
-          data: interSemiBoldData,
-          style: "normal",
-          weight: 600,
-        },
-        {
-          name: "Inter",
-          data: interMediumData,
-          style: "normal",
-          weight: 500,
-        },
+        { name: "Syne", data: syneBold, weight: 700 as const },
+        { name: "Inter", data: interRegular, weight: 400 as const },
       ],
     }
   );
