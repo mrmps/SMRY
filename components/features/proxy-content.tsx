@@ -756,7 +756,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
               <div className={cn(
                 viewMode === "html"
-                  ? "h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
+                  ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
                   : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
               )}>
                 {/* Article content - no inline summary, it's in the drawer now */}
