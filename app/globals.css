@@ -681,21 +681,6 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
   z-index: 9999 !important;
 }
 
-/* Hide duplicate close button in Clerk checkout/subscription drawer on mobile */
-/* The drawer shows both a "Done" button and a "Close" button - hide the footer close */
-.cl-checkout .cl-drawerClose,
-.cl-checkout + .cl-drawerClose,
-.cl-checkout ~ .cl-drawerClose,
-.cl-subscriptionDetails .cl-drawerClose,
-.cl-subscriptionDetails + .cl-drawerClose,
-.cl-subscriptionDetails ~ .cl-drawerClose,
-.cl-drawer:has(.cl-checkout) footer,
-.cl-drawer:has(.cl-subscriptionDetails) footer,
-.cl-drawerContent:has(.cl-checkout) > footer,
-.cl-drawerContent:has(.cl-subscriptionDetails) > footer {
-  display: none !important;
-}
-
 /* Minimal Tweet Card Styling */
 .tweet-card-minimal {
   --tweet-bg-color: var(--card);

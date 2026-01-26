@@ -46,8 +46,16 @@ export default async function RootLayout({
 }) {
   const locale = await getLocale();
 
+  // Clerk appearance configuration to hide duplicate close buttons in checkout/subscription drawers
+  // The drawer shows both a "Done" button and a redundant "Close" button - hide the extra one
+  const clerkAppearance = {
+    elements: {
+      drawerClose: { display: "none" },
+    },
+  };
+
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={clerkAppearance}>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}

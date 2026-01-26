@@ -76,16 +76,13 @@ import { ImperativePanelHandle } from "react-resizable-panels";
 // History button that links to /history for signed-in users, /pricing for signed-out
 function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
   const { isSignedIn, isLoaded } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard mounted detection pattern for hydration
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
 
   const isDesktop = variant === "desktop";
-  const href = isSignedIn ? "/history" : "/pricing";
-  // Only show badge after mount to avoid hydration mismatch (auth state is client-only)
+  // Use consistent values for SSR, then update after mount when auth is known
+  const isAuthed = mounted && isLoaded && isSignedIn;
+  const href = isAuthed ? "/history" : "/pricing";
+  const title = isAuthed ? "History" : "History (Premium)";
   const showBadge = mounted && isLoaded && !isSignedIn;
 
   return (
@@ -97,7 +94,7 @@ function HistoryButton({ variant = "desktop" }: { variant?: "desktop" | "mobile"
           ? "h-9 w-9 text-muted-foreground hover:text-foreground relative"
           : "h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground relative"
       )}
-      title={isSignedIn ? "History" : "History (Premium)"}
+      title={title}
     >
       <HistoryIcon className="size-4" />
       {!isDesktop && <span className="sr-only">History</span>}

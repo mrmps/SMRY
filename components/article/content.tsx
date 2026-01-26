@@ -201,12 +201,17 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     const images = contentRef.current.querySelectorAll("img");
     const handleClick = (e: Event) => {
       const img = e.target as HTMLImageElement;
+      // Don't expand if image is inside a link - let the link navigate instead
+      if (img.closest("a")) return;
       img.classList.toggle("expanded");
     };
 
     images.forEach((img) => {
-      img.addEventListener("click", handleClick);
-      img.title = "Click to expand/collapse";
+      // Only add expand behavior to images not inside links
+      if (!img.closest("a")) {
+        img.addEventListener("click", handleClick);
+        img.title = "Click to expand/collapse";
+      }
     });
 
     return () => {

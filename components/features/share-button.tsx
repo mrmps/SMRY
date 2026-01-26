@@ -85,8 +85,6 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
       if (navigator.share) {
         try {
           await navigator.share({
-            title: articleTitle,
-            text: "Check out this article on smry.ai",
             url: finalUrl,
           });
           if (onActionComplete) onActionComplete();
@@ -100,7 +98,7 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
       {
         name: "X",
         icon: <XIcon className="size-3.5" />,
-        href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(articleTitle)}&url=${encodeURIComponent(finalUrl)}`,
+        href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(finalUrl)}`,
       },
       {
         name: "LinkedIn",
@@ -110,7 +108,7 @@ export const ShareContent: React.FC<ShareContentProps> = React.memo(
       {
         name: "Reddit",
         icon: <RedditIcon className="size-3.5" />,
-        href: `https://www.reddit.com/submit?url=${encodeURIComponent(finalUrl)}&title=${encodeURIComponent(articleTitle)}`,
+        href: `https://www.reddit.com/submit?url=${encodeURIComponent(finalUrl)}`,
       },
     ];
 
