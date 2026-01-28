@@ -349,6 +349,7 @@ function AnalyticsDashboardContent() {
   const [hostnameFilter, setHostnameFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("");
+  const [adDeviceFilter, setAdDeviceFilter] = useState("");
   const [liveStreamEnabled, setLiveStreamEnabled] = useState(true);
 
   // Debounce URL search to prevent flashing on every keystroke
@@ -367,8 +368,9 @@ function AnalyticsDashboardContent() {
     if (sourceFilter) params.set("source", sourceFilter);
     if (outcomeFilter) params.set("outcome", outcomeFilter);
     if (debouncedUrlSearch) params.set("urlSearch", debouncedUrlSearch);
+    if (adDeviceFilter) params.set("adDevice", adDeviceFilter);
     return params.toString();
-  }, [range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch]);
+  }, [range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch, adDeviceFilter]);
 
   // Change time range while preserving filters
   const changeTimeRange = useCallback((newRange: string) => {
@@ -382,7 +384,7 @@ function AnalyticsDashboardContent() {
   }, [router, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch]);
 
   const { data, isLoading, error, refetch } = useQuery<DashboardData>({
-    queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch, adminToken],
+    queryKey: ["analytics", range, hostnameFilter, sourceFilter, outcomeFilter, debouncedUrlSearch, adDeviceFilter, adminToken],
     queryFn: async () => {
       if (!adminToken) throw new Error("Not authenticated");
       const res = await fetch(getApiUrl(`/api/admin?${buildQueryString()}`), {
@@ -564,12 +566,12 @@ function AnalyticsDashboardContent() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap items-center">
-            {/* Time range selector */}
-            {["1h", "24h", "7d"].map((r) => (
+            {/* Time range selector - granular options */}
+            {["5m", "30m", "1h", "6h", "12h", "24h", "7d"].map((r) => (
               <button
                 key={r}
                 onClick={() => changeTimeRange(r)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   range === r
                     ? "bg-emerald-600 text-white"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
@@ -722,7 +724,11 @@ function AnalyticsDashboardContent() {
         )}
 
         {activeTab === "ads" && (
-          <AdAnalyticsTab data={data} />
+          <AdAnalyticsTab
+            data={data}
+            deviceFilter={adDeviceFilter}
+            onDeviceFilterChange={setAdDeviceFilter}
+          />
         )}
       </div>
     </div>
@@ -1974,7 +1980,15 @@ function ErrorAnalysisTab({
 }
 
 // ============ Ad Analytics Tab ============
-function AdAnalyticsTab({ data }: { data: DashboardData }) {
+function AdAnalyticsTab({
+  data,
+  deviceFilter,
+  onDeviceFilterChange,
+}: {
+  data: DashboardData;
+  deviceFilter: string;
+  onDeviceFilterChange: (value: string) => void;
+}) {
   // Calculate aggregated metrics
   const totalImpressions = data.adHourlyFunnel?.reduce((sum, h) => sum + h.impressions, 0) || 0;
   const totalClicks = data.adHourlyFunnel?.reduce((sum, h) => sum + h.clicks, 0) || 0;
@@ -2016,6 +2030,36 @@ function AdAnalyticsTab({ data }: { data: DashboardData }) {
 
   return (
     <div className="space-y-6">
+      {/* Device Filter */}
+      <div className="flex items-center gap-4 bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
+        <span className="text-sm text-zinc-400">Filter by device:</span>
+        <div className="flex gap-2">
+          {[
+            { value: "", label: "All Devices" },
+            { value: "mobile", label: "Mobile" },
+            { value: "tablet", label: "Tablet" },
+            { value: "desktop", label: "Desktop" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              onClick={() => onDeviceFilterChange(option.value)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                deviceFilter === option.value
+                  ? "bg-emerald-600 text-white"
+                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {deviceFilter && (
+          <span className="text-xs text-emerald-400 ml-auto">
+            Showing {deviceFilter} only
+          </span>
+        )}
+      </div>
+
       {/* Hero Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         <AdMetricCard

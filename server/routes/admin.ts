@@ -357,9 +357,22 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
       return { error: "Unauthorized" };
     }
 
-    // Parse time range
+    // Parse time range - support granular periods
     const timeRange = query.range || "24h";
-    const hours = timeRange === "7d" ? 168 : timeRange === "1h" ? 1 : 24;
+    const timeRangeMinutes: Record<string, number> = {
+      "5m": 5,
+      "30m": 30,
+      "1h": 60,
+      "6h": 360,
+      "12h": 720,
+      "24h": 1440,
+      "7d": 10080,
+    };
+    const minutes = timeRangeMinutes[timeRange] || 1440;
+    const hours = Math.ceil(minutes / 60);
+
+    // Ad-specific filters
+    const adDeviceFilter = query.adDevice || ""; // "mobile", "tablet", "desktop"
 
     // Parse filters
     const hostnameFilter = query.hostname || "";
@@ -399,6 +412,30 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         if (urlSearch) {
           conditions.push(`url LIKE '%${escapeForClickhouseLike(urlSearch)}%'`);
         }
+      }
+
+      return conditions.join(" AND ");
+    };
+
+    // Build WHERE clause for ad analytics queries
+    const buildAdWhereClause = (options: {
+      eventTypes?: string[];
+    } = {}): string => {
+      const { eventTypes } = options;
+      const conditions: string[] = [];
+
+      // Time filter using minutes for granularity
+      conditions.push(`timestamp > now() - INTERVAL ${minutes} MINUTE`);
+
+      // Device filter
+      if (adDeviceFilter) {
+        const escapeForClickhouse = (str: string) => str.replace(/\\/g, "\\\\").replace(/'/g, "''");
+        conditions.push(`device_type = '${escapeForClickhouse(adDeviceFilter)}'`);
+      }
+
+      // Event type filter
+      if (eventTypes && eventTypes.length > 0) {
+        conditions.push(`event_type IN (${eventTypes.map(e => `'${e}'`).join(", ")})`);
       }
 
       return conditions.join(" AND ");
@@ -678,8 +715,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         // Ad Analytics Queries (from ad_events table)
         // =============================================================================
 
-        // 13. Ad health metrics - overall fill rate and performance
-        // Only count 'request' events to avoid inflating with impression/click/dismiss events
+        // 13. Ad health metrics - overall fill rate and performance (minute-based + device filter)
         queryClickhouse<AdHealthMetrics>(`
           SELECT
             count() AS total_requests,
@@ -693,8 +729,9 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             uniq(session_id) AS unique_sessions,
             uniqIf(brand_name, brand_name != '') AS unique_brands
           FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
             AND event_type = 'request'
+            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
         `).catch(() => [] as AdHealthMetrics[]),
 
         // 14. Ad status breakdown - only count request events
@@ -813,7 +850,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           LIMIT 100
         `).catch(() => [] as AdRecentEvent[]),
 
-        // 21. CTR by Brand - click-through rate for each advertiser
+        // 21. CTR by Brand - click-through rate for each advertiser (minute-based + device filter)
         queryClickhouse<AdCTRByBrand>(`
           SELECT
             brand_name,
@@ -821,25 +858,35 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             countIf(event_type = 'click') AS clicks,
             round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
           FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
             AND event_type IN ('impression', 'click')
             AND brand_name != ''
+            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
           GROUP BY brand_name
           HAVING impressions > 0
           ORDER BY impressions DESC
           LIMIT 50
         `).catch(() => [] as AdCTRByBrand[]),
 
-        // 22. Hourly Funnel - track full ad funnel over time
+        // 22. Funnel by time bucket - adapts granularity based on time range
+        // <1h: 5-minute buckets, <6h: 15-minute buckets, <24h: hourly, else: daily
         queryClickhouse<AdHourlyFunnel>(`
           SELECT
-            formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
+            ${minutes <= 60
+              ? `formatDateTime(toStartOfFiveMinutes(timestamp), '%Y-%m-%d %H:%i') AS hour`
+              : minutes <= 360
+                ? `formatDateTime(toStartOfFifteenMinutes(timestamp), '%Y-%m-%d %H:%i') AS hour`
+                : minutes <= 1440
+                  ? `formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour`
+                  : `formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') AS hour`
+            },
             countIf(event_type = 'request' AND status = 'filled') AS requests,
             countIf(event_type = 'impression') AS impressions,
             countIf(event_type = 'click') AS clicks,
             countIf(event_type = 'dismiss') AS dismissals
           FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
+            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
           GROUP BY hour
           ORDER BY hour
         `).catch(() => [] as AdHourlyFunnel[]),
@@ -922,7 +969,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           LIMIT 25
         `).catch(() => [] as AdBrandPerformance[]),
 
-        // 27. Detailed Device Breakdown
+        // 27. Detailed Device Breakdown (uses minute-based time + device filter)
         queryClickhouse<AdDeviceBreakdown>(`
           SELECT
             device_type,
@@ -934,8 +981,9 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             round(countIf(event_type = 'request' AND status = 'filled') /
                   countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate
           FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
             AND device_type != ''
+            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
           GROUP BY device_type
           HAVING countIf(event_type = 'impression') > 0
           ORDER BY impressions DESC
@@ -1157,11 +1205,24 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   },
   {
     query: t.Object({
-      range: t.Optional(t.Union([t.Literal("1h"), t.Literal("24h"), t.Literal("7d")])),
+      range: t.Optional(t.Union([
+        t.Literal("5m"),
+        t.Literal("30m"),
+        t.Literal("1h"),
+        t.Literal("6h"),
+        t.Literal("12h"),
+        t.Literal("24h"),
+        t.Literal("7d"),
+      ])),
       hostname: t.Optional(t.String()),
       source: t.Optional(t.String()),
       outcome: t.Optional(t.String()),
       urlSearch: t.Optional(t.String()),
+      adDevice: t.Optional(t.Union([
+        t.Literal("mobile"),
+        t.Literal("tablet"),
+        t.Literal("desktop"),
+      ])),
     }),
   }
 );
