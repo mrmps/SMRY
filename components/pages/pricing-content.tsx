@@ -10,7 +10,7 @@ import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getAndClearReturnUrl, storeReturnUrl } from "@/lib/hooks/use-return-url";
+import { getAndClearReturnUrl, getReturnUrl, storeReturnUrl } from "@/lib/hooks/use-return-url";
 
 // Track buy button clicks
 function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
@@ -179,7 +179,7 @@ export function PricingContent() {
   const [hasStoredReturnUrl, setHasStoredReturnUrl] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: hydration-safe sessionStorage access
-    setHasStoredReturnUrl(!!sessionStorage.getItem("smry-return-url"));
+    setHasStoredReturnUrl(!!getReturnUrl());
   }, []);
   const hasReturnUrl = !!(returnUrlFromParams || hasStoredReturnUrl);
 
