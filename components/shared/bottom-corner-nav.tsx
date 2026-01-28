@@ -261,7 +261,7 @@ function WhatsNewItem({
   );
 }
 
-function ThemeSubmenu() {
+function ThemeSubmenu({ inline = false }: { inline?: boolean }) {
   const { theme, setTheme } = useTheme();
   const t = useTranslations("nav");
 
@@ -274,6 +274,37 @@ function ThemeSubmenu() {
   // Get current theme icon
   const currentIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
+  // Inline mode: show all three options in a row (better for mobile)
+  if (inline) {
+    return (
+      <div className="flex w-full items-center gap-2.5 rounded px-2.5 py-2">
+        {(() => {
+          const Icon = currentIcon;
+          return <Icon className="size-4 text-muted-foreground/70" />;
+        })()}
+        <span className="flex-1 text-[13px] text-foreground/80">{t("theme")}</span>
+        <div className="flex items-center gap-1 rounded-full bg-muted p-0.5">
+          {themes.map(({ id, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTheme(id)}
+              className={cn(
+                "flex items-center justify-center size-7 rounded-full transition-colors",
+                theme === id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label={themes.find(t => t.id === id)?.label}
+            >
+              <Icon className="size-3.5" />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: nested popover
   return (
     <Popover>
       <PopoverTrigger
@@ -364,13 +395,14 @@ function HelpPopoverContent() {
     <div className="relative">
       {/* Search */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-        <Search className="size-4 text-muted-foreground/70" />
+        <Search className="size-4 text-muted-foreground/70" aria-hidden="true" />
         <input
           ref={searchRef}
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
           className="flex-1 bg-transparent text-[13px] text-foreground/80 outline-none placeholder:text-muted-foreground/50"
         />
       </div>

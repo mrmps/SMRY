@@ -1,6 +1,6 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { PricingContent } from '@/components/pages/pricing-content';
-import type { Metadata } from 'next';
 
 // Force static generation - auth is handled client-side by PricingContent
 export const dynamic = 'force-static';
