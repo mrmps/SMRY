@@ -11,7 +11,7 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const { pathname, search, origin } = request.nextUrl;
 
   // Skip i18n for API routes, admin routes, and auth routes - just let them through
-  if (pathname.startsWith('/api') || pathname.startsWith('/trpc') || pathname.startsWith('/admin') || pathname.startsWith('/auth')) {
+  if (pathname.startsWith('/api') || pathname.startsWith('/admin') || pathname.startsWith('/auth')) {
     return NextResponse.next();
   }
 
@@ -52,6 +52,6 @@ export const config = {
     // Exclude _next, api, and root-level static files + Next.js special image routes
     "/((?!_next|api|opengraph-image|twitter-image|[^/]+\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)(?:[?#]|$)).*)",
     // Always run for API routes (Clerk auth)
-    "/(api|trpc)(.*)",
+    "/(api)(.*)",
   ],
 };
