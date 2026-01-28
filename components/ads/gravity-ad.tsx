@@ -245,55 +245,56 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   }
 
   // ============================================
-  // DEFAULT VARIANT - Desktop floating card
+  // DEFAULT VARIANT - Desktop card (vertical layout)
   // ============================================
   return (
-    <a
-      ref={adRef}
-      href={ad.clickUrl}
-      target="_blank"
-      rel="sponsored noopener"
-      onClick={onClick}
+    <div
       className={cn(
-        "group flex items-center gap-3 rounded-xl bg-card border border-border/40 p-3",
+        "group rounded-xl bg-card border border-border/40 p-3.5",
         "shadow-md hover:shadow-lg transition-shadow duration-200",
         className
       )}
     >
-      {/* Logo with white bg for dark mode */}
-      <div className="size-10 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-        {ad.favicon && !imgError ? (
-          <Image
-            src={ad.favicon}
-            alt=""
-            width={40}
-            height={40}
-            className="size-full object-cover"
-            onError={() => setImgError(true)}
-            unoptimized
-          />
-        ) : (
-          <FallbackIcon brandName={ad.brandName} />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
-          {valueProp}
-        </p>
-        <p className="text-[11px] text-muted-foreground/50 mt-0.5">
-          {ad.brandName} · Ad
-        </p>
-      </div>
-
-      {/* CTA text + dismiss */}
-      <div className="shrink-0 flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-primary whitespace-nowrap">
-          {ctaText} →
-        </span>
+      {/* Header: logo + brand + dismiss */}
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          {ad.favicon && !imgError ? (
+            <Image
+              src={ad.favicon}
+              alt=""
+              width={32}
+              height={32}
+              className="size-full object-cover"
+              onError={() => setImgError(true)}
+              unoptimized
+            />
+          ) : (
+            <FallbackIcon brandName={ad.brandName} />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-medium text-foreground truncate">{ad.brandName}</p>
+          <p className="text-[10px] text-muted-foreground/50">Sponsored</p>
+        </div>
         <DismissButton onDismiss={onDismiss} />
       </div>
-    </a>
+
+      {/* Value prop - full width, can breathe */}
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
+        className="block"
+      >
+        <p className="text-[13px] font-medium text-foreground leading-relaxed group-hover:text-primary transition-colors">
+          {valueProp}
+        </p>
+        <p className="mt-2 text-[11px] font-semibold text-primary">
+          {ctaText} →
+        </p>
+      </a>
+    </div>
   );
 }
