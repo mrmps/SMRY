@@ -19,8 +19,14 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  /** Compact variant for mobile, sidebar variant for native feel, bar for minimal bottom placement */
-  variant?: "default" | "compact" | "sidebar" | "bar";
+  /**
+   * Variant controls the layout:
+   * - default: Card style for desktop floating ads
+   * - sidebar: Native feel for sidebar placement
+   * - compact: Minimal for inline placement
+   * - mobile: Responsive bottom bar that scales up for tablets (CSS-only, no JS detection)
+   */
+  variant?: "default" | "compact" | "sidebar" | "mobile";
 }
 
 export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
@@ -57,12 +63,18 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
     };
   }, [hasTrackedImpression, onVisible]);
 
-  // Bar variant - ultra-compact for bottom placement with dismiss
-  if (variant === "bar") {
+  // Mobile variant - responsive bottom bar that scales up beautifully for tablets
+  // Uses CSS breakpoints so no JS detection needed - works perfectly on all viewports
+  if (variant === "mobile") {
     return (
       <div
         className={cn(
-          "flex items-start gap-2 px-3 py-1.5 bg-card border-t border-border/40",
+          // Base: prominent gradient background for visibility
+          "relative flex items-center gap-2 bg-gradient-to-r from-accent to-accent/80 border-t border-border/60 backdrop-blur-sm",
+          // Mobile: compact padding
+          "px-3 py-2",
+          // Tablet (md:768px+): more spacious, card-like appearance
+          "md:mx-4 md:mb-2 md:px-4 md:py-3 md:rounded-xl md:border md:shadow-lg md:shadow-black/5",
           className
         )}
       >
@@ -72,22 +84,53 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="flex-1 flex items-start gap-2 min-w-0 group py-0.5"
+          className="flex-1 flex items-center gap-2 md:gap-3 min-w-0 group"
         >
           {ad.favicon && (
             <Image
               src={ad.favicon}
               alt=""
-              width={18}
-              height={18}
-              className="size-[18px] rounded shrink-0 mt-0.5 bg-white dark:bg-white/90"
+              width={40}
+              height={40}
+              className={cn(
+                "rounded-lg shrink-0 bg-white dark:bg-white/90 shadow-sm",
+                // Mobile: smaller icon
+                "size-8",
+                // Tablet: larger icon
+                "md:size-10"
+              )}
               unoptimized
             />
           )}
-          <span className="flex-1 text-[12px] leading-[1.35] text-muted-foreground group-hover:text-foreground transition-colors line-clamp-2">
-            {ad.adText || ad.title}
-            <span className="text-[10px] opacity-50 ml-1">· Ad</span>
-          </span>
+          <div className="flex-1 min-w-0">
+            {/* Brand + Sponsored label */}
+            <span className={cn(
+              "block leading-tight font-semibold text-foreground group-hover:text-primary transition-colors truncate",
+              "text-[13px] md:text-[14px]"
+            )}>
+              {ad.brandName}
+              <span className="font-normal text-muted-foreground/60 ml-1.5 text-[10px] md:text-[11px]">· Sponsored</span>
+            </span>
+            {/* Ad text - show more on tablets */}
+            <span className={cn(
+              "block leading-snug text-muted-foreground mt-0.5",
+              "text-[12px] line-clamp-1",
+              "md:text-[13px] md:line-clamp-2"
+            )}>
+              {ad.adText || ad.title}
+            </span>
+          </div>
+          {/* CTA button - hidden on small phones, visible on larger screens */}
+          {ad.cta && (
+            <span className={cn(
+              "shrink-0 font-semibold text-primary-foreground bg-primary rounded-lg shadow-sm transition-shadow group-hover:shadow",
+              "hidden xs:inline-flex", // Hide on very small screens
+              "text-[11px] px-2.5 py-1.5",
+              "md:text-[12px] md:px-3 md:py-2"
+            )}>
+              {ad.cta}
+            </span>
+          )}
         </a>
         {onDismiss && (
           <button
@@ -97,10 +140,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
               e.stopPropagation();
               onDismiss();
             }}
-            className="p-1 -m-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0"
+            className={cn(
+              "shrink-0 text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 rounded-full transition-colors",
+              "p-1.5 -mr-1",
+              "md:p-2 md:-mr-1"
+            )}
             aria-label="Dismiss ad"
           >
-            <X className="size-3.5" />
+            <X className="size-4" />
           </button>
         )}
       </div>

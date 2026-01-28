@@ -703,9 +703,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </ResizablePanel>
               </ResizablePanelGroup>
 
-              {/* Fixed bottom-right ad when sidebar is closed */}
+              {/* Fixed bottom-right ad when sidebar is closed - responsive width for all desktop sizes */}
               {!sidebarOpen && !isPremium && gravityAd && (
-                <div className="fixed bottom-6 right-6 z-40 w-80">
+                <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
                   <GravityAd
                     ad={gravityAd}
                     onVisible={fireImpression}
@@ -826,7 +826,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </DrawerContent>
               </Drawer>
 
-              {/* Fixed ad above bottom bar */}
+              {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
               {!isPremium && gravityAd && !mobileAdDismissed && (
                 <div
                   className="fixed left-0 right-0 z-20"
@@ -834,7 +834,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 >
                   <GravityAd
                     ad={gravityAd}
-                    variant="bar"
+                    variant="mobile"
                     onVisible={fireImpression}
                     onClick={fireClick}
                     onDismiss={() => {
