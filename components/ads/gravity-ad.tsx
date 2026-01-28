@@ -3,16 +3,17 @@
 /**
  * GravityAd - Contextual ad display component
  *
- * Design principles:
- * 1. Compact & respectful - minimize intrusion, especially on mobile
- * 2. Single-line on small screens, expand on larger
- * 3. Dismiss always available, elegantly integrated
- * 4. Value-first hierarchy
+ * Design principles (after 15 rounds of review):
+ * 1. Compact & respectful - minimal intrusion
+ * 2. Title + description hierarchy when space allows
+ * 3. Always-visible CTA with smart fallback
+ * 4. Dismiss on all variants
+ * 5. Great at every breakpoint
  */
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { X, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
@@ -25,13 +26,13 @@ interface GravityAdProps {
   variant?: "default" | "compact" | "sidebar" | "mobile";
 }
 
-// Dismiss button - extracted outside component to avoid recreation on render
+// Dismiss button - consistent across all variants
 function DismissButton({
-  size = "sm",
-  onDismiss
+  onDismiss,
+  className,
 }: {
-  size?: "sm" | "md";
   onDismiss?: () => void;
+  className?: string;
 }) {
   if (!onDismiss) return null;
   return (
@@ -43,194 +44,273 @@ function DismissButton({
         onDismiss();
       }}
       className={cn(
-        "shrink-0 rounded-full transition-colors",
-        "text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/80",
-        size === "sm" ? "p-1" : "p-1.5"
+        "shrink-0 flex items-center justify-center rounded-full transition-all",
+        "size-6 text-muted-foreground/30 hover:text-muted-foreground/60 hover:bg-muted/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className
       )}
       aria-label="Dismiss ad"
     >
-      <X className={size === "sm" ? "size-3.5" : "size-4"} />
+      <X className="size-3" />
     </button>
+  );
+}
+
+// Fallback icon when no favicon
+function FallbackIcon({ brandName }: { brandName: string }) {
+  return (
+    <div className="size-full rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+      <span className="text-primary font-bold text-xs">
+        {brandName.charAt(0).toUpperCase()}
+      </span>
+    </div>
   );
 }
 
 export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-  // Reset impression tracking when ad changes
+  // Reset on ad change
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
     setHasTrackedImpression(false);
+    setImgError(false);
   }, [ad.clickUrl]);
 
+  // Impression tracking
   useEffect(() => {
     if (hasTrackedImpression || !adRef.current) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && !hasTrackedImpression) {
+        if (entries[0].isIntersecting && !hasTrackedImpression) {
           setHasTrackedImpression(true);
           onVisible();
         }
       },
       { threshold: 0.5 }
     );
-
     observer.observe(adRef.current);
     return () => observer.disconnect();
   }, [hasTrackedImpression, onVisible]);
 
-  // Mobile variant - ultra compact single line
+  // Derived content
+  const headline = ad.title || ad.brandName;
+  const description = ad.adText || ad.title;
+  const ctaText = ad.cta || "Learn more";
+  const showDescription = ad.adText && ad.title; // Only show desc if we have both
+
+  // ============================================
+  // MOBILE VARIANT - Ultra compact, single row
+  // ============================================
   if (variant === "mobile") {
     return (
       <div
         className={cn(
-          "flex items-center bg-card/95 border-t border-border/40",
-          // Minimal vertical space on mobile
-          "gap-2 px-3 py-1.5",
-          // Slightly more room on larger phones
-          "xs:py-2",
-          // Comfortable on tablets
-          "sm:gap-2.5 sm:px-4 sm:py-2.5",
-          // Card on large tablets
-          "md:mx-3 md:mb-2 md:rounded-xl md:border md:shadow-md",
+          "flex items-center bg-card border-t border-border/30",
+          // Extremely tight on small phones
+          "gap-2 px-2.5 py-1.5",
+          // Slightly more room 475px+
+          "xs:gap-2.5 xs:px-3 xs:py-2",
+          // Comfortable on tablets 640px+
+          "sm:gap-3 sm:px-4 sm:py-2.5",
+          // Card style 768px+
+          "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
           className
         )}
       >
-        {/* Logo */}
-        {ad.favicon && (
-          <Image
-            src={ad.favicon}
-            alt=""
-            width={32}
-            height={32}
-            className="size-6 xs:size-7 sm:size-8 md:size-9 rounded-md sm:rounded-lg shrink-0 bg-white ring-1 ring-black/[0.06]"
-            unoptimized
-          />
-        )}
+        {/* Icon - scales with viewport */}
+        <a
+          ref={adRef}
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          onClick={onClick}
+          className="shrink-0"
+        >
+          <div className="size-6 xs:size-7 sm:size-8 md:size-9 rounded-md overflow-hidden bg-muted">
+            {ad.favicon && !imgError ? (
+              <Image
+                src={ad.favicon}
+                alt=""
+                width={36}
+                height={36}
+                className="size-full object-cover"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
+            )}
+          </div>
+        </a>
 
         {/* Content */}
         <a
-          ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
           className="flex-1 min-w-0 group"
         >
-          <p className="text-[12px] xs:text-[13px] sm:text-[14px] font-medium text-foreground leading-snug line-clamp-1 md:line-clamp-2 group-hover:text-primary transition-colors">
-            {ad.adText || ad.title}
+          {/* Mobile: single line. Tablet: can show headline + desc */}
+          <p className="text-[12px] xs:text-[13px] sm:text-[13px] font-medium text-foreground leading-tight truncate group-hover:text-primary transition-colors">
+            {headline}
           </p>
-          <p className="text-[10px] xs:text-[11px] text-muted-foreground/60 truncate">
-            {ad.brandName} <span className="opacity-60">· Ad</span>
+          {/* Description - only on 640px+ */}
+          <p className="hidden sm:block text-[11px] text-muted-foreground/70 truncate mt-0.5">
+            {description !== headline ? description : ad.brandName}
+          </p>
+          {/* Brand + Ad on mobile */}
+          <p className="sm:hidden text-[10px] text-muted-foreground/50 truncate">
+            {ad.brandName} · Ad
           </p>
         </a>
 
-        {/* CTA - hidden on tiny, text on small, button on tablet */}
+        {/* CTA - grows with viewport */}
         <a
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="hidden xs:block shrink-0 text-[11px] sm:text-[12px] font-semibold text-primary sm:bg-primary sm:text-primary-foreground sm:px-2.5 sm:py-1 sm:rounded-full whitespace-nowrap"
+          className={cn(
+            "shrink-0 font-medium transition-colors flex items-center gap-1",
+            // Tiny: icon only
+            "text-primary",
+            // 475px+: text
+            "xs:text-[11px]",
+            // 640px+: button style
+            "sm:text-[11px] sm:bg-primary sm:text-primary-foreground sm:px-2.5 sm:py-1 sm:rounded-md sm:hover:bg-primary/90"
+          )}
         >
-          {ad.cta || "View"}
+          <span className="hidden xs:inline">{ctaText}</span>
+          <ExternalLink className="size-3 xs:hidden" />
         </a>
 
         {/* Dismiss */}
-        <DismissButton size="sm" onDismiss={onDismiss} />
+        <DismissButton onDismiss={onDismiss} className="size-5 xs:size-6" />
       </div>
     );
   }
 
-  // Compact variant - minimal inline
+  // ============================================
+  // COMPACT VARIANT - Minimal inline
+  // ============================================
   if (variant === "compact") {
     return (
-      <div className={cn("flex items-center gap-2.5", className)}>
+      <div className={cn("flex items-center gap-2", className)}>
         <a
           ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="flex-1 flex items-center gap-2.5 min-w-0 group rounded-lg p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
+          className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
         >
-          {ad.favicon && (
-            <Image
-              src={ad.favicon}
-              alt=""
-              width={28}
-              height={28}
-              className="size-7 rounded-md shrink-0 bg-white ring-1 ring-black/[0.06]"
-              unoptimized
-            />
-          )}
+          <div className="size-6 rounded-md overflow-hidden bg-muted shrink-0">
+            {ad.favicon && !imgError ? (
+              <Image
+                src={ad.favicon}
+                alt=""
+                width={24}
+                height={24}
+                className="size-full object-cover"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
-              {ad.adText || ad.title}
+            <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
+              {headline}
             </p>
-            <p className="text-[10px] text-muted-foreground/60">
+            <p className="text-[10px] text-muted-foreground/50">
               {ad.brandName} · Ad
             </p>
           </div>
         </a>
-        <DismissButton size="sm" onDismiss={onDismiss} />
+        <a
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          onClick={onClick}
+          className="shrink-0 text-[10px] font-medium text-primary hover:text-primary/80"
+        >
+          {ctaText} →
+        </a>
+        <DismissButton onDismiss={onDismiss} className="size-5" />
       </div>
     );
   }
 
-  // Sidebar variant
+  // ============================================
+  // SIDEBAR VARIANT - Native content feel
+  // ============================================
   if (variant === "sidebar") {
     return (
       <div className={cn("group", className)}>
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2.5">
           <a
             ref={adRef}
             href={ad.clickUrl}
             target="_blank"
             rel="sponsored noopener"
             onClick={onClick}
-            className="flex-1 flex items-start gap-3 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
+            className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
           >
-            {ad.favicon && (
-              <Image
-                src={ad.favicon}
-                alt=""
-                width={36}
-                height={36}
-                className="size-9 rounded-lg shrink-0 bg-white ring-1 ring-black/[0.06]"
-                unoptimized
-              />
-            )}
-            <div className="flex-1 min-w-0 pt-0.5">
-              <p className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors leading-snug">
-                {ad.adText || ad.title}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground/60">
-                {ad.brandName} · Sponsored
-              </p>
-              {ad.cta && (
-                <p className="mt-2 text-[12px] font-semibold text-primary">
-                  {ad.cta} →
-                </p>
+            <div className="size-8 rounded-lg overflow-hidden bg-muted shrink-0 mt-0.5">
+              {ad.favicon && !imgError ? (
+                <Image
+                  src={ad.favicon}
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-full object-cover"
+                  onError={() => setImgError(true)}
+                  unoptimized
+                />
+              ) : (
+                <FallbackIcon brandName={ad.brandName} />
               )}
             </div>
+            <div className="flex-1 min-w-0">
+              {/* Headline */}
+              <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors">
+                {headline}
+              </p>
+              {/* Description if different from headline */}
+              {showDescription && (
+                <p className="text-[12px] text-muted-foreground/70 leading-snug mt-0.5 line-clamp-2">
+                  {description}
+                </p>
+              )}
+              {/* Brand + Ad */}
+              <p className="text-[10px] text-muted-foreground/50 mt-1">
+                {ad.brandName} · Sponsored
+              </p>
+              {/* CTA */}
+              <p className="mt-2 text-[11px] font-semibold text-primary">
+                {ctaText} →
+              </p>
+            </div>
           </a>
-          <DismissButton size="sm" onDismiss={onDismiss} />
+          <DismissButton onDismiss={onDismiss} className="mt-1" />
         </div>
       </div>
     );
   }
 
-  // Default variant - desktop floating card
+  // ============================================
+  // DEFAULT VARIANT - Desktop floating card
+  // ============================================
   return (
     <div
       className={cn(
-        "group rounded-xl bg-card border border-border/50 p-3.5",
-        "shadow-lg shadow-black/[0.04] hover:shadow-xl hover:shadow-black/[0.06]",
-        "transition-all duration-200",
+        "group rounded-xl bg-card border border-border/40 p-3",
+        "shadow-md hover:shadow-lg transition-shadow duration-200",
         className
       )}
     >
@@ -243,31 +323,51 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           onClick={onClick}
           className="flex-1 flex items-start gap-3 min-w-0"
         >
-          {ad.favicon && (
-            <Image
-              src={ad.favicon}
-              alt=""
-              width={40}
-              height={40}
-              className="size-10 rounded-xl shrink-0 bg-white ring-1 ring-black/[0.06]"
-              unoptimized
-            />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug">
-              {ad.adText || ad.title}
-            </p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground/70">
-              {ad.brandName} · <span className="text-muted-foreground/50">Ad</span>
-            </p>
-            {ad.cta && (
-              <span className="inline-block mt-2 text-[12px] font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-full">
-                {ad.cta}
-              </span>
+          {/* Logo */}
+          <div className="size-10 rounded-xl overflow-hidden bg-muted shrink-0">
+            {ad.favicon && !imgError ? (
+              <Image
+                src={ad.favicon}
+                alt=""
+                width={40}
+                height={40}
+                className="size-full object-cover"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
             )}
           </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Headline - always shown */}
+            <p className="text-[14px] font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">
+              {headline}
+            </p>
+
+            {/* Description - if we have both title and adText */}
+            {showDescription && (
+              <p className="text-[12px] text-muted-foreground/80 leading-snug mt-0.5 line-clamp-2">
+                {description}
+              </p>
+            )}
+
+            {/* Brand + Ad label */}
+            <p className="text-[11px] text-muted-foreground/50 mt-1">
+              {ad.brandName} · Ad
+            </p>
+
+            {/* CTA Button */}
+            <span className="inline-flex items-center gap-1 mt-2.5 text-[11px] font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors">
+              {ctaText}
+              <ExternalLink className="size-3 opacity-70" />
+            </span>
+          </div>
         </a>
-        <DismissButton size="md" onDismiss={onDismiss} />
+
+        {/* Dismiss */}
+        <DismissButton onDismiss={onDismiss} />
       </div>
     </div>
   );
