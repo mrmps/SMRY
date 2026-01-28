@@ -3,6 +3,20 @@ import { redirect } from "next/navigation";
 import { createClerkClient } from "@clerk/backend";
 
 /**
+ * Validate that a URL is a safe relative path to prevent open redirect attacks.
+ * Rejects absolute URLs, protocol-relative URLs, and URLs with protocol schemes.
+ */
+function isValidReturnUrl(url: string): boolean {
+  // Must start with / (relative path)
+  if (!url.startsWith("/")) return false;
+  // Must not be a protocol-relative URL (//evil.com)
+  if (url.startsWith("//")) return false;
+  // Must not contain protocol scheme (javascript:, data:, etc.)
+  if (url.includes(":")) return false;
+  return true;
+}
+
+/**
  * Server-side auth redirect handler.
  *
  * After sign-in, Clerk redirects here. This page:
@@ -19,7 +33,9 @@ export default async function AuthRedirectPage({
 }) {
   const { userId } = await auth();
   const params = await searchParams;
-  const returnUrl = params.returnUrl || "/";
+  // Validate returnUrl to prevent open redirect attacks
+  const rawReturnUrl = params.returnUrl || "/";
+  const returnUrl = isValidReturnUrl(rawReturnUrl) ? rawReturnUrl : "/";
 
   // Not signed in - shouldn't happen but handle gracefully
   if (!userId) {
