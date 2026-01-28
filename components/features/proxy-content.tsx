@@ -365,6 +365,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const settingsDrawerRef = React.useRef<SettingsDrawerHandle>(null);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
+  const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
 
   // Mobile header hide-on-scroll state
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
@@ -703,14 +704,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </ResizablePanel>
               </ResizablePanelGroup>
 
-              {/* Fixed bottom-right ad when sidebar is closed - responsive width for all desktop sizes */}
-              {!sidebarOpen && !isPremium && gravityAd && (
+              {/* Fixed bottom-right ad when sidebar is closed */}
+              {!sidebarOpen && !isPremium && gravityAd && !desktopAdDismissed && (
                 <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
                   <GravityAd
                     ad={gravityAd}
                     onVisible={fireImpression}
                     onClick={fireClick}
-                    className="shadow-lg shadow-black/5"
+                    onDismiss={() => {
+                      fireDismiss();
+                      setDesktopAdDismissed(true);
+                    }}
                   />
                 </div>
               )}
