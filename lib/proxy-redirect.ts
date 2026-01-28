@@ -23,6 +23,7 @@ export const APP_ROUTES = [
   "/sign-up",
   "/changelog",
   "/guide",
+  "/auth",
 ];
 
 /**
