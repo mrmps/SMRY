@@ -247,6 +247,104 @@ interface AdDismissRateByDevice {
   dismiss_rate: number;
 }
 
+// Enhanced granular ad analytics types (some reserved for future use)
+interface _AdRevenueMetrics {
+  total_impressions: number;
+  total_clicks: number;
+  estimated_revenue: number;
+  avg_cpm: number;
+  avg_cpc: number;
+}
+
+interface AdPerformanceByHour {
+  hour_of_day: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  fill_rate: number;
+}
+
+interface AdPerformanceByDay {
+  day_of_week: number;
+  day_name: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+interface AdBrandPerformance {
+  brand_name: string;
+  impressions: number;
+  clicks: number;
+  dismissals: number;
+  ctr: number;
+  dismiss_rate: number;
+  avg_time_to_click_ms: number;
+  unique_sessions: number;
+}
+
+interface AdDeviceBreakdown {
+  device_type: string;
+  impressions: number;
+  clicks: number;
+  dismissals: number;
+  ctr: number;
+  dismiss_rate: number;
+  fill_rate: number;
+}
+
+interface AdBrowserStats {
+  browser: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+interface AdOSStats {
+  os: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+interface AdHostnamePerformance {
+  hostname: string;
+  requests: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  fill_rate: number;
+  top_brand: string;
+}
+
+interface AdContentCorrelation {
+  article_length_bucket: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+interface AdSessionDepth {
+  session_ad_count: number;
+  session_count: number;
+  total_impressions: number;
+  total_clicks: number;
+  avg_ctr: number;
+}
+
+interface _AdTimezone {
+  timezone: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+interface AdConversionFunnel {
+  stage: string;
+  count: number;
+  rate_from_previous: number;
+}
+
 export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
   async ({ query, set, headers }) => {
@@ -338,6 +436,17 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adCTRByBrand,
         adHourlyFunnel,
         adDismissRateByDevice,
+        // Enhanced granular ad analytics
+        adPerformanceByHour,
+        adPerformanceByDay,
+        adBrandPerformance,
+        adDeviceBreakdown,
+        adBrowserStats,
+        adOSStats,
+        adHostnamePerformance,
+        adContentCorrelation,
+        adSessionDepth,
+        adConversionFunnel,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
         queryClickhouse<HostnameStats>(`
@@ -749,6 +858,215 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           HAVING impressions > 0
           ORDER BY impressions DESC
         `).catch(() => [] as AdDismissRateByDevice[]),
+
+        // =============================================================================
+        // Enhanced Granular Ad Analytics
+        // =============================================================================
+
+        // 24. Performance by Hour of Day - identify best performing hours
+        queryClickhouse<AdPerformanceByHour>(`
+          SELECT
+            toHour(timestamp) AS hour_of_day,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(event_type = 'request' AND status = 'filled') /
+                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY hour_of_day
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY hour_of_day
+        `).catch(() => [] as AdPerformanceByHour[]),
+
+        // 25. Performance by Day of Week
+        queryClickhouse<AdPerformanceByDay>(`
+          SELECT
+            toDayOfWeek(timestamp) AS day_of_week,
+            CASE toDayOfWeek(timestamp)
+              WHEN 1 THEN 'Monday'
+              WHEN 2 THEN 'Tuesday'
+              WHEN 3 THEN 'Wednesday'
+              WHEN 4 THEN 'Thursday'
+              WHEN 5 THEN 'Friday'
+              WHEN 6 THEN 'Saturday'
+              WHEN 7 THEN 'Sunday'
+            END AS day_name,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY day_of_week, day_name
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY day_of_week
+        `).catch(() => [] as AdPerformanceByDay[]),
+
+        // 26. Enhanced Brand Performance with engagement metrics
+        queryClickhouse<AdBrandPerformance>(`
+          SELECT
+            brand_name,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            countIf(event_type = 'dismiss') AS dismissals,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(event_type = 'dismiss') / countIf(event_type = 'impression') * 100, 2) AS dismiss_rate,
+            round(avgIf(duration_ms, event_type = 'click' AND duration_ms > 0)) AS avg_time_to_click_ms,
+            uniq(session_id) AS unique_sessions
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND brand_name != ''
+          GROUP BY brand_name
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY impressions DESC
+          LIMIT 25
+        `).catch(() => [] as AdBrandPerformance[]),
+
+        // 27. Detailed Device Breakdown
+        queryClickhouse<AdDeviceBreakdown>(`
+          SELECT
+            device_type,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            countIf(event_type = 'dismiss') AS dismissals,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(event_type = 'dismiss') / countIf(event_type = 'impression') * 100, 2) AS dismiss_rate,
+            round(countIf(event_type = 'request' AND status = 'filled') /
+                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND device_type != ''
+          GROUP BY device_type
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY impressions DESC
+        `).catch(() => [] as AdDeviceBreakdown[]),
+
+        // 28. Browser Performance
+        queryClickhouse<AdBrowserStats>(`
+          SELECT
+            browser,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND browser != ''
+          GROUP BY browser
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY impressions DESC
+          LIMIT 10
+        `).catch(() => [] as AdBrowserStats[]),
+
+        // 29. OS Performance
+        queryClickhouse<AdOSStats>(`
+          SELECT
+            os,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND os != ''
+          GROUP BY os
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY impressions DESC
+          LIMIT 10
+        `).catch(() => [] as AdOSStats[]),
+
+        // 30. Hostname Performance with full funnel
+        queryClickhouse<AdHostnamePerformance>(`
+          SELECT
+            hostname,
+            countIf(event_type = 'request') AS requests,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(event_type = 'request' AND status = 'filled') /
+                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate,
+            anyIf(brand_name, brand_name != '' AND event_type = 'impression') AS top_brand
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND hostname != ''
+          GROUP BY hostname
+          HAVING countIf(event_type = 'request') > 0
+          ORDER BY requests DESC
+          LIMIT 50
+        `).catch(() => [] as AdHostnamePerformance[]),
+
+        // 31. Content Length Correlation - do longer articles perform better?
+        queryClickhouse<AdContentCorrelation>(`
+          SELECT
+            CASE
+              WHEN article_content_length < 500 THEN '< 500 chars'
+              WHEN article_content_length < 1500 THEN '500-1.5k chars'
+              WHEN article_content_length < 3000 THEN '1.5k-3k chars'
+              WHEN article_content_length < 5000 THEN '3k-5k chars'
+              ELSE '5k+ chars'
+            END AS article_length_bucket,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND article_content_length > 0
+          GROUP BY article_length_bucket
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY
+            CASE article_length_bucket
+              WHEN '< 500 chars' THEN 1
+              WHEN '500-1.5k chars' THEN 2
+              WHEN '1.5k-3k chars' THEN 3
+              WHEN '3k-5k chars' THEN 4
+              ELSE 5
+            END
+        `).catch(() => [] as AdContentCorrelation[]),
+
+        // 32. Session Depth Analysis - do users who see more ads click more?
+        queryClickhouse<AdSessionDepth>(`
+          SELECT
+            session_ad_count,
+            count() AS session_count,
+            sum(impressions) AS total_impressions,
+            sum(clicks) AS total_clicks,
+            round(sum(clicks) / sum(impressions) * 100, 2) AS avg_ctr
+          FROM (
+            SELECT
+              session_id,
+              countIf(event_type = 'impression') AS session_ad_count,
+              countIf(event_type = 'impression') AS impressions,
+              countIf(event_type = 'click') AS clicks
+            FROM ad_events
+            WHERE timestamp > now() - INTERVAL ${hours} HOUR
+              AND session_id != ''
+            GROUP BY session_id
+            HAVING session_ad_count > 0
+          )
+          GROUP BY session_ad_count
+          HAVING session_ad_count <= 10
+          ORDER BY session_ad_count
+        `).catch(() => [] as AdSessionDepth[]),
+
+        // 33. Conversion Funnel Summary
+        queryClickhouse<AdConversionFunnel>(`
+          SELECT
+            stage,
+            count,
+            round(count / first_value(count) OVER (ORDER BY stage_order) * 100, 2) AS rate_from_previous
+          FROM (
+            SELECT 'Requests' AS stage, 1 AS stage_order, countIf(event_type = 'request') AS count
+            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            UNION ALL
+            SELECT 'Filled' AS stage, 2 AS stage_order, countIf(event_type = 'request' AND status = 'filled') AS count
+            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            UNION ALL
+            SELECT 'Impressions' AS stage, 3 AS stage_order, countIf(event_type = 'impression') AS count
+            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            UNION ALL
+            SELECT 'Clicks' AS stage, 4 AS stage_order, countIf(event_type = 'click') AS count
+            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          )
+          ORDER BY stage_order
+        `).catch(() => [] as AdConversionFunnel[]),
       ]);
 
       // Get buffer stats for monitoring
@@ -816,6 +1134,17 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adCTRByBrand,
         adHourlyFunnel,
         adDismissRateByDevice,
+        // Enhanced granular ad analytics
+        adPerformanceByHour,
+        adPerformanceByDay,
+        adBrandPerformance,
+        adDeviceBreakdown,
+        adBrowserStats,
+        adOSStats,
+        adHostnamePerformance,
+        adContentCorrelation,
+        adSessionDepth,
+        adConversionFunnel,
       };
     } catch (error) {
       console.error("[analytics] Query error:", error);

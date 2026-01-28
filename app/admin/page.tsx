@@ -8,12 +8,15 @@ import {
   Line,
   BarChart,
   Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import { getApiUrl } from "@/lib/api/config";
 
@@ -235,6 +238,79 @@ interface DashboardData {
     impressions: number;
     dismissals: number;
     dismiss_rate: number;
+  }>;
+  // Enhanced granular ad analytics
+  adPerformanceByHour: Array<{
+    hour_of_day: number;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    fill_rate: number;
+  }>;
+  adPerformanceByDay: Array<{
+    day_of_week: number;
+    day_name: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }>;
+  adBrandPerformance: Array<{
+    brand_name: string;
+    impressions: number;
+    clicks: number;
+    dismissals: number;
+    ctr: number;
+    dismiss_rate: number;
+    avg_time_to_click_ms: number;
+    unique_sessions: number;
+  }>;
+  adDeviceBreakdown: Array<{
+    device_type: string;
+    impressions: number;
+    clicks: number;
+    dismissals: number;
+    ctr: number;
+    dismiss_rate: number;
+    fill_rate: number;
+  }>;
+  adBrowserStats: Array<{
+    browser: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }>;
+  adOSStats: Array<{
+    os: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }>;
+  adHostnamePerformance: Array<{
+    hostname: string;
+    requests: number;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    fill_rate: number;
+    top_brand: string;
+  }>;
+  adContentCorrelation: Array<{
+    article_length_bucket: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }>;
+  adSessionDepth: Array<{
+    session_ad_count: number;
+    session_count: number;
+    total_impressions: number;
+    total_clicks: number;
+    avg_ctr: number;
+  }>;
+  adConversionFunnel: Array<{
+    stage: string;
+    count: number;
+    rate_from_previous: number;
   }>;
 }
 
@@ -1899,64 +1975,213 @@ function ErrorAnalysisTab({
 
 // ============ Ad Analytics Tab ============
 function AdAnalyticsTab({ data }: { data: DashboardData }) {
-  // Calculate aggregated CTR metrics
+  // Calculate aggregated metrics
   const totalImpressions = data.adHourlyFunnel?.reduce((sum, h) => sum + h.impressions, 0) || 0;
   const totalClicks = data.adHourlyFunnel?.reduce((sum, h) => sum + h.clicks, 0) || 0;
   const totalDismissals = data.adHourlyFunnel?.reduce((sum, h) => sum + h.dismissals, 0) || 0;
-  const overallCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0";
-  const overallDismissRate = totalImpressions > 0 ? ((totalDismissals / totalImpressions) * 100).toFixed(2) : "0";
+  const totalRequests = data.adHealth?.total_requests || 0;
+  const fillRate = data.adHealth?.fill_rate || 0;
+  const overallCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+  const overallDismissRate = totalImpressions > 0 ? (totalDismissals / totalImpressions) * 100 : 0;
+
+  // Calculate estimated revenue (industry averages: $2 CPM, $0.10 CPC)
+  const estimatedRevenueCPM = (totalImpressions / 1000) * 2;
+  const estimatedRevenueCPC = totalClicks * 0.1;
+  const totalEstimatedRevenue = estimatedRevenueCPM + estimatedRevenueCPC;
+
+  // Find best performing hour
+  const bestHour = data.adPerformanceByHour?.reduce((best, h) =>
+    h.ctr > (best?.ctr || 0) ? h : best, data.adPerformanceByHour?.[0]);
+
+  // Find best performing day
+  const bestDay = data.adPerformanceByDay?.reduce((best, d) =>
+    d.ctr > (best?.ctr || 0) ? d : best, data.adPerformanceByDay?.[0]);
+
+  // Calculate funnel conversion rates
+  const funnelData = data.adConversionFunnel || [];
+  const requestsCount = funnelData.find(f => f.stage === "Requests")?.count || 0;
+  const filledCount = funnelData.find(f => f.stage === "Filled")?.count || 0;
+  const impressionsCount = funnelData.find(f => f.stage === "Impressions")?.count || 0;
+  const clicksCount = funnelData.find(f => f.stage === "Clicks")?.count || 0;
+
+  // Chart colors
+  const colors = {
+    primary: "#10b981",
+    secondary: "#3b82f6",
+    tertiary: "#f59e0b",
+    quaternary: "#ec4899",
+    danger: "#ef4444",
+    muted: "#71717a",
+  };
 
   return (
     <div className="space-y-6">
-      {/* KPIs Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <KPICard
-          title="Ad Requests"
-          value={data.adHealth?.total_requests?.toLocaleString() || "0"}
+      {/* Hero Metrics Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <AdMetricCard
+          label="Ad Requests"
+          value={totalRequests.toLocaleString()}
         />
-        <KPICard
-          title="Fill Rate"
-          value={`${data.adHealth?.fill_rate || 0}%`}
-          color={data.adHealth?.fill_rate > 50 ? "green" : "yellow"}
+        <AdMetricCard
+          label="Fill Rate"
+          value={`${fillRate.toFixed(1)}%`}
+          trend={fillRate > 50 ? "up" : fillRate > 30 ? "neutral" : "down"}
+          trendValue={fillRate > 50 ? "Good" : "Low"}
         />
-        <KPICard
-          title="Impressions"
+        <AdMetricCard
+          label="Impressions"
           value={totalImpressions.toLocaleString()}
         />
-        <KPICard
-          title="Clicks"
+        <AdMetricCard
+          label="Clicks"
           value={totalClicks.toLocaleString()}
         />
-        <KPICard
-          title="CTR"
-          value={`${overallCTR}%`}
-          color={Number(overallCTR) > 1 ? "green" : "default"}
+        <AdMetricCard
+          label="CTR"
+          value={`${overallCTR.toFixed(2)}%`}
+          trend={overallCTR > 1 ? "up" : overallCTR > 0.5 ? "neutral" : "down"}
+          trendValue={overallCTR > 1 ? "Strong" : overallCTR > 0.5 ? "Avg" : "Low"}
         />
-        <KPICard
-          title="Dismiss Rate"
-          value={`${overallDismissRate}%`}
-          color={Number(overallDismissRate) > 20 ? "red" : "default"}
+        <AdMetricCard
+          label="Dismiss Rate"
+          value={`${overallDismissRate.toFixed(1)}%`}
+          trend={overallDismissRate < 15 ? "up" : overallDismissRate < 25 ? "neutral" : "down"}
+          trendValue={overallDismissRate < 15 ? "Low" : "High"}
+        />
+        <AdMetricCard
+          label="Est. Revenue"
+          value={`$${totalEstimatedRevenue.toFixed(2)}`}
+          subtitle="CPM + CPC"
+        />
+        <AdMetricCard
+          label="Unique Brands"
+          value={(data.adHealth?.unique_brands || 0).toString()}
         />
       </div>
 
-      {/* Charts Row */}
+      {/* Conversion Funnel + Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Visual Funnel */}
+        <div className="lg:col-span-2 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-4">Conversion Funnel</h3>
+          <div className="flex items-end justify-between gap-2 h-48">
+            {[
+              { label: "Requests", value: requestsCount, color: colors.secondary },
+              { label: "Filled", value: filledCount, color: colors.primary },
+              { label: "Impressions", value: impressionsCount, color: colors.tertiary },
+              { label: "Clicks", value: clicksCount, color: colors.quaternary },
+            ].map((stage, i, arr) => {
+              const maxVal = arr[0].value || 1;
+              const heightPct = Math.max((stage.value / maxVal) * 100, 5);
+              const convRate = i > 0 && arr[i - 1].value > 0
+                ? ((stage.value / arr[i - 1].value) * 100).toFixed(1)
+                : "100";
+              return (
+                <div key={stage.label} className="flex-1 flex flex-col items-center">
+                  <div className="text-xs text-zinc-500 mb-1">
+                    {i > 0 && <span className="text-zinc-400">{convRate}%</span>}
+                  </div>
+                  <div
+                    className="w-full rounded-t-lg transition-all duration-500"
+                    style={{
+                      height: `${heightPct}%`,
+                      backgroundColor: stage.color,
+                      opacity: 0.8,
+                    }}
+                  />
+                  <div className="mt-2 text-center">
+                    <div className="text-lg font-bold text-zinc-100">
+                      {stage.value.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-zinc-500">{stage.label}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Insights Panel */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-4">Insights</h3>
+          <div className="space-y-3">
+            {bestHour && (
+              <AdInsightCard
+                type={bestHour.ctr > 1 ? "success" : "info"}
+                title="Best Hour"
+                message={`${bestHour.hour_of_day}:00 has ${bestHour.ctr.toFixed(2)}% CTR`}
+              />
+            )}
+            {bestDay && (
+              <AdInsightCard
+                type={bestDay.ctr > 1 ? "success" : "info"}
+                title="Best Day"
+                message={`${bestDay.day_name} performs best at ${bestDay.ctr.toFixed(2)}% CTR`}
+              />
+            )}
+            {overallDismissRate > 20 && (
+              <AdInsightCard
+                type="warning"
+                title="High Dismiss Rate"
+                message={`${overallDismissRate.toFixed(1)}% dismissed. Consider ad placement.`}
+              />
+            )}
+            {fillRate < 40 && (
+              <AdInsightCard
+                type="warning"
+                title="Low Fill Rate"
+                message={`Only ${fillRate.toFixed(1)}% filled. Check targeting.`}
+              />
+            )}
+            {overallCTR > 1.5 && (
+              <AdInsightCard
+                type="success"
+                title="Strong CTR"
+                message={`${overallCTR.toFixed(2)}% CTR above industry avg.`}
+              />
+            )}
+            {data.adBrandPerformance && data.adBrandPerformance.length > 0 && (
+              <AdInsightCard
+                type="info"
+                title="Top Brand"
+                message={`${data.adBrandPerformance[0].brand_name} leads with ${data.adBrandPerformance[0].impressions.toLocaleString()} impressions`}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Time-based Performance Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Hourly Funnel Chart */}
-        <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
-            Ad Funnel Over Time
-          </h2>
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Ad Funnel Over Time</h3>
+          <p className="text-xs text-zinc-500 mb-4">Track requests, impressions, clicks, and dismissals</p>
           {data.adHourlyFunnel && data.adHourlyFunnel.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.adHourlyFunnel}>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={data.adHourlyFunnel}>
+                <defs>
+                  <linearGradient id="gradRequests" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={colors.secondary} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={colors.secondary} stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gradImpressions" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={colors.primary} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={colors.primary} stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gradClicks" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={colors.tertiary} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={colors.tertiary} stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                 <XAxis
                   dataKey="hour"
-                  tickFormatter={(v) => v.split(" ")[1] || v}
+                  tickFormatter={(v) => v.split(" ")[1]?.slice(0, 5) || v}
                   stroke="#71717a"
-                  fontSize={12}
+                  fontSize={11}
                 />
-                <YAxis stroke="#71717a" fontSize={12} />
+                <YAxis stroke="#71717a" fontSize={11} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#18181b",
@@ -1966,68 +2191,35 @@ function AdAnalyticsTab({ data }: { data: DashboardData }) {
                   labelStyle={{ color: "#a1a1aa" }}
                 />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="requests"
-                  stroke="#3b82f6"
-                  name="Filled Requests"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="impressions"
-                  stroke="#10b981"
-                  name="Impressions"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="clicks"
-                  stroke="#f59e0b"
-                  name="Clicks"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="dismissals"
-                  stroke="#ef4444"
-                  name="Dismissals"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
+                <Area type="monotone" dataKey="requests" name="Filled" stroke={colors.secondary} fill="url(#gradRequests)" strokeWidth={2} />
+                <Area type="monotone" dataKey="impressions" name="Impressions" stroke={colors.primary} fill="url(#gradImpressions)" strokeWidth={2} />
+                <Area type="monotone" dataKey="clicks" name="Clicks" stroke={colors.tertiary} fill="url(#gradClicks)" strokeWidth={2} />
+                <Line type="monotone" dataKey="dismissals" name="Dismissals" stroke={colors.danger} strokeWidth={2} strokeDasharray="5 5" dot={false} />
+              </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-zinc-500">
-              No funnel data yet
-            </div>
+            <AdEmptyState message="No funnel data yet" />
           )}
         </div>
 
-        {/* Dismiss Rate by Device */}
-        <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
-            Dismiss Rate by Device
-          </h2>
-          {data.adDismissRateByDevice && data.adDismissRateByDevice.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.adDismissRateByDevice} layout="vertical">
+        {/* Performance by Hour */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">CTR by Hour of Day</h3>
+          <p className="text-xs text-zinc-500 mb-4">Identify peak performance windows</p>
+          {data.adPerformanceByHour && data.adPerformanceByHour.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={data.adPerformanceByHour}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                 <XAxis
-                  type="number"
+                  dataKey="hour_of_day"
+                  tickFormatter={(v) => `${v}:00`}
                   stroke="#71717a"
-                  fontSize={12}
-                  tickFormatter={(v) => `${v}%`}
+                  fontSize={11}
                 />
                 <YAxis
-                  dataKey="device_type"
-                  type="category"
-                  width={80}
+                  tickFormatter={(v) => `${v}%`}
                   stroke="#71717a"
-                  fontSize={12}
+                  fontSize={11}
                 />
                 <Tooltip
                   contentStyle={{
@@ -2035,30 +2227,121 @@ function AdAnalyticsTab({ data }: { data: DashboardData }) {
                     border: "1px solid #3f3f46",
                     borderRadius: "8px",
                   }}
-                  formatter={(value, name) => [`${value}%`, name]}
+                  formatter={(value) => [`${Number(value ?? 0).toFixed(2)}%`, "CTR"]}
+                  labelFormatter={(label) => `${label}:00`}
                 />
-                <Bar dataKey="dismiss_rate" fill="#ef4444" name="Dismiss Rate" />
+                <Bar dataKey="ctr" name="CTR" radius={[4, 4, 0, 0]}>
+                  {data.adPerformanceByHour.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.ctr > 1.5 ? colors.primary : entry.ctr > 0.8 ? colors.tertiary : colors.muted}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-zinc-500">
-              No dismiss data yet
-            </div>
+            <AdEmptyState message="No hourly data yet" />
           )}
         </div>
       </div>
 
-      {/* CTR by Brand Table */}
-      <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-100">
-            CTR by Brand
-            <span className="text-xs text-zinc-500 font-normal ml-2">
-              ({data.adCTRByBrand?.length || 0} brands)
-            </span>
-          </h2>
+      {/* Device & Platform Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Device Breakdown */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Device Performance</h3>
+          <p className="text-xs text-zinc-500 mb-4">CTR and engagement by device type</p>
+          {data.adDeviceBreakdown && data.adDeviceBreakdown.length > 0 ? (
+            <div className="space-y-4">
+              {data.adDeviceBreakdown.map((device, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-zinc-200 capitalize">
+                      {device.device_type || "Unknown"}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      device.ctr > 1 ? "bg-emerald-950/50 text-emerald-400" :
+                      device.ctr > 0.5 ? "bg-amber-950/50 text-amber-400" :
+                      "bg-zinc-800 text-zinc-400"
+                    }`}>
+                      {device.ctr.toFixed(2)}% CTR
+                    </span>
+                  </div>
+                  <div className="flex gap-2 text-xs text-zinc-500">
+                    <span>{device.impressions.toLocaleString()} impr</span>
+                    <span>•</span>
+                    <span>{device.clicks.toLocaleString()} clicks</span>
+                    <span>•</span>
+                    <span>{device.dismiss_rate.toFixed(1)}% dismiss</span>
+                  </div>
+                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(device.fill_rate, 100)}%`,
+                        backgroundColor: device.fill_rate > 50 ? colors.primary : colors.tertiary,
+                      }}
+                    />
+                  </div>
+                  <div className="text-xs text-zinc-500">{device.fill_rate.toFixed(1)}% fill rate</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <AdEmptyState message="No device data yet" />
+          )}
         </div>
 
+        {/* Browser Stats */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Browser Performance</h3>
+          <p className="text-xs text-zinc-500 mb-4">CTR by browser</p>
+          {data.adBrowserStats && data.adBrowserStats.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data.adBrowserStats.slice(0, 6)} layout="vertical">
+                <XAxis type="number" tickFormatter={(v) => `${v}%`} stroke="#71717a" fontSize={11} />
+                <YAxis dataKey="browser" type="category" width={70} stroke="#71717a" fontSize={11} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px" }}
+                  formatter={(value) => [`${Number(value ?? 0).toFixed(2)}%`, "CTR"]}
+                />
+                <Bar dataKey="ctr" fill={colors.secondary} radius={[0, 4, 4, 0]} barSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <AdEmptyState message="No browser data yet" />
+          )}
+        </div>
+
+        {/* OS Stats */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">OS Performance</h3>
+          <p className="text-xs text-zinc-500 mb-4">CTR by operating system</p>
+          {data.adOSStats && data.adOSStats.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data.adOSStats.slice(0, 6)} layout="vertical">
+                <XAxis type="number" tickFormatter={(v) => `${v}%`} stroke="#71717a" fontSize={11} />
+                <YAxis dataKey="os" type="category" width={70} stroke="#71717a" fontSize={11} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px" }}
+                  formatter={(value) => [`${Number(value ?? 0).toFixed(2)}%`, "CTR"]}
+                />
+                <Bar dataKey="ctr" fill={colors.quaternary} radius={[0, 4, 4, 0]} barSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <AdEmptyState message="No OS data yet" />
+          )}
+        </div>
+      </div>
+
+      {/* Brand Performance Table */}
+      <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 overflow-hidden">
+        <div className="p-5 border-b border-zinc-800">
+          <h3 className="font-semibold text-zinc-100">Brand Performance</h3>
+          <p className="text-xs text-zinc-500 mt-1">Detailed metrics for each advertiser</p>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -2067,108 +2350,284 @@ function AdAnalyticsTab({ data }: { data: DashboardData }) {
                 <th className="text-right py-3 px-4 text-zinc-400 font-medium">Impressions</th>
                 <th className="text-right py-3 px-4 text-zinc-400 font-medium">Clicks</th>
                 <th className="text-right py-3 px-4 text-zinc-400 font-medium">CTR</th>
+                <th className="text-right py-3 px-4 text-zinc-400 font-medium">Dismissals</th>
+                <th className="text-right py-3 px-4 text-zinc-400 font-medium">Dismiss Rate</th>
+                <th className="text-right py-3 px-4 text-zinc-400 font-medium">Sessions</th>
               </tr>
             </thead>
             <tbody>
-              {(data.adCTRByBrand || []).map((brand, i) => (
-                <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50">
-                  <td className="py-3 px-4 text-zinc-200 font-medium">
-                    {brand.brand_name}
-                  </td>
-                  <td className="py-3 px-4 text-right text-zinc-300">
-                    {brand.impressions.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right text-zinc-300">
-                    {brand.clicks.toLocaleString()}
-                  </td>
+              {(data.adBrandPerformance || []).map((brand, i) => (
+                <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+                  <td className="py-3 px-4 text-zinc-200 font-medium">{brand.brand_name}</td>
+                  <td className="py-3 px-4 text-right text-zinc-300">{brand.impressions.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right text-zinc-300">{brand.clicks.toLocaleString()}</td>
                   <td className="py-3 px-4 text-right">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      brand.ctr >= 2
-                        ? "bg-emerald-900/30 text-emerald-400"
-                        : brand.ctr >= 1
-                          ? "bg-amber-900/30 text-amber-400"
-                          : "bg-zinc-700 text-zinc-300"
+                      brand.ctr >= 2 ? "bg-emerald-950/50 text-emerald-400" :
+                      brand.ctr >= 1 ? "bg-amber-950/50 text-amber-400" :
+                      "bg-zinc-800 text-zinc-400"
                     }`}>
-                      {brand.ctr}%
+                      {brand.ctr.toFixed(2)}%
                     </span>
                   </td>
+                  <td className="py-3 px-4 text-right text-zinc-400">{brand.dismissals.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      brand.dismiss_rate < 10 ? "bg-emerald-950/50 text-emerald-400" :
+                      brand.dismiss_rate < 20 ? "bg-amber-950/50 text-amber-400" :
+                      "bg-red-950/50 text-red-400"
+                    }`}>
+                      {brand.dismiss_rate.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right text-zinc-400">{brand.unique_sessions.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-
-        {(!data.adCTRByBrand || data.adCTRByBrand.length === 0) && (
-          <div className="py-12 text-center text-zinc-500">
-            No CTR data yet - impressions and clicks will appear here once tracked
-          </div>
+        {(!data.adBrandPerformance || data.adBrandPerformance.length === 0) && (
+          <div className="py-12 text-center text-zinc-500">No brand performance data yet</div>
         )}
       </div>
 
-      {/* Existing Ad Health and Brand Stats */}
+      {/* Content & Session Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Brand Performance */}
-        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-          <div className="p-4 border-b border-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-100">
-              Brand Performance
-              <span className="text-xs text-zinc-500 font-normal ml-2">
-                (by filled requests)
-              </span>
-            </h2>
+        {/* Content Length Correlation */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">CTR by Article Length</h3>
+          <p className="text-xs text-zinc-500 mb-4">Do longer articles convert better?</p>
+          {data.adContentCorrelation && data.adContentCorrelation.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={data.adContentCorrelation}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                <XAxis dataKey="article_length_bucket" stroke="#71717a" fontSize={10} angle={-15} textAnchor="end" height={50} />
+                <YAxis tickFormatter={(v) => `${v}%`} stroke="#71717a" fontSize={11} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px" }}
+                  formatter={(value) => [`${Number(value ?? 0).toFixed(2)}%`, "CTR"]}
+                />
+                <Bar dataKey="ctr" fill={colors.primary} radius={[4, 4, 0, 0]}>
+                  {data.adContentCorrelation.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.ctr > 1 ? colors.primary : colors.muted} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <AdEmptyState message="No content correlation data yet" />
+          )}
+        </div>
+
+        {/* Session Depth Analysis */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">CTR by Session Depth</h3>
+          <p className="text-xs text-zinc-500 mb-4">Do users who see more ads click more?</p>
+          {data.adSessionDepth && data.adSessionDepth.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={data.adSessionDepth}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                <XAxis
+                  dataKey="session_ad_count"
+                  stroke="#71717a"
+                  fontSize={11}
+                  label={{ value: "Ads per session", position: "insideBottom", offset: -5, fill: "#71717a", fontSize: 10 }}
+                />
+                <YAxis tickFormatter={(v) => `${v}%`} stroke="#71717a" fontSize={11} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px" }}
+                  formatter={(value, name) => [
+                    name === "avg_ctr" ? `${Number(value ?? 0).toFixed(2)}%` : Number(value ?? 0).toLocaleString(),
+                    name === "avg_ctr" ? "Avg CTR" : "Sessions"
+                  ]}
+                />
+                <Line type="monotone" dataKey="avg_ctr" name="avg_ctr" stroke={colors.primary} strokeWidth={2} dot />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <AdEmptyState message="No session depth data yet" />
+          )}
+        </div>
+      </div>
+
+      {/* Hostname Performance & Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Hostnames */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 overflow-hidden">
+          <div className="p-5 border-b border-zinc-800">
+            <h3 className="font-semibold text-zinc-100">Top Sites by Performance</h3>
+            <p className="text-xs text-zinc-500 mt-1">CTR and fill rates by hostname</p>
           </div>
-          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-zinc-900">
-                <tr className="border-b border-zinc-700">
-                  <th className="text-left py-3 px-4 text-zinc-400 font-medium">Brand</th>
-                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">Fills</th>
-                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">Sites</th>
+              <thead className="sticky top-0 bg-zinc-800/90 backdrop-blur-sm">
+                <tr>
+                  <th className="text-left py-2 px-4 text-zinc-400 font-medium">Hostname</th>
+                  <th className="text-right py-2 px-4 text-zinc-400 font-medium">Requests</th>
+                  <th className="text-right py-2 px-4 text-zinc-400 font-medium">CTR</th>
+                  <th className="text-right py-2 px-4 text-zinc-400 font-medium">Fill</th>
                 </tr>
               </thead>
               <tbody>
-                {(data.adBrandStats || []).map((brand, i) => (
-                  <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50">
-                    <td className="py-2 px-4 text-zinc-200">{brand.brand_name}</td>
-                    <td className="py-2 px-4 text-right text-zinc-300">{brand.impressions}</td>
-                    <td className="py-2 px-4 text-right text-zinc-400">{brand.unique_hostnames}</td>
+                {(data.adHostnamePerformance || []).slice(0, 15).map((host, i) => (
+                  <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                    <td className="py-2 px-4 text-zinc-300 font-mono text-xs truncate max-w-[180px]">{host.hostname}</td>
+                    <td className="py-2 px-4 text-right text-zinc-400">{host.requests.toLocaleString()}</td>
+                    <td className="py-2 px-4 text-right">
+                      <span className={`text-xs ${host.ctr > 1 ? "text-emerald-400" : "text-zinc-400"}`}>
+                        {host.ctr.toFixed(2)}%
+                      </span>
+                    </td>
+                    <td className="py-2 px-4 text-right text-zinc-400">{host.fill_rate.toFixed(0)}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {(!data.adHostnamePerformance || data.adHostnamePerformance.length === 0) && (
+            <div className="py-8 text-center text-zinc-500 text-sm">No hostname data yet</div>
+          )}
         </div>
 
         {/* Status Breakdown */}
-        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-          <div className="p-4 border-b border-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-100">
-              Status Breakdown
-            </h2>
-          </div>
-          <div className="p-4 space-y-3">
-            {(data.adStatusBreakdown || []).map((status, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className={`px-2 py-1 rounded text-xs font-mono ${
-                  status.status === "filled"
-                    ? "bg-emerald-900/30 text-emerald-400"
-                    : status.status === "no_fill"
-                      ? "bg-zinc-700 text-zinc-300"
-                      : status.status === "premium_user"
-                        ? "bg-blue-900/30 text-blue-400"
-                        : "bg-red-900/30 text-red-400"
-                }`}>
-                  {status.status}
-                </span>
-                <div className="flex items-center gap-4">
-                  <span className="text-zinc-300 font-medium">{status.count.toLocaleString()}</span>
-                  <span className="text-zinc-500 text-sm w-16 text-right">{status.percentage}%</span>
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Request Status Breakdown</h3>
+          <p className="text-xs text-zinc-500 mb-4">Distribution of ad request outcomes</p>
+          {data.adStatusBreakdown && data.adStatusBreakdown.length > 0 ? (
+            <div className="space-y-4">
+              {data.adStatusBreakdown.map((status, i) => {
+                const statusColors: Record<string, { bg: string; text: string; bar: string }> = {
+                  filled: { bg: "bg-emerald-950/50", text: "text-emerald-400", bar: colors.primary },
+                  no_fill: { bg: "bg-zinc-800", text: "text-zinc-300", bar: colors.muted },
+                  premium_user: { bg: "bg-blue-950/50", text: "text-blue-400", bar: colors.secondary },
+                  error: { bg: "bg-red-950/50", text: "text-red-400", bar: colors.danger },
+                  gravity_error: { bg: "bg-red-950/50", text: "text-red-400", bar: colors.danger },
+                  timeout: { bg: "bg-amber-950/50", text: "text-amber-400", bar: colors.tertiary },
+                };
+                const color = statusColors[status.status] || statusColors.error;
+                return (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2 py-0.5 rounded text-xs font-mono ${color.bg} ${color.text}`}>
+                        {status.status}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-300 font-medium">{status.count.toLocaleString()}</span>
+                        <span className="text-zinc-500 text-xs w-12 text-right">{status.percentage}%</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${status.percentage}%`, backgroundColor: color.bar }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <AdEmptyState message="No status data yet" />
+          )}
+        </div>
+      </div>
+
+      {/* Day of Week Performance */}
+      {data.adPerformanceByDay && data.adPerformanceByDay.length > 0 && (
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Performance by Day of Week</h3>
+          <p className="text-xs text-zinc-500 mb-4">Identify weekly patterns</p>
+          <div className="grid grid-cols-7 gap-2">
+            {data.adPerformanceByDay.map((day, i) => (
+              <div
+                key={i}
+                className={`rounded-lg p-3 text-center ${
+                  day.ctr > 1 ? "bg-emerald-950/30 border border-emerald-800/30" :
+                  day.ctr > 0.5 ? "bg-zinc-800/50" :
+                  "bg-zinc-800/30"
+                }`}
+              >
+                <div className="text-xs text-zinc-500 mb-1">{day.day_name.slice(0, 3)}</div>
+                <div className={`text-lg font-bold ${day.ctr > 1 ? "text-emerald-400" : "text-zinc-300"}`}>
+                  {day.ctr.toFixed(1)}%
                 </div>
+                <div className="text-xs text-zinc-500 mt-1">{day.impressions.toLocaleString()} imp</div>
               </div>
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Helper Components for AdAnalyticsTab
+function AdMetricCard({
+  label,
+  value,
+  trend,
+  trendValue,
+  subtitle,
+}: {
+  label: string;
+  value: string;
+  trend?: "up" | "down" | "neutral";
+  trendValue?: string;
+  subtitle?: string;
+}) {
+  const trendColors = {
+    up: "text-emerald-400 bg-emerald-950/50",
+    down: "text-red-400 bg-red-950/50",
+    neutral: "text-amber-400 bg-amber-950/50",
+  };
+
+  return (
+    <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-3">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-1">{label}</p>
+      <p className="text-xl font-bold text-zinc-100">{value}</p>
+      {trend && trendValue && (
+        <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${trendColors[trend]}`}>
+          {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"} {trendValue}
+        </span>
+      )}
+      {subtitle && <p className="text-[10px] text-zinc-500 mt-1">{subtitle}</p>}
+    </div>
+  );
+}
+
+function AdInsightCard({
+  type,
+  title,
+  message,
+}: {
+  type: "success" | "warning" | "info";
+  title: string;
+  message: string;
+}) {
+  const colors = {
+    success: "bg-emerald-950/30 border-emerald-800/30 text-emerald-400",
+    warning: "bg-amber-950/30 border-amber-800/30 text-amber-400",
+    info: "bg-blue-950/30 border-blue-800/30 text-blue-400",
+  };
+  const icons = { success: "✓", warning: "⚠", info: "ℹ" };
+
+  return (
+    <div className={`rounded-lg border p-3 ${colors[type]}`}>
+      <div className="flex items-start gap-2">
+        <span className="text-sm">{icons[type]}</span>
+        <div>
+          <div className="text-xs font-medium">{title}</div>
+          <div className="text-xs opacity-80 mt-0.5">{message}</div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function AdEmptyState({ message }: { message: string }) {
+  return (
+    <div className="h-[200px] flex items-center justify-center text-zinc-500 text-sm">
+      {message}
     </div>
   );
 }
