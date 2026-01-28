@@ -117,9 +117,14 @@ export interface AnalyticsEvent {
 // Ad event status - matches ContextResponseStatus in types/api.ts
 export type AdEventStatus = "filled" | "no_fill" | "premium_user" | "gravity_error" | "timeout" | "error";
 
+// Event type for tracking funnel: request -> impression -> click/dismiss
+export type AdEventType = "request" | "impression" | "click" | "dismiss";
+
 export interface AdEvent {
   event_id: string;
   timestamp: string;
+  // Event type (request, impression, click, dismiss)
+  event_type: AdEventType;
   // Request context
   url: string;
   hostname: string;
@@ -140,6 +145,11 @@ export interface AdEvent {
   // Ad data (when filled)
   brand_name: string;
   ad_title: string;
+  ad_text: string;
+  click_url: string;
+  imp_url: string;
+  cta: string;
+  favicon: string;
   // Performance
   duration_ms: number;
   // Environment
@@ -167,6 +177,8 @@ async function ensureAdSchema(): Promise<void> {
         (
             event_id String,
             timestamp DateTime64(3) DEFAULT now64(3),
+            -- Event type (request, impression, click, dismiss)
+            event_type LowCardinality(String) DEFAULT 'request',
             -- Request context
             url String,
             hostname LowCardinality(String),
@@ -187,6 +199,11 @@ async function ensureAdSchema(): Promise<void> {
             -- Ad data (when filled)
             brand_name LowCardinality(String) DEFAULT '',
             ad_title String DEFAULT '',
+            ad_text String DEFAULT '',
+            click_url String DEFAULT '',
+            imp_url String DEFAULT '',
+            cta LowCardinality(String) DEFAULT '',
+            favicon String DEFAULT '',
             -- Performance
             duration_ms UInt32 DEFAULT 0,
             -- Environment
@@ -194,11 +211,35 @@ async function ensureAdSchema(): Promise<void> {
         )
         ENGINE = MergeTree()
         PARTITION BY toYYYYMM(timestamp)
-        ORDER BY (hostname, status, timestamp, event_id)
+        ORDER BY (hostname, event_type, status, timestamp, event_id)
         TTL toDateTime(timestamp) + INTERVAL 90 DAY
         SETTINGS index_granularity = 8192
       `,
     });
+
+    // Add new columns for existing tables (safe migration)
+    try {
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS event_type LowCardinality(String) DEFAULT 'request'`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS ad_text String DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS click_url String DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS imp_url String DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS cta LowCardinality(String) DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS favicon String DEFAULT ''`,
+      });
+    } catch {
+      // Ignore errors - columns may already exist
+    }
 
     adSchemaMigrated = true;
     console.log("[clickhouse] Ad events schema migration complete");
@@ -263,6 +304,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
   const fullEvent: AdEvent = {
     event_id: event.event_id || crypto.randomUUID(),
     timestamp: clickhouseTimestamp,
+    event_type: event.event_type || "request",
     url: event.url || "",
     hostname: event.hostname || "",
     article_title: (event.article_title || "").slice(0, 500),
@@ -278,6 +320,11 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     error_message: (event.error_message || "").slice(0, 500),
     brand_name: event.brand_name || "",
     ad_title: (event.ad_title || "").slice(0, 500),
+    ad_text: (event.ad_text || "").slice(0, 1000),
+    click_url: (event.click_url || "").slice(0, 2000),
+    imp_url: (event.imp_url || "").slice(0, 2000),
+    cta: (event.cta || "").slice(0, 100),
+    favicon: (event.favicon || "").slice(0, 500),
     duration_ms: event.duration_ms || 0,
     env: event.env || env.NODE_ENV,
   };

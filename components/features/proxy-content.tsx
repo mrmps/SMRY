@@ -318,11 +318,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   }, [results, forceUseAvailable]);
 
   // Fetch ad - pass article data for better targeting
-  const { ad: gravityAd, fireImpression } = useGravityAd({
+  // Ads refresh every 45 seconds for users who stay on the page
+  const { ad: gravityAd, fireImpression, fireClick, fireDismiss } = useGravityAd({
     url,
     title: firstSuccessfulArticle?.title,
     textContent: firstSuccessfulArticle?.textContent,
     isPremium,
+    // Additional metadata for better ad targeting
+    byline: firstSuccessfulArticle?.byline,
+    siteName: firstSuccessfulArticle?.siteName,
+    publishedTime: firstSuccessfulArticle?.publishedTime,
+    lang: firstSuccessfulArticle?.lang,
   });
 
   // Handle article load: save to history
@@ -690,7 +696,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
                       ad={!isPremium ? gravityAd : null}
-                      onAdVisible={gravityAd ? () => fireImpression(gravityAd.impUrl) : undefined}
+                      onAdVisible={gravityAd ? fireImpression : undefined}
+                      onAdClick={gravityAd ? fireClick : undefined}
                     />
                   </div>
                 </ResizablePanel>
@@ -701,7 +708,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 <div className="fixed bottom-6 right-6 z-40 w-80">
                   <GravityAd
                     ad={gravityAd}
-                    onVisible={() => fireImpression(gravityAd.impUrl)}
+                    onVisible={fireImpression}
+                    onClick={fireClick}
                     className="shadow-lg shadow-black/5"
                   />
                 </div>
@@ -827,8 +835,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   <GravityAd
                     ad={gravityAd}
                     variant="bar"
-                    onVisible={() => fireImpression(gravityAd.impUrl)}
-                    onDismiss={() => setMobileAdDismissed(true)}
+                    onVisible={fireImpression}
+                    onClick={fireClick}
+                    onDismiss={() => {
+                      fireDismiss();
+                      setMobileAdDismissed(true);
+                    }}
                   />
                 </div>
               )}

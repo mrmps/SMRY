@@ -122,15 +122,37 @@ export interface UseGravityAdOptions {
   textContent?: string;
   /** Whether the user is premium (skips ad fetch) */
   isPremium?: boolean;
+  /** Author name for better ad targeting */
+  byline?: string | null;
+  /** Publisher name for better ad targeting */
+  siteName?: string | null;
+  /** Publication date for better ad targeting */
+  publishedTime?: string | null;
+  /** Article language for better ad targeting */
+  lang?: string | null;
 }
 
 export interface UseGravityAdResult {
   ad: ContextAd | null;
   isLoading: boolean;
-  fireImpression: (impUrl: string) => void;
+  fireImpression: () => void;
+  fireClick: () => void;
+  fireDismiss: () => void;
 }
 
-export function useGravityAd({ url, title = "", textContent = "", isPremium = false }: UseGravityAdOptions): UseGravityAdResult {
+// Ad refresh interval in milliseconds (45 seconds)
+const AD_REFRESH_INTERVAL_MS = 45_000;
+
+export function useGravityAd({
+  url,
+  title = "",
+  textContent = "",
+  isPremium = false,
+  byline,
+  siteName,
+  publishedTime,
+  lang,
+}: UseGravityAdOptions): UseGravityAdResult {
   const { getToken } = useAuth();
   const { user } = useUser();
   const [sessionId, setSessionId] = useState<string>("");
@@ -173,8 +195,8 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
         }
       }
 
-      // Truncate textContent to ~2000 chars (enough context without being too large)
-      const articleContent = textContent ? textContent.slice(0, 2000) : "";
+      // Truncate textContent to ~4000 chars for better ad targeting
+      const articleContent = textContent ? textContent.slice(0, 4000) : "";
 
       const requestBody: ContextRequest = {
         url,
@@ -183,6 +205,11 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
         sessionId,
         device: deviceInfo ?? undefined,
         user: userInfo,
+        // Additional metadata for better ad targeting
+        byline: byline || undefined,
+        siteName: siteName || undefined,
+        publishedTime: publishedTime || undefined,
+        lang: lang || undefined,
       };
 
       const response = await fetch(getApiUrl("/api/context"), {
@@ -212,27 +239,88 @@ export function useGravityAd({ url, title = "", textContent = "", isPremium = fa
     gcTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
+    // Refresh ads every 45 seconds for users who stay on the page
+    refetchInterval: AD_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false, // Don't refresh when tab is hidden
     // Only fetch when we have session info, article content, and user is not premium
     // Wait for title to avoid wasting a request before article loads
     enabled: !!sessionId && !!deviceInfo && !isPremium && !!url && !!title,
     retry: false,
   });
 
-  const fireImpression = useCallback((impUrl: string) => {
-    // Fire impression via our proxy to avoid blockers
-    // The proxy forwards the request to Gravity server-side
-    const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(impUrl)}`);
+  // Helper to send tracking events via sendBeacon (non-blocking)
+  const sendTrackingEvent = useCallback((type: "impression" | "click" | "dismiss", ad: ContextAd | null) => {
+    if (!ad || !sessionId) return;
 
+    // Extract hostname from current page URL
+    let hostname = "";
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      // Ignore invalid URLs
+    }
+
+    const payload = JSON.stringify({
+      type,
+      sessionId,
+      hostname,
+      brandName: ad.brandName,
+      adTitle: ad.title,
+      adText: ad.adText,
+      clickUrl: ad.clickUrl,
+      impUrl: ad.impUrl,
+      cta: ad.cta,
+      favicon: ad.favicon,
+      deviceType: deviceInfo?.deviceType,
+      os: deviceInfo?.os,
+      browser: deviceInfo?.browser,
+    });
+
+    const trackUrl = getApiUrl("/api/adtrack");
+
+    // Use sendBeacon for reliable non-blocking tracking
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      navigator.sendBeacon(trackUrl, new Blob([payload], { type: "application/json" }));
+    } else {
+      // Fallback to fetch (non-blocking, fire-and-forget)
+      fetch(trackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true, // Ensure request completes even if page unloads
+      }).catch(() => {});
+    }
+  }, [sessionId, url, deviceInfo]);
+
+  const fireImpression = useCallback(() => {
+    const ad = query.data;
+    if (!ad) return;
+
+    // 1. Fire impression to Gravity via our proxy (for billing)
+    const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(ad.impUrl)}`);
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
       navigator.sendBeacon(proxyUrl);
     } else {
       fetch(proxyUrl, { method: "POST" }).catch(() => {});
     }
-  }, []);
+
+    // 2. Track locally for our analytics (non-blocking)
+    sendTrackingEvent("impression", ad);
+  }, [query.data, sendTrackingEvent]);
+
+  const fireClick = useCallback(() => {
+    sendTrackingEvent("click", query.data ?? null);
+  }, [query.data, sendTrackingEvent]);
+
+  const fireDismiss = useCallback(() => {
+    sendTrackingEvent("dismiss", query.data ?? null);
+  }, [query.data, sendTrackingEvent]);
 
   return {
     ad: query.data ?? null,
     isLoading: query.isLoading,
     fireImpression,
+    fireClick,
+    fireDismiss,
   };
 }
