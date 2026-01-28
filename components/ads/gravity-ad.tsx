@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { X, ExternalLink } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
@@ -100,75 +100,55 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   const ctaText = ad.cta || "Learn more";
 
   // ============================================
-  // MOBILE VARIANT - Prioritize showing value prop text
+  // MOBILE VARIANT - Clean, minimal, no button
   // ============================================
   if (variant === "mobile") {
     return (
-      <div
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
         className={cn(
-          "flex items-start bg-card border-t border-border/30",
-          "gap-2.5 px-3 py-2.5",
-          "sm:px-4 sm:py-3",
+          "flex items-center gap-3 bg-card border-t border-border/30",
+          "px-3 py-2.5",
+          "sm:px-4",
           "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
+          "group",
           className
         )}
       >
-        {/* Icon - smaller to give more room to text */}
-        <a
-          ref={adRef}
-          href={ad.clickUrl}
-          target="_blank"
-          rel="sponsored noopener"
-          onClick={onClick}
-          className="shrink-0 mt-0.5"
-        >
-          <div className="size-7 sm:size-8 rounded-md overflow-hidden bg-muted">
-            {ad.favicon && !imgError ? (
-              <Image
-                src={ad.favicon}
-                alt=""
-                width={32}
-                height={32}
-                className="size-full object-cover"
-                onError={() => setImgError(true)}
-                unoptimized
-              />
-            ) : (
-              <FallbackIcon brandName={ad.brandName} />
-            )}
-          </div>
-        </a>
+        {/* Icon with light bg for dark mode visibility */}
+        <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          {ad.favicon && !imgError ? (
+            <Image
+              src={ad.favicon}
+              alt=""
+              width={32}
+              height={32}
+              className="size-full object-cover"
+              onError={() => setImgError(true)}
+              unoptimized
+            />
+          ) : (
+            <FallbackIcon brandName={ad.brandName} />
+          )}
+        </div>
 
-        {/* Content - gets most of the space */}
-        <a
-          href={ad.clickUrl}
-          target="_blank"
-          rel="sponsored noopener"
-          onClick={onClick}
-          className="flex-1 min-w-0 group"
-        >
-          <p className="text-[13px] sm:text-[14px] font-medium text-foreground leading-snug line-clamp-3 group-hover:text-primary transition-colors">
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {valueProp}
           </p>
-          <p className="text-[11px] text-muted-foreground/50 mt-1">
+          <p className="text-[11px] text-muted-foreground/50 mt-0.5">
             {ad.brandName} · Ad
           </p>
-        </a>
-
-        {/* Right side: CTA + dismiss stacked */}
-        <div className="shrink-0 flex flex-col items-end gap-1.5">
-          <DismissButton onDismiss={onDismiss} />
-          <a
-            href={ad.clickUrl}
-            target="_blank"
-            rel="sponsored noopener"
-            onClick={onClick}
-            className="text-[11px] font-semibold text-primary whitespace-nowrap"
-          >
-            {ctaText} →
-          </a>
         </div>
-      </div>
+
+        {/* Dismiss only - no CTA button, whole thing is clickable */}
+        <DismissButton onDismiss={onDismiss} />
+      </a>
     );
   }
 
@@ -186,7 +166,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           onClick={onClick}
           className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
         >
-          <div className="size-7 rounded-md overflow-hidden bg-muted shrink-0">
+          <div className="size-7 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
             {ad.favicon && !imgError ? (
               <Image
                 src={ad.favicon}
@@ -210,15 +190,9 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             </p>
           </div>
         </a>
-        <a
-          href={ad.clickUrl}
-          target="_blank"
-          rel="sponsored noopener"
-          onClick={onClick}
-          className="shrink-0 text-[10px] font-semibold text-primary"
-        >
+        <span className="shrink-0 text-[10px] font-semibold text-primary">
           {ctaText} →
-        </a>
+        </span>
         <DismissButton onDismiss={onDismiss} />
       </div>
     );
@@ -229,76 +203,22 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   // ============================================
   if (variant === "sidebar") {
     return (
-      <div className={cn("group", className)}>
-        <div className="flex items-start gap-2.5">
-          <a
-            ref={adRef}
-            href={ad.clickUrl}
-            target="_blank"
-            rel="sponsored noopener"
-            onClick={onClick}
-            className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
-          >
-            <div className="size-9 rounded-lg overflow-hidden bg-muted shrink-0">
-              {ad.favicon && !imgError ? (
-                <Image
-                  src={ad.favicon}
-                  alt=""
-                  width={36}
-                  height={36}
-                  className="size-full object-cover"
-                  onError={() => setImgError(true)}
-                  unoptimized
-                />
-              ) : (
-                <FallbackIcon brandName={ad.brandName} />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
-                {valueProp}
-              </p>
-              <p className="text-[10px] text-muted-foreground/50 mt-1">
-                {ad.brandName} · Sponsored
-              </p>
-              <p className="mt-2 text-[11px] font-semibold text-primary">
-                {ctaText} →
-              </p>
-            </div>
-          </a>
-          <DismissButton onDismiss={onDismiss} />
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================
-  // DEFAULT VARIANT - Desktop floating card
-  // ============================================
-  return (
-    <div
-      className={cn(
-        "group rounded-xl bg-card border border-border/40 p-3",
-        "shadow-md hover:shadow-lg transition-shadow duration-200",
-        className
-      )}
-    >
-      <div className="flex items-start gap-3">
+      <div className={cn("flex items-start gap-2.5 group", className)}>
         <a
           ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="flex-1 flex items-start gap-3 min-w-0"
+          className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
         >
-          <div className="size-10 rounded-xl overflow-hidden bg-muted shrink-0">
+          <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
             {ad.favicon && !imgError ? (
               <Image
                 src={ad.favicon}
                 alt=""
-                width={40}
-                height={40}
+                width={32}
+                height={32}
                 className="size-full object-cover"
                 onError={() => setImgError(true)}
                 unoptimized
@@ -307,23 +227,73 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
               <FallbackIcon brandName={ad.brandName} />
             )}
           </div>
-
           <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+            <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
             </p>
-            <p className="text-[11px] text-muted-foreground/50 mt-1">
-              {ad.brandName} · Ad
+            <p className="text-[10px] text-muted-foreground/50 mt-1">
+              {ad.brandName} · Sponsored
             </p>
-            <span className="inline-flex items-center gap-1 mt-2.5 text-[11px] font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-md">
-              {ctaText}
-              <ExternalLink className="size-3 opacity-70" />
-            </span>
+            <p className="mt-1.5 text-[11px] font-semibold text-primary">
+              {ctaText} →
+            </p>
           </div>
         </a>
-
         <DismissButton onDismiss={onDismiss} />
       </div>
-    </div>
+    );
+  }
+
+  // ============================================
+  // DEFAULT VARIANT - Desktop floating card
+  // ============================================
+  return (
+    <a
+      ref={adRef}
+      href={ad.clickUrl}
+      target="_blank"
+      rel="sponsored noopener"
+      onClick={onClick}
+      className={cn(
+        "group flex items-center gap-3 rounded-xl bg-card border border-border/40 p-3",
+        "shadow-md hover:shadow-lg transition-shadow duration-200",
+        className
+      )}
+    >
+      {/* Logo with white bg for dark mode */}
+      <div className="size-10 rounded-xl overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+        {ad.favicon && !imgError ? (
+          <Image
+            src={ad.favicon}
+            alt=""
+            width={40}
+            height={40}
+            className="size-full object-cover"
+            onError={() => setImgError(true)}
+            unoptimized
+          />
+        ) : (
+          <FallbackIcon brandName={ad.brandName} />
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+          {valueProp}
+        </p>
+        <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+          {ad.brandName} · Ad
+        </p>
+      </div>
+
+      {/* CTA text + dismiss */}
+      <div className="shrink-0 flex items-center gap-2">
+        <span className="text-[11px] font-semibold text-primary whitespace-nowrap">
+          {ctaText} →
+        </span>
+        <DismissButton onDismiss={onDismiss} />
+      </div>
+    </a>
   );
 }
