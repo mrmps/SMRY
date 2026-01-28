@@ -570,6 +570,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         // =============================================================================
 
         // 13. Ad health metrics - overall fill rate and performance
+        // Only count 'request' events to avoid inflating with impression/click/dismiss events
         queryClickhouse<AdHealthMetrics>(`
           SELECT
             count() AS total_requests,
@@ -584,22 +585,24 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             uniqIf(brand_name, brand_name != '') AS unique_brands
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND event_type = 'request'
         `).catch(() => [] as AdHealthMetrics[]),
 
-        // 14. Ad status breakdown
+        // 14. Ad status breakdown - only count request events
         queryClickhouse<AdStatusBreakdown>(`
           SELECT
             status,
             count() AS count,
-            round(count() / (SELECT count() FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR) * 100, 2) AS percentage,
+            round(count() / (SELECT count() FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR AND event_type = 'request') * 100, 2) AS percentage,
             round(avg(duration_ms)) AS avg_duration_ms
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND event_type = 'request'
           GROUP BY status
           ORDER BY count DESC
         `).catch(() => [] as AdStatusBreakdown[]),
 
-        // 15. Ad fill rate by hostname
+        // 15. Ad fill rate by hostname - only count request events
         queryClickhouse<AdHostnameStats>(`
           SELECT
             hostname,
@@ -610,13 +613,14 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
             AND hostname != ''
+            AND event_type = 'request'
           GROUP BY hostname
           HAVING countIf(status != 'premium_user') > 0
           ORDER BY total_requests DESC
           LIMIT 100
         `).catch(() => [] as AdHostnameStats[]),
 
-        // 16. Ad fill rate by device/browser/OS
+        // 16. Ad fill rate by device/browser/OS - only count request events
         queryClickhouse<AdDeviceStats>(`
           SELECT
             device_type,
@@ -628,6 +632,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
             AND device_type != ''
+            AND event_type = 'request'
           GROUP BY device_type, os, browser
           HAVING countIf(status != 'premium_user') > 0
           ORDER BY total_requests DESC
@@ -651,7 +656,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           LIMIT 50
         `).catch(() => [] as AdBrandStats[]),
 
-        // 18. Hourly ad traffic
+        // 18. Hourly ad traffic - only count request events
         queryClickhouse<AdHourlyTraffic>(`
           SELECT
             formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
@@ -661,6 +666,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND event_type = 'request'
           GROUP BY hour
           ORDER BY hour
         `).catch(() => [] as AdHourlyTraffic[]),

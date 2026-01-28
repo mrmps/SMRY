@@ -2155,7 +2155,7 @@ function AdAnalyticsTab({ data }: { data: DashboardData }) {
                     : status.status === "no_fill"
                       ? "bg-zinc-700 text-zinc-300"
                       : status.status === "premium_user"
-                        ? "bg-purple-900/30 text-purple-400"
+                        ? "bg-blue-900/30 text-blue-400"
                         : "bg-red-900/30 text-red-400"
                 }`}>
                   {status.status}
