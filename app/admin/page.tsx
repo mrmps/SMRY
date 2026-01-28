@@ -312,6 +312,30 @@ interface DashboardData {
     count: number;
     rate_from_previous: number;
   }>;
+  // Bot detection and gap analysis
+  adBotDetection: Array<{
+    category: string;
+    filled_count: number;
+    impression_count: number;
+    impression_rate: number;
+    unique_sessions: number;
+  }>;
+  adCTRByHourDevice: Array<{
+    hour_of_day: number;
+    device_type: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    fill_rate: number;
+  }>;
+  adFilledImpressionGap: Array<{
+    device_type: string;
+    browser: string;
+    filled_count: number;
+    impression_count: number;
+    gap_count: number;
+    impression_rate: number;
+  }>;
 }
 
 type TabType = "overview" | "requests" | "live" | "errors" | "ads";
@@ -2191,6 +2215,22 @@ function AdAnalyticsTab({
                 message={`${data.adBrandPerformance[0].brand_name} leads with ${data.adBrandPerformance[0].impressions.toLocaleString()} impressions`}
               />
             )}
+            {/* Bot Detection Insight */}
+            {data.adBotDetection && data.adBotDetection.length > 0 && (() => {
+              const botData = data.adBotDetection.find(d => d.category.includes('Bot'));
+              const realData = data.adBotDetection.find(d => d.category.includes('Real'));
+              if (botData && botData.filled_count > 0) {
+                const botPct = realData ? (botData.filled_count / (botData.filled_count + realData.filled_count) * 100) : 100;
+                return (
+                  <AdInsightCard
+                    type={botPct > 10 ? "warning" : "info"}
+                    title="Bot Traffic"
+                    message={`${botPct.toFixed(1)}% of filled ads have no device info (${botData.filled_count.toLocaleString()} requests)`}
+                  />
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
       </div>
@@ -2378,6 +2418,147 @@ function AdAnalyticsTab({
             <AdEmptyState message="No OS data yet" />
           )}
         </div>
+      </div>
+
+      {/* Bot Detection & Impression Gap Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bot Detection */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Traffic Quality Analysis</h3>
+          <p className="text-xs text-zinc-500 mb-4">Detect bot/curl traffic by missing device info</p>
+          {data.adBotDetection && data.adBotDetection.length > 0 ? (
+            <div className="space-y-4">
+              {data.adBotDetection.map((item, i) => {
+                const isBot = item.category.includes('Bot');
+                return (
+                  <div key={i} className={`p-4 rounded-lg border ${isBot ? 'bg-amber-950/20 border-amber-800/30' : 'bg-emerald-950/20 border-emerald-800/30'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-medium ${isBot ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {isBot ? 'Likely Bot Traffic' : 'Real User Traffic'}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${isBot ? 'bg-amber-900/50 text-amber-300' : 'bg-emerald-900/50 text-emerald-300'}`}>
+                        {item.impression_rate.toFixed(1)}% impression rate
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <div className="text-lg font-bold text-zinc-100">{item.filled_count.toLocaleString()}</div>
+                        <div className="text-xs text-zinc-500">Filled</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-zinc-100">{item.impression_count.toLocaleString()}</div>
+                        <div className="text-xs text-zinc-500">Impressions</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-zinc-100">{item.unique_sessions.toLocaleString()}</div>
+                        <div className="text-xs text-zinc-500">Sessions</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <AdEmptyState message="No traffic data yet" />
+          )}
+        </div>
+
+        {/* Filled vs Impression Gap */}
+        <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+          <h3 className="font-semibold text-zinc-100 mb-1">Impression Gap by Device/Browser</h3>
+          <p className="text-xs text-zinc-500 mb-4">Where are impressions being lost?</p>
+          {data.adFilledImpressionGap && data.adFilledImpressionGap.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-700">
+                    <th className="text-left py-2 px-2 text-zinc-400">Device</th>
+                    <th className="text-left py-2 px-2 text-zinc-400">Browser</th>
+                    <th className="text-right py-2 px-2 text-zinc-400">Filled</th>
+                    <th className="text-right py-2 px-2 text-zinc-400">Impr</th>
+                    <th className="text-right py-2 px-2 text-zinc-400">Gap</th>
+                    <th className="text-right py-2 px-2 text-zinc-400">Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.adFilledImpressionGap.slice(0, 10).map((item, i) => (
+                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                      <td className="py-2 px-2 text-zinc-300 capitalize">{item.device_type}</td>
+                      <td className="py-2 px-2 text-zinc-300 capitalize">{item.browser}</td>
+                      <td className="py-2 px-2 text-right text-zinc-400">{item.filled_count.toLocaleString()}</td>
+                      <td className="py-2 px-2 text-right text-zinc-400">{item.impression_count.toLocaleString()}</td>
+                      <td className="py-2 px-2 text-right">
+                        <span className={item.gap_count > 100 ? 'text-amber-400' : 'text-zinc-400'}>
+                          {item.gap_count.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                          item.impression_rate > 80 ? 'bg-emerald-900/50 text-emerald-400' :
+                          item.impression_rate > 50 ? 'bg-amber-900/50 text-amber-400' :
+                          'bg-red-900/50 text-red-400'
+                        }`}>
+                          {item.impression_rate.toFixed(0)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <AdEmptyState message="No gap data yet" />
+          )}
+        </div>
+      </div>
+
+      {/* CTR by Hour with Device Breakdown */}
+      <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+        <h3 className="font-semibold text-zinc-100 mb-1">CTR by Hour & Device</h3>
+        <p className="text-xs text-zinc-500 mb-4">Performance breakdown by hour and device type</p>
+        {data.adCTRByHourDevice && data.adCTRByHourDevice.length > 0 ? (
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={(() => {
+              // Pivot data: group by hour, show stacked bars by device
+              const hourlyData: Record<number, Record<string, number>> = {};
+              data.adCTRByHourDevice.forEach(item => {
+                if (!hourlyData[item.hour_of_day]) {
+                  hourlyData[item.hour_of_day] = { hour: item.hour_of_day };
+                }
+                hourlyData[item.hour_of_day][`${item.device_type}_ctr`] = item.ctr;
+                hourlyData[item.hour_of_day][`${item.device_type}_impressions`] = item.impressions;
+              });
+              return Object.values(hourlyData).sort((a, b) => (a.hour as number) - (b.hour as number));
+            })()}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+              <XAxis
+                dataKey="hour"
+                tickFormatter={(v) => `${v}:00`}
+                stroke="#71717a"
+                fontSize={11}
+              />
+              <YAxis
+                tickFormatter={(v) => `${v}%`}
+                stroke="#71717a"
+                fontSize={11}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "8px" }}
+                formatter={(value, name) => {
+                  const label = String(name).replace('_ctr', '').replace('_impressions', '');
+                  return [`${Number(value ?? 0).toFixed(2)}%`, `${label} CTR`];
+                }}
+                labelFormatter={(label) => `${label}:00`}
+              />
+              <Legend />
+              <Bar dataKey="mobile_ctr" name="Mobile" fill={colors.primary} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="desktop_ctr" name="Desktop" fill={colors.secondary} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="tablet_ctr" name="Tablet" fill={colors.tertiary} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <AdEmptyState message="No hourly device data yet" />
+        )}
       </div>
 
       {/* Brand Performance Table */}

@@ -345,6 +345,35 @@ interface AdConversionFunnel {
   rate_from_previous: number;
 }
 
+// Bot detection - identify filled requests without device info (likely bots/curl)
+interface AdBotDetection {
+  category: string;
+  filled_count: number;
+  impression_count: number;
+  impression_rate: number;
+  unique_sessions: number;
+}
+
+// CTR by hour of day with device breakdown
+interface AdCTRByHourDevice {
+  hour_of_day: number;
+  device_type: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  fill_rate: number;
+}
+
+// Filled vs Impression gap analysis
+interface AdFilledImpressionGap {
+  device_type: string;
+  browser: string;
+  filled_count: number;
+  impression_count: number;
+  gap_count: number;
+  impression_rate: number;
+}
+
 export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
   async ({ query, set, headers }) => {
@@ -484,6 +513,9 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adContentCorrelation,
         adSessionDepth,
         adConversionFunnel,
+        adBotDetection,
+        adCTRByHourDevice,
+        adFilledImpressionGap,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
         queryClickhouse<HostnameStats>(`
@@ -1115,6 +1147,62 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           )
           ORDER BY stage_order
         `).catch(() => [] as AdConversionFunnel[]),
+
+        // 34. Bot Detection - identify filled requests without device info (likely bots/curl)
+        queryClickhouse<AdBotDetection>(`
+          SELECT
+            CASE
+              WHEN device_type = '' OR browser = '' THEN 'No Device Info (Likely Bot)'
+              ELSE 'Has Device Info (Real User)'
+            END as category,
+            countIf(event_type = 'request' AND status = 'filled') AS filled_count,
+            countIf(event_type = 'impression') AS impression_count,
+            round(if(countIf(event_type = 'request' AND status = 'filled') > 0,
+              countIf(event_type = 'impression') / countIf(event_type = 'request' AND status = 'filled') * 100, 0), 1) AS impression_rate,
+            uniq(session_id) AS unique_sessions
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY category
+          ORDER BY filled_count DESC
+        `).catch(() => [] as AdBotDetection[]),
+
+        // 35. CTR by Hour of Day with Device Breakdown
+        queryClickhouse<AdCTRByHourDevice>(`
+          SELECT
+            toHour(timestamp) AS hour_of_day,
+            if(device_type = '', 'unknown', device_type) AS device_type,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(if(countIf(event_type = 'impression') > 0,
+              countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 0), 2) AS ctr,
+            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
+              countIf(event_type = 'request' AND status = 'filled') /
+              countIf(event_type = 'request' AND status != 'premium_user') * 100, 0), 2) AS fill_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+          GROUP BY hour_of_day, device_type
+          HAVING countIf(event_type = 'impression') > 0
+          ORDER BY hour_of_day, device_type
+        `).catch(() => [] as AdCTRByHourDevice[]),
+
+        // 36. Filled vs Impression Gap Analysis - identify where impressions are lost
+        queryClickhouse<AdFilledImpressionGap>(`
+          SELECT
+            if(device_type = '', 'unknown', device_type) AS device_type,
+            if(browser = '', 'unknown', browser) AS browser,
+            countIf(event_type = 'request' AND status = 'filled') AS filled_count,
+            countIf(event_type = 'impression') AS impression_count,
+            countIf(event_type = 'request' AND status = 'filled') - countIf(event_type = 'impression') AS gap_count,
+            round(if(countIf(event_type = 'request' AND status = 'filled') > 0,
+              countIf(event_type = 'impression') / countIf(event_type = 'request' AND status = 'filled') * 100, 0), 1) AS impression_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY device_type, browser
+          HAVING countIf(event_type = 'request' AND status = 'filled') > 0
+          ORDER BY gap_count DESC
+          LIMIT 20
+        `).catch(() => [] as AdFilledImpressionGap[]),
       ]);
 
       // Get buffer stats for monitoring
@@ -1193,6 +1281,10 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adContentCorrelation,
         adSessionDepth,
         adConversionFunnel,
+        // Bot detection and gap analysis
+        adBotDetection,
+        adCTRByHourDevice,
+        adFilledImpressionGap,
       };
     } catch (error) {
       console.error("[analytics] Query error:", error);

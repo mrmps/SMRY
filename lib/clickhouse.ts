@@ -241,6 +241,54 @@ async function ensureAdSchema(): Promise<void> {
       // Ignore errors - columns may already exist
     }
 
+    // Create materialized views for ad analytics performance
+    try {
+      // Hourly ad metrics materialized view
+      await clickhouse.command({
+        query: `
+          CREATE MATERIALIZED VIEW IF NOT EXISTS ad_hourly_metrics_mv
+          ENGINE = SummingMergeTree()
+          PARTITION BY toYYYYMM(hour)
+          ORDER BY (hour, device_type, browser)
+          AS SELECT
+            toStartOfHour(timestamp) AS hour,
+            if(device_type = '', 'unknown', device_type) AS device_type,
+            if(browser = '', 'unknown', browser) AS browser,
+            countIf(event_type = 'request' AND status = 'filled') AS filled_count,
+            countIf(event_type = 'impression') AS impression_count,
+            countIf(event_type = 'click') AS click_count,
+            countIf(event_type = 'dismiss') AS dismiss_count,
+            uniqState(session_id) AS unique_sessions_state
+          FROM ad_events
+          GROUP BY hour, device_type, browser
+        `,
+      });
+
+      // CTR by hour of day materialized view
+      await clickhouse.command({
+        query: `
+          CREATE MATERIALIZED VIEW IF NOT EXISTS ad_ctr_by_hour_mv
+          ENGINE = SummingMergeTree()
+          PARTITION BY toYYYYMM(date)
+          ORDER BY (date, hour_of_day, device_type)
+          AS SELECT
+            toDate(timestamp) AS date,
+            toHour(timestamp) AS hour_of_day,
+            if(device_type = '', 'unknown', device_type) AS device_type,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            countIf(event_type = 'request' AND status = 'filled') AS filled,
+            countIf(event_type = 'request' AND status != 'premium_user') AS requests
+          FROM ad_events
+          GROUP BY date, hour_of_day, device_type
+        `,
+      });
+
+      console.log("[clickhouse] Ad materialized views created");
+    } catch {
+      // Ignore errors - views may already exist
+    }
+
     adSchemaMigrated = true;
     console.log("[clickhouse] Ad events schema migration complete");
   } catch (error) {
