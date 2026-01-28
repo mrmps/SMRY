@@ -10,7 +10,7 @@ import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getAndClearReturnUrl, getReturnUrl, storeReturnUrl } from "@/lib/hooks/use-return-url";
+import { getAndClearReturnUrl, getReturnUrl } from "@/lib/hooks/use-return-url";
 
 // Track buy button clicks
 function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
@@ -89,6 +89,7 @@ interface CTAButtonProps {
   onCheckoutOpen: () => void;
   onSubscriptionComplete: () => void;
   onSignedOutClick?: () => void;
+  authRedirectUrl: string;
 }
 
 function CTAButton({
@@ -101,6 +102,7 @@ function CTAButton({
   onCheckoutOpen,
   onSubscriptionComplete,
   onSignedOutClick,
+  authRedirectUrl,
 }: CTAButtonProps) {
   const baseStyles = variant === "desktop"
     ? "w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-medium text-sm"
@@ -146,7 +148,7 @@ function CTAButton({
           )}
         </SignedIn>
         <SignedOut>
-          <SignInButton mode="modal" fallbackRedirectUrl="/pricing">
+          <SignInButton mode="modal" fallbackRedirectUrl={authRedirectUrl}>
             <button
               onClick={onSignedOutClick}
               className={`${baseStyles} ${interactiveStyles}`}
@@ -171,17 +173,25 @@ export function PricingContent() {
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
   const { user } = useUser();
 
-  // Get return URL from query params or sessionStorage
+  // Get return URL from query params
   const returnUrlFromParams = searchParams.get("returnUrl");
 
   // Check if user came from an article (for showing dismiss option)
   // Use state to avoid hydration mismatch from sessionStorage access
-  const [hasStoredReturnUrl, setHasStoredReturnUrl] = useState(false);
+  const [storedReturnUrl, setStoredReturnUrl] = useState<string | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: hydration-safe sessionStorage access
-    setHasStoredReturnUrl(!!getReturnUrl());
+    setStoredReturnUrl(getReturnUrl());
   }, []);
-  const hasReturnUrl = !!(returnUrlFromParams || hasStoredReturnUrl);
+  const hasReturnUrl = !!(returnUrlFromParams || storedReturnUrl);
+
+  // Build auth redirect URL - use returnUrl from params or sessionStorage
+  // This ensures premium users who sign in go to their original page (or home)
+  // while non-premium users get sent back here with returnUrl preserved
+  const effectiveReturnUrl = returnUrlFromParams || storedReturnUrl || "/";
+  const authRedirectUrl = effectiveReturnUrl === "/"
+    ? "/auth/redirect?returnUrl=%2F"
+    : `/auth/redirect?returnUrl=${encodeURIComponent(effectiveReturnUrl)}`;
 
   // Handle dismiss/go back
   const handleDismiss = useCallback(() => {
@@ -444,7 +454,7 @@ export function PricingContent() {
                   ctaLabel={t("startFreeTrial")}
                   onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
                   onSubscriptionComplete={() => setShowSuccess(true)}
-                  onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
+                  authRedirectUrl={authRedirectUrl}
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground/70 text-center">
                   {t("trialAndCancel")}
@@ -758,7 +768,7 @@ export function PricingContent() {
                 ctaLabel={t("startFreeTrial")}
                 onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
                 onSubscriptionComplete={() => setShowSuccess(true)}
-                onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
+                authRedirectUrl={authRedirectUrl}
               />
             </div>
 
@@ -816,7 +826,7 @@ export function PricingContent() {
           ctaLabel={t("startFreeTrial")}
           onCheckoutOpen={() => handleCheckoutOpen(billingPeriod)}
           onSubscriptionComplete={() => setShowSuccess(true)}
-          onSignedOutClick={() => storeReturnUrl(returnUrlFromParams || undefined)}
+          authRedirectUrl={authRedirectUrl}
         />
       </div>
     </div>

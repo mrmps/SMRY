@@ -26,7 +26,7 @@ import { LanguageIcon, FeedbackIcon } from "@/components/ui/custom-icons";
 
 import { cn } from "@/lib/utils";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
-import { storeReturnUrl } from "@/lib/hooks/use-return-url";
+import { buildUrlWithReturn, storeReturnUrl } from "@/lib/hooks/use-return-url";
 import { routing, type Locale } from "@/i18n/routing";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import {
@@ -295,6 +295,9 @@ function ThemePicker({ className }: { className?: string }) {
 // Account section that adapts to auth state
 function AccountSection({ onAction }: { onAction?: () => void }) {
   const { isPremium } = useIsPremium();
+  const authRedirectUrl = typeof window !== "undefined"
+    ? buildUrlWithReturn("/auth/redirect")
+    : "/auth/redirect";
 
   return (
     <>
@@ -326,13 +329,10 @@ function AccountSection({ onAction }: { onAction?: () => void }) {
       </SignedIn>
       <SignedOut>
         <div className="flex gap-2">
-          <SignInButton mode="modal" fallbackRedirectUrl="/">
+          <SignInButton mode="modal" fallbackRedirectUrl={authRedirectUrl}>
             <button
               className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70"
-              onClick={() => {
-                storeReturnUrl();
-                onAction?.();
-              }}
+              onClick={() => onAction?.()}
             >
               <User className="size-4" />
               Sign in
