@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
-import { storeReturnUrl } from "@/lib/hooks/use-return-url";
+import { buildUrlWithReturn, storeReturnUrl } from "@/lib/hooks/use-return-url";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +48,12 @@ export function AuthBar({
   const isCompact = variant === "compact";
   const avatarSize = isCompact ? "size-7" : "size-9";
 
+  // Build the auth redirect URL with return URL for server-side premium check
+  // This allows the /auth/redirect page to know where to send the user back
+  const authRedirectUrl = isClient
+    ? buildUrlWithReturn("/auth/redirect")
+    : "/auth/redirect";
+
   // Don't render anything server-side to prevent hydration mismatch
   if (!isClient) {
     return <div className={cn("flex items-center gap-2", className)} />;
@@ -79,13 +85,12 @@ export function AuthBar({
       </SignedIn>
 
       <SignedOut>
-        {/* Sign In button - stores return URL before opening modal */}
+        {/* Sign In button - redirects to /auth/redirect for server-side premium check */}
         <SignInButton
           mode="modal"
-          fallbackRedirectUrl="/pricing"
+          fallbackRedirectUrl={authRedirectUrl}
         >
           <button
-            onClick={() => storeReturnUrl()}
             className={cn(
               "font-medium transition-colors",
               "text-muted-foreground hover:text-foreground",

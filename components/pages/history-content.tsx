@@ -8,7 +8,6 @@ import {
   UserButton,
   useAuth,
 } from "@clerk/nextjs";
-import { storeReturnUrl } from "@/lib/hooks/use-return-url";
 import {
   ArrowLeft,
   History,
@@ -1343,8 +1342,8 @@ function SignedOutContent() {
         device.
       </p>
       <div className="flex items-center gap-3 mt-6">
-        <SignInButton mode="modal" fallbackRedirectUrl="/history">
-          <Button variant="outline" onClick={() => storeReturnUrl("/history")}>
+        <SignInButton mode="modal" fallbackRedirectUrl="/auth/redirect?returnUrl=%2Fhistory">
+          <Button variant="outline">
             Sign In
           </Button>
         </SignInButton>

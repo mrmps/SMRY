@@ -29,7 +29,7 @@ import {
   UserButton,
   useAuth,
 } from "@clerk/nextjs";
-import { storeReturnUrl } from "@/lib/hooks/use-return-url";
+import { buildUrlWithReturn } from "@/lib/hooks/use-return-url";
 import {
   Popover,
   PopoverTrigger,
@@ -355,6 +355,7 @@ function HelpPopoverContent() {
   const isMobile = useIsMobile();
   const { has, isLoaded } = useAuth();
   const isPremium = isLoaded && (has?.({ plan: "premium" }) ?? false);
+  const authRedirectUrl = isClient ? buildUrlWithReturn("/auth/redirect") : "/auth/redirect";
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -469,9 +470,8 @@ function HelpPopoverContent() {
         {isClient && (
           <>
             <SignedOut>
-              <SignInButton mode="modal" fallbackRedirectUrl="/">
+              <SignInButton mode="modal" fallbackRedirectUrl={authRedirectUrl}>
                 <button
-                  onClick={() => storeReturnUrl()}
                   className="flex items-center gap-1.5 rounded-full border border-border bg-accent px-2.5 py-1 text-[11px] font-medium text-foreground/80 hover:bg-accent transition-colors"
                 >
                   <Crown className="size-3 text-amber-500" />
