@@ -1,7 +1,7 @@
 // ReactScan must be the top-most import (before React)
 import { ReactScan } from "@/components/shared/react-scan";
 import { ReactGrab } from "@/components/shared/react-grab";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Syne } from "next/font/google";
 import "./globals.css";
@@ -53,6 +53,16 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+  ],
+};
+
 export default async function RootLayout({
   children,
 }: {
@@ -71,13 +81,12 @@ export default async function RootLayout({
   return (
     <ClerkProvider appearance={clerkAppearance}>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
-        <head>
-          <JsonLd data={organizationSchema} />
-          <JsonLd data={websiteSchema} />
-        </head>
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
+          {/* Structured data for SEO - placed in body for Next.js App Router compatibility */}
+          <JsonLd data={organizationSchema} />
+          <JsonLd data={websiteSchema} />
           <ReactScan />
           <ReactGrab />
           <ThemeProvider

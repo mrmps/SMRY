@@ -135,17 +135,17 @@ export function MobileBottomBar({
               {/* Top action buttons */}
               <div className="flex gap-2">
                 <button
-                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70"
+                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   onClick={handleNativeShare}
                 >
-                  <Upload className="size-4" />
+                  <Upload className="size-4" aria-hidden="true" />
                   Share
                 </button>
                 <button
-                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70"
+                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   onClick={handleTweet}
                 >
-                  <Twitter className="size-4" />
+                  <Twitter className="size-4" aria-hidden="true" />
                   Tweet
                 </button>
               </div>
@@ -155,12 +155,12 @@ export function MobileBottomBar({
                 <div className="relative">
                   <button
                     onClick={() => handleCopy(smryUrl, "smry")}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
                   >
-                    <Link2 className="size-5 text-muted-foreground" />
+                    <Link2 className="size-5 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1">Copy smry link</span>
                     {copiedItem === "smry" && (
-                      <span className="text-xs text-primary">Copied!</span>
+                      <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
                     )}
                   </button>
                   <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
@@ -169,12 +169,12 @@ export function MobileBottomBar({
                 <div className="relative">
                   <button
                     onClick={() => handleCopy(originalUrl, "original")}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
                   >
-                    <Copy className="size-5 text-muted-foreground" />
+                    <Copy className="size-5 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1">Copy original link</span>
                     {copiedItem === "original" && (
-                      <span className="text-xs text-primary">Copied!</span>
+                      <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
                     )}
                   </button>
                   <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
@@ -186,9 +186,9 @@ export function MobileBottomBar({
                       window.open(originalUrl, "_blank", "noopener,noreferrer");
                       setShareDrawerOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
                   >
-                    <ExternalLink className="size-5 text-muted-foreground" />
+                    <ExternalLink className="size-5 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1">Open original in browser</span>
                   </button>
                   <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
@@ -199,12 +199,12 @@ export function MobileBottomBar({
                     const markdown = `[${articleTitle || "Article"}](${smryUrl})`;
                     handleCopy(markdown, "markdown");
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
                 >
-                  <FileText className="size-5 text-muted-foreground" />
+                  <FileText className="size-5 text-muted-foreground" aria-hidden="true" />
                   <span className="flex-1">Copy as markdown</span>
                   {copiedItem === "markdown" && (
-                    <span className="text-xs text-primary">Copied!</span>
+                    <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
                   )}
                 </button>
               </div>

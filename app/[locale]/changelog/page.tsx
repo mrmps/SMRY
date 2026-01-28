@@ -1,6 +1,6 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { ChangelogContent } from '@/components/pages/changelog-content';
-import type { Metadata } from 'next';
 
 export const dynamic = 'force-static';
 

@@ -60,9 +60,9 @@ interface SettingsDrawerProps {
 }
 
 // Native iOS-style card container
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+function Card({ children, className, ...props }: { children: React.ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("bg-muted rounded-xl", className)}>
+    <div className={cn("bg-muted rounded-xl", className)} {...props}>
       {children}
     </div>
   );
@@ -81,16 +81,19 @@ function SegmentedControl<T extends string>({
   className?: string;
 }) {
   return (
-    <Card className={cn("flex p-1 gap-1", className)}>
+    <Card className={cn("flex p-1 gap-1", className)} role="radiogroup">
       {options.map((option) => {
         const isSelected = value === option.value;
         return (
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={typeof option.label === 'string' ? option.label : undefined}
             className={cn(
               "relative flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-all",
-              "focus-visible:outline-none",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               isSelected
                 ? "bg-white text-[color(display-p3_0.13_0.13_0.14)] shadow-sm dark:bg-[color(display-p3_0.32_0.33_0.36)] dark:text-white"
                 : "text-muted-foreground active:opacity-70"

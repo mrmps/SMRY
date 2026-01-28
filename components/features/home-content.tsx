@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import {
   ArrowRight,
@@ -25,6 +25,10 @@ import { AuthBar } from "@/components/shared/auth-bar";
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
 
+// Hoisted RegExp patterns for URL validation (performance optimization)
+const TLD_REGEX = /\.[a-zA-Z]{2,}/;
+const HTTP_REGEX = /^https?:\/\//i;
+
 
 // Feature Grid Cell - visual card with rounded background
 function FeatureVisual({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -47,10 +51,10 @@ function FeatureText({ title, description, className }: { title: string; descrip
       "flex py-8 lg:py-0 lg:h-[340px] flex-col items-center justify-center gap-2.5 px-6 text-center",
       className
     )}>
-      <h2 className="max-w-[300px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
+      <h2 className="max-w-[300px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground text-balance">
         {title}
       </h2>
-      <p className="max-w-[300px] text-[14px] leading-5 text-muted-foreground">
+      <p className="max-w-[300px] text-[14px] leading-5 text-muted-foreground text-pretty">
         {description}
       </p>
     </div>
@@ -255,10 +259,10 @@ function looksLikeUrlAttempt(input: string): boolean {
   const trimmed = input.trim();
   if (!trimmed) return false;
   // Has a dot followed by at least 2 chars (TLD-like), or starts with http
-  return /\.[a-zA-Z]{2,}/.test(trimmed) || /^https?:\/\//i.test(trimmed);
+  return TLD_REGEX.test(trimmed) || HTTP_REGEX.test(trimmed);
 }
 
-export function HomeContent() {
+export const HomeContent = memo(function HomeContent() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [hasBlurred, setHasBlurred] = useState(false);
@@ -370,8 +374,9 @@ export function HomeContent() {
 
         <div className="relative mx-auto flex w-full max-w-[528px] flex-col items-center">
           {/* Wordmark - Syne for brand recognition */}
-          <h1 className="font-syne text-5xl font-semibold tracking-tight text-foreground">
+          <h1 className="font-syne text-5xl font-semibold tracking-tight text-foreground text-balance">
             smry
+            <span className="sr-only"> - Bypass Paywalls & Read Full Articles Free</span>
           </h1>
 
           {/* Input container - nested radius pattern */}
@@ -512,4 +517,4 @@ export function HomeContent() {
       <BottomCornerNav />
     </>
   );
-}
+});
