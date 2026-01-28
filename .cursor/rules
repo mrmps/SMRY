@@ -2,6 +2,10 @@ NEVER EVER RUN PNPM RUN BUILD
 ALWAYS USE BUN (NOT NPM)
 FOLLOW DESIGN_PHILOSOPHY.md
 
+# Next.js 16 Notes
+- Middleware is in `proxy.ts` (NOT `middleware.ts`) - Next.js 16 renamed middleware to proxy
+- See: https://nextjs.org/docs/app/api-reference/file-conventions/proxy
+
 # Design System Rules
 
 ## Banned Icons

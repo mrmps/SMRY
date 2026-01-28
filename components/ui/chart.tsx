@@ -31,8 +31,7 @@ export const chartColors = {
   primary: "#10b981", // emerald-500
   secondary: "#3b82f6", // blue-500
   tertiary: "#f59e0b", // amber-500
-  quaternary: "#ec4899", // pink-500
-  quinary: "#8b5cf6", // violet-500
+  quaternary: "#06b6d4", // cyan-500 (accent color)
   danger: "#ef4444", // red-500
   success: "#22c55e", // green-500
   warning: "#eab308", // yellow-500

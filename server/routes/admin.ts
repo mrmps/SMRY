@@ -980,9 +980,9 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             countIf(event_type = 'request') AS requests,
             countIf(event_type = 'impression') AS impressions,
             countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
-            round(countIf(event_type = 'request' AND status = 'filled') /
-                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate,
+            round(if(countIf(event_type = 'impression') > 0, countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 0), 2) AS ctr,
+            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0, countIf(event_type = 'request' AND status = 'filled') /
+                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 0), 2) AS fill_rate,
             anyIf(brand_name, brand_name != '' AND event_type = 'impression') AS top_brand
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
@@ -1028,7 +1028,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             count() AS session_count,
             sum(impressions) AS total_impressions,
             sum(clicks) AS total_clicks,
-            round(sum(clicks) / sum(impressions) * 100, 2) AS avg_ctr
+            round(if(sum(impressions) > 0, sum(clicks) / sum(impressions) * 100, 0), 2) AS avg_ctr
           FROM (
             SELECT
               session_id,
@@ -1051,7 +1051,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           SELECT
             stage,
             count,
-            round(count / first_value(count) OVER (ORDER BY stage_order) * 100, 2) AS rate_from_previous
+            round(if(first_value(count) OVER (ORDER BY stage_order) > 0, count / first_value(count) OVER (ORDER BY stage_order) * 100, 0), 2) AS rate_from_previous
           FROM (
             SELECT 'Requests' AS stage, 1 AS stage_order, countIf(event_type = 'request') AS count
             FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
