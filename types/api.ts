@@ -186,10 +186,15 @@ export type ContextUser = z.infer<typeof ContextUserSchema>;
 export const ContextRequestSchema = z.object({
   url: z.string(),
   title: z.string(),
-  articleContent: z.string(), // The actual article text (truncated to ~2000 chars)
+  articleContent: z.string(), // The actual article text (truncated to ~4000 chars)
   sessionId: z.string(),
   device: ContextDeviceSchema.optional(),
   user: ContextUserSchema.optional(),
+  // Additional article metadata for better ad targeting
+  byline: z.string().optional(), // Author name
+  siteName: z.string().optional(), // Publisher name
+  publishedTime: z.string().optional(), // Publication date
+  lang: z.string().optional(), // Article language
 });
 export type ContextRequest = z.infer<typeof ContextRequestSchema>;
 

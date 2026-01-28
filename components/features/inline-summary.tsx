@@ -246,6 +246,8 @@ interface InlineSummaryProps {
   ad?: GravityAdType | null;
   /** Callback when ad becomes visible */
   onAdVisible?: () => void;
+  /** Callback when ad is clicked */
+  onAdClick?: () => void;
 }
 
 const CollapsedSummary = memo(function CollapsedSummary({
@@ -285,6 +287,7 @@ const ExpandedSummary = memo(function ExpandedSummary({
   variant = "inline",
   ad,
   onAdVisible,
+  onAdClick,
 }: {
   urlProp: string;
   articleResults: ArticleResults;
@@ -292,6 +295,7 @@ const ExpandedSummary = memo(function ExpandedSummary({
   variant?: "inline" | "sidebar";
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
+  onAdClick?: () => void;
 }) {
   const { isSignedIn } = useAuth();
 
@@ -546,7 +550,7 @@ const ExpandedSummary = memo(function ExpandedSummary({
       {/* Sidebar ad - fixed at bottom */}
       {variant === "sidebar" && ad && onAdVisible && (
         <div className="shrink-0 border-t border-border px-3 py-3">
-          <GravityAd ad={ad} onVisible={onAdVisible} variant="sidebar" />
+          <GravityAd ad={ad} onVisible={onAdVisible} onClick={onAdClick} variant="sidebar" />
         </div>
       )}
 
@@ -617,6 +621,7 @@ export const InlineSummary = memo(function InlineSummary({
   variant = "inline",
   ad,
   onAdVisible,
+  onAdClick,
 }: InlineSummaryProps) {
   const hasArticleData = Object.values(articleResults).some(
     (r) => r.data?.article?.textContent,
@@ -646,6 +651,7 @@ export const InlineSummary = memo(function InlineSummary({
       variant={variant}
       ad={ad}
       onAdVisible={onAdVisible}
+      onAdClick={onAdClick}
     />
   );
 });

@@ -17,12 +17,13 @@ interface GravityAdProps {
   ad: GravityAdType;
   onVisible: () => void;
   onDismiss?: () => void;
+  onClick?: () => void;
   className?: string;
   /** Compact variant for mobile, sidebar variant for native feel, bar for minimal bottom placement */
   variant?: "default" | "compact" | "sidebar" | "bar";
 }
 
-export function GravityAd({ ad, onVisible, onDismiss, className, variant = "default" }: GravityAdProps) {
+export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
 
@@ -70,6 +71,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
+          onClick={onClick}
           className="flex-1 flex items-start gap-2 min-w-0 group py-0.5"
         >
           {ad.favicon && (
@@ -114,6 +116,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
+          onClick={onClick}
           className="group flex items-center gap-2.5 rounded-lg p-2 -mx-2 transition-colors hover:bg-muted/30"
         >
           {ad.favicon && (
@@ -151,6 +154,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
         href={ad.clickUrl}
         target="_blank"
         rel="sponsored noopener"
+        onClick={onClick}
         className={cn(
           "group block py-1 transition-colors hover:opacity-80",
           className
@@ -200,6 +204,7 @@ export function GravityAd({ ad, onVisible, onDismiss, className, variant = "defa
       href={ad.clickUrl}
       target="_blank"
       rel="sponsored noopener"
+      onClick={onClick}
       className={cn(
         "group block rounded-xl border border-border/60 bg-card p-4 transition-all duration-150 hover:bg-accent/50 hover:border-border",
         className

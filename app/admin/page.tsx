@@ -151,9 +151,94 @@ interface DashboardData {
     error_count: number;
     error_rate: number;
   }>;
+  // Ad analytics
+  adHealth: {
+    total_requests: number;
+    filled_count: number;
+    no_fill_count: number;
+    premium_count: number;
+    error_count: number;
+    timeout_count: number;
+    fill_rate: number;
+    avg_duration_ms: number;
+    unique_sessions: number;
+    unique_brands: number;
+  };
+  adStatusBreakdown: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+    avg_duration_ms: number;
+  }>;
+  adHostnameStats: Array<{
+    hostname: string;
+    total_requests: number;
+    filled_count: number;
+    fill_rate: number;
+    top_brand: string;
+  }>;
+  adDeviceStats: Array<{
+    device_type: string;
+    os: string;
+    browser: string;
+    total_requests: number;
+    filled_count: number;
+    fill_rate: number;
+  }>;
+  adBrandStats: Array<{
+    brand_name: string;
+    impressions: number;
+    unique_hostnames: number;
+    unique_sessions: number;
+    avg_article_length: number;
+  }>;
+  adHourlyTraffic: Array<{
+    hour: string;
+    total_requests: number;
+    filled_count: number;
+    no_fill_count: number;
+    fill_rate: number;
+  }>;
+  adErrorBreakdown: Array<{
+    status: string;
+    gravity_status_code: number;
+    error_message: string;
+    count: number;
+    latest_timestamp: string;
+  }>;
+  adRecentEvents: Array<{
+    event_id: string;
+    event_time: string;
+    hostname: string;
+    article_title: string;
+    status: string;
+    brand_name: string;
+    duration_ms: number;
+    device_type: string;
+  }>;
+  // CTR and funnel analytics
+  adCTRByBrand: Array<{
+    brand_name: string;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }>;
+  adHourlyFunnel: Array<{
+    hour: string;
+    requests: number;
+    impressions: number;
+    clicks: number;
+    dismissals: number;
+  }>;
+  adDismissRateByDevice: Array<{
+    device_type: string;
+    impressions: number;
+    dismissals: number;
+    dismiss_rate: number;
+  }>;
 }
 
-type TabType = "overview" | "requests" | "live" | "errors";
+type TabType = "overview" | "requests" | "live" | "errors" | "ads";
 
 const ADMIN_TOKEN_KEY = "smry_admin_token";
 
@@ -267,6 +352,7 @@ function AnalyticsDashboardContent() {
         if (e.key === "2") setActiveTab("requests");
         if (e.key === "3") setActiveTab("live");
         if (e.key === "4") setActiveTab("errors");
+        if (e.key === "5") setActiveTab("ads");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -433,6 +519,7 @@ function AnalyticsDashboardContent() {
             { id: "requests" as const, label: "Request Explorer", key: "2" },
             { id: "live" as const, label: "Live Stream", key: "3" },
             { id: "errors" as const, label: "Error Analysis", key: "4" },
+            { id: "ads" as const, label: "Ad Analytics", key: "5" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -556,6 +643,10 @@ function AnalyticsDashboardContent() {
             hostnameStats={data.hostnameStats}
             universallyBroken={data.universallyBroken}
           />
+        )}
+
+        {activeTab === "ads" && (
+          <AdAnalyticsTab data={data} />
         )}
       </div>
     </div>
@@ -1800,6 +1891,282 @@ function ErrorAnalysisTab({
                 ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ Ad Analytics Tab ============
+function AdAnalyticsTab({ data }: { data: DashboardData }) {
+  // Calculate aggregated CTR metrics
+  const totalImpressions = data.adHourlyFunnel?.reduce((sum, h) => sum + h.impressions, 0) || 0;
+  const totalClicks = data.adHourlyFunnel?.reduce((sum, h) => sum + h.clicks, 0) || 0;
+  const totalDismissals = data.adHourlyFunnel?.reduce((sum, h) => sum + h.dismissals, 0) || 0;
+  const overallCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : "0";
+  const overallDismissRate = totalImpressions > 0 ? ((totalDismissals / totalImpressions) * 100).toFixed(2) : "0";
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <KPICard
+          title="Ad Requests"
+          value={data.adHealth?.total_requests?.toLocaleString() || "0"}
+        />
+        <KPICard
+          title="Fill Rate"
+          value={`${data.adHealth?.fill_rate || 0}%`}
+          color={data.adHealth?.fill_rate > 50 ? "green" : "yellow"}
+        />
+        <KPICard
+          title="Impressions"
+          value={totalImpressions.toLocaleString()}
+        />
+        <KPICard
+          title="Clicks"
+          value={totalClicks.toLocaleString()}
+        />
+        <KPICard
+          title="CTR"
+          value={`${overallCTR}%`}
+          color={Number(overallCTR) > 1 ? "green" : "default"}
+        />
+        <KPICard
+          title="Dismiss Rate"
+          value={`${overallDismissRate}%`}
+          color={Number(overallDismissRate) > 20 ? "red" : "default"}
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Hourly Funnel Chart */}
+        <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+            Ad Funnel Over Time
+          </h2>
+          {data.adHourlyFunnel && data.adHourlyFunnel.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={data.adHourlyFunnel}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                <XAxis
+                  dataKey="hour"
+                  tickFormatter={(v) => v.split(" ")[1] || v}
+                  stroke="#71717a"
+                  fontSize={12}
+                />
+                <YAxis stroke="#71717a" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#18181b",
+                    border: "1px solid #3f3f46",
+                    borderRadius: "8px",
+                  }}
+                  labelStyle={{ color: "#a1a1aa" }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="requests"
+                  stroke="#3b82f6"
+                  name="Filled Requests"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="impressions"
+                  stroke="#10b981"
+                  name="Impressions"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="clicks"
+                  stroke="#f59e0b"
+                  name="Clicks"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="dismissals"
+                  stroke="#ef4444"
+                  name="Dismissals"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-zinc-500">
+              No funnel data yet
+            </div>
+          )}
+        </div>
+
+        {/* Dismiss Rate by Device */}
+        <div className="bg-zinc-900 rounded-lg p-6 border border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+            Dismiss Rate by Device
+          </h2>
+          {data.adDismissRateByDevice && data.adDismissRateByDevice.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.adDismissRateByDevice} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                <XAxis
+                  type="number"
+                  stroke="#71717a"
+                  fontSize={12}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <YAxis
+                  dataKey="device_type"
+                  type="category"
+                  width={80}
+                  stroke="#71717a"
+                  fontSize={12}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#18181b",
+                    border: "1px solid #3f3f46",
+                    borderRadius: "8px",
+                  }}
+                  formatter={(value, name) => [`${value}%`, name]}
+                />
+                <Bar dataKey="dismiss_rate" fill="#ef4444" name="Dismiss Rate" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-zinc-500">
+              No dismiss data yet
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* CTR by Brand Table */}
+      <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+        <div className="p-4 border-b border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-100">
+            CTR by Brand
+            <span className="text-xs text-zinc-500 font-normal ml-2">
+              ({data.adCTRByBrand?.length || 0} brands)
+            </span>
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-700 bg-zinc-800/50">
+                <th className="text-left py-3 px-4 text-zinc-400 font-medium">Brand</th>
+                <th className="text-right py-3 px-4 text-zinc-400 font-medium">Impressions</th>
+                <th className="text-right py-3 px-4 text-zinc-400 font-medium">Clicks</th>
+                <th className="text-right py-3 px-4 text-zinc-400 font-medium">CTR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.adCTRByBrand || []).map((brand, i) => (
+                <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50">
+                  <td className="py-3 px-4 text-zinc-200 font-medium">
+                    {brand.brand_name}
+                  </td>
+                  <td className="py-3 px-4 text-right text-zinc-300">
+                    {brand.impressions.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 text-right text-zinc-300">
+                    {brand.clicks.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      brand.ctr >= 2
+                        ? "bg-emerald-900/30 text-emerald-400"
+                        : brand.ctr >= 1
+                          ? "bg-amber-900/30 text-amber-400"
+                          : "bg-zinc-700 text-zinc-300"
+                    }`}>
+                      {brand.ctr}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {(!data.adCTRByBrand || data.adCTRByBrand.length === 0) && (
+          <div className="py-12 text-center text-zinc-500">
+            No CTR data yet - impressions and clicks will appear here once tracked
+          </div>
+        )}
+      </div>
+
+      {/* Existing Ad Health and Brand Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Brand Performance */}
+        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+          <div className="p-4 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-zinc-100">
+              Brand Performance
+              <span className="text-xs text-zinc-500 font-normal ml-2">
+                (by filled requests)
+              </span>
+            </h2>
+          </div>
+          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-zinc-900">
+                <tr className="border-b border-zinc-700">
+                  <th className="text-left py-3 px-4 text-zinc-400 font-medium">Brand</th>
+                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">Fills</th>
+                  <th className="text-right py-3 px-4 text-zinc-400 font-medium">Sites</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.adBrandStats || []).map((brand, i) => (
+                  <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50">
+                    <td className="py-2 px-4 text-zinc-200">{brand.brand_name}</td>
+                    <td className="py-2 px-4 text-right text-zinc-300">{brand.impressions}</td>
+                    <td className="py-2 px-4 text-right text-zinc-400">{brand.unique_hostnames}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Status Breakdown */}
+        <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
+          <div className="p-4 border-b border-zinc-800">
+            <h2 className="text-lg font-semibold text-zinc-100">
+              Status Breakdown
+            </h2>
+          </div>
+          <div className="p-4 space-y-3">
+            {(data.adStatusBreakdown || []).map((status, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <span className={`px-2 py-1 rounded text-xs font-mono ${
+                  status.status === "filled"
+                    ? "bg-emerald-900/30 text-emerald-400"
+                    : status.status === "no_fill"
+                      ? "bg-zinc-700 text-zinc-300"
+                      : status.status === "premium_user"
+                        ? "bg-purple-900/30 text-purple-400"
+                        : "bg-red-900/30 text-red-400"
+                }`}>
+                  {status.status}
+                </span>
+                <div className="flex items-center gap-4">
+                  <span className="text-zinc-300 font-medium">{status.count.toLocaleString()}</span>
+                  <span className="text-zinc-500 text-sm w-16 text-right">{status.percentage}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

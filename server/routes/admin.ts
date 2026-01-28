@@ -224,6 +224,29 @@ interface AdRecentEvent {
   device_type: string;
 }
 
+// New CTR and funnel analytics types
+interface AdCTRByBrand {
+  brand_name: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+interface AdHourlyFunnel {
+  hour: string;
+  requests: number;
+  impressions: number;
+  clicks: number;
+  dismissals: number;
+}
+
+interface AdDismissRateByDevice {
+  device_type: string;
+  impressions: number;
+  dismissals: number;
+  dismiss_rate: number;
+}
+
 export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
   async ({ query, set, headers }) => {
@@ -287,7 +310,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
     const hasFilters = !!(hostnameFilter || sourceFilter || outcomeFilter || urlSearch);
 
     try {
-      // Run all 12 queries in parallel for performance
+      // Run all queries in parallel for performance
       const [
         hostnameStats,
         sourceEffectiveness,
@@ -311,6 +334,10 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adHourlyTraffic,
         adErrorBreakdown,
         adRecentEvents,
+        // CTR and funnel analytics
+        adCTRByBrand,
+        adHourlyFunnel,
+        adDismissRateByDevice,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
         queryClickhouse<HostnameStats>(`
@@ -670,6 +697,52 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           ORDER BY timestamp DESC
           LIMIT 100
         `).catch(() => [] as AdRecentEvent[]),
+
+        // 21. CTR by Brand - click-through rate for each advertiser
+        queryClickhouse<AdCTRByBrand>(`
+          SELECT
+            brand_name,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND event_type IN ('impression', 'click')
+            AND brand_name != ''
+          GROUP BY brand_name
+          HAVING impressions > 0
+          ORDER BY impressions DESC
+          LIMIT 50
+        `).catch(() => [] as AdCTRByBrand[]),
+
+        // 22. Hourly Funnel - track full ad funnel over time
+        queryClickhouse<AdHourlyFunnel>(`
+          SELECT
+            formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
+            countIf(event_type = 'request' AND status = 'filled') AS requests,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            countIf(event_type = 'dismiss') AS dismissals
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          GROUP BY hour
+          ORDER BY hour
+        `).catch(() => [] as AdHourlyFunnel[]),
+
+        // 23. Dismiss Rate by Device - see which devices dismiss ads most
+        queryClickhouse<AdDismissRateByDevice>(`
+          SELECT
+            device_type,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'dismiss') AS dismissals,
+            round(countIf(event_type = 'dismiss') / countIf(event_type = 'impression') * 100, 2) AS dismiss_rate
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            AND device_type != ''
+          GROUP BY device_type
+          HAVING impressions > 0
+          ORDER BY impressions DESC
+        `).catch(() => [] as AdDismissRateByDevice[]),
       ]);
 
       // Get buffer stats for monitoring
@@ -733,6 +806,10 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adHourlyTraffic,
         adErrorBreakdown,
         adRecentEvents,
+        // CTR and funnel analytics
+        adCTRByBrand,
+        adHourlyFunnel,
+        adDismissRateByDevice,
       };
     } catch (error) {
       console.error("[analytics] Query error:", error);

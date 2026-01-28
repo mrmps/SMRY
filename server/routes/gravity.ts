@@ -126,7 +126,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   "/context",
   async ({ body, request }) => {
     const startTime = Date.now();
-    const { title, url, articleContent, sessionId, device, user } = body;
+    const { title, url, articleContent, sessionId, device, user, byline, siteName, publishedTime, lang } = body;
 
     // Helper to extract hostname from URL
     const getHostname = (urlStr: string): string => {
@@ -139,10 +139,16 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       errorMessage?: string;
       brandName?: string;
       adTitle?: string;
+      adText?: string;
+      clickUrl?: string;
+      impUrl?: string;
+      cta?: string;
+      favicon?: string;
       userId?: string | null;
       isPremium?: boolean;
     } = {}) => {
       trackAdEvent({
+        event_type: "request", // Server-side events are always "request" type
         url,
         hostname: getHostname(url),
         article_title: title,
@@ -158,6 +164,11 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         error_message: extra.errorMessage ?? "",
         brand_name: extra.brandName ?? "",
         ad_title: extra.adTitle ?? "",
+        ad_text: extra.adText ?? "",
+        click_url: extra.clickUrl ?? "",
+        imp_url: extra.impUrl ?? "",
+        cta: extra.cta ?? "",
+        favicon: extra.favicon ?? "",
         duration_ms: Date.now() - startTime,
       });
     };
@@ -170,11 +181,20 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         return { status: "premium_user" as const };
       }
 
-      // Build conversation context for Gravity
+      // Build conversation context for Gravity with rich metadata
+      const metadataParts = [
+        `Title: ${title}`,
+        `URL: ${url}`,
+        byline && `Author: ${byline}`,
+        siteName && `Publisher: ${siteName}`,
+        publishedTime && `Published: ${publishedTime}`,
+        lang && `Language: ${lang}`,
+      ].filter(Boolean).join("\n");
+
       const messages: GravityMessage[] = [
         {
           role: "user",
-          content: `I'm reading this article:\n\nTitle: ${title}\nURL: ${url}\n\nArticle content:\n${articleContent}`,
+          content: `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}`,
         },
       ];
 
@@ -263,11 +283,22 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         const ads = (await response.json()) as GravityAdResponse[];
 
         if (ads && ads.length > 0) {
-          logger.info({ url, brandName: ads[0].brandName }, "Ad received from Gravity");
-          track("filled", { gravityStatus: 200, brandName: ads[0].brandName, adTitle: ads[0].title, userId });
+          const ad = ads[0];
+          logger.info({ url, brandName: ad.brandName }, "Ad received from Gravity");
+          track("filled", {
+            gravityStatus: 200,
+            brandName: ad.brandName,
+            adTitle: ad.title,
+            adText: ad.adText,
+            clickUrl: ad.clickUrl,
+            impUrl: ad.impUrl,
+            cta: ad.cta,
+            favicon: ad.favicon,
+            userId,
+          });
           return {
             status: "filled" as const,
-            ad: ads[0],
+            ad,
           };
         }
 
@@ -304,7 +335,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
     body: t.Object({
       url: t.String(),
       title: t.String(),
-      articleContent: t.String(), // The actual article text (truncated to ~2000 chars)
+      articleContent: t.String(), // The actual article text (truncated to ~4000 chars)
       sessionId: t.String(),
       device: t.Optional(t.Object({
         timezone: t.Optional(t.String()),
@@ -327,6 +358,11 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         id: t.Optional(t.String()),
         email: t.Optional(t.String()),
       })),
+      // Additional article metadata for better ad targeting
+      byline: t.Optional(t.String()),
+      siteName: t.Optional(t.String()),
+      publishedTime: t.Optional(t.String()),
+      lang: t.Optional(t.String()),
     }),
   }
 );
