@@ -55,6 +55,7 @@ const FREE_MODELS = [
 ];
 
 const PREMIUM_MODELS = [
+  "z-ai/glm-4.7",
   "qwen/qwen3-30b-a3b",
   "google/gemini-3-flash-preview",
 ];

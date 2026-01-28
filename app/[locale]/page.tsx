@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
 import { HomeContent } from "@/components/features/home-content";
 import { setRequestLocale } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
 
 // Force static generation for this page
 export const dynamic = 'force-static';
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
 
 export const metadata: Metadata = {
   title: 'Bypass Paywalls & Read Full Articles Free - No Login | Smry',
