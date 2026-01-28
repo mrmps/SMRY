@@ -11,8 +11,10 @@ function isValidReturnUrl(url: string): boolean {
   if (!url.startsWith("/")) return false;
   // Must not be a protocol-relative URL (//evil.com)
   if (url.startsWith("//")) return false;
-  // Must not contain protocol scheme (javascript:, data:, etc.)
-  if (url.includes(":")) return false;
+  // Must not contain protocol scheme in path (javascript:, data:, etc.)
+  // Only check path portion, not query string (which may contain colons like timestamps)
+  const [path] = url.split("?");
+  if (path.includes(":")) return false;
   return true;
 }
 
