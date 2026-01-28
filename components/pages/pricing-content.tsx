@@ -212,7 +212,7 @@ export function PricingContent() {
     if (isPremium && !isPremiumLoading && user) {
       // Get return URL from params or sessionStorage
       const returnUrl = returnUrlFromParams || getAndClearReturnUrl();
-      if (returnUrl && returnUrl !== "/" && returnUrl !== "/pricing") {
+      if (returnUrl && returnUrl !== "/pricing") {
         // Small delay to let the success toast show if it's visible
         const timer = setTimeout(() => {
           router.push(returnUrl);
