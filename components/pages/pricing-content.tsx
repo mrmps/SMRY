@@ -173,24 +173,25 @@ export function PricingContent() {
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
   const { user } = useUser();
 
-  // Get return URL from query params or sessionStorage
+  // Get return URL from query params
   const returnUrlFromParams = searchParams.get("returnUrl");
-
-  // Build auth redirect URL - use returnUrl if available, otherwise home
-  // This ensures premium users who sign in go to their original page (or home)
-  // while non-premium users get sent back here with returnUrl preserved
-  const authRedirectUrl = returnUrlFromParams
-    ? `/auth/redirect?returnUrl=${encodeURIComponent(returnUrlFromParams)}`
-    : "/auth/redirect?returnUrl=%2F";
 
   // Check if user came from an article (for showing dismiss option)
   // Use state to avoid hydration mismatch from sessionStorage access
-  const [hasStoredReturnUrl, setHasStoredReturnUrl] = useState(false);
+  const [storedReturnUrl, setStoredReturnUrl] = useState<string | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: hydration-safe sessionStorage access
-    setHasStoredReturnUrl(!!getReturnUrl());
+    setStoredReturnUrl(getReturnUrl());
   }, []);
-  const hasReturnUrl = !!(returnUrlFromParams || hasStoredReturnUrl);
+  const hasReturnUrl = !!(returnUrlFromParams || storedReturnUrl);
+
+  // Build auth redirect URL - use returnUrl from params or sessionStorage
+  // This ensures premium users who sign in go to their original page (or home)
+  // while non-premium users get sent back here with returnUrl preserved
+  const effectiveReturnUrl = returnUrlFromParams || storedReturnUrl || "/";
+  const authRedirectUrl = effectiveReturnUrl === "/"
+    ? "/auth/redirect?returnUrl=%2F"
+    : `/auth/redirect?returnUrl=${encodeURIComponent(effectiveReturnUrl)}`;
 
   // Handle dismiss/go back
   const handleDismiss = useCallback(() => {
