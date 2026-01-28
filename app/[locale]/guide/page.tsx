@@ -1,12 +1,28 @@
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { setRequestLocale } from 'next-intl/server';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-static';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Paywall Bypass Guide | SMRY",
-  description: "An honest guide to bypassing paywalls. What works, what doesn't, and what to try when SMRY can't get your article.",
+  description:
+    "An honest guide to bypassing paywalls. What works, what doesn't, and what to try when SMRY can't get your article.",
+  alternates: {
+    canonical: 'https://smry.ai/guide',
+  },
+  openGraph: {
+    title: 'Paywall Bypass Guide | SMRY',
+    description:
+      "An honest guide to bypassing paywalls. What works, what doesn't, and what to try when SMRY can't get your article.",
+    url: 'https://smry.ai/guide',
+  },
+  twitter: {
+    title: 'Paywall Bypass Guide | SMRY',
+    description:
+      "An honest guide to bypassing paywalls. What works, what doesn't, and what to try when SMRY can't get your article.",
+  },
 };
 
 type Props = {

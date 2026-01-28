@@ -2,13 +2,43 @@ import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { getSitesGroupedByCategory, CATEGORY_INFO, type PaywallCategory } from "@/lib/hard-paywalls";
 import { setRequestLocale } from 'next-intl/server';
+import type { Metadata } from 'next';
+import { JsonLd, faqSchema } from "@/components/seo/json-ld";
 
 export const dynamic = 'force-static';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Understanding Paywalls | SMRY",
-  description: "Learn the difference between hard and soft paywalls, and why some sites cannot be accessed through SMRY.",
+  description:
+    "Learn the difference between hard and soft paywalls, and why some sites cannot be accessed through SMRY.",
+  alternates: {
+    canonical: 'https://smry.ai/hard-paywalls',
+  },
+  openGraph: {
+    title: 'Understanding Paywalls | SMRY',
+    description:
+      'Learn the difference between hard and soft paywalls, and why some sites cannot be accessed through SMRY.',
+    url: 'https://smry.ai/hard-paywalls',
+  },
+  twitter: {
+    title: 'Understanding Paywalls | SMRY',
+    description:
+      'Learn the difference between hard and soft paywalls, and why some sites cannot be accessed through SMRY.',
+  },
 };
+
+const faqs = [
+  {
+    question: 'Why does SMRY work for some articles but not others on the same site?',
+    answer:
+      'Many publications use hybrid models where some content is free and some is premium. Web archives may also have captured articles before they were paywalled.',
+  },
+  {
+    question: 'Can I request support for a blocked site?',
+    answer:
+      "We cannot add support for hard-paywalled sites — there's no technical way to access content that requires authentication. For soft-paywalled sites that aren't working, email us at support@smry.ai.",
+  },
+];
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -21,8 +51,10 @@ export default async function HardPaywallsPage({ params }: Props) {
   const categoryOrder: PaywallCategory[] = ["news", "creator", "social", "document"];
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+    <>
+      <JsonLd data={faqSchema(faqs)} />
+      <main className="min-h-screen bg-background text-foreground">
+        <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
           <Link
             href="/"
@@ -194,5 +226,6 @@ export default async function HardPaywallsPage({ params }: Props) {
         </footer>
       </div>
     </main>
+    </>
   );
 }

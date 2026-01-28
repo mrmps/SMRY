@@ -17,6 +17,7 @@ import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from 'next-intl/server';
+import { JsonLd, organizationSchema, websiteSchema } from "@/components/seo/json-ld";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://smry.ai"),
@@ -24,6 +25,18 @@ export const metadata: Metadata = {
   description:
     "AI-powered reader that bypasses paywalls and summarizes any article. Paste a link, get the full text plus an AI summary. Free, no account needed.",
   keywords: ["bypass paywall", "paywall remover", "read paywalled articles", "free paywall bypass", "article summarizer", "AI reader", "research papers"],
+  alternates: {
+    canonical: "https://smry.ai",
+    languages: {
+      "en": "https://smry.ai",
+      "pt": "https://smry.ai/pt",
+      "de": "https://smry.ai/de",
+      "zh": "https://smry.ai/zh",
+      "es": "https://smry.ai/es",
+      "nl": "https://smry.ai/nl",
+      "x-default": "https://smry.ai",
+    },
+  },
   openGraph: {
     type: "website",
     title: "Read Anything, Summarize Everything | Smry",
@@ -58,6 +71,10 @@ export default async function RootLayout({
   return (
     <ClerkProvider appearance={clerkAppearance}>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
+        <head>
+          <JsonLd data={organizationSchema} />
+          <JsonLd data={websiteSchema} />
+        </head>
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
