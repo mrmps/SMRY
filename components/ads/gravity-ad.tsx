@@ -95,47 +95,40 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
     return () => observer.disconnect();
   }, [hasTrackedImpression, onVisible]);
 
-  // Derived content
-  const headline = ad.title || ad.brandName;
-  const description = ad.adText || ad.title;
+  // Derived content - prioritize VALUE (adText) over brand repetition
+  const valueProp = ad.adText || ad.title; // The actual value/benefit
   const ctaText = ad.cta || "Learn more";
-  const showDescription = ad.adText && ad.title; // Only show desc if we have both
 
   // ============================================
-  // MOBILE VARIANT - Ultra compact, single row
+  // MOBILE VARIANT - Prioritize showing value prop text
   // ============================================
   if (variant === "mobile") {
     return (
       <div
         className={cn(
-          "flex items-center bg-card border-t border-border/30",
-          // Extremely tight on small phones
-          "gap-2 px-2.5 py-1.5",
-          // Slightly more room 475px+
-          "xs:gap-2.5 xs:px-3 xs:py-2",
-          // Comfortable on tablets 640px+
-          "sm:gap-3 sm:px-4 sm:py-2.5",
-          // Card style 768px+
+          "flex items-start bg-card border-t border-border/30",
+          "gap-2.5 px-3 py-2.5",
+          "sm:px-4 sm:py-3",
           "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
           className
         )}
       >
-        {/* Icon - scales with viewport */}
+        {/* Icon - smaller to give more room to text */}
         <a
           ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="shrink-0"
+          className="shrink-0 mt-0.5"
         >
-          <div className="size-6 xs:size-7 sm:size-8 md:size-9 rounded-md overflow-hidden bg-muted">
+          <div className="size-7 sm:size-8 rounded-md overflow-hidden bg-muted">
             {ad.favicon && !imgError ? (
               <Image
                 src={ad.favicon}
                 alt=""
-                width={36}
-                height={36}
+                width={32}
+                height={32}
                 className="size-full object-cover"
                 onError={() => setImgError(true)}
                 unoptimized
@@ -146,7 +139,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           </div>
         </a>
 
-        {/* Content */}
+        {/* Content - gets most of the space */}
         <a
           href={ad.clickUrl}
           target="_blank"
@@ -154,42 +147,27 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           onClick={onClick}
           className="flex-1 min-w-0 group"
         >
-          {/* Mobile: single line. Tablet: can show headline + desc */}
-          <p className="text-[12px] xs:text-[13px] sm:text-[13px] font-medium text-foreground leading-tight truncate group-hover:text-primary transition-colors">
-            {headline}
+          <p className="text-[13px] sm:text-[14px] font-medium text-foreground leading-snug line-clamp-3 group-hover:text-primary transition-colors">
+            {valueProp}
           </p>
-          {/* Description - only on 640px+ */}
-          <p className="hidden sm:block text-[11px] text-muted-foreground/70 truncate mt-0.5">
-            {description !== headline ? description : ad.brandName}
-          </p>
-          {/* Brand + Ad on mobile */}
-          <p className="sm:hidden text-[10px] text-muted-foreground/50 truncate">
+          <p className="text-[11px] text-muted-foreground/50 mt-1">
             {ad.brandName} · Ad
           </p>
         </a>
 
-        {/* CTA - grows with viewport */}
-        <a
-          href={ad.clickUrl}
-          target="_blank"
-          rel="sponsored noopener"
-          onClick={onClick}
-          className={cn(
-            "shrink-0 font-medium transition-colors flex items-center gap-1",
-            // Tiny: icon only
-            "text-primary",
-            // 475px+: text
-            "xs:text-[11px]",
-            // 640px+: button style
-            "sm:text-[11px] sm:bg-primary sm:text-primary-foreground sm:px-2.5 sm:py-1 sm:rounded-md sm:hover:bg-primary/90"
-          )}
-        >
-          <span className="hidden xs:inline">{ctaText}</span>
-          <ExternalLink className="size-3 xs:hidden" />
-        </a>
-
-        {/* Dismiss */}
-        <DismissButton onDismiss={onDismiss} className="size-5 xs:size-6" />
+        {/* Right side: CTA + dismiss stacked */}
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          <DismissButton onDismiss={onDismiss} />
+          <a
+            href={ad.clickUrl}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={onClick}
+            className="text-[11px] font-semibold text-primary whitespace-nowrap"
+          >
+            {ctaText} →
+          </a>
+        </div>
       </div>
     );
   }
@@ -208,13 +186,13 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           onClick={onClick}
           className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
         >
-          <div className="size-6 rounded-md overflow-hidden bg-muted shrink-0">
+          <div className="size-7 rounded-md overflow-hidden bg-muted shrink-0">
             {ad.favicon && !imgError ? (
               <Image
                 src={ad.favicon}
                 alt=""
-                width={24}
-                height={24}
+                width={28}
+                height={28}
                 className="size-full object-cover"
                 onError={() => setImgError(true)}
                 unoptimized
@@ -224,8 +202,8 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
-              {headline}
+            <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
+              {valueProp}
             </p>
             <p className="text-[10px] text-muted-foreground/50">
               {ad.brandName} · Ad
@@ -237,11 +215,11 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="shrink-0 text-[10px] font-medium text-primary hover:text-primary/80"
+          className="shrink-0 text-[10px] font-semibold text-primary"
         >
           {ctaText} →
         </a>
-        <DismissButton onDismiss={onDismiss} className="size-5" />
+        <DismissButton onDismiss={onDismiss} />
       </div>
     );
   }
@@ -261,13 +239,13 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             onClick={onClick}
             className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
           >
-            <div className="size-8 rounded-lg overflow-hidden bg-muted shrink-0 mt-0.5">
+            <div className="size-9 rounded-lg overflow-hidden bg-muted shrink-0">
               {ad.favicon && !imgError ? (
                 <Image
                   src={ad.favicon}
                   alt=""
-                  width={32}
-                  height={32}
+                  width={36}
+                  height={36}
                   className="size-full object-cover"
                   onError={() => setImgError(true)}
                   unoptimized
@@ -277,27 +255,18 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
               )}
             </div>
             <div className="flex-1 min-w-0">
-              {/* Headline */}
-              <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors">
-                {headline}
+              <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                {valueProp}
               </p>
-              {/* Description if different from headline */}
-              {showDescription && (
-                <p className="text-[12px] text-muted-foreground/70 leading-snug mt-0.5 line-clamp-2">
-                  {description}
-                </p>
-              )}
-              {/* Brand + Ad */}
               <p className="text-[10px] text-muted-foreground/50 mt-1">
                 {ad.brandName} · Sponsored
               </p>
-              {/* CTA */}
               <p className="mt-2 text-[11px] font-semibold text-primary">
                 {ctaText} →
               </p>
             </div>
           </a>
-          <DismissButton onDismiss={onDismiss} className="mt-1" />
+          <DismissButton onDismiss={onDismiss} />
         </div>
       </div>
     );
@@ -323,7 +292,6 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           onClick={onClick}
           className="flex-1 flex items-start gap-3 min-w-0"
         >
-          {/* Logo */}
           <div className="size-10 rounded-xl overflow-hidden bg-muted shrink-0">
             {ad.favicon && !imgError ? (
               <Image
@@ -341,32 +309,19 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           </div>
 
           <div className="flex-1 min-w-0">
-            {/* Headline - always shown */}
-            <p className="text-[14px] font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">
-              {headline}
+            <p className="text-[14px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+              {valueProp}
             </p>
-
-            {/* Description - if we have both title and adText */}
-            {showDescription && (
-              <p className="text-[12px] text-muted-foreground/80 leading-snug mt-0.5 line-clamp-2">
-                {description}
-              </p>
-            )}
-
-            {/* Brand + Ad label */}
             <p className="text-[11px] text-muted-foreground/50 mt-1">
               {ad.brandName} · Ad
             </p>
-
-            {/* CTA Button */}
-            <span className="inline-flex items-center gap-1 mt-2.5 text-[11px] font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-md hover:bg-primary/90 transition-colors">
+            <span className="inline-flex items-center gap-1 mt-2.5 text-[11px] font-semibold text-primary-foreground bg-primary px-3 py-1.5 rounded-md">
               {ctaText}
               <ExternalLink className="size-3 opacity-70" />
             </span>
           </div>
         </a>
 
-        {/* Dismiss */}
         <DismissButton onDismiss={onDismiss} />
       </div>
     </div>
