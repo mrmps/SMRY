@@ -38,10 +38,11 @@ import {
 import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import { cn } from "@/lib/utils";
 import { getRecentChanges } from "@/lib/changelog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const emptySubscribe = () => () => {};
 
-// Bookmarklet button - draggable to bookmarks bar
+// Bookmarklet button - draggable to bookmarks bar (desktop only)
 function BookmarkletButton({ t }: { t: (key: string) => string }) {
   const bookmarklet = `javascript:void(function(){var url=window.location.href;window.open('https://smry.ai/proxy?url='+encodeURIComponent(url)+'&utm_source=bookmarklet','_blank');}());`;
   const linkRef = useRef<HTMLAnchorElement>(null);
@@ -294,7 +295,7 @@ function ThemeSubmenu({ inline = false }: { inline?: boolean }) {
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
-              aria-label={themes.find(t => t.id === id)?.label}
+              aria-label={themes.find((themeItem) => themeItem.id === id)?.label}
             >
               <Icon className="size-3.5" />
             </button>
@@ -351,15 +352,19 @@ function ThemeSubmenu({ inline = false }: { inline?: boolean }) {
 function HelpPopoverContent() {
   const t = useTranslations("nav");
   const isClient = useIsClient();
+  const isMobile = useIsMobile();
   const { has, isLoaded } = useAuth();
   const isPremium = isLoaded && (has?.({ plan: "premium" }) ?? false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => searchRef.current?.focus(), 50);
-    return () => clearTimeout(timer);
-  }, []);
+    // Don't auto-focus on mobile - opens keyboard unexpectedly
+    if (!isMobile) {
+      const timer = setTimeout(() => searchRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   const query = searchQuery.toLowerCase().trim();
 
@@ -390,26 +395,29 @@ function HelpPopoverContent() {
 
   const showTheme = !query || "theme".includes(query);
   const showWhatsNew = filteredWhatsNew.length > 0;
+  // Bookmarklet only makes sense on desktop - can't drag to bookmarks bar on mobile
+  const showBookmarklet = !isMobile;
 
   return (
     <div className="relative">
-      {/* Search */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-        <Search className="size-4 text-muted-foreground/70" aria-hidden="true" />
-        <input
-          ref={searchRef}
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t("searchPlaceholder")}
-          aria-label={t("searchPlaceholder")}
-          className="flex-1 bg-transparent text-[13px] text-foreground/80 outline-none placeholder:text-muted-foreground/50"
-        />
-      </div>
+      {/* Search - hidden on mobile since menu is small and keyboard is annoying */}
+      {!isMobile && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          <Search className="size-4 text-muted-foreground/70" />
+          <input
+            ref={searchRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="flex-1 bg-transparent text-[13px] text-foreground/80 outline-none placeholder:text-muted-foreground/50"
+          />
+        </div>
+      )}
 
       {/* Menu */}
       {(filteredMenuItems.length > 0 || showTheme) && (
-        <div className="p-1.5">
+        <div className={cn("p-1.5", isMobile && "py-2")}>
           {filteredMenuItems.map((item) => (
             <MenuItem
               key={item.label}
@@ -419,21 +427,25 @@ function HelpPopoverContent() {
               external={"external" in item ? item.external : undefined}
             />
           ))}
-          {showTheme && <ThemeSubmenu />}
+          {showTheme && <ThemeSubmenu inline={isMobile} />}
         </div>
       )}
 
-      {/* Bookmarklet */}
-      <div className="mx-2.5 border-t border-border" />
-      <div className="px-2.5 py-2.5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[12px] font-medium text-foreground/80">{t("bookmarkletSection")}</p>
-            <p className="text-[11px] text-muted-foreground/60">{t("dragToBookmarksBar")}</p>
+      {/* Bookmarklet - desktop only (can't drag to bookmarks bar on mobile) */}
+      {showBookmarklet && (
+        <>
+          <div className="mx-2.5 border-t border-border" />
+          <div className="px-2.5 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium text-foreground/80">{t("bookmarkletSection")}</p>
+                <p className="text-[11px] text-muted-foreground/60">{t("dragToBookmarksBar")}</p>
+              </div>
+              <BookmarkletButton t={t} />
+            </div>
           </div>
-          <BookmarkletButton t={t} />
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Divider */}
       {showWhatsNew && <div className="mx-2.5 border-t border-border" />}
