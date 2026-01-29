@@ -446,30 +446,6 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
       return conditions.join(" AND ");
     };
 
-    // Build WHERE clause for ad analytics queries
-    const buildAdWhereClause = (options: {
-      eventTypes?: string[];
-    } = {}): string => {
-      const { eventTypes } = options;
-      const conditions: string[] = [];
-
-      // Time filter using minutes for granularity
-      conditions.push(`timestamp > now() - INTERVAL ${minutes} MINUTE`);
-
-      // Device filter
-      if (adDeviceFilter) {
-        const escapeForClickhouse = (str: string) => str.replace(/\\/g, "\\\\").replace(/'/g, "''");
-        conditions.push(`device_type = '${escapeForClickhouse(adDeviceFilter)}'`);
-      }
-
-      // Event type filter
-      if (eventTypes && eventTypes.length > 0) {
-        conditions.push(`event_type IN (${eventTypes.map(e => `'${e}'`).join(", ")})`);
-      }
-
-      return conditions.join(" AND ");
-    };
-
     // Check if any filters are active
     const hasFilters = !!(hostnameFilter || sourceFilter || outcomeFilter || urlSearch);
 

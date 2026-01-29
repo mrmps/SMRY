@@ -20,6 +20,7 @@ import { env } from "./env";
 
 startMemoryMonitor();
 
+// eslint-disable-next-line unused-imports/no-unused-vars
 const app = new Elysia({ adapter: node() })
   .use(cors({
     origin: env.CORS_ORIGIN,

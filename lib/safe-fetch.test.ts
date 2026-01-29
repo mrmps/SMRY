@@ -19,15 +19,6 @@ function makeResponse(body: string, options?: { contentLength?: boolean; url?: s
 }
 
 /**
- * Helper to create a Response with a specific byte size.
- * Generates a body of exactly `size` bytes.
- */
-function makeResponseOfSize(size: number, options?: { contentLength?: boolean }): Response {
-  const body = "x".repeat(size);
-  return makeResponse(body, { contentLength: options?.contentLength });
-}
-
-/**
  * Helper to create a Response that streams chunks without Content-Length.
  * Simulates a server that doesn't send Content-Length (common with chunked encoding).
  */
