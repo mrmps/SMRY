@@ -1,8 +1,4 @@
-# Use Node.js 20.18+ which has the undici memory leak fix
-# CRITICAL: Node.js 20.15.1 or 20.18+ required to avoid Next.js 16 memory leak
-# Node.js 22.x and 20.16.0-20.17.x are affected by the leak
-# See: https://github.com/vercel/next.js/issues/85914
-FROM node:20.15.1-alpine AS base
+FROM node:24-alpine AS base
 
 # Install bun for faster package installation
 RUN npm install -g bun
@@ -42,8 +38,7 @@ ENV NEXT_PUBLIC_URL=$NEXT_PUBLIC_URL
 
 RUN bun run build
 
-# Production image - Node.js 20.18+ for memory leak fix
-FROM node:20.15.1-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
