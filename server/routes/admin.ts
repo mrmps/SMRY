@@ -648,7 +648,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           LIMIT 50
         `),
 
-        // 9. Endpoint statistics (article, summary, jina)
+        // 9. Endpoint statistics (article, summary)
         queryClickhouse<EndpointStats>(`
           SELECT
             endpoint,

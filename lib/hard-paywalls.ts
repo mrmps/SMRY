@@ -6,7 +6,7 @@
  * and there is no ethical way to access their content without paying.
  *
  * This list is maintained based on analytics data showing 0% success rates
- * across all extraction sources (smry-fast, smry-slow, wayback, jina.ai).
+ * across all extraction sources (smry-fast, smry-slow, wayback).
  *
  * To add a site: Verify it has <5% success rate across all sources in Clickhouse
  * To remove a site: Verify the site has changed their paywall policy

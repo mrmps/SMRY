@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "components/**/*.{ts,tsx}",
+    "lib/**/*.{ts,tsx}",
+    "server/**/*.{ts,tsx}",
+    "types/**/*.ts"
+  ],
+  "project": ["**/*.{ts,tsx}"],
+  "ignoreDependencies": [
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-separator",
+    "@radix-ui/react-slot",
+    "@radix-ui/react-tooltip",
+    "@tailwindcss/typography",
+    "harden-react-markdown",
+    "katex",
+    "react-markdown",
+    "rehype-katex",
+    "remark-gfm",
+    "remark-math",
+    "undici",
+    "eslint-plugin-tailwindcss",
+    "pino-pretty",
+    "ws"
+  ],
+  "ignoreBinaries": ["docker-compose"]
+}

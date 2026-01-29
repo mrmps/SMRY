@@ -8,7 +8,6 @@ This directory contains shared utilities, API clients, hooks, and error handling
 lib/
 ├── api/                    # API clients and external service integrations
 │   ├── diffbot.ts         # Diffbot API for article extraction
-│   ├── jina.ts            # Jina.ai client for markdown fetching (client-side)
 │   └── client.ts          # General API client utilities
 ├── errors/                 # Error handling utilities
 │   ├── index.ts           # Barrel export (use this for imports)
@@ -33,7 +32,6 @@ import { AppError, createNetworkError } from "@/lib/errors";
 
 // API clients
 import { fetchArticleWithDiffbot } from "@/lib/api/diffbot";
-import { fetchJinaArticle } from "@/lib/api/jina";
 import { articleAPI } from "@/lib/api/client";
 
 // Hooks
@@ -65,12 +63,6 @@ import { getUrlWithSource } from "@/lib/get-url-with-source"; // Removed
 - Returns structured article data (title, HTML, text, siteName)
 - Includes retry logic and fallback mechanisms
 
-**`jina.ts`**
-- Client-side Jina.ai integration
-- Fetches markdown from Jina Reader API
-- Converts markdown to HTML
-- Used for client-side scraping to reduce server load
-
 **`client.ts`**
 - General-purpose API client
 - Type-safe wrappers for API calls
@@ -95,9 +87,8 @@ import { getUrlWithSource } from "@/lib/get-url-with-source"; // Removed
 ### `hooks/`
 
 **`use-articles.ts`**
-- Fetches articles from 3 sources in parallel (direct, wayback, jina.ai)
+- Fetches articles from 3 sources in parallel (smry-fast, smry-slow, wayback)
 - Uses TanStack Query for caching and state management
-- Jina is fetched client-side, others server-side
 - Smart cache management with length-based updates
 
 **`use-media-query.ts`**
@@ -130,7 +121,6 @@ import { getUrlWithSource } from "@/lib/get-url-with-source"; // Removed
 
 ### Renamed Files
 - ❌ `fetch-with-timeout.ts` → ✅ `api/diffbot.ts`
-- ❌ `jina-client.ts` → ✅ `api/jina.ts`
 - ❌ `api-client.ts` → ✅ `api/client.ts`
 - ❌ `errors.ts` → ✅ `errors/types.ts`
 

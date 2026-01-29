@@ -27,14 +27,12 @@ const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "smry (fast)",
   "smry-slow": "smry (slow)",
   wayback: "Wayback",
-  "jina.ai": "Jina.ai",
 };
 
 const SUMMARY_SOURCES: Source[] = [
   "smry-fast",
   "smry-slow",
   "wayback",
-  "jina.ai",
 ];
 
 const MIN_CHARS_FOR_SUMMARY = 400;
@@ -179,7 +177,6 @@ export default function SummaryForm({
       "smry-fast": 0,
       "smry-slow": 0,
       wayback: 0,
-      "jina.ai": 0,
     },
   );
 

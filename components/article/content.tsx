@@ -244,8 +244,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
     switch (source) {
       case "wayback":
         return `https://web.archive.org/web/2/${url}`;
-      case "jina.ai":
-        return `https://r.jina.ai/${url}`;
       case "smry-fast":
       case "smry-slow":
       default:

@@ -24,7 +24,8 @@
     "pages:dev": "bunx wrangler pages dev .vercel/output/static --compatibility-flags=nodejs_compat",
     "pages:deploy": "bunx wrangler pages deploy .vercel/output/static",
     "prepare": "husky || true",
-    "check-env": "bun scripts/check-env.ts"
+    "check-env": "bun scripts/check-env.ts",
+    "check-deps": "knip --dependencies --no-config-hints --exclude unlisted"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -56,7 +57,6 @@
     "katex": "^0.16.25",
     "linkedom": "^0.18.12",
     "lucide-react": "^0.562.0",
-    "marked": "^10.0.0",
     "motion": "^11.15.0",
     "neverthrow": "^8.2.0",
     "next": "^16.1.1",
@@ -98,6 +98,7 @@
     "eslint-plugin-tailwindcss": "^3.18.2",
     "eslint-plugin-unused-imports": "^4.3.0",
     "husky": "^9.1.7",
+    "knip": "^5.82.1",
     "pino-pretty": "^10.3.1",
     "postcss": "^8.5.6",
     "react-grab": "^0.0.98",
