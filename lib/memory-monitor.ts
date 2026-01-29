@@ -179,7 +179,7 @@ function logMemory(): void {
       method: "INTERNAL",
       outcome: "error",
       error_type: "MEMORY_SPIKE",
-      error_message: `RSS spiked by ${snapshot.rss_delta_mb}MB in 30s (${lastRss}MB -> ${snapshot.rss_mb}MB)`,
+      error_message: `RSS spiked by ${snapshot.rss_delta_mb}MB in 30s (${snapshot.rss_mb - snapshot.rss_delta_mb}MB -> ${snapshot.rss_mb}MB)`,
       error_severity: "unexpected",
       heap_used_mb: snapshot.heap_used_mb,
       heap_total_mb: snapshot.heap_total_mb,

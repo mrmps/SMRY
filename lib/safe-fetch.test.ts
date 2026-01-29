@@ -173,6 +173,26 @@ describe("ResponseTooLargeError", () => {
     expect(err.message).toContain("25MB");
   });
 
+  it("redacts query params when thrown by safeText", async () => {
+    const big = "x".repeat(200);
+    const res = new Response(big);
+    // Simulate a URL with secrets (like Diffbot token)
+    Object.defineProperty(res, "url", {
+      value: "https://api.diffbot.com/v3/article?token=SECRET_KEY&url=https://example.com",
+    });
+
+    try {
+      await safeText(res, 100);
+      expect(true).toBe(false);
+    } catch (err) {
+      expect(err).toBeInstanceOf(ResponseTooLargeError);
+      const msg = (err as Error).message;
+      expect(msg).toContain("api.diffbot.com/v3/article");
+      expect(msg).not.toContain("SECRET_KEY");
+      expect(msg).not.toContain("token=");
+    }
+  });
+
   it("is an instance of Error", () => {
     const err = new ResponseTooLargeError("https://example.com", 1024);
     expect(err).toBeInstanceOf(Error);

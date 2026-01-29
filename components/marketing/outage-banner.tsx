@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "outage-banner-dismissed-2025-01-29";
+const STORAGE_KEY = "outage-banner-dismissed-2026-01-29";
 
 const emptySubscribe = () => () => {};
 

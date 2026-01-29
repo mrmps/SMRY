@@ -5,9 +5,21 @@
 
 const DEFAULT_MAX_SIZE = 25 * 1024 * 1024; // 25MB
 
+/**
+ * Strip query params from URLs to avoid leaking API tokens in logs.
+ */
+function redactUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return url.split("?")[0];
+  }
+}
+
 export class ResponseTooLargeError extends Error {
-  constructor(url: string, maxSize: number) {
-    super(`Response from ${url} exceeded ${Math.round(maxSize / 1024 / 1024)}MB limit`);
+  constructor(safeUrl: string, maxSize: number) {
+    super(`Response from ${safeUrl} exceeded ${Math.round(maxSize / 1024 / 1024)}MB limit`);
     this.name = "ResponseTooLargeError";
   }
 }
@@ -20,12 +32,14 @@ export async function safeText(
   response: Response,
   maxSize: number = DEFAULT_MAX_SIZE
 ): Promise<string> {
+  // Redact once, never let the raw URL reach error messages
+  const safeUrl = redactUrl(response.url);
+
   // Check Content-Length header first for early rejection
   const contentLength = response.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > maxSize) {
-    // Cancel the body to free resources
     await response.body?.cancel();
-    throw new ResponseTooLargeError(response.url, maxSize);
+    throw new ResponseTooLargeError(safeUrl, maxSize);
   }
 
   const reader = response.body?.getReader();
@@ -44,7 +58,7 @@ export async function safeText(
       totalSize += value.byteLength;
       if (totalSize > maxSize) {
         await reader.cancel();
-        throw new ResponseTooLargeError(response.url, maxSize);
+        throw new ResponseTooLargeError(safeUrl, maxSize);
       }
 
       chunks.push(value);
