@@ -258,10 +258,22 @@ export function stopMemoryMonitor(): void {
 }
 
 /**
- * Get current memory snapshot (for on-demand checks)
+ * Get current memory without mutating delta tracking state.
+ * Used by /health endpoint — must not interfere with spike detection.
  */
 export function getCurrentMemory(): MemorySnapshot {
-  return getMemorySnapshot();
+  const mem = process.memoryUsage();
+  return {
+    timestamp: new Date().toISOString(),
+    uptime_minutes: Math.round((Date.now() - startTime) / 60000),
+    heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
+    heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
+    heap_used_delta_mb: 0,
+    rss_mb: Math.round(mem.rss / 1024 / 1024),
+    rss_delta_mb: 0,
+    external_mb: Math.round(mem.external / 1024 / 1024),
+    array_buffers_mb: Math.round(mem.arrayBuffers / 1024 / 1024),
+  };
 }
 
 // Note: Memory monitor is started from instrumentation.ts
