@@ -8,7 +8,7 @@ RUN HUSKY=0 bun install --frozen-lockfile --production
 # Install tsx (TypeScript execution) and Elysia Node.js adapter
 RUN bun add tsx @elysiajs/node
 
-# Production image - Node.js runtime (avoids Bun's fetch memory leak #20912)
+# Production image - Node.js 24 LTS runtime
 FROM node:24-slim AS runner
 WORKDIR /app
 

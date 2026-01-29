@@ -2,7 +2,7 @@
  * Memory Monitor - Periodic memory usage logging for leak detection
  *
  * Logs memory stats every 30 seconds to help identify memory leaks.
- * Triggers garbage collection (Node.js --expose-gc or Bun.gc) when memory grows.
+ * Triggers garbage collection (Node.js --expose-gc) when memory grows.
  *
  * When RSS exceeds threshold, logs to ClickHouse for post-mortem analysis.
  * Railway's healthcheck on /health will detect the unhealthy status and restart.
@@ -22,13 +22,9 @@ let totalGcTimeMs = 0;
 const GC_THRESHOLD_MB = 100; // Only GC if RSS grew by 100MB+
 
 /**
- * Force garbage collection using Bun's native GC or V8's if available.
- * Bun has a known fetch memory leak (issue #20912) where response bodies
- * aren't properly collected. Forcing GC helps mitigate this.
- *
- * CAUTION: Bun.gc(true) is synchronous and blocks the event loop.
- * We only call it when memory has grown significantly to avoid
- * unnecessary latency spikes on requests.
+ * Force V8 garbage collection if available (requires --expose-gc flag).
+ * Only runs when memory has grown significantly to avoid unnecessary
+ * latency spikes on requests.
  *
  * @returns Object with GC stats, or null if GC was skipped
  */
@@ -39,19 +35,14 @@ function maybeForceGC(currentRssMb: number): { durationMs: number; freedMb: numb
     return null; // Memory is stable and low, skip GC
   }
 
+  if (typeof global.gc !== "function") {
+    return null; // No GC available (requires --expose-gc)
+  }
+
   const beforeRss = currentRssMb;
   const startTime = performance.now();
 
-  // Bun's native GC - more aggressive than V8's
-  if (typeof Bun !== "undefined" && typeof Bun.gc === "function") {
-    // Bun.gc(true) = synchronous, full GC
-    Bun.gc(true);
-  } else if (typeof global.gc === "function") {
-    // Fallback to V8's GC if running under Node.js (requires --expose-gc)
-    global.gc();
-  } else {
-    return null; // No GC available
-  }
+  global.gc();
 
   const durationMs = Math.round(performance.now() - startTime);
   const afterRss = Math.round(process.memoryUsage().rss / 1024 / 1024);
@@ -106,7 +97,7 @@ function logMemory(): void {
   // Get current memory first (before potential GC)
   const currentRss = Math.round(process.memoryUsage().rss / 1024 / 1024);
 
-  // Maybe force GC if memory is growing (helps mitigate Bun fetch leak #20912)
+  // Maybe force GC if memory is growing
   // Only runs if RSS grew by 100MB+ or is above 500MB
   const gcResult = maybeForceGC(currentRss);
 
