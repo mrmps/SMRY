@@ -21,7 +21,7 @@ SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered
 ## What You Get
 
 - **Clean reader** that strips overlays, ads, and archive UI.
-- **Multi-source fetching** (direct, wayback) so at least one source usually succeeds.
+- **Multi-source fetching** (direct, proxy, wayback) so at least one source usually succeeds.
 - **Built-in AI summaries** in 14 languages with caching and rate limiting.
 - **Rich debug context** for every fetch so you can see what worked and why.
 
