@@ -45,7 +45,7 @@
     "learnMore": "Mehr erfahren",
     "scrollToLearnMore": "Scrollen Sie, um mehr zu erfahren",
     "featureSourcesTitle": "Drei Quellen rennen, die schnellste gewinnt",
-    "featureSourcesDescription": "Wir rufen gleichzeitig von Wayback Machine und direkt ab. Der Erste mit dem Artikel gewinnt.",
+    "featureSourcesDescription": "Wir rufen gleichzeitig mit schnellem Direktzugriff, einem Proxy-Fallback und Wayback Machine ab. Der Erste mit dem Artikel gewinnt.",
     "featureCleanTitle": "Der ganze Inhalt, ohne Störendes",
     "featureCleanDescription": "Paywalls, Popups, Cookie-Banner, Werbung – alles weg. Nur der Artikeltext und Bilder, bereit zum Lesen.",
     "featureSummaryTitle": "TL;DR in Ihrer Sprache",

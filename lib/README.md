@@ -87,7 +87,7 @@ import { getUrlWithSource } from "@/lib/get-url-with-source"; // Removed
 ### `hooks/`
 
 **`use-articles.ts`**
-- Fetches articles from 2 sources in parallel (direct, wayback)
+- Fetches articles from 3 sources in parallel (smry-fast, smry-slow, wayback)
 - Uses TanStack Query for caching and state management
 - Smart cache management with length-based updates
 

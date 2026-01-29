@@ -45,7 +45,7 @@
     "learnMore": "了解更多",
     "scrollToLearnMore": "滚动了解更多",
     "featureSourcesTitle": "三个来源竞速，最快者胜出",
-    "featureSourcesDescription": "我们同时从Wayback Machine和直接访问获取。第一个获得文章的获胜。",
+    "featureSourcesDescription": "我们同时通过快速直接访问、代理备用和Wayback Machine获取。第一个获得文章的获胜。",
     "featureCleanTitle": "所有内容，无干扰",
     "featureCleanDescription": "付费墙、弹窗、Cookie横幅、广告——全部移除。只有文章文字和图片，即可阅读。",
     "featureSummaryTitle": "您语言的TL;DR",

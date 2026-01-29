@@ -44,7 +44,7 @@
     "learnMore": "Learn more",
     "scrollToLearnMore": "Scroll to learn more",
     "featureSourcesTitle": "Three sources race, the fastest wins",
-    "featureSourcesDescription": "We fetch from Wayback Machine and direct access simultaneously. First one with the article wins.",
+    "featureSourcesDescription": "We fetch using fast direct access, a proxy fallback, and Wayback Machine simultaneously. First one with the article wins.",
     "featureCleanTitle": "All the content, none of the clutter",
     "featureCleanDescription": "Paywalls, popups, cookie banners, ads—all gone. Just the article text and images, ready to read.",
     "featureSummaryTitle": "TL;DR in your language",

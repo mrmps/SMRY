@@ -27,8 +27,9 @@ SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered
 
 ## What This Does
 
-1. **Soft Paywall Access**: Fetches article content from two sources in parallel:
-   - **Direct**: Uses Diffbot API for intelligent article extraction from original URLs (server-side)
+1. **Soft Paywall Access**: Fetches article content from three sources in parallel:
+   - **Direct (smry-fast)**: Fetches and parses content directly using Mozilla Readability (server-side)
+   - **Proxy (smry-slow)**: Uses Diffbot API for intelligent article extraction from original URLs (server-side)
    - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages (server-side)
 
    > **Note**: Hard paywalls (Bloomberg, Barron's, etc.) cannot be accessed. See [/hard-paywalls](https://smry.ai/hard-paywalls) for details.
@@ -178,7 +179,7 @@ User enters URL
     ↓
 ProxyContent component
     ↓
-useArticles() hook - fires 2 parallel requests
+useArticles() hook - fires 3 parallel requests
     ↓
 API route /api/article?url=...&source=...
     ↓
@@ -305,11 +306,12 @@ Each step is tracked in debug context, making it easy to understand what worked 
 - Archive.org pages with wrapped content
 - Sites with heavy JavaScript rendering
 
-### Why Two Sources?
-- **Direct + Diffbot**: AI-powered extraction bypasses most paywalls and anti-bot measures
+### Why Three Sources?
+- **Direct (smry-fast)**: Fast direct fetch with Readability parsing, works for most sites
+- **Proxy (smry-slow)**: Diffbot AI-powered extraction bypasses most paywalls and anti-bot measures
 - **Wayback + Diffbot**: Extracts clean content from archived pages, removing archive.org UI clutter
 
-By fetching both in parallel and displaying any that succeed, the app maximizes success rate.
+By fetching all three in parallel and displaying any that succeed, the app maximizes success rate.
 
 ### Why Diffbot for Direct & Wayback?
 Diffbot's API is specifically trained to extract article content from HTML, removing navigation, ads, and other clutter. This works excellently for:
