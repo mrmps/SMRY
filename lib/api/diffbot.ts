@@ -7,6 +7,7 @@ import {
   UpstreamErrorInfo,
 } from "@/lib/errors/types";
 import { createLogger } from "@/lib/logger";
+import { safeText, safeJson } from "@/lib/safe-fetch";
 import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
@@ -467,14 +468,14 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         const response = await fetch(apiUrl.toString(), { signal: controller.signal });
         
         if (!response.ok) {
-          const errorText = await response.text();
+          const errorText = await safeText(response, 1024 * 1024); // 1MB limit for error responses
           logger.error({ status: response.status, errorText }, 'Diffbot HTTP error');
           addDebugStep(debugContext, 'diffbot_api', 'error', `HTTP ${response.status} error`);
           reject(new Error(`Diffbot HTTP error: ${response.status}`));
           return;
         }
 
-        const rawData = await response.json();
+        const rawData = await safeJson(response);
         
         // Validate Diffbot API response structure
         const responseValidation = DiffbotArticleResponseSchema.safeParse(rawData);

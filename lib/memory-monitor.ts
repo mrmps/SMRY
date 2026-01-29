@@ -2,11 +2,10 @@
  * Memory Monitor - Periodic memory usage logging for leak detection
  *
  * Logs memory stats every 30 seconds to help identify memory leaks.
- * Triggers Bun's garbage collection to help mitigate known fetch memory leak.
- * See: https://github.com/oven-sh/bun/issues/20912
+ * Triggers garbage collection (Node.js --expose-gc or Bun.gc) when memory grows.
  *
- * CRITICAL FEATURE: If RSS exceeds threshold, logs emergency info to ClickHouse
- * before forcing a restart. This captures debug info for post-mortem analysis.
+ * When RSS exceeds threshold, logs to ClickHouse for post-mortem analysis.
+ * Railway's healthcheck on /health will detect the unhealthy status and restart.
  */
 
 import { trackEvent } from "./clickhouse";
@@ -197,7 +196,8 @@ function logMemory(): void {
     });
   }
 
-  // CRITICAL: Force restart if RSS exceeds threshold
+  // CRITICAL: Log when RSS exceeds threshold
+  // Railway's healthcheck on /health will detect 503 and restart the service
   if (snapshot.rss_mb > CRITICAL_RSS_MB) {
     console.error(
       JSON.stringify({
@@ -208,11 +208,11 @@ function logMemory(): void {
         heap_used_mb: snapshot.heap_used_mb,
         external_mb: snapshot.external_mb,
         array_buffers_mb: snapshot.array_buffers_mb,
-        action: "forcing_restart",
+        action: "healthcheck_will_restart",
       })
     );
 
-    // Log to ClickHouse before we die
+    // Log to ClickHouse for post-mortem analysis
     trackEvent({
       request_id: `memory_critical_${Date.now()}`,
       endpoint: "/internal/memory",
@@ -220,18 +220,12 @@ function logMemory(): void {
       method: "INTERNAL",
       outcome: "error",
       error_type: "MEMORY_CRITICAL",
-      error_message: `RSS ${snapshot.rss_mb}MB exceeded threshold ${CRITICAL_RSS_MB}MB - forcing restart`,
+      error_message: `RSS ${snapshot.rss_mb}MB exceeded threshold ${CRITICAL_RSS_MB}MB - healthcheck will trigger restart`,
       error_severity: "unexpected",
       heap_used_mb: snapshot.heap_used_mb,
       heap_total_mb: snapshot.heap_total_mb,
       rss_mb: snapshot.rss_mb,
     });
-
-    // Give ClickHouse a moment to flush, then exit
-    setTimeout(() => {
-      console.error("[MEMORY] Forcing process exit due to critical memory usage");
-      process.exit(1);
-    }, 1000);
   }
 }
 

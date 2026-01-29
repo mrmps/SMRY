@@ -3,6 +3,7 @@
  */
 
 import { Elysia } from "elysia";
+import { node } from "@elysiajs/node";
 import { cors } from "@elysiajs/cors";
 import { cron } from "@elysiajs/cron";
 import { articleRoutes } from "./routes/article";
@@ -19,7 +20,7 @@ import { env } from "./env";
 
 startMemoryMonitor();
 
-const app = new Elysia()
+const app = new Elysia({ adapter: node() })
   .use(cors({
     origin: env.CORS_ORIGIN,
     credentials: true,
@@ -37,8 +38,24 @@ const app = new Elysia()
     status: "running",
     docs: "Use /api/* endpoints or /health for status",
   }))
-  .get("/health", () => {
+  .get("/health", ({ set }) => {
     const memory = getCurrentMemory();
+    const UNHEALTHY_RSS_MB = 1024; // 1GB
+
+    if (memory.rss_mb > UNHEALTHY_RSS_MB) {
+      set.status = 503;
+      return {
+        status: "unhealthy",
+        reason: `RSS ${memory.rss_mb}MB exceeds ${UNHEALTHY_RSS_MB}MB threshold`,
+        timestamp: new Date().toISOString(),
+        memory: {
+          heapUsedMb: memory.heap_used_mb,
+          heapTotalMb: memory.heap_total_mb,
+          rssMb: memory.rss_mb,
+        },
+      };
+    }
+
     return {
       status: "ok",
       timestamp: new Date().toISOString(),
@@ -80,6 +97,6 @@ const app = new Elysia()
   })
   .listen(env.API_PORT);
 
-console.log(`🦊 Elysia API server running at http://localhost:${app.server?.port}`);
+console.log(`🦊 Elysia API server running at http://localhost:${env.API_PORT}`);
 
 export type App = typeof app;
