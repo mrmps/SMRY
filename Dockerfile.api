@@ -1,14 +1,15 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1 AS deps
 
-# Install production dependencies only
-FROM base AS deps
+# Install production dependencies using Bun (for bun.lock compatibility)
 WORKDIR /app
 COPY package.json bun.lock ./
-# Skip Husky prepare script (not needed in production)
 RUN HUSKY=0 bun install --frozen-lockfile --production
 
-# Production image - Elysia API only
-FROM base AS runner
+# Install tsx (TypeScript execution) and Elysia Node.js adapter
+RUN bun add tsx @elysiajs/node
+
+# Production image - Node.js 24 LTS runtime
+FROM node:24-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -17,7 +18,7 @@ ENV NODE_ENV=production
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs elysia
 
-# Copy Elysia server source and dependencies
+# Copy dependencies and source from builder
 COPY --chown=elysia:nodejs --from=deps /app/node_modules ./node_modules
 COPY --chown=elysia:nodejs server ./server
 COPY --chown=elysia:nodejs lib ./lib
@@ -32,4 +33,4 @@ EXPOSE 3001
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["bun", "run", "server/index.ts"]
+CMD ["node", "--expose-gc", "--import", "tsx", "server/index.ts"]

@@ -106,6 +106,15 @@ export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
               {t("reportBug")}
             </Button>
           </a>
+          <a
+            href="https://smry.openstatus.dev/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Button variant="ghost" size="sm">
+              Status
+            </Button>
+          </a>
           <p className="text-center text-xs text-foreground-faint md:text-right">
             <a
               href="https://logo.dev"

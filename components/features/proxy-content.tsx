@@ -40,6 +40,7 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
+import { OutageBanner } from "@/components/marketing/outage-banner";
 import {
   Drawer,
   DrawerContent,
@@ -447,6 +448,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   return (
     <div className="flex h-dvh flex-col bg-background">
+      {/* Outage Banner */}
+      <OutageBanner />
       {/* Promo Banner - desktop/tablet */}
       {showDesktopPromo && <PromoBanner />}
 

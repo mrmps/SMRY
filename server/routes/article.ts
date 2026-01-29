@@ -11,6 +11,7 @@ import { compressAsync, decompressAsync } from "../../lib/redis-compression";
 import { AppError, createNetworkError, createParseError } from "../../lib/errors";
 import { isHardPaywall, getHardPaywallInfo } from "../../lib/hard-paywalls";
 import { createLogger } from "../../lib/logger";
+import { safeText, ResponseTooLargeError } from "../../lib/safe-fetch";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 import { createRequestContext, extractClientIp } from "../../lib/request-context";
@@ -126,7 +127,7 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
       return { error: createNetworkError(`HTTP ${response.status} error when fetching article`, url, response.status) };
     }
 
-    const html = await response.text();
+    const html = await safeText(response);
     if (!html) return { error: createParseError("Received empty HTML content", "smry-fast") };
 
     const { document } = parseHTML(html);
@@ -161,6 +162,9 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
 
     return { article: validation.data, cacheURL: url };
   } catch (error) {
+    if (error instanceof ResponseTooLargeError) {
+      return { error: createNetworkError("Response too large", url, 413) };
+    }
     if (error instanceof Error && error.name === "AbortError") {
       return { error: createNetworkError("Request timed out", url, 408) };
     }

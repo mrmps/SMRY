@@ -2,11 +2,10 @@
  * Memory Monitor - Periodic memory usage logging for leak detection
  *
  * Logs memory stats every 30 seconds to help identify memory leaks.
- * Triggers Bun's garbage collection to help mitigate known fetch memory leak.
- * See: https://github.com/oven-sh/bun/issues/20912
+ * Triggers garbage collection (Node.js --expose-gc) when memory grows.
  *
- * CRITICAL FEATURE: If RSS exceeds threshold, logs emergency info to ClickHouse
- * before forcing a restart. This captures debug info for post-mortem analysis.
+ * When RSS exceeds threshold, logs to ClickHouse for post-mortem analysis.
+ * Railway's healthcheck on /health will detect the unhealthy status and restart.
  */
 
 import { trackEvent } from "./clickhouse";
@@ -23,13 +22,9 @@ let totalGcTimeMs = 0;
 const GC_THRESHOLD_MB = 100; // Only GC if RSS grew by 100MB+
 
 /**
- * Force garbage collection using Bun's native GC or V8's if available.
- * Bun has a known fetch memory leak (issue #20912) where response bodies
- * aren't properly collected. Forcing GC helps mitigate this.
- *
- * CAUTION: Bun.gc(true) is synchronous and blocks the event loop.
- * We only call it when memory has grown significantly to avoid
- * unnecessary latency spikes on requests.
+ * Force V8 garbage collection if available (requires --expose-gc flag).
+ * Only runs when memory has grown significantly to avoid unnecessary
+ * latency spikes on requests.
  *
  * @returns Object with GC stats, or null if GC was skipped
  */
@@ -40,19 +35,14 @@ function maybeForceGC(currentRssMb: number): { durationMs: number; freedMb: numb
     return null; // Memory is stable and low, skip GC
   }
 
+  if (typeof global.gc !== "function") {
+    return null; // No GC available (requires --expose-gc)
+  }
+
   const beforeRss = currentRssMb;
   const startTime = performance.now();
 
-  // Bun's native GC - more aggressive than V8's
-  if (typeof Bun !== "undefined" && typeof Bun.gc === "function") {
-    // Bun.gc(true) = synchronous, full GC
-    Bun.gc(true);
-  } else if (typeof global.gc === "function") {
-    // Fallback to V8's GC if running under Node.js (requires --expose-gc)
-    global.gc();
-  } else {
-    return null; // No GC available
-  }
+  global.gc();
 
   const durationMs = Math.round(performance.now() - startTime);
   const afterRss = Math.round(process.memoryUsage().rss / 1024 / 1024);
@@ -107,7 +97,7 @@ function logMemory(): void {
   // Get current memory first (before potential GC)
   const currentRss = Math.round(process.memoryUsage().rss / 1024 / 1024);
 
-  // Maybe force GC if memory is growing (helps mitigate Bun fetch leak #20912)
+  // Maybe force GC if memory is growing
   // Only runs if RSS grew by 100MB+ or is above 500MB
   const gcResult = maybeForceGC(currentRss);
 
@@ -189,7 +179,7 @@ function logMemory(): void {
       method: "INTERNAL",
       outcome: "error",
       error_type: "MEMORY_SPIKE",
-      error_message: `RSS spiked by ${snapshot.rss_delta_mb}MB in 30s (${lastRss}MB -> ${snapshot.rss_mb}MB)`,
+      error_message: `RSS spiked by ${snapshot.rss_delta_mb}MB in 30s (${snapshot.rss_mb - snapshot.rss_delta_mb}MB -> ${snapshot.rss_mb}MB)`,
       error_severity: "unexpected",
       heap_used_mb: snapshot.heap_used_mb,
       heap_total_mb: snapshot.heap_total_mb,
@@ -197,7 +187,8 @@ function logMemory(): void {
     });
   }
 
-  // CRITICAL: Force restart if RSS exceeds threshold
+  // CRITICAL: Log when RSS exceeds threshold
+  // Railway's healthcheck on /health will detect 503 and restart the service
   if (snapshot.rss_mb > CRITICAL_RSS_MB) {
     console.error(
       JSON.stringify({
@@ -208,11 +199,11 @@ function logMemory(): void {
         heap_used_mb: snapshot.heap_used_mb,
         external_mb: snapshot.external_mb,
         array_buffers_mb: snapshot.array_buffers_mb,
-        action: "forcing_restart",
+        action: "healthcheck_will_restart",
       })
     );
 
-    // Log to ClickHouse before we die
+    // Log to ClickHouse for post-mortem analysis
     trackEvent({
       request_id: `memory_critical_${Date.now()}`,
       endpoint: "/internal/memory",
@@ -220,18 +211,12 @@ function logMemory(): void {
       method: "INTERNAL",
       outcome: "error",
       error_type: "MEMORY_CRITICAL",
-      error_message: `RSS ${snapshot.rss_mb}MB exceeded threshold ${CRITICAL_RSS_MB}MB - forcing restart`,
+      error_message: `RSS ${snapshot.rss_mb}MB exceeded threshold ${CRITICAL_RSS_MB}MB - healthcheck will trigger restart`,
       error_severity: "unexpected",
       heap_used_mb: snapshot.heap_used_mb,
       heap_total_mb: snapshot.heap_total_mb,
       rss_mb: snapshot.rss_mb,
     });
-
-    // Give ClickHouse a moment to flush, then exit
-    setTimeout(() => {
-      console.error("[MEMORY] Forcing process exit due to critical memory usage");
-      process.exit(1);
-    }, 1000);
   }
 }
 
@@ -273,10 +258,22 @@ export function stopMemoryMonitor(): void {
 }
 
 /**
- * Get current memory snapshot (for on-demand checks)
+ * Get current memory without mutating delta tracking state.
+ * Used by /health endpoint — must not interfere with spike detection.
  */
 export function getCurrentMemory(): MemorySnapshot {
-  return getMemorySnapshot();
+  const mem = process.memoryUsage();
+  return {
+    timestamp: new Date().toISOString(),
+    uptime_minutes: Math.round((Date.now() - startTime) / 60000),
+    heap_used_mb: Math.round(mem.heapUsed / 1024 / 1024),
+    heap_total_mb: Math.round(mem.heapTotal / 1024 / 1024),
+    heap_used_delta_mb: 0,
+    rss_mb: Math.round(mem.rss / 1024 / 1024),
+    rss_delta_mb: 0,
+    external_mb: Math.round(mem.external / 1024 / 1024),
+    array_buffers_mb: Math.round(mem.arrayBuffers / 1024 / 1024),
+  };
 }
 
 // Note: Memory monitor is started from instrumentation.ts
