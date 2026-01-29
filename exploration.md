@@ -10,15 +10,15 @@
 Users are confused by the current multi-source UI. They see failures prominently displayed (red "✗" badges) even when the overall extraction succeeds. This creates:
 
 1. **False failure perception** - Smry Fast often fails first (in ~200ms), so users' first visual feedback is frequently a failure
-2. **Choice paralysis** - 4 tabs with cryptic names (Fast, Slow, Wayback, Jina) creates cognitive load
+2. **Choice paralysis** - 3 tabs with cryptic names (Fast, Slow, Wayback) creates cognitive load
 3. **Support burden** - Users don't understand the UX and flood support with "why did it fail?"
-4. **Leaky abstraction** - We're exposing implementation details (4 extraction pipelines) when users just want to read articles
+4. **Leaky abstraction** - We're exposing implementation details (3 extraction pipelines) when users just want to read articles
 
 ### Current UX Flow (Problematic)
 ```
 User enters URL
      ↓
-Sees 4 tabs loading simultaneously
+Sees 3 tabs loading simultaneously
      ↓
 Fast fails first → RED "✗" appears immediately
      ↓
@@ -43,19 +43,18 @@ From our Clickhouse analytics (49K requests over 7 days):
 
 ### Source Performance Varies Wildly by Domain
 
-| Site | smry-fast | smry-slow | wayback | jina.ai |
-|------|-----------|-----------|---------|---------|
-| wsj.com | 0% | 0% | 16% | **68%** |
-| bloomberg.com | 2.68% | 2.99% | 3.91% | **71%** |
-| nytimes.com | **100%** | 93.67% | 11.84% | 100% |
-| telegraph.co.uk | 32.85% | 32.85% | 13.84% | **69.75%** |
-| washingtonpost.com | 0% | 25.45% | 17.45% | **100%** |
+| Site | smry-fast | smry-slow | wayback |
+|------|-----------|-----------|---------|
+| wsj.com | 0% | 0% | 16% |
+| bloomberg.com | 2.68% | 2.99% | 3.91% |
+| nytimes.com | **100%** | 93.67% | 11.84% |
+| telegraph.co.uk | 32.85% | 32.85% | 13.84% |
+| washingtonpost.com | 0% | 25.45% | 17.45% |
 
-**Key insight:** For hard paywalls, jina.ai is often the ONLY source that works. But in our current UI, users see 2-3 failures before jina succeeds.
+**Key insight:** For hard paywalls, none of the sources reliably work. In our current UI, users see failures prominently displayed.
 
 ### Latency Characteristics
 - **smry-fast:** ~200ms (fast but often fails on hard paywalls)
-- **jina.ai:** ~1-2s
 - **smry-slow:** ~2-4s (uses Diffbot, more reliable)
 - **wayback:** ~5-15s (highly variable)
 
@@ -162,7 +161,7 @@ No complex routing. No ML. No caching. Just change what we display.
 | Tabs visible immediately | Tabs hidden until first success |
 | Failures shown as red ✗ badges | Failures silently hidden |
 | User sees Fast fail at T+200ms | User sees nothing until first success |
-| 4 tabs always visible | Only successful sources become tabs |
+| 3 tabs always visible | Only successful sources become tabs |
 | User must manually pick tab | Auto-shows first success |
 
 ### Hard Paywall Messaging
@@ -252,4 +251,3 @@ If we keep tabs visible, consider renaming for clarity:
 | Smry Fast | Quick |
 | Smry Slow | Deep |
 | Wayback | Archive |
-| Jina.ai | Reader |

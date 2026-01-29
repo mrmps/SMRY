@@ -8,7 +8,6 @@
 import { describe, expect, it, beforeAll } from "bun:test";
 import { Elysia } from "elysia";
 import { articleRoutes } from "./routes/article";
-import { jinaRoutes } from "./routes/jina";
 import { summaryRoutes } from "./routes/summary";
 import { adminRoutes } from "./routes/admin";
 
@@ -16,7 +15,6 @@ import { adminRoutes } from "./routes/admin";
 const createTestApp = () => {
   return new Elysia()
     .use(articleRoutes)
-    .use(jinaRoutes)
     .use(summaryRoutes)
     .use(adminRoutes)
     .get("/health", () => ({
@@ -90,17 +88,6 @@ describe("Elysia API Server", () => {
       expect([200, 500]).toContain(response.status);
     }, { timeout: 15000 });
 
-    it("should reject jina.ai source with redirect message", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/article?url=https://example.com&source=jina.ai")
-      );
-      expect(response.status).toBe(400);
-
-      const body = await response.json();
-      expect(body.error).toContain("jina");
-      expect(body.type).toBe("VALIDATION_ERROR");
-    });
-
     it("should block hard paywall sites", async () => {
       const response = await app.handle(
         new Request("http://localhost/api/article?url=https://www.barrons.com/article&source=smry-fast")
@@ -109,93 +96,6 @@ describe("Elysia API Server", () => {
 
       const body = await response.json();
       expect(body.type).toBe("PAYWALL_ERROR");
-    });
-  });
-
-  describe("Jina Route - GET /api/jina", () => {
-    it("should reject requests without url parameter", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/jina")
-      );
-      expect(response.status).toBe(422); // Validation error
-    });
-
-    it("should return 404 for uncached URL", async () => {
-      const uniqueUrl = `https://example.com/uncached-${Date.now()}`;
-      const response = await app.handle(
-        new Request(`http://localhost/api/jina?url=${encodeURIComponent(uniqueUrl)}`)
-      );
-      expect(response.status).toBe(404);
-
-      const body = await response.json();
-      expect(body.type).toBe("CACHE_MISS");
-    });
-
-    it("should block hard paywall sites", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/jina?url=https://www.barrons.com/article")
-      );
-      expect(response.status).toBe(403);
-
-      const body = await response.json();
-      expect(body.type).toBe("PAYWALL_ERROR");
-    });
-  });
-
-  describe("Jina Route - POST /api/jina", () => {
-    it("should reject requests without required fields", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/jina", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        })
-      );
-      expect(response.status).toBe(422); // Validation error
-    });
-
-    it("should accept valid article data", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/jina", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: "https://example.com/test-article",
-            article: {
-              title: "Test Article",
-              content: "<p>This is test content</p>",
-              textContent: "This is test content",
-              length: 100,
-              siteName: "example.com",
-            },
-          }),
-        })
-      );
-      expect(response.status).toBe(200);
-
-      const body = await response.json();
-      expect(body.status).toBe("success");
-      expect(body.source).toBe("jina.ai");
-    });
-
-    it("should reject article with zero length", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/jina", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: "https://example.com/test",
-            article: {
-              title: "Test",
-              content: "<p>Content</p>",
-              textContent: "Content",
-              length: 0, // Invalid: must be positive
-              siteName: "example.com",
-            },
-          }),
-        })
-      );
-      expect(response.status).toBe(422); // Validation error
     });
   });
 
@@ -442,17 +342,6 @@ describe("Elysia API Server", () => {
       );
       expect(articleRoute).toBeDefined();
 
-      // Check jina routes
-      const jinaGetRoute = routes.find(
-        (r) => r.path === "/api/jina" && r.method === "GET"
-      );
-      expect(jinaGetRoute).toBeDefined();
-
-      const jinaPostRoute = routes.find(
-        (r) => r.path === "/api/jina" && r.method === "POST"
-      );
-      expect(jinaPostRoute).toBeDefined();
-
       // Check summary route
       const summaryRoute = routes.find(
         (r) => r.path === "/api/summary" && r.method === "POST"
@@ -597,49 +486,3 @@ describe("HTML Content for Original View", () => {
   });
 });
 
-describe("Jina Cache Workflow", () => {
-  let app: ReturnType<typeof createTestApp>;
-  const testUrl = `https://example.com/cache-test-${Date.now()}`;
-
-  beforeAll(() => {
-    app = createTestApp();
-  });
-
-  it("should complete full cache workflow: miss -> store -> hit", async () => {
-    // Step 1: Initial GET should be cache miss
-    const getMissResponse = await app.handle(
-      new Request(`http://localhost/api/jina?url=${encodeURIComponent(testUrl)}`)
-    );
-    expect(getMissResponse.status).toBe(404);
-
-    // Step 2: POST to cache the article
-    const postResponse = await app.handle(
-      new Request("http://localhost/api/jina", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: testUrl,
-          article: {
-            title: "Cache Test Article",
-            content: "<p>This is cached content for testing</p>",
-            textContent: "This is cached content for testing that is long enough to be valid.",
-            length: 5000, // Above threshold for cache hit
-            siteName: "example.com",
-          },
-        }),
-      })
-    );
-    expect(postResponse.status).toBe(200);
-
-    // Step 3: GET should now return cached article
-    const getHitResponse = await app.handle(
-      new Request(`http://localhost/api/jina?url=${encodeURIComponent(testUrl)}`)
-    );
-    expect(getHitResponse.status).toBe(200);
-
-    const body = await getHitResponse.json();
-    expect(body.status).toBe("success");
-    expect(body.article.title).toBe("Cache Test Article");
-    expect(body.article.length).toBe(5000);
-  });
-});

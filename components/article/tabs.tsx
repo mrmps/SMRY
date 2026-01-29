@@ -23,14 +23,12 @@ const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Smry Fast",
   "smry-slow": "Smry Slow",
   wayback: "Wayback",
-  "jina.ai": "Jina.ai",
 };
 
 const MOBILE_SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Fast",
   "smry-slow": "Slow",
   wayback: "Wayback",
-  "jina.ai": "Jina",
 };
 
 const EnhancedTabsList = memo(function EnhancedTabsList({
@@ -161,7 +159,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
   const smryFastResult = results["smry-fast"];
   const smrySlowResult = results["smry-slow"];
   const waybackResult = results.wayback;
-  const jinaResult = results["jina.ai"];
 
   const [isFullScreen, setIsFullScreen] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -188,38 +185,32 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
   const smryFastLength = smryFastResult.data?.article?.length;
   const smrySlowLength = smrySlowResult.data?.article?.length;
   const waybackLength = waybackResult.data?.article?.length;
-  const jinaLength = jinaResult.data?.article?.length;
 
   const smryFastLoading = smryFastResult.isLoading;
   const smrySlowLoading = smrySlowResult.isLoading;
   const waybackLoading = waybackResult.isLoading;
-  const jinaLoading = jinaResult.isLoading;
 
   const smryFastError = smryFastResult.isError;
   const smrySlowError = smrySlowResult.isError;
   const waybackError = waybackResult.isError;
-  const jinaError = jinaResult.isError;
 
   const counts = useMemo<Record<Source, number | undefined>>(() => ({
     "smry-fast": smryFastLength,
     "smry-slow": smrySlowLength,
     "wayback": waybackLength,
-    "jina.ai": jinaLength,
-  }), [smryFastLength, smrySlowLength, waybackLength, jinaLength]);
+  }), [smryFastLength, smrySlowLength, waybackLength]);
 
   const loadingStates = useMemo<Record<Source, boolean>>(() => ({
     "smry-fast": smryFastLoading,
     "smry-slow": smrySlowLoading,
     "wayback": waybackLoading,
-    "jina.ai": jinaLoading,
-  }), [smryFastLoading, smrySlowLoading, waybackLoading, jinaLoading]);
+  }), [smryFastLoading, smrySlowLoading, waybackLoading]);
 
   const errorStates = useMemo<Record<Source, boolean>>(() => ({
     "smry-fast": smryFastError,
     "smry-slow": smrySlowError,
     "wayback": waybackError,
-    "jina.ai": jinaError,
-  }), [smryFastError, smrySlowError, waybackError, jinaError]);
+  }), [smryFastError, smrySlowError, waybackError]);
 
   const bypassFast = useBypassDetection({
     url,
@@ -239,47 +230,34 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
     article: results.wayback.data?.article,
     enabled: isPremium && !results.wayback.isLoading && !!results.wayback.data?.article,
   });
-  const bypassJina = useBypassDetection({
-    url,
-    source: "jina.ai",
-    article: results["jina.ai"].data?.article,
-    enabled: isPremium && !results["jina.ai"].isLoading && !!results["jina.ai"].data?.article,
-  });
-
   const bypassStatuses = useMemo<Record<Source, BypassStatus | null>>(() => ({
     "smry-fast": bypassFast.result?.status ?? null,
     "smry-slow": bypassSlow.result?.status ?? null,
     "wayback": bypassWayback.result?.status ?? null,
-    "jina.ai": bypassJina.result?.status ?? null,
   }), [
     bypassFast.result?.status,
     bypassSlow.result?.status,
     bypassWayback.result?.status,
-    bypassJina.result?.status,
   ]);
 
   const bypassLoadingStates = useMemo<Record<Source, boolean>>(() => ({
     "smry-fast": bypassFast.isLoading,
     "smry-slow": bypassSlow.isLoading,
     "wayback": bypassWayback.isLoading,
-    "jina.ai": bypassJina.isLoading,
   }), [
     bypassFast.isLoading,
     bypassSlow.isLoading,
     bypassWayback.isLoading,
-    bypassJina.isLoading,
   ]);
 
   const bypassErrorStates = useMemo<Record<Source, boolean>>(() => ({
     "smry-fast": !!bypassFast.error,
     "smry-slow": !!bypassSlow.error,
     "wayback": !!bypassWayback.error,
-    "jina.ai": !!bypassJina.error,
   }), [
     bypassFast.error,
     bypassSlow.error,
     bypassWayback.error,
-    bypassJina.error,
   ]);
 
   return (
@@ -353,19 +331,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
             isError={results.wayback.isError}
             error={results.wayback.error}
             source="wayback"
-            url={url}
-            viewMode={viewMode}
-            isFullScreen={isFullScreen}
-            onFullScreenChange={handleFullScreenChange}
-          />
-        </TabsContent>
-        <TabsContent id="article-panel-jina" value={"jina.ai"} keepMounted>
-          <ArticleContent
-            data={results["jina.ai"].data}
-            isLoading={results["jina.ai"].isLoading}
-            isError={results["jina.ai"].isError}
-            error={results["jina.ai"].error}
-            source="jina.ai"
             url={url}
             viewMode={viewMode}
             isFullScreen={isFullScreen}

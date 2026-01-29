@@ -8,7 +8,6 @@ import {
   Check,
   X,
   Ban,
-  Loader2,
   CheckCircle,
   FileText,
 } from "lucide-react";
@@ -92,16 +91,6 @@ function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, strin
                 <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceWayback")}</span>
               </div>
               <span className="text-[13px] text-emerald-500">{t("statusWinner")}</span>
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
-            <div className="flex h-9 items-center justify-between gap-2 px-2">
-              <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
-                <Loader2 className="h-4 w-4 shrink-0 text-[#999] dark:text-[#777]" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceJina")}</span>
-              </div>
-              <span className="text-[13px] text-[#999] dark:text-[#777]">{t("statusCancelled")}</span>
             </div>
           </div>
 

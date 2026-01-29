@@ -136,7 +136,7 @@ export class MemoryRateLimiter {
   }
 }
 
-// Shared instance for article/jina routes
+// Shared instance for article routes
 // High limit: 200 requests per minute per IP (abuse prevention, not strict limiting)
 export const abuseRateLimiter = new MemoryRateLimiter({
   limit: 200,

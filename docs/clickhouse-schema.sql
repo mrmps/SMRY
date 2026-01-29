@@ -16,13 +16,13 @@ CREATE TABLE IF NOT EXISTS request_events
 
     -- Request metadata
     method LowCardinality(String),
-    endpoint LowCardinality(String),  -- /api/article, /api/summary, /api/jina
+    endpoint LowCardinality(String),  -- /api/article, /api/summary
     path String,
 
     -- Article/content context
     url String,
     hostname LowCardinality(String),  -- nytimes.com, wsj.com, etc.
-    source LowCardinality(String),    -- smry-fast, smry-slow, wayback, jina.ai
+    source LowCardinality(String),    -- smry-fast, smry-slow, wayback
 
     -- Outcome metrics
     outcome LowCardinality(String),   -- success, error

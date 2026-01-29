@@ -21,22 +21,21 @@ SMRY.ai is a Next.js application that bypasses paywalls and generates AI-powered
 ## What You Get
 
 - **Clean reader** that strips overlays, ads, and archive UI.
-- **Multi-source fetching** (direct, wayback, Jina.ai) so at least one source usually succeeds.
+- **Multi-source fetching** (direct, wayback) so at least one source usually succeeds.
 - **Built-in AI summaries** in 14 languages with caching and rate limiting.
 - **Rich debug context** for every fetch so you can see what worked and why.
 
 ## What This Does
 
-1. **Soft Paywall Access**: Fetches article content from three sources in parallel:
+1. **Soft Paywall Access**: Fetches article content from two sources in parallel:
    - **Direct**: Uses Diffbot API for intelligent article extraction from original URLs (server-side)
    - **Wayback Machine**: Uses Diffbot API to extract clean content from archived pages (server-side)
-   - **Jina.ai**: Fetches and parses markdown directly in the browser (client-side)
 
    > **Note**: Hard paywalls (Bloomberg, Barron's, etc.) cannot be accessed. See [/hard-paywalls](https://smry.ai/hard-paywalls) for details.
 
 2. **AI Summaries**: Generates concise summaries in 8 languages using OpenRouter (openai/gpt-oss-20b:free)
 
-3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content, with client-side markdown parsing for Jina.ai to reduce server load
+3. **Smart Extraction**: Uses Diffbot's AI-powered extraction for direct and archived content
 
 ## Architecture Highlights
 
@@ -51,20 +50,6 @@ const serverQueries = useQueries({
     queryKey: ["article", source, url],
     queryFn: () => articleAPI.getArticle(url, source),
   }))
-});
-```
-
-**Client-side source (Jina.ai):**
-```typescript
-// Jina is fetched directly in the browser, reducing server load
-const jinaQuery = useQuery({
-  queryKey: ["article", "jina.ai", url],
-  queryFn: async () => {
-    // 1. Check cache via GET /api/jina
-    // 2. If miss, fetch from r.jina.ai client-side
-    // 3. Parse markdown in browser
-    // 4. Update cache via POST /api/jina
-  }
 });
 ```
 
@@ -106,13 +91,6 @@ Different sources require different extraction strategies:
 const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source);
 ```
 
-**Jina.ai** → Markdown Parsing
-```typescript
-// Jina returns markdown, so we parse it directly
-const markdown = await fetch(jinaUrl).then(r => r.text());
-const html = converter.makeHtml(markdown);
-```
-
 This multi-layered approach maximizes content extraction success across diverse article formats and site structures.
 
 ### Content Parsing Pipeline
@@ -126,12 +104,6 @@ This multi-layered approach maximizes content extraction success across diverse 
    - Attempt multiple Diffbot article fields
 4. Track extraction steps in debug context
 5. Cache the parsed result
-
-**For Jina.ai (Markdown):**
-1. Fetch markdown from Jina.ai reader
-2. Extract title, URL source, and content
-3. Convert markdown to HTML using Showdown
-4. Cache the parsed result
 
 ### Debug Context & Error Tracking
 Each article fetch now includes detailed debug context that tracks:
@@ -163,7 +135,6 @@ Rate limited to 20 summaries per IP per day, 6 per minute.
 - **OpenRouter** for AI summaries (unified access to 300+ models)
 - **Diffbot API** for AI-powered article extraction (direct & wayback sources)
 - **Mozilla Readability** for fallback content extraction
-- **Showdown** for markdown to HTML conversion (Jina.ai source)
 - **Logo.dev API** for company logos (client-side)
 - **Radix UI** + **Tailwind CSS** for UI
 
@@ -180,7 +151,6 @@ app/
 lib/
 ├── api/
 │   ├── diffbot.ts            # Diffbot API with multi-layer fallback extraction
-│   ├── jina.ts               # Jina.ai markdown fetching
 │   └── client.ts             # Type-safe API client
 ├── errors/
 │   ├── types.ts              # Type-safe error definitions (9 types)
@@ -208,13 +178,12 @@ User enters URL
     ↓
 ProxyContent component
     ↓
-useArticles() hook - fires 3 parallel requests
+useArticles() hook - fires 2 parallel requests
     ↓
 API route /api/article?url=...&source=...
     ↓
 Route to appropriate fetcher:
   - Direct/Wayback → fetchArticleWithDiffbot() with multi-layer fallback
-  - Jina.ai → fetchJinaArticle() (markdown parsing)
     ↓
 Cache in Upstash Redis (if longer than existing)
     ↓
@@ -336,12 +305,11 @@ Each step is tracked in debug context, making it easy to understand what worked 
 - Archive.org pages with wrapped content
 - Sites with heavy JavaScript rendering
 
-### Why Three Sources?
+### Why Two Sources?
 - **Direct + Diffbot**: AI-powered extraction bypasses most paywalls and anti-bot measures
 - **Wayback + Diffbot**: Extracts clean content from archived pages, removing archive.org UI clutter
-- **Jina.ai**: Returns pre-parsed markdown format, works when Diffbot is unavailable
 
-By fetching all three in parallel and displaying any that succeed, the app maximizes success rate.
+By fetching both in parallel and displaying any that succeed, the app maximizes success rate.
 
 ### Why Diffbot for Direct & Wayback?
 Diffbot's API is specifically trained to extract article content from HTML, removing navigation, ads, and other clutter. This works excellently for:
@@ -355,8 +323,6 @@ If Diffbot's extraction is incomplete, the system automatically tries:
 3. **Wayback-specific logic** to extract and re-parse original URLs
 
 This multi-layered approach maximizes content extraction success, especially for complex sites like Google Blogger or pages with dynamic layouts.
-
-Jina.ai is handled separately because it returns markdown (not HTML), so we parse it directly without Diffbot.
 
 ### Caching Strategy
 Articles are cached with the article itself as the value, not just metadata. When a new fetch completes, it compares text length to the cached version and keeps the longer one. This prevents losing content if a source returns a partial article.
@@ -423,7 +389,6 @@ MIT License - see LICENSE file for details
 
 - [12ft.io](https://12ft.io) - Original inspiration
 - [archive.is](https://archive.is) - Archive service
-- [Jina.ai Reader](https://jina.ai/reader) - Clean article extraction
 - [Diffbot](https://diffbot.com) - Article extraction API
 
 ## Contact

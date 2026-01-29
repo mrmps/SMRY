@@ -233,11 +233,11 @@ describe("proxy redirect helpers", () => {
       it("separates source param from external URL", () => {
         const result = buildProxyRedirectUrl(
           "/https://foo.com/article",
-          "?source=jina.ai",
+          "?source=smry-fast",
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&source=jina.ai"
+          "https://smry.ai/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&source=smry-fast"
         );
       });
     });

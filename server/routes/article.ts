@@ -206,7 +206,7 @@ async function fetchArticle(urlWithSource: string, source: string): Promise<{ ar
   }
 }
 
-const SourceEnum = t.Union([t.Literal("smry-fast"), t.Literal("smry-slow"), t.Literal("wayback"), t.Literal("jina.ai")]);
+const SourceEnum = t.Union([t.Literal("smry-fast"), t.Literal("smry-slow"), t.Literal("wayback")]);
 
 export const articleRoutes = new Elysia({ prefix: "/api" }).get(
   "/article",
@@ -232,12 +232,6 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
     try {
       const { url, source } = query;
       ctx.merge({ url_param: url, source_param: source });
-
-      if (source === "jina.ai") {
-        ctx.error("Jina.ai source not supported", { error_type: "VALIDATION_ERROR", status_code: 400 });
-        set.status = 400;
-        return { error: "Use /api/jina endpoint instead.", type: "VALIDATION_ERROR" };
-      }
 
       const hostname = new URL(url).hostname;
       ctx.merge({ source, hostname, url });

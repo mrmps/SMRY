@@ -6,7 +6,6 @@ export const SOURCES = [
   "smry-fast",
   "smry-slow",
   "wayback",
-  "jina.ai",
 ] as const;
 export const SourceSchema = z.enum(SOURCES);
 export type Source = z.infer<typeof SourceSchema>;
@@ -103,27 +102,6 @@ export const SummaryResponseSchema = z.object({
 });
 export type SummaryResponse = z.infer<typeof SummaryResponseSchema>;
 
-// Jina cache GET request schema
-export const JinaCacheRequestSchema = z.object({
-  url: NormalizedUrlSchema,
-});
-export type JinaCacheRequest = z.infer<typeof JinaCacheRequestSchema>;
-
-// Jina cache POST/update schema
-export const JinaCacheUpdateSchema = z.object({
-  url: NormalizedUrlSchema,
-  article: z.object({
-    title: z.string(),
-    content: z.string(),
-    textContent: z.string(),
-    length: z.number().int().positive(),
-    siteName: z.string(),
-    byline: z.string().optional().nullable(),
-    publishedTime: z.string().optional().nullable(),
-    htmlContent: z.string().optional(),
-  }),
-});
-export type JinaCacheUpdate = z.infer<typeof JinaCacheUpdateSchema>;
 
 // Available languages with display names and AI prompts
 // This is the single source of truth for language configuration

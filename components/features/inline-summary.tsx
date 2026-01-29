@@ -43,13 +43,11 @@ const SUMMARY_SOURCES: Source[] = [
   "smry-fast",
   "smry-slow",
   "wayback",
-  "jina.ai",
 ];
 const SOURCE_LABELS: Record<Source, string> = {
   "smry-fast": "Fast",
   "smry-slow": "Slow",
   wayback: "Wayback",
-  "jina.ai": "Jina",
 };
 const MIN_CHARS = 400;
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);

@@ -685,7 +685,6 @@ function AnalyticsDashboardContent() {
               <option value="smry-fast">smry-fast</option>
               <option value="smry-slow">smry-slow</option>
               <option value="wayback">wayback</option>
-              <option value="jina.ai">jina.ai</option>
             </select>
 
             <select
@@ -840,7 +839,6 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
               { source: "smry-fast", color: "#3b82f6" },
               { source: "smry-slow", color: "#a855f7" },
               { source: "wayback", color: "#f59e0b" },
-              { source: "jina.ai", color: "#ec4899" },
             ].map(({ source, color }) => (
               <span key={source} className="flex items-center gap-1 text-xs text-zinc-400">
                 <span className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
@@ -901,15 +899,6 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
                 dataKey="wayback"
                 stroke="#f59e0b"
                 name="wayback"
-                strokeWidth={2}
-                dot={false}
-                connectNulls
-              />
-              <Line
-                type="monotone"
-                dataKey="jina.ai"
-                stroke="#ec4899"
-                name="jina.ai"
                 strokeWidth={2}
                 dot={false}
                 connectNulls
@@ -1082,9 +1071,6 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
                   <th className="text-center py-3 px-4 text-zinc-400 font-medium">
                     wayback
                   </th>
-                  <th className="text-center py-3 px-4 text-zinc-400 font-medium">
-                    jina.ai
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1119,7 +1105,7 @@ function OverviewTab({ data, sourceMatrix }: { data: DashboardData; sourceMatrix
                         <td className="py-3 px-4 text-right text-zinc-400 font-mono text-xs">
                           {site.avg_duration_ms}ms
                         </td>
-                        {["smry-fast", "smry-slow", "wayback", "jina.ai"].map(
+                        {["smry-fast", "smry-slow", "wayback"].map(
                           (source) => (
                             <td
                               key={source}
@@ -2908,7 +2894,6 @@ function SourceBadge({ source }: { source: string }) {
     "smry-fast": "bg-blue-900/30 text-blue-400",
     "smry-slow": "bg-cyan-900/30 text-cyan-400",
     "wayback": "bg-amber-900/30 text-amber-400",
-    "jina.ai": "bg-rose-900/30 text-rose-400",
   };
 
   return (
