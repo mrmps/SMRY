@@ -79,18 +79,18 @@ function FallbackIcon({ brandName }: { brandName: string }) {
 export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
-  // 0 = gravity favicon, 1 = google fallback, 2 = letter icon
+  // 0 = gravity favicon, 1 = DuckDuckGo fallback, 2 = letter icon
   const [faviconStage, setFaviconStage] = useState(0);
 
-  const googleFavicon = useMemo(() => {
+  const ddgFavicon = useMemo(() => {
     const domain = getDomain(ad.clickUrl);
-    return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
+    return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
   }, [ad.clickUrl]);
 
   // Resolve which favicon src to use (null = use FallbackIcon)
   const faviconSrc =
     faviconStage === 0 && ad.favicon ? ad.favicon
-    : faviconStage <= 1 && googleFavicon ? googleFavicon
+    : faviconStage <= 1 && ddgFavicon ? ddgFavicon
     : null;
 
   const handleFaviconError = () => {

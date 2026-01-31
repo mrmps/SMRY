@@ -52,6 +52,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "unavatar.io",
       },
+      {
+        protocol: "https",
+        hostname: "icons.duckduckgo.com",
+      },
     ],
   },
   serverExternalPackages: ["pino", "pino-pretty", "thread-stream", "undici", "node-fetch"],
