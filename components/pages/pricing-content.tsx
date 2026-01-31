@@ -12,8 +12,34 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAndClearReturnUrl, getReturnUrl } from "@/lib/hooks/use-return-url";
 
+// Detect device type from user agent
+function getDeviceInfo() {
+  const ua = navigator.userAgent;
+  const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+  const deviceType = isTablet ? "tablet" : isMobile ? "mobile" : "desktop";
+
+  // Extract browser name
+  let browser = "Unknown";
+  if (ua.includes("Firefox/")) browser = "Firefox";
+  else if (ua.includes("Edg/")) browser = "Edge";
+  else if (ua.includes("Chrome/") && !ua.includes("Edg/")) browser = "Chrome";
+  else if (ua.includes("Safari/") && !ua.includes("Chrome/")) browser = "Safari";
+
+  // Extract OS
+  let os = "Unknown";
+  if (ua.includes("Windows")) os = "Windows";
+  else if (ua.includes("Mac OS")) os = "macOS";
+  else if (ua.includes("Linux")) os = "Linux";
+  else if (ua.includes("Android")) os = "Android";
+  else if (/iPhone|iPad|iPod/.test(ua)) os = "iOS";
+
+  return { deviceType, browser, os, referrer: document.referrer || undefined, page: window.location.pathname };
+}
+
 // Track buy button clicks
 function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name?: string }) {
+  const device = getDeviceInfo();
   fetch("/api/webhooks/track/buy-click", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -22,6 +48,11 @@ function trackBuyClick(plan: "monthly" | "annual", user?: { email?: string; name
       userEmail: user?.email,
       userName: user?.name,
       isSignedIn: !!user,
+      deviceType: device.deviceType,
+      browser: device.browser,
+      os: device.os,
+      referrer: device.referrer,
+      page: device.page,
     }),
   }).catch(() => {
     // Silent fail - tracking shouldn't break the UI

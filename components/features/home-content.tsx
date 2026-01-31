@@ -20,7 +20,10 @@ import { Link } from "@/i18n/navigation";
 import { BottomCornerNav } from "@/components/shared/bottom-corner-nav";
 import { FAQ } from "@/components/marketing/faq";
 import { AuthBar } from "@/components/shared/auth-bar";
-import { OutageBanner } from "@/components/marketing/outage-banner";
+import { PromoBanner } from "@/components/marketing/promo-banner";
+import { GravityAd } from "@/components/ads/gravity-ad";
+import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -260,6 +263,14 @@ export const HomeContent = memo(function HomeContent() {
   const t = useTranslations("home");
   const isDesktop = useIsDesktop();
   const inputRef = useRef<HTMLInputElement>(null);
+  const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
+
+  const { ad, fireImpression, fireClick } = useGravityAd({
+    url: typeof window !== "undefined" ? window.location.href : "https://smry.ai",
+    title: "smry - Read articles without paywalls",
+    isPremium: isPremium || isPremiumLoading,
+    prompt: "I want a very short, succinct ad",
+  });
 
   const router = useRouter();
 
@@ -345,7 +356,7 @@ export const HomeContent = memo(function HomeContent() {
 
   return (
     <>
-      <OutageBanner />
+      <PromoBanner />
       <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
 
         {/* Auth - top right */}
@@ -420,6 +431,18 @@ export const HomeContent = memo(function HomeContent() {
               <ExclamationCircleIcon className="mr-1.5 size-4" />
               {displayError}
             </p>
+          )}
+
+          {/* Micro sponsor line */}
+          {!isPremium && !isPremiumLoading && ad && (
+            <div className="mt-4 flex justify-center">
+              <GravityAd
+                ad={ad}
+                variant="micro"
+                onVisible={() => fireImpression(ad)}
+                onClick={() => fireClick(ad)}
+              />
+            </div>
           )}
 
         </div>

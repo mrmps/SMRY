@@ -305,9 +305,9 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
   .post(
     "/track/buy-click",
     async ({ body }) => {
-      const { plan, userEmail, userName, isSignedIn } = body;
+      const { plan, userEmail, userName, isSignedIn, deviceType, browser, os, referrer, page } = body;
 
-      console.log(`[webhooks] Buy button clicked: ${plan} (signed in: ${isSignedIn})`);
+      console.log(`[webhooks] Buy button clicked: ${plan} (signed in: ${isSignedIn}, device: ${deviceType})`);
 
       // Send notification email (fire and forget)
       sendBuyClickNotification({
@@ -315,6 +315,11 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
         userEmail,
         userName,
         isSignedIn,
+        deviceType,
+        browser,
+        os,
+        referrer,
+        page,
       }).catch((error) => {
         console.error(`[webhooks] Failed to send buy click notification:`, error);
       });
@@ -327,6 +332,11 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
         userEmail: t.Optional(t.String()),
         userName: t.Optional(t.String()),
         isSignedIn: t.Boolean(),
+        deviceType: t.Optional(t.String()),
+        browser: t.Optional(t.String()),
+        os: t.Optional(t.String()),
+        referrer: t.Optional(t.String()),
+        page: t.Optional(t.String()),
       }),
     }
   );

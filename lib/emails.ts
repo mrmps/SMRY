@@ -310,11 +310,21 @@ export async function sendBuyClickNotification({
   userName,
   plan,
   isSignedIn,
+  deviceType,
+  browser,
+  os,
+  referrer,
+  page,
 }: {
   userEmail?: string;
   userName?: string;
   plan: "monthly" | "annual";
   isSignedIn: boolean;
+  deviceType?: string;
+  browser?: string;
+  os?: string;
+  referrer?: string;
+  page?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const timestamp = new Date().toLocaleString("en-US", {
     timeZone: "America/New_York",
@@ -337,6 +347,8 @@ Someone clicked the buy button!
 User: ${userInfo}
 Plan: ${plan}
 Signed in: ${isSignedIn ? "Yes" : "No"}
+Device: ${deviceType || "Unknown"} (${browser || "Unknown"} on ${os || "Unknown"})
+Page: ${page || "Unknown"}${referrer ? `\nReferrer: ${referrer}` : ""}
 Time: ${timestamp}
 
 ---
@@ -361,6 +373,26 @@ Smry Notifications
         <td style="padding: 8px 0; color: #6b7280;">Signed in</td>
         <td style="padding: 8px 0;">${isSignedIn ? "Yes" : "No"}</td>
       </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Device</td>
+        <td style="padding: 8px 0;">${deviceType || "Unknown"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Browser</td>
+        <td style="padding: 8px 0;">${browser || "Unknown"} on ${os || "Unknown"}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Page</td>
+        <td style="padding: 8px 0;">${page || "Unknown"}</td>
+      </tr>${referrer && /^https?:\/\//i.test(referrer) ? `
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Referrer</td>
+        <td style="padding: 8px 0;"><a href="${referrer}" style="color: #3b82f6;">${referrer}</a></td>
+      </tr>` : referrer ? `
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Referrer</td>
+        <td style="padding: 8px 0;">${referrer}</td>
+      </tr>` : ""}
       <tr>
         <td style="padding: 8px 0; color: #6b7280;">Time</td>
         <td style="padding: 8px 0;">${timestamp}</td>
