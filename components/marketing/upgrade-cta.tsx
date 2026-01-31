@@ -9,15 +9,16 @@ import { useTranslations } from "next-intl";
 
 interface UpgradeCTAProps {
   className?: string;
+  dismissable?: boolean;
 }
 
-export function UpgradeCTA({ className }: UpgradeCTAProps) {
+export function UpgradeCTA({ className, dismissable = true }: UpgradeCTAProps) {
   const t = useTranslations("promo");
   const { isPremium, isLoading } = useIsPremium();
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Don't show while loading, if premium, or if dismissed
-  if (isLoading || isPremium || isDismissed) {
+  // Don't show while loading, if premium, or if dismissed (only when dismissable)
+  if (isLoading || isPremium || (dismissable && isDismissed)) {
     return null;
   }
 
@@ -45,13 +46,15 @@ export function UpgradeCTA({ className }: UpgradeCTAProps) {
       >
         {t("upgrade")}
       </Link>
-      <button
-        onClick={() => setIsDismissed(true)}
-        className="shrink-0 -mr-1 p-1 text-foreground/30 transition-colors hover:text-foreground/50"
-        aria-label={t("dismiss")}
-      >
-        <X className="size-3.5" />
-      </button>
+      {dismissable && (
+        <button
+          onClick={() => setIsDismissed(true)}
+          className="shrink-0 -mr-1 p-1 text-foreground/30 transition-colors hover:text-foreground/50"
+          aria-label={t("dismiss")}
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
     </div>
   );
 }
