@@ -263,12 +263,12 @@ export const HomeContent = memo(function HomeContent() {
   const t = useTranslations("home");
   const isDesktop = useIsDesktop();
   const inputRef = useRef<HTMLInputElement>(null);
-  const { isPremium } = useIsPremium();
+  const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
 
   const { ad, fireImpression, fireClick } = useGravityAd({
     url: typeof window !== "undefined" ? window.location.href : "https://smry.ai",
     title: "smry - Read articles without paywalls",
-    isPremium,
+    isPremium: isPremium || isPremiumLoading,
     prompt: "I want a very short, succinct ad",
   });
 
@@ -434,7 +434,7 @@ export const HomeContent = memo(function HomeContent() {
           )}
 
           {/* Micro sponsor line */}
-          {!isPremium && ad && (
+          {!isPremium && !isPremiumLoading && ad && (
             <div className="mt-4 flex justify-center">
               <GravityAd
                 ad={ad}

@@ -30,13 +30,6 @@ if [ -z "$DOMAIN" ]; then
   exit 1
 fi
 
-# 2. Set PORT=8123 so Railway routes to ClickHouse's HTTP interface
-gql "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"3daa34e8-bdc3-4e74-ad0e-bf39091d4640\\\", serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\", name: \\\"PORT\\\", value: \\\"8123\\\" }) }\"}" > /dev/null
-
-CH_URL="https://$DOMAIN"
-CH_USER="default"
-CH_PASS=$(railway service clickhouse > /dev/null 2>&1 && railway variables list --kv 2>/dev/null | grep CLICKHOUSE_PASSWORD | cut -d= -f2)
-
 cleanup() {
   # Delete domain
   gql "{\"query\":\"mutation { serviceDomainDelete(id: \\\"$DOMAIN_ID\\\") }\"}" > /dev/null 2>&1
@@ -44,6 +37,13 @@ cleanup() {
   gql "{\"query\":\"mutation { variableDelete(input: { projectId: \\\"3daa34e8-bdc3-4e74-ad0e-bf39091d4640\\\", serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\", name: \\\"PORT\\\" }) }\"}" > /dev/null 2>&1
 }
 trap cleanup EXIT
+
+# 2. Set PORT=8123 so Railway routes to ClickHouse's HTTP interface
+gql "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"3daa34e8-bdc3-4e74-ad0e-bf39091d4640\\\", serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\", name: \\\"PORT\\\", value: \\\"8123\\\" }) }\"}" > /dev/null
+
+CH_URL="https://$DOMAIN"
+CH_USER="default"
+CH_PASS=$(railway service clickhouse > /dev/null 2>&1 && railway variables list --kv 2>/dev/null | grep CLICKHOUSE_PASSWORD | cut -d= -f2)
 
 # 3. Wait for the domain to become reachable
 echo "Waiting for ClickHouse to be reachable..." >&2

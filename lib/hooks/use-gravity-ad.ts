@@ -181,7 +181,7 @@ export function useGravityAd({
   }, [user]);
 
   const query = useQuery({
-    queryKey: ["context", url, sessionId, title],
+    queryKey: ["context", url, sessionId, title, prompt],
     queryFn: async (): Promise<ContextAd[] | null> => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",

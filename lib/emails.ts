@@ -384,10 +384,14 @@ Smry Notifications
       <tr>
         <td style="padding: 8px 0; color: #6b7280;">Page</td>
         <td style="padding: 8px 0;">${page || "Unknown"}</td>
-      </tr>${referrer ? `
+      </tr>${referrer && /^https?:\/\//i.test(referrer) ? `
       <tr>
         <td style="padding: 8px 0; color: #6b7280;">Referrer</td>
         <td style="padding: 8px 0;"><a href="${referrer}" style="color: #3b82f6;">${referrer}</a></td>
+      </tr>` : referrer ? `
+      <tr>
+        <td style="padding: 8px 0; color: #6b7280;">Referrer</td>
+        <td style="padding: 8px 0;">${referrer}</td>
       </tr>` : ""}
       <tr>
         <td style="padding: 8px 0; color: #6b7280;">Time</td>

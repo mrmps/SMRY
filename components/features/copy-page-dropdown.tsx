@@ -67,9 +67,13 @@ export function CopyPageDropdown({
 }: CopyPageDropdownProps) {
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedSources, setSelectedSources] = useState<Set<number>>(
-    new Set(sources.map((_, i) => i))
-  );
+  const [deselectedSources, setDeselectedSources] = useState<Set<number>>(new Set());
+  const [prevSourcesLen, setPrevSourcesLen] = useState(sources.length);
+  if (sources.length !== prevSourcesLen) {
+    setPrevSourcesLen(sources.length);
+    if (deselectedSources.size > 0) setDeselectedSources(new Set());
+  }
+  const selectedSources = new Set(sources.map((_, i) => i).filter((i) => !deselectedSources.has(i)));
 
   // Generate markdown content
   const generateMarkdown = (includeContent = true) => {
@@ -131,7 +135,7 @@ export function CopyPageDropdown({
   };
 
   const toggleSource = (index: number) => {
-    setSelectedSources((prev) => {
+    setDeselectedSources((prev) => {
       const next = new Set(prev);
       if (next.has(index)) {
         next.delete(index);
@@ -143,11 +147,11 @@ export function CopyPageDropdown({
   };
 
   const selectAllSources = () => {
-    setSelectedSources(new Set(sources.map((_, i) => i)));
+    setDeselectedSources(new Set());
   };
 
   const deselectAllSources = () => {
-    setSelectedSources(new Set());
+    setDeselectedSources(new Set(sources.map((_, i) => i)));
   };
 
   // Icon-only variant for mobile
