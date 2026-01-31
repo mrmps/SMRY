@@ -173,6 +173,7 @@ export const ContextRequestSchema = z.object({
   siteName: z.string().optional(), // Publisher name
   publishedTime: z.string().optional(), // Publication date
   lang: z.string().optional(), // Article language
+  prompt: z.string().optional(), // Extra instruction for ad generation (e.g. "keep it short")
 });
 export type ContextRequest = z.infer<typeof ContextRequestSchema>;
 
@@ -204,6 +205,7 @@ export type ContextResponseStatus = z.infer<typeof ContextResponseStatusSchema>;
 export const ContextResponseSchema = z.object({
   status: ContextResponseStatusSchema,
   ad: ContextAdSchema.optional(),
+  ads: z.array(ContextAdSchema).optional(),
   // Debug info (only included when no ad)
   debug: z.object({
     gravityStatus: z.number().optional(),

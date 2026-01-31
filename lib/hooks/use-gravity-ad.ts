@@ -130,14 +130,17 @@ export interface UseGravityAdOptions {
   publishedTime?: string | null;
   /** Article language for better ad targeting */
   lang?: string | null;
+  /** Extra instruction for ad generation (e.g. "keep it short") */
+  prompt?: string;
 }
 
 export interface UseGravityAdResult {
   ad: ContextAd | null;
+  ads: ContextAd[];
   isLoading: boolean;
-  fireImpression: () => void;
-  fireClick: () => void;
-  fireDismiss: () => void;
+  fireImpression: (ad?: ContextAd) => void;
+  fireClick: (ad?: ContextAd) => void;
+  fireDismiss: (ad?: ContextAd) => void;
 }
 
 // Ad refresh interval in milliseconds (45 seconds)
@@ -152,6 +155,7 @@ export function useGravityAd({
   siteName,
   publishedTime,
   lang,
+  prompt,
 }: UseGravityAdOptions): UseGravityAdResult {
   const { getToken } = useAuth();
   const { user } = useUser();
@@ -178,7 +182,7 @@ export function useGravityAd({
 
   const query = useQuery({
     queryKey: ["context", url, sessionId, title],
-    queryFn: async (): Promise<ContextAd | null> => {
+    queryFn: async (): Promise<ContextAd[] | null> => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -210,6 +214,7 @@ export function useGravityAd({
         siteName: siteName || undefined,
         publishedTime: publishedTime || undefined,
         lang: lang || undefined,
+        prompt: prompt || undefined,
       };
 
       const response = await fetch(getApiUrl("/api/context"), {
@@ -231,8 +236,12 @@ export function useGravityAd({
         console.log("[useGravityAd] No ad:", data.status, data.debug);
       }
 
-      // Only return ad if status is "filled"
-      return data.status === "filled" ? data.ad ?? null : null;
+      // Only return ads if status is "filled"
+      if (data.status !== "filled") return null;
+      // Prefer the ads array, fall back to single ad
+      if (data.ads && data.ads.length > 0) return data.ads;
+      if (data.ad) return [data.ad];
+      return null;
     },
     // Never cache - always fetch fresh ads
     staleTime: 0,
@@ -292,8 +301,8 @@ export function useGravityAd({
     }
   }, [sessionId, url, deviceInfo]);
 
-  const fireImpression = useCallback(() => {
-    const ad = query.data;
+  const fireImpression = useCallback((targetAd?: ContextAd) => {
+    const ad = targetAd ?? query.data?.[0];
     if (!ad) return;
 
     // 1. Fire impression to Gravity via our proxy (for billing)
@@ -308,16 +317,21 @@ export function useGravityAd({
     sendTrackingEvent("impression", ad);
   }, [query.data, sendTrackingEvent]);
 
-  const fireClick = useCallback(() => {
-    sendTrackingEvent("click", query.data ?? null);
+  const fireClick = useCallback((targetAd?: ContextAd) => {
+    const ad = targetAd ?? query.data?.[0];
+    sendTrackingEvent("click", ad ?? null);
   }, [query.data, sendTrackingEvent]);
 
-  const fireDismiss = useCallback(() => {
-    sendTrackingEvent("dismiss", query.data ?? null);
+  const fireDismiss = useCallback((targetAd?: ContextAd) => {
+    const ad = targetAd ?? query.data?.[0];
+    sendTrackingEvent("dismiss", ad ?? null);
   }, [query.data, sendTrackingEvent]);
+
+  const ads = query.data ?? [];
 
   return {
-    ad: query.data ?? null,
+    ad: ads[0] ?? null,
+    ads,
     isLoading: query.isLoading,
     fireImpression,
     fireClick,

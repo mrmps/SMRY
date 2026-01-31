@@ -512,7 +512,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                       __html: sanitizedArticleContent,
                     }}
                   />
-                  <UpgradeCTA />
+                  <UpgradeCTA dismissable="mobile-only" />
                 </>
               ) : (
                 <div className="mt-6 flex items-center space-x-2">

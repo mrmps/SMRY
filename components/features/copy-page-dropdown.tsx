@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/menu";
 
 // AI Service Icons
-const OpenAIIcon = ({ className }: { className?: string }) => (
+export const OpenAIIcon = ({ className }: { className?: string }) => (
   <svg
     className={className}
     fill="currentColor"
@@ -26,7 +26,7 @@ const OpenAIIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const ClaudeIcon = ({ className }: { className?: string }) => (
+export const ClaudeIcon = ({ className }: { className?: string }) => (
   <svg
     className={className}
     fill="currentColor"
@@ -66,6 +66,7 @@ export function CopyPageDropdown({
   triggerVariant = "default",
 }: CopyPageDropdownProps) {
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [selectedSources, setSelectedSources] = useState<Set<number>>(
     new Set(sources.map((_, i) => i))
   );
@@ -92,6 +93,7 @@ export function CopyPageDropdown({
   };
 
   const handleCopy = async () => {
+    setMenuOpen(false);
     try {
       const markdown = generateMarkdown();
       await navigator.clipboard.writeText(markdown);
@@ -103,6 +105,7 @@ export function CopyPageDropdown({
   };
 
   const handleOpenInAI = (service: "chatgpt" | "claude") => {
+    setMenuOpen(false);
     // Build the smry.ai proxy URL with query parameters
     const proxyUrlObj = new URL("https://www.smry.ai/proxy");
     proxyUrlObj.searchParams.set("url", url);
@@ -150,7 +153,7 @@ export function CopyPageDropdown({
   // Icon-only variant for mobile
   if (triggerVariant === "icon") {
     return (
-      <Menu>
+      <Menu open={menuOpen} onOpenChange={setMenuOpen}>
         <MenuTrigger
           id="copy-page-icon-menu-trigger"
           render={(props) => {
@@ -173,6 +176,49 @@ export function CopyPageDropdown({
           }}
         />
         <MenuPopup side="bottom" align="end" className="w-64">
+          {/* Source Selection (if sources available) */}
+          {sources.length > 0 && (
+            <>
+              <MenuGroupLabel className="flex items-center justify-between">
+                <span>Include sources</span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      selectAllSources();
+                    }}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    All
+                  </button>
+                  <span className="text-muted-foreground">/</span>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      deselectAllSources();
+                    }}
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    None
+                  </button>
+                </div>
+              </MenuGroupLabel>
+              <div className="max-h-32 overflow-y-auto px-1">
+                {sources.map((source, index) => (
+                  <MenuCheckboxItem
+                    key={index}
+                    checked={selectedSources.has(index)}
+                    onCheckedChange={() => toggleSource(index)}
+                    className="text-xs"
+                  >
+                    <span className="truncate">{source.title}</span>
+                  </MenuCheckboxItem>
+                ))}
+              </div>
+              <MenuSeparator />
+            </>
+          )}
+
           {/* Copy Option */}
           <MenuItem
             onClick={handleCopy}
@@ -228,49 +274,6 @@ export function CopyPageDropdown({
               </span>
             </div>
           </MenuItem>
-
-          {/* Source Selection (if sources available) */}
-          {sources.length > 0 && (
-            <>
-              <MenuSeparator />
-              <MenuGroupLabel className="flex items-center justify-between">
-                <span>Include sources</span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      selectAllSources();
-                    }}
-                    className="text-[10px] text-primary hover:underline"
-                  >
-                    All
-                  </button>
-                  <span className="text-muted-foreground">/</span>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      deselectAllSources();
-                    }}
-                    className="text-[10px] text-primary hover:underline"
-                  >
-                    None
-                  </button>
-                </div>
-              </MenuGroupLabel>
-              <div className="max-h-32 overflow-y-auto px-1">
-                {sources.map((source, index) => (
-                  <MenuCheckboxItem
-                    key={index}
-                    checked={selectedSources.has(index)}
-                    onCheckedChange={() => toggleSource(index)}
-                    className="text-xs"
-                  >
-                    <span className="truncate">{source.title}</span>
-                  </MenuCheckboxItem>
-                ))}
-              </div>
-            </>
-          )}
         </MenuPopup>
       </Menu>
     );
@@ -300,7 +303,7 @@ export function CopyPageDropdown({
         <div className="h-5 w-px bg-input" />
 
         {/* Dropdown Trigger */}
-        <Menu>
+        <Menu open={menuOpen} onOpenChange={setMenuOpen}>
           <MenuTrigger
             id="copy-page-menu-trigger"
             render={(props) => {
@@ -319,6 +322,49 @@ export function CopyPageDropdown({
             }}
           />
           <MenuPopup side="bottom" align="end" className="w-64">
+            {/* Source Selection (if sources available) */}
+            {sources.length > 0 && (
+              <>
+                <MenuGroupLabel className="flex items-center justify-between">
+                  <span>Include sources</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        selectAllSources();
+                      }}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      All
+                    </button>
+                    <span className="text-muted-foreground">/</span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        deselectAllSources();
+                      }}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      None
+                    </button>
+                  </div>
+                </MenuGroupLabel>
+                <div className="max-h-32 overflow-y-auto px-1">
+                  {sources.map((source, index) => (
+                    <MenuCheckboxItem
+                      key={index}
+                      checked={selectedSources.has(index)}
+                      onCheckedChange={() => toggleSource(index)}
+                      className="text-xs"
+                    >
+                      <span className="truncate">{source.title}</span>
+                    </MenuCheckboxItem>
+                  ))}
+                </div>
+                <MenuSeparator />
+              </>
+            )}
+
             {/* Copy Option */}
             <MenuItem
               onClick={handleCopy}
@@ -374,49 +420,6 @@ export function CopyPageDropdown({
                 </span>
               </div>
             </MenuItem>
-
-            {/* Source Selection (if sources available) */}
-            {sources.length > 0 && (
-              <>
-                <MenuSeparator />
-                <MenuGroupLabel className="flex items-center justify-between">
-                  <span>Include sources</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        selectAllSources();
-                      }}
-                      className="text-[10px] text-primary hover:underline"
-                    >
-                      All
-                    </button>
-                    <span className="text-muted-foreground">/</span>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        deselectAllSources();
-                      }}
-                      className="text-[10px] text-primary hover:underline"
-                    >
-                      None
-                    </button>
-                  </div>
-                </MenuGroupLabel>
-                <div className="max-h-32 overflow-y-auto px-1">
-                  {sources.map((source, index) => (
-                    <MenuCheckboxItem
-                      key={index}
-                      checked={selectedSources.has(index)}
-                      onCheckedChange={() => toggleSource(index)}
-                      className="text-xs"
-                    >
-                      <span className="truncate">{source.title}</span>
-                    </MenuCheckboxItem>
-                  ))}
-                </div>
-              </>
-            )}
           </MenuPopup>
         </Menu>
       </div>

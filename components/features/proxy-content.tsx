@@ -18,6 +18,8 @@ import {
   X,
   Check,
   ArrowLeft,
+  Copy,
+  ArrowUpRight,
 } from "lucide-react";
 import { FeedbackIcon, SummaryIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
@@ -29,7 +31,7 @@ import { useSearchParams } from "next/navigation";
 import { routing, type Locale } from "@/i18n/routing";
 import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import ShareButton from "@/components/features/share-button";
-import { CopyPageDropdown } from "@/components/features/copy-page-dropdown";
+import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import ArrowTabs from "@/components/article/tabs";
@@ -40,12 +42,6 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
-import { OutageBanner } from "@/components/marketing/outage-banner";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   Menu,
   MenuTrigger,
@@ -261,6 +257,42 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const articleTitle = activeArticle?.title;
   const articleTextContent = activeArticle?.textContent;
 
+  // Copy page state and handlers
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyPage = async () => {
+    try {
+      let markdown = `# ${articleTitle || "Article"}\n\n`;
+      markdown += `**Source:** ${url}\n\n`;
+      if (articleTextContent) {
+        markdown += `---\n\n${articleTextContent}\n\n`;
+      }
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
+
+  const handleOpenInAI = (service: "chatgpt" | "claude") => {
+    const proxyUrlObj = new URL("https://www.smry.ai/proxy");
+    proxyUrlObj.searchParams.set("url", url);
+    if (source) {
+      proxyUrlObj.searchParams.set("source", source);
+    }
+    const smryUrl = proxyUrlObj.toString();
+    let aiUrl: string;
+    if (service === "chatgpt") {
+      const prompt = `Read from '${smryUrl}' so I can ask questions about it.`;
+      aiUrl = `https://chatgpt.com/?hints=search&prompt=${encodeURIComponent(prompt)}`;
+    } else {
+      const prompt = `Read from '${smryUrl}' so I can ask questions about it.`;
+      aiUrl = `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+    }
+    window.open(aiUrl, "_blank", "noopener,noreferrer");
+  };
+
   // Track initialization state per URL
   const initializedUrlRef = useRef<string | null>(null);
 
@@ -320,7 +352,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   // Fetch ad - pass article data for better targeting
   // Ads refresh every 45 seconds for users who stay on the page
-  const { ad: gravityAd, fireImpression, fireClick, fireDismiss } = useGravityAd({
+  const { ad: gravityAd, ads: gravityAds, fireImpression, fireClick, fireDismiss } = useGravityAd({
     url,
     title: firstSuccessfulArticle?.title,
     textContent: firstSuccessfulArticle?.textContent,
@@ -448,8 +480,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   return (
     <div className="flex h-dvh flex-col bg-background">
-      {/* Outage Banner */}
-      <OutageBanner />
       {/* Promo Banner - desktop/tablet */}
       {showDesktopPromo && <PromoBanner />}
 
@@ -542,14 +572,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 articleTitle={articleTitle}
               />
 
-              <CopyPageDropdown
-                url={url}
-                articleTitle={articleTitle}
-                textContent={articleTextContent}
-                source={source}
-                viewMode={viewMode}
-              />
-
               {/* User Section */}
               <AuthBar variant="compact" showUpgrade={false} className="ml-1" />
 
@@ -573,7 +595,36 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     );
                   }}
                 />
-                <MenuPopup side="bottom" align="end" className="min-w-[180px]">
+                <MenuPopup side="bottom" align="end" className="min-w-[220px]">
+                  {/* Copy & AI actions */}
+                  <MenuItem
+                    onClick={handleCopyPage}
+                    className="flex items-center gap-2 px-3"
+                  >
+                    {copied ? (
+                      <Check className="size-4 text-green-600" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                    <span className="flex-1">{copied ? "Copied!" : "Copy page"}</span>
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => handleOpenInAI("chatgpt")}
+                    className="flex items-center gap-2 px-3"
+                  >
+                    <OpenAIIcon className="size-4" />
+                    <span className="flex-1">Open in ChatGPT</span>
+                    <ArrowUpRight className="size-3 opacity-50 shrink-0" />
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => handleOpenInAI("claude")}
+                    className="flex items-center gap-2 px-3"
+                  >
+                    <ClaudeIcon className="size-4" />
+                    <span className="flex-1">Open in Claude</span>
+                    <ArrowUpRight className="size-3 opacity-50 shrink-0" />
+                  </MenuItem>
+                  <MenuSeparator />
                   <HistoryMenuItem />
                   <LanguageMenuItems />
                   <ThemeMenuItems />
@@ -662,6 +713,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         onSummaryOpenChange={handleSidebarChange}
                         showInlineSummary={false}
                       />
+                      {/* Second ad inline below article — end-of-content strip, not a card */}
+                      {!isPremium && gravityAds[1] && (
+                        <GravityAd
+                          ad={gravityAds[1]}
+                          variant="inline"
+                          onVisible={() => fireImpression(gravityAds[1])}
+                          onClick={() => fireClick(gravityAds[1])}
+                          onDismiss={() => fireDismiss(gravityAds[1])}
+                          className="mt-6"
+                        />
+                      )}
                     </div>
                   </div>
                 </ResizablePanel>
@@ -700,8 +762,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
                       ad={!isPremium ? gravityAd : null}
-                      onAdVisible={gravityAd ? fireImpression : undefined}
-                      onAdClick={gravityAd ? fireClick : undefined}
+                      onAdVisible={gravityAd ? () => fireImpression(gravityAd) : undefined}
+                      onAdClick={gravityAd ? () => fireClick(gravityAd) : undefined}
                     />
                   </div>
                 </ResizablePanel>
@@ -712,10 +774,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
                   <GravityAd
                     ad={gravityAd}
-                    onVisible={fireImpression}
-                    onClick={fireClick}
+                    onVisible={() => fireImpression(gravityAd)}
+                    onClick={() => fireClick(gravityAd)}
                     onDismiss={() => {
-                      fireDismiss();
+                      fireDismiss(gravityAd);
                       setDesktopAdDismissed(true);
                     }}
                   />
@@ -803,35 +865,42 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
               {/* Elements below are OUTSIDE scroll container to prevent Vaul scroll lock interference */}
 
-              {/* Summary Drawer */}
-              <Drawer open={mobileSummaryOpen} onOpenChange={setMobileSummaryOpen}>
-                <DrawerContent className="h-[85vh] flex flex-col">
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border shrink-0">
-                    <button
-                      onClick={() => setMobileSummaryOpen(false)}
-                      className="size-8 flex items-center justify-center rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
-                      aria-label="Close summary"
-                    >
-                      <X className="size-4" />
-                    </button>
-                    <DrawerTitle className="text-lg font-semibold">Summary</DrawerTitle>
-                    <div className="size-8" />
-                  </div>
+              {/* Summary Panel - center-origin animation for snappy feel */}
+              {mobileSummaryOpen && (
+                <>
+                  {/* Backdrop */}
+                  <div
+                    className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
+                    onClick={() => setMobileSummaryOpen(false)}
+                  />
+                  {/* Panel */}
+                  <div className="fixed inset-x-3 top-[8vh] bottom-[8vh] z-50 flex flex-col rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 pt-3 pb-3 border-b border-border shrink-0">
+                      <button
+                        onClick={() => setMobileSummaryOpen(false)}
+                        className="size-8 flex items-center justify-center rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
+                        aria-label="Close summary"
+                      >
+                        <X className="size-4" />
+                      </button>
+                      <span className="text-lg font-semibold">Summary</span>
+                      <div className="size-8" />
+                    </div>
 
-                  {/* Content - renders InlineSummary in drawer mode */}
-                  {/* data-vaul-no-drag allows scrolling without triggering drawer drag */}
-                  <div className="flex-1 overflow-y-auto touch-pan-y" data-vaul-no-drag>
-                    <InlineSummary
-                      urlProp={url}
-                      articleResults={results}
-                      isOpen={true}
-                      onOpenChange={() => setMobileSummaryOpen(false)}
-                      variant="sidebar"
-                    />
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto touch-pan-y">
+                      <InlineSummary
+                        urlProp={url}
+                        articleResults={results}
+                        isOpen={true}
+                        onOpenChange={() => setMobileSummaryOpen(false)}
+                        variant="sidebar"
+                      />
+                    </div>
                   </div>
-                </DrawerContent>
-              </Drawer>
+                </>
+              )}
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
               {!isPremium && gravityAd && !mobileAdDismissed && (
@@ -842,10 +911,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   <GravityAd
                     ad={gravityAd}
                     variant="mobile"
-                    onVisible={fireImpression}
-                    onClick={fireClick}
+                    onVisible={() => fireImpression(gravityAd)}
+                    onClick={() => fireClick(gravityAd)}
                     onDismiss={() => {
-                      fireDismiss();
+                      fireDismiss(gravityAd);
                       setMobileAdDismissed(true);
                     }}
                   />

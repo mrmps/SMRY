@@ -126,7 +126,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   "/context",
   async ({ body, request }) => {
     const startTime = Date.now();
-    const { title, url, articleContent, sessionId, device, user, byline, siteName, publishedTime, lang } = body;
+    const { title, url, articleContent, sessionId, device, user, byline, siteName, publishedTime, lang, prompt } = body;
 
     // Helper to extract hostname from URL
     const getHostname = (urlStr: string): string => {
@@ -191,11 +191,12 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         lang && `Language: ${lang}`,
       ].filter(Boolean).join("\n");
 
+      const userContent = prompt
+        ? `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}\n\nAd instruction: ${prompt}`
+        : `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}`;
+
       const messages: GravityMessage[] = [
-        {
-          role: "user",
-          content: `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}`,
-        },
+        { role: "user", content: userContent },
       ];
 
       // Build device info with IP from request
@@ -224,7 +225,10 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const gravityRequest: GravityRequest = {
         messages,
         sessionId,
-        placements: [{ placement: "below_response", placement_id: "smry-summary-bottom" }],
+        placements: [
+          { placement: "below_response", placement_id: "smry-summary-bottom" },
+          { placement: "right_response", placement_id: "smry-sidebar-right" },
+        ],
         ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0,
         device: gravityDevice,
@@ -283,22 +287,25 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         const ads = (await response.json()) as GravityAdResponse[];
 
         if (ads && ads.length > 0) {
-          const ad = ads[0];
-          logger.info({ url, brandName: ad.brandName }, "Ad received from Gravity");
-          track("filled", {
-            gravityStatus: 200,
-            brandName: ad.brandName,
-            adTitle: ad.title,
-            adText: ad.adText,
-            clickUrl: ad.clickUrl,
-            impUrl: ad.impUrl,
-            cta: ad.cta,
-            favicon: ad.favicon,
-            userId,
-          });
+          logger.info({ url, brandName: ads[0].brandName, adCount: ads.length }, "Ad(s) received from Gravity");
+          // Track each ad
+          for (const ad of ads) {
+            track("filled", {
+              gravityStatus: 200,
+              brandName: ad.brandName,
+              adTitle: ad.title,
+              adText: ad.adText,
+              clickUrl: ad.clickUrl,
+              impUrl: ad.impUrl,
+              cta: ad.cta,
+              favicon: ad.favicon,
+              userId,
+            });
+          }
           return {
             status: "filled" as const,
-            ad,
+            ad: ads[0],
+            ads,
           };
         }
 
@@ -363,6 +370,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       siteName: t.Optional(t.String()),
       publishedTime: t.Optional(t.String()),
       lang: t.Optional(t.String()),
+      prompt: t.Optional(t.String()),
     }),
   }
 );

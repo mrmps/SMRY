@@ -9,7 +9,8 @@ import { useTranslations } from "next-intl";
 
 interface UpgradeCTAProps {
   className?: string;
-  dismissable?: boolean;
+  /** true = always dismissable, false = never, "mobile-only" = dismiss on mobile, persistent on md+ */
+  dismissable?: boolean | "mobile-only";
 }
 
 export function UpgradeCTA({ className, dismissable = true }: UpgradeCTAProps) {
@@ -17,8 +18,10 @@ export function UpgradeCTA({ className, dismissable = true }: UpgradeCTAProps) {
   const { isPremium, isLoading } = useIsPremium();
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Don't show while loading, if premium, or if dismissed (only when dismissable)
-  if (isLoading || isPremium || (dismissable && isDismissed)) {
+  const canDismiss = dismissable === true || dismissable === "mobile-only";
+
+  // Don't show while loading, if premium, or if dismissed (only when fully dismissable)
+  if (isLoading || isPremium || (dismissable === true && isDismissed)) {
     return null;
   }
 
@@ -28,6 +31,7 @@ export function UpgradeCTA({ className, dismissable = true }: UpgradeCTAProps) {
         "mt-6 flex items-center gap-3 rounded-lg px-3.5 py-2.5",
         "bg-gradient-to-r from-black/[0.03] to-black/[0.05] dark:from-white/[0.03] dark:to-white/[0.05]",
         "ring-1 ring-black/[0.08] dark:ring-white/[0.08]",
+        dismissable === "mobile-only" && isDismissed && "hidden md:flex",
         className
       )}
     >
@@ -46,10 +50,13 @@ export function UpgradeCTA({ className, dismissable = true }: UpgradeCTAProps) {
       >
         {t("upgrade")}
       </Link>
-      {dismissable && (
+      {canDismiss && (
         <button
           onClick={() => setIsDismissed(true)}
-          className="shrink-0 -mr-1 p-1 text-foreground/30 transition-colors hover:text-foreground/50"
+          className={cn(
+            "shrink-0 -mr-1 p-1 text-foreground/30 transition-colors hover:text-foreground/50",
+            dismissable === "mobile-only" && "md:hidden"
+          )}
           aria-label={t("dismiss")}
         >
           <X className="size-3.5" />

@@ -23,7 +23,7 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline";
+  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro";
 }
 
 // Dismiss button - consistent across all variants
@@ -240,6 +240,32 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           </div>
         </a>
       </div>
+    );
+  }
+
+  // ============================================
+  // MICRO VARIANT - Single-line text ad, nearly invisible
+  // Just: "Ad · BrandName — value prop"
+  // ============================================
+  if (variant === "micro") {
+    return (
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
+        className={cn(
+          "group text-center text-[11px] text-muted-foreground/70 transition-colors hover:text-muted-foreground",
+          className
+        )}
+      >
+        <span className="text-muted-foreground/50">Ad</span>
+        <span className="text-muted-foreground/40"> · </span>
+        <span className="group-hover:underline underline-offset-2 decoration-muted-foreground/40">
+          {ad.brandName} — {valueProp}
+        </span>
+      </a>
     );
   }
 
