@@ -7,7 +7,7 @@
  * 1. Compact & respectful - minimal intrusion
  * 2. Title + description hierarchy when space allows
  * 3. Always-visible CTA with smart fallback
- * 4. Dismiss on all variants
+ * 4. Dismiss on most variants (sidebar is non-dismissable on desktop)
  * 5. Great at every breakpoint
  */
 
@@ -23,7 +23,7 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "sidebar" | "mobile";
+  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline";
 }
 
 // Dismiss button - consistent across all variants
@@ -190,7 +190,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             </p>
           </div>
         </a>
-        <span className="shrink-0 text-[10px] font-semibold text-primary">
+        <span className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
           {ctaText} →
         </span>
         <DismissButton onDismiss={onDismiss} />
@@ -234,12 +234,58 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             <p className="text-[10px] text-muted-foreground/50 mt-1">
               {ad.brandName} · Sponsored
             </p>
-            <p className="mt-1.5 text-[11px] font-semibold text-primary">
+            <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
               {ctaText} →
-            </p>
+            </span>
           </div>
         </a>
-        <DismissButton onDismiss={onDismiss} />
+      </div>
+    );
+  }
+
+  // ============================================
+  // INLINE VARIANT - End-of-article horizontal strip
+  // No card, no shadow — just a quiet separator + horizontal row
+  // ============================================
+  if (variant === "inline") {
+    return (
+      <div className={cn("border-t border-border/40 pt-6 pb-2", className)}>
+        <a
+          ref={adRef}
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          onClick={onClick}
+          className="flex items-center gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
+        >
+          <div className="size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            {ad.favicon && !imgError ? (
+              <Image
+                src={ad.favicon}
+                alt=""
+                width={36}
+                height={36}
+                className="size-full object-cover"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+              {valueProp}
+            </p>
+            <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+              {ad.brandName} · Sponsored
+            </p>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
+            {ctaText}
+            <span className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
+          </span>
+        </a>
       </div>
     );
   }
@@ -291,9 +337,9 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
         <p className="text-[13px] font-medium text-foreground leading-relaxed group-hover:text-primary transition-colors">
           {valueProp}
         </p>
-        <p className="mt-2 text-[11px] font-semibold text-primary">
+        <span className="mt-3 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground shadow-sm transition-shadow group-hover:shadow-md">
           {ctaText} →
-        </p>
+        </span>
       </a>
     </div>
   );

@@ -26,7 +26,6 @@
     "fetchingBadge": "获取中",
     "racingSources": "同时查询 {count} 个来源",
     "sourceWayback": "Wayback Machine",
-
     "sourceDirect": "直接访问",
     "statusWinner": "获胜",
     "statusCancelled": "已取消",
@@ -45,7 +44,7 @@
     "learnMore": "了解更多",
     "scrollToLearnMore": "滚动了解更多",
     "featureSourcesTitle": "三个来源竞速，最快者胜出",
-    "featureSourcesDescription": "我们同时通过快速直接访问、代理备用和Wayback Machine获取。第一个获得文章的获胜。",
+    "featureSourcesDescription": "我们同时通过快速直接访问、代理备用和Wayback Machine获取。第一个获得文章的来源获胜。",
     "featureCleanTitle": "所有内容，无干扰",
     "featureCleanDescription": "付费墙、弹窗、Cookie横幅、广告——全部移除。只有文章文字和图片，即可阅读。",
     "featureSummaryTitle": "您语言的TL;DR",
@@ -341,7 +340,7 @@
     "benefit": "无广告、一切更快",
     "cta": "免费试用高级版",
     "dismiss": "关闭",
-    "sourceBenefit": "了解哪些来源有效",
+    "sourceBenefit": "无广告 · 查看哪些来源有效",
     "upgrade": "升级"
   },
   "ads": {

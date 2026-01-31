@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { SummaryError } from "@/lib/errors/summary";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
+import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
 
 type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
 
@@ -545,10 +546,13 @@ const ExpandedSummary = memo(function ExpandedSummary({
         )}
       </div>
 
-      {/* Sidebar ad - fixed at bottom */}
-      {variant === "sidebar" && ad && onAdVisible && (
+      {/* Sidebar ad + upgrade nudge - fixed at bottom */}
+      {variant === "sidebar" && (
         <div className="shrink-0 border-t border-border px-3 py-3">
-          <GravityAd ad={ad} onVisible={onAdVisible} onClick={onAdClick} variant="sidebar" />
+          {ad && onAdVisible && (
+            <GravityAd ad={ad} onVisible={onAdVisible} onClick={onAdClick} variant="sidebar" />
+          )}
+          <UpgradeCTA dismissable={false} className="mt-3" />
         </div>
       )}
 

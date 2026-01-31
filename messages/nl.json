@@ -26,7 +26,6 @@
     "fetchingBadge": "Ophalen",
     "racingSources": "{count} bronnen tegelijk raadplegen",
     "sourceWayback": "Wayback Machine",
-
     "sourceDirect": "Directe toegang",
     "statusWinner": "Winnaar",
     "statusCancelled": "Geannuleerd",
@@ -341,7 +340,7 @@
     "benefit": "Geen advertenties, alles sneller",
     "cta": "Probeer Premium voor $0,00",
     "dismiss": "Sluiten",
-    "sourceBenefit": "Weet welke bronnen werkten",
+    "sourceBenefit": "Geen advertenties · Zie welke bronnen werkten",
     "upgrade": "Upgraden"
   },
   "ads": {

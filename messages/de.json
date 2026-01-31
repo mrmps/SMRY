@@ -26,7 +26,6 @@
     "fetchingBadge": "Wird abgerufen",
     "racingSources": "{count} Quellen werden gleichzeitig abgefragt",
     "sourceWayback": "Wayback Machine",
-
     "sourceDirect": "Direktzugriff",
     "statusWinner": "Gewinner",
     "statusCancelled": "Abgebrochen",
@@ -341,7 +340,7 @@
     "benefit": "Keine Werbung, alles schneller",
     "cta": "Premium für 0,00 $ testen",
     "dismiss": "Schließen",
-    "sourceBenefit": "Erfahre, welche Quellen funktioniert haben",
+    "sourceBenefit": "Keine Werbung · Sieh, welche Quellen funktioniert haben",
     "upgrade": "Upgraden"
   },
   "ads": {
