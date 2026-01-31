@@ -11,7 +11,7 @@
  * 5. Great at every breakpoint
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,15 @@ function DismissButton({
   );
 }
 
+// Extract domain from a URL for favicon lookup
+function getDomain(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
 // Fallback icon when no favicon
 function FallbackIcon({ brandName }: { brandName: string }) {
   return (
@@ -70,13 +79,29 @@ function FallbackIcon({ brandName }: { brandName: string }) {
 export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  // 0 = gravity favicon, 1 = google fallback, 2 = letter icon
+  const [faviconStage, setFaviconStage] = useState(0);
+
+  const googleFavicon = useMemo(() => {
+    const domain = getDomain(ad.clickUrl);
+    return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
+  }, [ad.clickUrl]);
+
+  // Resolve which favicon src to use (null = use FallbackIcon)
+  const faviconSrc =
+    faviconStage === 0 && ad.favicon ? ad.favicon
+    : faviconStage <= 1 && googleFavicon ? googleFavicon
+    : null;
+
+  const handleFaviconError = () => {
+    setFaviconStage((s) => s + 1);
+  };
 
   // Reset on ad change
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
     setHasTrackedImpression(false);
-    setImgError(false);
+    setFaviconStage(0);
   }, [ad.clickUrl]);
 
   // Impression tracking
@@ -121,14 +146,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
       >
         {/* Icon with light bg for dark mode visibility */}
         <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-          {ad.favicon && !imgError ? (
+          {faviconSrc ? (
             <Image
-              src={ad.favicon}
+              src={faviconSrc}
               alt=""
               width={32}
               height={32}
               className="size-full object-cover"
-              onError={() => setImgError(true)}
+              onError={handleFaviconError}
               unoptimized
             />
           ) : (
@@ -167,14 +192,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
         >
           <div className="size-7 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            {ad.favicon && !imgError ? (
+            {faviconSrc ? (
               <Image
-                src={ad.favicon}
+                src={faviconSrc!}
                 alt=""
                 width={28}
                 height={28}
                 className="size-full object-cover"
-                onError={() => setImgError(true)}
+                onError={handleFaviconError}
                 unoptimized
               />
             ) : (
@@ -213,14 +238,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
         >
           <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            {ad.favicon && !imgError ? (
+            {faviconSrc ? (
               <Image
-                src={ad.favicon}
+                src={faviconSrc!}
                 alt=""
                 width={32}
                 height={32}
                 className="size-full object-cover"
-                onError={() => setImgError(true)}
+                onError={handleFaviconError}
                 unoptimized
               />
             ) : (
@@ -285,14 +310,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className="flex items-center gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
         >
           <div className="size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            {ad.favicon && !imgError ? (
+            {faviconSrc ? (
               <Image
-                src={ad.favicon}
+                src={faviconSrc!}
                 alt=""
                 width={36}
                 height={36}
                 className="size-full object-cover"
-                onError={() => setImgError(true)}
+                onError={handleFaviconError}
                 unoptimized
               />
             ) : (
@@ -330,14 +355,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
       {/* Header: logo + brand + dismiss */}
       <div className="flex items-center gap-2.5 mb-2">
         <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-          {ad.favicon && !imgError ? (
+          {faviconSrc ? (
             <Image
-              src={ad.favicon}
+              src={faviconSrc!}
               alt=""
               width={32}
               height={32}
               className="size-full object-cover"
-              onError={() => setImgError(true)}
+              onError={handleFaviconError}
               unoptimized
             />
           ) : (
