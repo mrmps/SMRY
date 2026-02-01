@@ -310,7 +310,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   // Fetch ad - pass article data for better targeting
   // Ads refresh every 45 seconds for users who stay on the page
-  const { ad: gravityAd, ads: gravityAds, fireImpression, fireClick, fireDismiss } = useGravityAd({
+  const { ads: gravityAds, fireImpression, fireClick, fireDismiss } = useGravityAd({
     url,
     title: firstSuccessfulArticle?.title,
     textContent: firstSuccessfulArticle?.textContent,
@@ -321,6 +321,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     publishedTime: firstSuccessfulArticle?.publishedTime,
     lang: firstSuccessfulArticle?.lang,
   });
+
+  // Distribute ads: sidebar gets first ad, remaining go to inline positions
+  // This ensures we maximize ad visibility even with partial fill rates
+  // Gravity returns: [0]=below_response, [1]=right_response, [2-4]=inline_response
+  const sidebarAd = gravityAds[0] ?? null;
+  const inlineAds = gravityAds.slice(1).filter(Boolean); // All ads after the first one for inline
 
   // Handle article load: save to history
   useEffect(() => {
@@ -662,18 +668,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         source={source}
                         url={url}
                         viewMode={viewMode}
+                        inlineAds={!isPremium ? inlineAds : []}
+                        onInlineAdVisible={fireImpression}
+                        onInlineAdClick={fireClick}
+                        showInlineAds={!isPremium}
                       />
-                      {/* Second ad inline below article — end-of-content strip, not a card */}
-                      {!isPremium && gravityAds[1] && (
-                        <GravityAd
-                          ad={gravityAds[1]}
-                          variant="inline"
-                          onVisible={() => fireImpression(gravityAds[1])}
-                          onClick={() => fireClick(gravityAds[1])}
-                          onDismiss={() => fireDismiss(gravityAds[1])}
-                          className="mt-6"
-                        />
-                      )}
                     </div>
                   </div>
                 </ResizablePanel>
@@ -711,23 +710,23 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
-                      ad={!isPremium ? gravityAd : null}
-                      onAdVisible={gravityAd ? () => fireImpression(gravityAd) : undefined}
-                      onAdClick={gravityAd ? () => fireClick(gravityAd) : undefined}
+                      ad={!isPremium ? sidebarAd : null}
+                      onAdVisible={sidebarAd ? () => fireImpression(sidebarAd) : undefined}
+                      onAdClick={sidebarAd ? () => fireClick(sidebarAd) : undefined}
                     />
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
 
               {/* Fixed bottom-right ad when sidebar is closed */}
-              {!sidebarOpen && !isPremium && gravityAd && !desktopAdDismissed && (
+              {!sidebarOpen && !isPremium && sidebarAd && !desktopAdDismissed && (
                 <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
                   <GravityAd
-                    ad={gravityAd}
-                    onVisible={() => fireImpression(gravityAd)}
-                    onClick={() => fireClick(gravityAd)}
+                    ad={sidebarAd}
+                    onVisible={() => fireImpression(sidebarAd)}
+                    onClick={() => fireClick(sidebarAd)}
                     onDismiss={() => {
-                      fireDismiss(gravityAd);
+                      fireDismiss(sidebarAd);
                       setDesktopAdDismissed(true);
                     }}
                   />
@@ -807,6 +806,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     source={source}
                     url={url}
                     viewMode={viewMode}
+                    inlineAds={!isPremium ? inlineAds : []}
+                    onInlineAdVisible={fireImpression}
+                    onInlineAdClick={fireClick}
+                    showInlineAds={!isPremium}
                   />
                 </div>
               </div>
@@ -859,18 +862,18 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
-              {!isPremium && gravityAd && !mobileAdDismissed && (
+              {!isPremium && sidebarAd && !mobileAdDismissed && (
                 <div
                   className="fixed left-0 right-0 z-20"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}
                 >
                   <GravityAd
-                    ad={gravityAd}
+                    ad={sidebarAd}
                     variant="mobile"
-                    onVisible={() => fireImpression(gravityAd)}
-                    onClick={() => fireClick(gravityAd)}
+                    onVisible={() => fireImpression(sidebarAd)}
+                    onClick={() => fireClick(sidebarAd)}
                     onDismiss={() => {
-                      fireDismiss(gravityAd);
+                      fireDismiss(sidebarAd);
                       setMobileAdDismissed(true);
                     }}
                   />

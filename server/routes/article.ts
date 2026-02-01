@@ -437,6 +437,16 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback").then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
       ];
 
+      // Track cached sources to prevent duplicate writes
+      const cachedSources = new Set<string>();
+
+      const cacheResult = (result: FetchResult) => {
+        if (cachedSources.has(result.source)) return; // Already cached
+        cachedSources.add(result.source);
+        const cacheKey = `${result.source}:${url}`;
+        saveOrReturnLongerArticle(cacheKey, result.article).catch(() => {});
+      };
+
       // Helper: race for first quality result, but don't cancel others
       const raceForFirstSuccess = async (): Promise<FetchResult | null> => {
         return new Promise((resolve) => {
@@ -455,16 +465,14 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 ctx.set("fetch_ms", Date.now() - fetchStart);
                 ctx.set("winning_source", result.source);
 
-                // Cache this result immediately
-                const cacheKey = `${result.source}:${url}`;
-                saveOrReturnLongerArticle(cacheKey, result.article).catch(() => {});
+                // Cache the winning result
+                cacheResult(result);
 
                 // Let other fetches continue in background for caching
                 Promise.allSettled(fetchPromises).then((allResults) => {
                   allResults.forEach((r) => {
-                    if (r.status === "fulfilled" && r.value && r.value.source !== result.source) {
-                      const bgCacheKey = `${r.value.source}:${url}`;
-                      saveOrReturnLongerArticle(bgCacheKey, r.value.article).catch(() => {});
+                    if (r.status === "fulfilled" && r.value) {
+                      cacheResult(r.value);
                     }
                   });
                 });
@@ -477,19 +485,10 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 resolved = true;
                 ctx.set("fetch_ms", Date.now() - fetchStart);
 
-                // Find any successful result (even low quality)
+                // Cache all successful results and find the best one
                 const anySuccess = results.find(r => r !== null) ?? null;
-                if (anySuccess) {
-                  const cacheKey = `${anySuccess.source}:${url}`;
-                  saveOrReturnLongerArticle(cacheKey, anySuccess.article).catch(() => {});
-                }
-
-                // Cache all successful results
                 results.forEach((r) => {
-                  if (r) {
-                    const cacheKey = `${r.source}:${url}`;
-                    saveOrReturnLongerArticle(cacheKey, r.article).catch(() => {});
-                  }
+                  if (r) cacheResult(r);
                 });
 
                 resolve(anySuccess);
@@ -502,8 +501,7 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
               if (!resolved && completedCount === fetchPromises.length) {
                 resolved = true;
                 ctx.set("fetch_ms", Date.now() - fetchStart);
-                const anySuccess = results.find(r => r !== null) ?? null;
-                resolve(anySuccess);
+                resolve(null);
               }
             });
           });
