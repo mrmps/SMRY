@@ -454,6 +454,13 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           let completedCount = 0;
           const results: (FetchResult | null)[] = [];
 
+          // Cache all results in background after race completes
+          const cacheAllInBackground = () => {
+            results.forEach((r) => {
+              if (r) cacheResult(r);
+            });
+          };
+
           fetchPromises.forEach((promise, index) => {
             promise.then((result) => {
               completedCount++;
@@ -465,17 +472,11 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 ctx.set("fetch_ms", Date.now() - fetchStart);
                 ctx.set("winning_source", result.source);
 
-                // Cache the winning result
+                // Cache winner immediately
                 cacheResult(result);
 
-                // Let other fetches continue in background for caching
-                Promise.allSettled(fetchPromises).then((allResults) => {
-                  allResults.forEach((r) => {
-                    if (r.status === "fulfilled" && r.value) {
-                      cacheResult(r.value);
-                    }
-                  });
-                });
+                // Let other fetches continue and cache in background
+                Promise.allSettled(fetchPromises).then(cacheAllInBackground);
 
                 resolve(result);
               }
@@ -485,13 +486,11 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 resolved = true;
                 ctx.set("fetch_ms", Date.now() - fetchStart);
 
-                // Cache all successful results and find the best one
-                const anySuccess = results.find(r => r !== null) ?? null;
-                results.forEach((r) => {
-                  if (r) cacheResult(r);
-                });
+                // Cache all successful results
+                cacheAllInBackground();
 
-                resolve(anySuccess);
+                // Return best available
+                resolve(results.find(r => r !== null) ?? null);
               }
             }).catch(() => {
               completedCount++;

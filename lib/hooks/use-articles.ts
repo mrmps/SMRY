@@ -10,6 +10,28 @@ const SERVER_SOURCES = ["smry-fast", "smry-slow", "wayback"] as const satisfies 
 // Delay before checking for enhanced version (ms)
 const ENHANCED_CHECK_DELAY = 4000;
 
+/**
+ * Normalize URL for consistent comparison
+ * Handles trailing slashes, query param order, and protocol differences
+ */
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Sort query params for consistent ordering
+    parsed.searchParams.sort();
+    // Remove trailing slash from pathname (unless it's just "/")
+    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+      parsed.pathname = parsed.pathname.slice(0, -1);
+    }
+    // Return normalized URL without hash
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    // If URL parsing fails, return original
+    return url;
+  }
+}
+
 // State for enhanced article data with URL tracking
 interface EnhancedState {
   url: string;
@@ -24,6 +46,9 @@ interface EnhancedState {
  * it automatically updates the content seamlessly.
  */
 export function useArticleAuto(url: string) {
+  // Normalize URL once for consistent comparisons
+  const normalizedUrl = normalizeUrl(url);
+
   // Track if we've already checked for enhanced version for this URL
   const checkedUrlRef = useRef<string | null>(null);
 
@@ -32,7 +57,7 @@ export function useArticleAuto(url: string) {
 
   // Main query for initial article
   const query = useQuery({
-    queryKey: ["article", "auto", url],
+    queryKey: ["article", "auto", normalizedUrl],
     queryFn: () => articleAPI.getArticleAuto(url),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
@@ -45,21 +70,22 @@ export function useArticleAuto(url: string) {
     // Only check if:
     // 1. We have data
     // 2. mayHaveEnhanced is true
-    // 3. We haven't already checked for this URL
+    // 3. We haven't already checked for this URL (using normalized URL)
     // 4. We have article data with length
     if (
       !query.data ||
       !query.data.mayHaveEnhanced ||
-      checkedUrlRef.current === url ||
+      checkedUrlRef.current === normalizedUrl ||
       !query.data.article?.length
     ) {
       return;
     }
 
     const currentUrl = url;
+    const currentNormalizedUrl = normalizedUrl;
     const timeoutId = setTimeout(async () => {
-      // Mark as checked to prevent duplicate checks
-      checkedUrlRef.current = currentUrl;
+      // Mark as checked to prevent duplicate checks (use normalized URL)
+      checkedUrlRef.current = currentNormalizedUrl;
 
       try {
         const enhancedResult = await articleAPI.getArticleEnhanced(
@@ -87,10 +113,10 @@ export function useArticleAuto(url: string) {
     }, ENHANCED_CHECK_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [query.data, url]);
+  }, [query.data, url, normalizedUrl]);
 
-  // Only use enhanced data if it's for the current URL
-  const isEnhancedForCurrentUrl = enhanced !== null && enhanced.url === url;
+  // Only use enhanced data if it's for the current URL (use normalized URL for comparison)
+  const isEnhancedForCurrentUrl = enhanced !== null && normalizeUrl(enhanced.url) === normalizedUrl;
 
   // Return enhanced data if available and for current URL, otherwise return original query data
   const data = isEnhancedForCurrentUrl ? enhanced.data : query.data;

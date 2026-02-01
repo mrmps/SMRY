@@ -302,6 +302,14 @@ const ExpandedSummary = memo(function ExpandedSummary({
   const isPremium = usageData?.isPremium ?? false;
   const showUsageCounter = usageData?.limit != null && usageData.limit > 0;
 
+  // Detect if all sources have the same data (auto endpoint adapter pattern)
+  // When using /api/article/auto, all three sources reference the same query object
+  const isAutoEndpoint = useMemo(() => {
+    const sources = SUMMARY_SOURCES.map((s) => articleResults[s]);
+    // Check if all sources reference the same object
+    return sources.every((s) => s === sources[0]);
+  }, [articleResults]);
+
   const longestSource = useMemo(() => {
     const sources = SUMMARY_SOURCES.map((s) => ({
       source: s,
@@ -433,42 +441,45 @@ const ExpandedSummary = memo(function ExpandedSummary({
         </div>
 
         <div className="flex min-w-0 items-center gap-1.5">
-          <Select
-            value={selectedSource}
-            onValueChange={(v) => handleSourceChange(v as Source)}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="h-7 w-auto min-w-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium shadow-sm">
-              <Database className="size-3" />
-              <span className="truncate">{SOURCE_LABELS[selectedSource]}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {SUMMARY_SOURCES.map((source) => {
-                const sourceStatus = getSourceStatus(source);
-                return (
-                  <SelectItem
-                    key={source}
-                    value={source}
-                    disabled={sourceStatus.disabled}
-                  >
-                    <span className="flex items-center gap-2">
-                      {SOURCE_LABELS[source]}
-                      {source === longestSource && !sourceStatus.disabled && (
-                        <span className="text-[10px] text-emerald-500">
-                          Best
-                        </span>
-                      )}
-                      {sourceStatus.reason && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {sourceStatus.reason}
-                        </span>
-                      )}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+          {/* Hide source selector when using auto endpoint - server already selected best source */}
+          {!isAutoEndpoint && (
+            <Select
+              value={selectedSource}
+              onValueChange={(v) => handleSourceChange(v as Source)}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="h-7 w-auto min-w-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium shadow-sm">
+                <Database className="size-3" />
+                <span className="truncate">{SOURCE_LABELS[selectedSource]}</span>
+              </SelectTrigger>
+              <SelectContent>
+                {SUMMARY_SOURCES.map((source) => {
+                  const sourceStatus = getSourceStatus(source);
+                  return (
+                    <SelectItem
+                      key={source}
+                      value={source}
+                      disabled={sourceStatus.disabled}
+                    >
+                      <span className="flex items-center gap-2">
+                        {SOURCE_LABELS[source]}
+                        {source === longestSource && !sourceStatus.disabled && (
+                          <span className="text-[10px] text-emerald-500">
+                            Best
+                          </span>
+                        )}
+                        {sourceStatus.reason && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {sourceStatus.reason}
+                          </span>
+                        )}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select
             value={preferredLanguage}
