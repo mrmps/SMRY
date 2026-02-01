@@ -453,11 +453,13 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           let resolved = false;
           let completedCount = 0;
           const results: (FetchResult | null)[] = [];
+          let winningSource: string | null = null;
 
-          // Cache all results in background after race completes
+          // Cache all results in background after race completes (excluding winner if specified)
           const cacheAllInBackground = () => {
             results.forEach((r) => {
-              if (r) cacheResult(r);
+              // Skip if already cached as winner
+              if (r && r.source !== winningSource) cacheResult(r);
             });
           };
 
@@ -469,13 +471,14 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
               // If we have a quality result and haven't resolved yet, resolve immediately
               if (!resolved && result && result.article.length > 500) {
                 resolved = true;
+                winningSource = result.source;
                 ctx.set("fetch_ms", Date.now() - fetchStart);
                 ctx.set("winning_source", result.source);
 
                 // Cache winner immediately
                 cacheResult(result);
 
-                // Let other fetches continue and cache in background
+                // Let other fetches continue and cache in background (winner excluded)
                 Promise.allSettled(fetchPromises).then(cacheAllInBackground);
 
                 resolve(result);

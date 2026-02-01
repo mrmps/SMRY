@@ -322,11 +322,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     lang: firstSuccessfulArticle?.lang,
   });
 
-  // Ad distribution: sidebar + one inline ad
+  // Ad distribution: sidebar + inline ad + footer ad
   // Gravity returns: [0]=below_response, [1]=right_response, [2]=inline_response
-  // Use fallback if inline placement not filled
   const sidebarAd = gravityAds[0] ?? null;
-  const inlineAd = gravityAds[2] ?? gravityAds[1] ?? null;
+  const inlineAd = gravityAds[2] ?? null;
+  const footerAd = gravityAds[1] ?? null;  // right_response used as footer ad
 
   // Handle article load: save to history
   useEffect(() => {
@@ -672,6 +672,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
                         onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
                         showInlineAd={!isPremium}
+                        footerAd={!isPremium ? footerAd : null}
+                        onFooterAdVisible={footerAd ? () => fireImpression(footerAd) : undefined}
+                        onFooterAdClick={footerAd ? () => fireClick(footerAd) : undefined}
                       />
                     </div>
                   </div>
@@ -810,6 +813,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
                     onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
                     showInlineAd={!isPremium}
+                    footerAd={!isPremium ? footerAd : null}
+                    onFooterAdVisible={footerAd ? () => fireImpression(footerAd) : undefined}
+                    onFooterAdClick={footerAd ? () => fireClick(footerAd) : undefined}
                   />
                 </div>
               </div>

@@ -294,6 +294,10 @@ interface ArticleContentProps {
   onInlineAdVisible?: () => void;
   onInlineAdClick?: () => void;
   showInlineAd?: boolean;
+  // Footer ad - appears at the bottom of the article
+  footerAd?: GravityAdType | null;
+  onFooterAdVisible?: () => void;
+  onFooterAdClick?: () => void;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
@@ -310,6 +314,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   onInlineAdVisible,
   onInlineAdClick,
   showInlineAd = true,
+  footerAd,
+  onFooterAdVisible,
+  onFooterAdClick,
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
@@ -657,6 +664,17 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                     onInlineAdClick={onInlineAdClick}
                   />
                   <UpgradeCTA dismissable="mobile-only" />
+                  {/* Footer ad - appears below the subscription card */}
+                  {footerAd && (
+                    <div className="mt-4 mb-8">
+                      <GravityAd
+                        ad={footerAd}
+                        variant="inline"
+                        onVisible={onFooterAdVisible ?? (() => {})}
+                        onClick={onFooterAdClick}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="mt-6 flex items-center space-x-2">
