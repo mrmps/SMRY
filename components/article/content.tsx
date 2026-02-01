@@ -20,8 +20,109 @@ import { DebugPanel } from "../shared/debug-panel";
 import { ArticleFetchError } from "@/lib/api/client";
 import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
 import { Newspaper } from "lucide-react";
+import { GravityAd } from "@/components/ads/gravity-ad";
+import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 export type { Source };
+
+/**
+ * Component that renders article content with a single inline ad
+ * Ad is placed after ~40% of the content (or after first paragraph if short)
+ * Always shows ad if available
+ */
+const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
+  contentRef,
+  content,
+  dir,
+  lang,
+  inlineAd,
+  onInlineAdVisible,
+  onInlineAdClick,
+}: {
+  contentRef: React.RefObject<HTMLDivElement | null>;
+  content: string;
+  dir: string;
+  lang: string | undefined;
+  inlineAd?: GravityAdType | null;
+  onInlineAdVisible?: () => void;
+  onInlineAdClick?: () => void;
+}) {
+  // Split content at a natural break point for ad insertion
+  const { beforeAd, afterAd } = useMemo(() => {
+    if (!inlineAd || !content) {
+      return { beforeAd: content, afterAd: null };
+    }
+
+    // Find paragraph breaks
+    const paragraphEnds = [...content.matchAll(/<\/p>/gi)];
+    const totalParagraphs = paragraphEnds.length;
+
+    // No paragraphs found - show ad at end
+    if (totalParagraphs === 0) {
+      return { beforeAd: content, afterAd: "" };
+    }
+
+    // Insert ad after ~40% of content, minimum after 1st paragraph
+    const targetParagraph = Math.max(1, Math.floor(totalParagraphs * 0.4));
+    const splitIndex = paragraphEnds[targetParagraph - 1]?.index;
+
+    if (splitIndex === undefined) {
+      return { beforeAd: content, afterAd: "" };
+    }
+
+    const splitPoint = splitIndex + 4; // +4 for "</p>"
+    return {
+      beforeAd: content.slice(0, splitPoint),
+      afterAd: content.slice(splitPoint),
+    };
+  }, [content, inlineAd]);
+
+  // No ad - render simply
+  if (afterAd === null) {
+    return (
+      <div
+        ref={contentRef}
+        className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
+        dir={dir}
+        lang={lang}
+        dangerouslySetInnerHTML={{ __html: beforeAd }}
+      />
+    );
+  }
+
+  // Render with inline ad (inlineAd is guaranteed non-null here since afterAd exists)
+  return (
+    <div ref={contentRef} className="mt-6">
+      {/* First part of article */}
+      <div
+        className="wrap-break-word prose dark:prose-invert max-w-none"
+        dir={dir}
+        lang={lang}
+        dangerouslySetInnerHTML={{ __html: beforeAd }}
+      />
+
+      {/* Mid-article ad */}
+      {inlineAd && (
+        <div className="my-8 -mx-4 sm:mx-0">
+          <GravityAd
+            ad={inlineAd}
+            variant="inline"
+            onVisible={onInlineAdVisible ?? (() => {})}
+            onClick={onInlineAdClick}
+          />
+        </div>
+      )}
+
+      {/* Rest of article */}
+      <div
+        className="wrap-break-word prose dark:prose-invert max-w-none"
+        dir={dir}
+        lang={lang}
+        dangerouslySetInnerHTML={{ __html: afterAd }}
+      />
+    </div>
+  );
+});
 
 // DOMPurify config for sanitizing the "reader" view (parsed article content)
 // This is strict - only allows safe formatting tags for clean reading
@@ -188,6 +289,15 @@ interface ArticleContentProps {
   viewMode?: "markdown" | "html" | "iframe";
   isFullScreen?: boolean;
   onFullScreenChange?: (fullScreen: boolean) => void;
+  // Single inline ad - appears mid-article for higher CTR
+  inlineAd?: GravityAdType | null;
+  onInlineAdVisible?: () => void;
+  onInlineAdClick?: () => void;
+  showInlineAd?: boolean;
+  // Footer ad - appears at the bottom of the article
+  footerAd?: GravityAdType | null;
+  onFooterAdVisible?: () => void;
+  onFooterAdClick?: () => void;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
@@ -200,6 +310,13 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   viewMode = "markdown",
   isFullScreen = false,
   onFullScreenChange,
+  inlineAd,
+  onInlineAdVisible,
+  onInlineAdClick,
+  showInlineAd = true,
+  footerAd,
+  onFooterAdVisible,
+  onFooterAdClick,
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
@@ -387,10 +504,43 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
 
         <div className={viewMode !== "iframe" ? "block" : "hidden"}>
           {isLoading && (
-            <div className="mt-8 space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-11/12" />
-              <Skeleton className="h-4 w-4/5" />
+            <div className="animate-in fade-in duration-300">
+              {/* Site name skeleton */}
+              <div className="flex items-center gap-3 mb-6">
+                <Skeleton className="size-5 rounded-sm" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+
+              {/* Title skeleton */}
+              <div className="space-y-3 mb-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-4/5" />
+              </div>
+
+              {/* Metadata skeleton */}
+              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+
+              {/* Content skeleton - article-like paragraphs */}
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-11/12" />
+                  <Skeleton className="h-4 w-4/5" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              </div>
             </div>
           )}
 
@@ -503,16 +653,28 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                 )
               ) : sanitizedArticleContent ? (
                 <>
-                  <div
-                    ref={contentRef}
-                    className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
+                  {/* Article content with optional mid-article ad */}
+                  <ArticleWithInlineAd
+                    contentRef={contentRef}
+                    content={sanitizedArticleContent}
                     dir={data?.article?.dir || "ltr"}
                     lang={data?.article?.lang || undefined}
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizedArticleContent,
-                    }}
+                    inlineAd={showInlineAd ? inlineAd : null}
+                    onInlineAdVisible={onInlineAdVisible}
+                    onInlineAdClick={onInlineAdClick}
                   />
                   <UpgradeCTA dismissable="mobile-only" />
+                  {/* Footer ad - appears below the subscription card */}
+                  {footerAd && (
+                    <div className="mt-4 mb-8">
+                      <GravityAd
+                        ad={footerAd}
+                        variant="inline"
+                        onVisible={onFooterAdVisible ?? (() => {})}
+                        onClick={onFooterAdClick}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="mt-6 flex items-center space-x-2">

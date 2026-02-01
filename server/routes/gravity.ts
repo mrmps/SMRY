@@ -228,6 +228,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         placements: [
           { placement: "below_response", placement_id: "smry-summary-bottom" },
           { placement: "right_response", placement_id: "smry-sidebar-right" },
+          { placement: "inline_response", placement_id: "smry-article-inline" },
         ],
         ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0,

@@ -7,7 +7,7 @@
  * Uses navigator.sendBeacon for reliable impression tracking.
  */
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
 import { useAuth, useUser } from "@clerk/nextjs";
@@ -146,6 +146,27 @@ export interface UseGravityAdResult {
 // Ad refresh interval in milliseconds (45 seconds)
 const AD_REFRESH_INTERVAL_MS = 45_000;
 
+// SSR-safe store subscriptions for immediate client-side values
+const emptySubscribe = () => () => {};
+
+// Cached client-side values to avoid recomputing on every render
+let cachedSessionId: string | null = null;
+let cachedDeviceInfo: ContextDevice | null = null;
+
+function getClientSessionId(): string {
+  if (cachedSessionId === null) {
+    cachedSessionId = getOrCreateSessionId();
+  }
+  return cachedSessionId;
+}
+
+function getClientDeviceInfo(): ContextDevice {
+  if (cachedDeviceInfo === null) {
+    cachedDeviceInfo = collectDeviceInfo();
+  }
+  return cachedDeviceInfo;
+}
+
 export function useGravityAd({
   url,
   title = "",
@@ -159,17 +180,20 @@ export function useGravityAd({
 }: UseGravityAdOptions): UseGravityAdResult {
   const { getToken } = useAuth();
   const { user } = useUser();
-  const [sessionId, setSessionId] = useState<string>("");
-  const [deviceInfo, setDeviceInfo] = useState<ContextDevice | null>(null);
 
-  // Initialize session ID and device info on client
-  useEffect(() => {
-    const rafId = requestAnimationFrame(() => {
-      setSessionId(getOrCreateSessionId());
-      setDeviceInfo(collectDeviceInfo());
-    });
-    return () => cancelAnimationFrame(rafId);
-  }, []);
+  // Use useSyncExternalStore for SSR-safe immediate client values
+  // Server returns empty/null, client returns real values immediately (no effect delay)
+  const sessionId = useSyncExternalStore(
+    emptySubscribe,
+    getClientSessionId,
+    () => "" // Server snapshot - empty string
+  );
+
+  const deviceInfo = useSyncExternalStore(
+    emptySubscribe,
+    getClientDeviceInfo,
+    () => null // Server snapshot - null
+  );
 
   // Memoize user info to avoid recreating on every render
   const userInfo = useMemo(() => {

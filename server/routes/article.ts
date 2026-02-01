@@ -117,7 +117,13 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
     logger.info({ source: "smry-fast", hostname: new URL(url).hostname }, "Fetching article directly");
 
     const response = await fetch(url, {
-      headers: { "User-Agent": "smry.ai bot/1.0", Accept: "text/html,application/xhtml+xml" },
+      headers: {
+        // Use a browser-like User-Agent to avoid bot detection (sites like Medium block bots)
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+      },
       redirect: "follow",
       signal: controller.signal,
     });
@@ -207,6 +213,8 @@ async function fetchArticle(urlWithSource: string, source: string): Promise<{ ar
 }
 
 const SourceEnum = t.Union([t.Literal("smry-fast"), t.Literal("smry-slow"), t.Literal("wayback")]);
+
+const SOURCES = ["smry-fast", "smry-slow", "wayback"] as const;
 
 export const articleRoutes = new Elysia({ prefix: "/api" }).get(
   "/article",
@@ -344,4 +352,276 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
     }
   },
   { query: t.Object({ url: t.String(), source: SourceEnum }) }
+).get(
+  "/article/auto",
+  async ({ query, request, set }) => {
+    const clientIp = extractClientIp(request);
+    const ctx = createRequestContext({
+      method: "GET",
+      path: "/api/article/auto",
+      url: request.url,
+      ip: clientIp,
+    });
+    ctx.set("endpoint", "/api/article/auto");
+
+    // Abuse prevention rate limit
+    const rateLimit = abuseRateLimiter.check(clientIp);
+    if (!rateLimit.success) {
+      ctx.error("Rate limit exceeded", { error_type: "RATE_LIMIT_ERROR", status_code: 429 });
+      set.status = 429;
+      set.headers["retry-after"] = String(Math.ceil((rateLimit.reset - Date.now()) / 1000));
+      return { error: "Too many requests", type: "RATE_LIMIT_ERROR" };
+    }
+
+    try {
+      const { url } = query;
+      ctx.merge({ url_param: url });
+
+      const hostname = new URL(url).hostname;
+      ctx.merge({ hostname, url });
+
+      // Hard paywall check
+      if (isHardPaywall(hostname)) {
+        const paywallInfo = getHardPaywallInfo(hostname);
+        const siteName = paywallInfo?.name || hostname;
+        ctx.error(`Hard paywall site: ${siteName}`, { error_type: "PAYWALL_ERROR", status_code: 403 });
+        set.status = 403;
+        return { error: `${siteName} uses a hard paywall.`, type: "PAYWALL_ERROR", hostname, siteName, learnMoreUrl: "/hard-paywalls" };
+      }
+
+      // Check cache for ALL sources - return first hit
+      for (const source of SOURCES) {
+        const cacheKey = `${source}:${url}`;
+        try {
+          const rawCachedArticle = await redis.get(cacheKey);
+          const cachedArticle = await decompressAsync(rawCachedArticle);
+          if (cachedArticle) {
+            const validation = CachedArticleSchema.safeParse(cachedArticle);
+            if (validation.success) {
+              const article = validation.data;
+              const OLD_TRUNCATION_LIMIT = 51200;
+              const htmlContentComplete = article.htmlContent && article.htmlContent.length !== OLD_TRUNCATION_LIMIT;
+              if (article.length > 4000 && htmlContentComplete) {
+                ctx.merge({ cache_hit: true, cache_source: source, article_length: article.length, status_code: 200 });
+                ctx.success();
+                return {
+                  source,
+                  cacheURL: getUrlWithSource(source, url),
+                  article: {
+                    title: article.title, byline: article.byline || null,
+                    dir: article.dir || getTextDirection(article.lang, article.textContent),
+                    lang: article.lang || "", content: article.content, textContent: article.textContent,
+                    length: article.length, siteName: article.siteName,
+                    publishedTime: article.publishedTime || null, image: article.image || null,
+                    htmlContent: article.htmlContent,
+                  },
+                  status: "success",
+                };
+              }
+            }
+          }
+        } catch {
+          // Continue to next source on cache error
+        }
+      }
+
+      // OPTIMIZED: "First success wins" pattern
+      // Returns immediately when first source succeeds, others continue in background for caching
+      const fetchStart = Date.now();
+
+      type FetchResult = { source: typeof SOURCES[number]; article: CachedArticle; cacheURL: string };
+
+      const fetchPromises: Promise<FetchResult | null>[] = [
+        fetchArticleWithSmryFast(url).then(r => "article" in r ? { source: "smry-fast" as const, ...r } : null),
+        fetchArticleWithDiffbotWrapper(url, "smry-slow").then(r => "article" in r ? { source: "smry-slow" as const, ...r } : null),
+        fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback").then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
+      ];
+
+      // Track cached sources to prevent duplicate writes
+      const cachedSources = new Set<string>();
+
+      const cacheResult = (result: FetchResult) => {
+        if (cachedSources.has(result.source)) return; // Already cached
+        cachedSources.add(result.source);
+        const cacheKey = `${result.source}:${url}`;
+        saveOrReturnLongerArticle(cacheKey, result.article).catch(() => {});
+      };
+
+      // Helper: race for first quality result, but don't cancel others
+      const raceForFirstSuccess = async (): Promise<FetchResult | null> => {
+        return new Promise((resolve) => {
+          let resolved = false;
+          let completedCount = 0;
+          const results: (FetchResult | null)[] = [];
+          let winningSource: string | null = null;
+
+          // Cache all results in background after race completes (excluding winner if specified)
+          const cacheAllInBackground = () => {
+            results.forEach((r) => {
+              // Skip if already cached as winner
+              if (r && r.source !== winningSource) cacheResult(r);
+            });
+          };
+
+          fetchPromises.forEach((promise, index) => {
+            promise.then((result) => {
+              completedCount++;
+              results[index] = result;
+
+              // If we have a quality result and haven't resolved yet, resolve immediately
+              if (!resolved && result && result.article.length > 500) {
+                resolved = true;
+                winningSource = result.source;
+                ctx.set("fetch_ms", Date.now() - fetchStart);
+                ctx.set("winning_source", result.source);
+
+                // Cache winner immediately
+                cacheResult(result);
+
+                // Let other fetches continue and cache in background (winner excluded)
+                Promise.allSettled(fetchPromises).then(cacheAllInBackground);
+
+                resolve(result);
+              }
+
+              // If all completed and we still haven't resolved, use best available or null
+              if (!resolved && completedCount === fetchPromises.length) {
+                resolved = true;
+                ctx.set("fetch_ms", Date.now() - fetchStart);
+
+                // Cache all successful results
+                cacheAllInBackground();
+
+                // Return best available
+                resolve(results.find(r => r !== null) ?? null);
+              }
+            }).catch(() => {
+              completedCount++;
+              results[index] = null;
+
+              // Check if all failed
+              if (!resolved && completedCount === fetchPromises.length) {
+                resolved = true;
+                ctx.set("fetch_ms", Date.now() - fetchStart);
+                resolve(null);
+              }
+            });
+          });
+        });
+      };
+
+      const bestResult = await raceForFirstSuccess();
+
+      // Return best result
+      if (bestResult) {
+        ctx.merge({ cache_hit: false, result_source: bestResult.source, article_length: bestResult.article.length, status_code: 200 });
+        ctx.success();
+        return {
+          source: bestResult.source,
+          cacheURL: bestResult.cacheURL,
+          article: {
+            title: bestResult.article.title, byline: bestResult.article.byline || null,
+            dir: bestResult.article.dir || getTextDirection(bestResult.article.lang, bestResult.article.textContent),
+            lang: bestResult.article.lang || "", content: bestResult.article.content, textContent: bestResult.article.textContent,
+            length: bestResult.article.length, siteName: bestResult.article.siteName,
+            publishedTime: bestResult.article.publishedTime || null, image: bestResult.article.image || null,
+            htmlContent: bestResult.article.htmlContent,
+          },
+          status: "success",
+          // Flag to indicate other sources may have longer content
+          // Client should poll /article/enhanced after a few seconds
+          mayHaveEnhanced: bestResult.source === "smry-fast",
+        };
+      }
+
+      // All failed
+      ctx.error("All sources failed", { error_type: "ALL_SOURCES_FAILED", status_code: 500 });
+      set.status = 500;
+      return { error: "Failed to fetch from all sources", type: "ALL_SOURCES_FAILED" };
+    } catch (error) {
+      ctx.error(error instanceof Error ? error : String(error), { error_type: "UNKNOWN_ERROR", status_code: 500 });
+      set.status = 500;
+      return { error: "An unexpected error occurred", type: "UNKNOWN_ERROR" };
+    }
+  },
+  { query: t.Object({ url: t.String() }) }
+).get(
+  "/article/enhanced",
+  async ({ query, request, set }) => {
+    const clientIp = extractClientIp(request);
+    const ctx = createRequestContext({
+      method: "GET",
+      path: "/api/article/enhanced",
+      url: request.url,
+      ip: clientIp,
+    });
+    ctx.set("endpoint", "/api/article/enhanced");
+
+    try {
+      const { url, currentLength, currentSource } = query;
+      const initialLength = parseInt(currentLength, 10);
+      ctx.merge({ url_param: url, current_length: initialLength, current_source: currentSource });
+
+      // Check all sources for a longer article
+      let bestArticle: { source: string; article: CachedArticle; cacheURL: string } | null = null;
+      let bestLength = initialLength;
+
+      for (const source of SOURCES) {
+        // Skip the source we already have
+        if (source === currentSource) continue;
+
+        const cacheKey = `${source}:${url}`;
+        try {
+          const rawCachedArticle = await redis.get(cacheKey);
+          const cachedArticle = await decompressAsync(rawCachedArticle);
+          if (cachedArticle) {
+            const validation = CachedArticleSchema.safeParse(cachedArticle);
+            if (validation.success) {
+              const article = validation.data;
+              // Check if this article is significantly longer (>40% more content)
+              if (article.length > bestLength * 1.4) {
+                bestLength = article.length;
+                bestArticle = {
+                  source,
+                  article,
+                  cacheURL: getUrlWithSource(source, url),
+                };
+              }
+            }
+          }
+        } catch {
+          // Continue to next source on cache error
+        }
+      }
+
+      // Return enhanced version if found
+      if (bestArticle) {
+        ctx.merge({ enhanced: true, enhanced_source: bestArticle.source, enhanced_length: bestArticle.article.length });
+        ctx.success();
+        return {
+          enhanced: true,
+          source: bestArticle.source,
+          cacheURL: bestArticle.cacheURL,
+          article: {
+            title: bestArticle.article.title, byline: bestArticle.article.byline || null,
+            dir: bestArticle.article.dir || getTextDirection(bestArticle.article.lang, bestArticle.article.textContent),
+            lang: bestArticle.article.lang || "", content: bestArticle.article.content, textContent: bestArticle.article.textContent,
+            length: bestArticle.article.length, siteName: bestArticle.article.siteName,
+            publishedTime: bestArticle.article.publishedTime || null, image: bestArticle.article.image || null,
+            htmlContent: bestArticle.article.htmlContent,
+          },
+        };
+      }
+
+      // No enhanced version found
+      ctx.merge({ enhanced: false });
+      ctx.success();
+      return { enhanced: false };
+    } catch (error) {
+      ctx.error(error instanceof Error ? error : String(error), { error_type: "UNKNOWN_ERROR", status_code: 500 });
+      set.status = 500;
+      return { error: "An unexpected error occurred", type: "UNKNOWN_ERROR" };
+    }
+  },
+  { query: t.Object({ url: t.String(), currentLength: t.String(), currentSource: t.String() }) }
 );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
-import { useArticles } from "@/lib/hooks/use-articles";
+import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useAuth } from "@clerk/nextjs";
 import { AuthBar } from "@/components/shared/auth-bar";
@@ -34,7 +34,7 @@ import ShareButton from "@/components/features/share-button";
 import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-import ArrowTabs from "@/components/article/tabs";
+import { ArticleContent } from "@/components/article/content";
 import { InlineSummary } from "@/components/features/inline-summary";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
@@ -57,7 +57,7 @@ import {
   parseAsBoolean,
   parseAsString,
 } from "nuqs";
-import { Source, SOURCES } from "@/types/api";
+import { Source } from "@/types/api";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -228,18 +228,29 @@ interface ProxyContentProps {
 }
 
 export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentProps) {
-  const { results } = useArticles(url);
+  // Use the new auto endpoint - single request, races all sources server-side
+  const articleQuery = useArticleAuto(url);
   const { isPremium } = useIsPremium();
   const isDesktop = useIsDesktop();
   const showDesktopPromo = isDesktop !== false;
   const showMobilePromo = isDesktop === false;
+
+  // Get the source that was actually used by the auto endpoint
+  const source = articleQuery.data?.source || "smry-fast";
+
+  // Adapter for InlineSummary which still expects multi-source results format
+  // This creates a compatible structure using the single auto result
+  const summaryResults = useMemo(() => ({
+    "smry-fast": articleQuery,
+    "smry-slow": articleQuery,
+    "wayback": articleQuery,
+  }), [articleQuery]);
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
   const [query, setQuery] = useQueryStates(
     {
       url: parseAsString.withDefault(url),
-      source: parseAsStringLiteral(SOURCES).withDefault("smry-fast"),
       view: parseAsStringLiteral(viewModes).withDefault("markdown"),
       sidebar: parseAsBoolean.withDefault(initialSidebarOpen),
     },
@@ -248,12 +259,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       shallow: true,
     }
   );
-
-  const source = query.source as Source;
   const viewMode = query.view as (typeof viewModes)[number];
   const sidebarOpen = query.sidebar as boolean;
 
-  const activeArticle = results[source]?.data?.article;
+  const activeArticle = articleQuery.data?.article;
   const articleTitle = activeArticle?.title;
   const articleTextContent = activeArticle?.textContent;
 
@@ -296,63 +305,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Track initialization state per URL
   const initializedUrlRef = useRef<string | null>(null);
 
-  // Track timeout for fallback - after 5s use whatever we have
-  const [forceUseAvailable, setForceUseAvailable] = useState(false);
-
-  // After 5 seconds, use whatever we have
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setForceUseAvailable(true);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Find best article for ad context
-  // Priority: 1) First source with title + >400 chars, 2) Longest source, 3) After 5s use anything
-  const firstSuccessfulArticle = useMemo(() => {
-    const allResults = Object.values(results);
-
-    // 1. First try: source with title AND textContent > 400 chars
-    for (const result of allResults) {
-      const article = result.data?.article;
-      if (result.isSuccess && article?.title && (article.textContent?.length || 0) > 400) {
-        return article;
-      }
-    }
-
-    // 2. Fallback: use source with longest textContent
-    let longestArticle = null;
-    let longestLength = 0;
-    for (const result of allResults) {
-      const article = result.data?.article;
-      if (result.isSuccess && article) {
-        const len = article.textContent?.length || 0;
-        if (len > longestLength) {
-          longestLength = len;
-          longestArticle = article;
-        }
-      }
-    }
-    if (longestArticle) {
-      return longestArticle;
-    }
-
-    // 3. Timeout fallback: after 5s, use any article with a title
-    if (forceUseAvailable) {
-      for (const result of allResults) {
-        const article = result.data?.article;
-        if (article?.title) {
-          return article;
-        }
-      }
-    }
-
-    return null;
-  }, [results, forceUseAvailable]);
+  // With the auto endpoint, we get a single result - no need for complex selection logic
+  const firstSuccessfulArticle = articleQuery.data?.article || null;
 
   // Fetch ad - pass article data for better targeting
   // Ads refresh every 45 seconds for users who stay on the page
-  const { ad: gravityAd, ads: gravityAds, fireImpression, fireClick, fireDismiss } = useGravityAd({
+  const { ads: gravityAds, fireImpression, fireClick, fireDismiss } = useGravityAd({
     url,
     title: firstSuccessfulArticle?.title,
     textContent: firstSuccessfulArticle?.textContent,
@@ -363,6 +321,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     publishedTime: firstSuccessfulArticle?.publishedTime,
     lang: firstSuccessfulArticle?.lang,
   });
+
+  // Ad distribution: sidebar + inline ad + footer ad
+  // Gravity returns: [0]=below_response, [1]=right_response, [2]=inline_response
+  const sidebarAd = gravityAds[0] ?? null;
+  const inlineAd = gravityAds[2] ?? null;
+  const footerAd = gravityAds[1] ?? null;  // right_response used as footer ad
 
   // Handle article load: save to history
   useEffect(() => {
@@ -384,13 +348,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const handleSidebarChange = React.useCallback(
     (next: boolean) => {
       setQuery({ sidebar: next ? true : null });
-    },
-    [setQuery]
-  );
-
-  const handleSourceChange = React.useCallback(
-    (next: Source) => {
-      setQuery({ source: next });
     },
     [setQuery]
   );
@@ -703,27 +660,22 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 <ResizablePanel defaultSize={70} minSize={50}>
                   <div className="h-full overflow-y-auto bg-card">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
-                      <ArrowTabs
+                      <ArticleContent
+                        data={articleQuery.data}
+                        isLoading={articleQuery.isLoading}
+                        isError={articleQuery.isError}
+                        error={articleQuery.error}
+                        source={source}
                         url={url}
-                        articleResults={results}
                         viewMode={viewMode}
-                        activeSource={source}
-                        onSourceChange={handleSourceChange}
-                        summaryOpen={sidebarOpen}
-                        onSummaryOpenChange={handleSidebarChange}
-                        showInlineSummary={false}
+                        inlineAd={!isPremium ? inlineAd : null}
+                        onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
+                        onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
+                        showInlineAd={!isPremium}
+                        footerAd={!isPremium ? footerAd : null}
+                        onFooterAdVisible={footerAd ? () => fireImpression(footerAd) : undefined}
+                        onFooterAdClick={footerAd ? () => fireClick(footerAd) : undefined}
                       />
-                      {/* Second ad inline below article — end-of-content strip, not a card */}
-                      {!isPremium && gravityAds[1] && (
-                        <GravityAd
-                          ad={gravityAds[1]}
-                          variant="inline"
-                          onVisible={() => fireImpression(gravityAds[1])}
-                          onClick={() => fireClick(gravityAds[1])}
-                          onDismiss={() => fireDismiss(gravityAds[1])}
-                          className="mt-6"
-                        />
-                      )}
                     </div>
                   </div>
                 </ResizablePanel>
@@ -757,27 +709,27 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   <div className="h-full border-l border-border">
                     <InlineSummary
                       urlProp={url}
-                      articleResults={results}
+                      articleResults={summaryResults}
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
-                      ad={!isPremium ? gravityAd : null}
-                      onAdVisible={gravityAd ? () => fireImpression(gravityAd) : undefined}
-                      onAdClick={gravityAd ? () => fireClick(gravityAd) : undefined}
+                      ad={!isPremium ? sidebarAd : null}
+                      onAdVisible={sidebarAd ? () => fireImpression(sidebarAd) : undefined}
+                      onAdClick={sidebarAd ? () => fireClick(sidebarAd) : undefined}
                     />
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
 
               {/* Fixed bottom-right ad when sidebar is closed */}
-              {!sidebarOpen && !isPremium && gravityAd && !desktopAdDismissed && (
+              {!sidebarOpen && !isPremium && sidebarAd && !desktopAdDismissed && (
                 <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
                   <GravityAd
-                    ad={gravityAd}
-                    onVisible={() => fireImpression(gravityAd)}
-                    onClick={() => fireClick(gravityAd)}
+                    ad={sidebarAd}
+                    onVisible={() => fireImpression(sidebarAd)}
+                    onClick={() => fireClick(sidebarAd)}
                     onDismiss={() => {
-                      fireDismiss(gravityAd);
+                      fireDismiss(sidebarAd);
                       setDesktopAdDismissed(true);
                     }}
                   />
@@ -848,17 +800,22 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
                     : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
                 )}>
-                  {/* Article content - no inline summary, it's in the drawer now */}
-                  <ArrowTabs
+                  {/* Article content */}
+                  <ArticleContent
+                    data={articleQuery.data}
+                    isLoading={articleQuery.isLoading}
+                    isError={articleQuery.isError}
+                    error={articleQuery.error}
+                    source={source}
                     url={url}
-                    articleResults={results}
                     viewMode={viewMode}
-                    activeSource={source}
-                    onSourceChange={handleSourceChange}
-                    summaryOpen={false}
-                    onSummaryOpenChange={() => {}}
-                    showInlineSummary={false}
-                    mobileHeaderVisible={mobileHeaderVisible}
+                    inlineAd={!isPremium ? inlineAd : null}
+                    onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
+                    onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
+                    showInlineAd={!isPremium}
+                    footerAd={!isPremium ? footerAd : null}
+                    onFooterAdVisible={footerAd ? () => fireImpression(footerAd) : undefined}
+                    onFooterAdClick={footerAd ? () => fireClick(footerAd) : undefined}
                   />
                 </div>
               </div>
@@ -900,7 +857,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     <div className="flex-1 overflow-y-auto touch-pan-y">
                       <InlineSummary
                         urlProp={url}
-                        articleResults={results}
+                        articleResults={summaryResults}
                         isOpen={true}
                         onOpenChange={() => setMobileSummaryOpen(false)}
                         variant="sidebar"
@@ -911,18 +868,18 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
-              {!isPremium && gravityAd && !mobileAdDismissed && (
+              {!isPremium && sidebarAd && !mobileAdDismissed && (
                 <div
                   className="fixed left-0 right-0 z-20"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}
                 >
                   <GravityAd
-                    ad={gravityAd}
+                    ad={sidebarAd}
                     variant="mobile"
-                    onVisible={() => fireImpression(gravityAd)}
-                    onClick={() => fireClick(gravityAd)}
+                    onVisible={() => fireImpression(sidebarAd)}
+                    onClick={() => fireClick(sidebarAd)}
                     onDismiss={() => {
-                      fireDismiss(gravityAd);
+                      fireDismiss(sidebarAd);
                       setMobileAdDismissed(true);
                     }}
                   />

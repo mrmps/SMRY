@@ -1,12 +1,139 @@
 "use client";
 
-import { useQueries, UseQueryResult } from "@tanstack/react-query";
+import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
+import { useEffect, useState, useRef } from "react";
 import { articleAPI } from "@/lib/api/client";
-import { ArticleResponse, Source } from "@/types/api";
+import { ArticleResponse, Source, ArticleAutoResponse } from "@/types/api";
 
 const SERVER_SOURCES = ["smry-fast", "smry-slow", "wayback"] as const satisfies readonly Source[];
 
+// Delay before checking for enhanced version (ms)
+const ENHANCED_CHECK_DELAY = 4000;
+
 /**
+ * Normalize URL for consistent comparison
+ * Handles trailing slashes, query param order, and protocol differences
+ */
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Sort query params for consistent ordering
+    parsed.searchParams.sort();
+    // Remove trailing slash from pathname (unless it's just "/")
+    if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) {
+      parsed.pathname = parsed.pathname.slice(0, -1);
+    }
+    // Return normalized URL without hash
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    // If URL parsing fails, return original
+    return url;
+  }
+}
+
+// State for enhanced article data with URL tracking
+interface EnhancedState {
+  url: string;
+  data: ArticleAutoResponse;
+}
+
+/**
+ * Custom hook to fetch article using auto-selection (races all sources server-side)
+ * This is the recommended hook for most use cases - single request, fastest result
+ *
+ * Features optimistic updates: if a longer article is found from slower sources,
+ * it automatically updates the content seamlessly.
+ */
+export function useArticleAuto(url: string) {
+  // Normalize URL once for consistent comparisons
+  const normalizedUrl = normalizeUrl(url);
+
+  // Track if we've already checked for enhanced version for this URL
+  const checkedUrlRef = useRef<string | null>(null);
+
+  // State to hold the enhanced article with its URL (to know if it's stale)
+  const [enhanced, setEnhanced] = useState<EnhancedState | null>(null);
+
+  // Main query for initial article
+  const query = useQuery({
+    queryKey: ["article", "auto", normalizedUrl],
+    queryFn: () => articleAPI.getArticleAuto(url),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    enabled: !!url,
+  });
+
+  // Check for enhanced version after delay
+  useEffect(() => {
+    // Only check if:
+    // 1. We have data
+    // 2. mayHaveEnhanced is true
+    // 3. We haven't already checked for this URL (using normalized URL)
+    // 4. We have article data with length
+    if (
+      !query.data ||
+      !query.data.mayHaveEnhanced ||
+      checkedUrlRef.current === normalizedUrl ||
+      !query.data.article?.length
+    ) {
+      return;
+    }
+
+    const currentUrl = url;
+    const currentNormalizedUrl = normalizedUrl;
+    const timeoutId = setTimeout(async () => {
+      // Mark as checked to prevent duplicate checks (use normalized URL)
+      checkedUrlRef.current = currentNormalizedUrl;
+
+      try {
+        const enhancedResult = await articleAPI.getArticleEnhanced(
+          currentUrl,
+          query.data.article!.length,
+          query.data.source
+        );
+
+        if (enhancedResult.enhanced) {
+          // Found a longer article - update seamlessly
+          setEnhanced({
+            url: currentUrl,
+            data: {
+              source: enhancedResult.source,
+              cacheURL: enhancedResult.cacheURL,
+              article: enhancedResult.article,
+              status: "success",
+              mayHaveEnhanced: false, // No need to check again
+            },
+          });
+        }
+      } catch {
+        // Silently fail - user still has the initial article
+      }
+    }, ENHANCED_CHECK_DELAY);
+
+    return () => clearTimeout(timeoutId);
+  }, [query.data, url, normalizedUrl]);
+
+  // Only use enhanced data if it's for the current URL (use normalized URL for comparison)
+  const isEnhancedForCurrentUrl = enhanced !== null && normalizeUrl(enhanced.url) === normalizedUrl;
+
+  // Return enhanced data if available and for current URL, otherwise return original query data
+  const data = isEnhancedForCurrentUrl ? enhanced.data : query.data;
+
+  // Track if content was enhanced (for optional UI feedback)
+  const wasEnhanced = isEnhancedForCurrentUrl;
+
+  // Return query with potentially enhanced data
+  // We return the query object directly but override data
+  return Object.assign({}, query, {
+    data,
+    wasEnhanced,
+  }) as typeof query & { wasEnhanced: boolean };
+}
+
+/**
+ * @deprecated Use useArticleAuto instead for better performance (single request)
  * Custom hook to fetch articles from all three sources in parallel
  * Uses TanStack Query for caching and state management
  */
@@ -43,6 +170,7 @@ export function useArticles(url: string) {
 }
 
 /**
+ * @deprecated Use useArticleAuto instead for better performance
  * Hook to fetch a single article from a specific source
  */
 export function useArticle(url: string, source: Source) {
