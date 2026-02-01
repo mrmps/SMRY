@@ -387,10 +387,43 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
 
         <div className={viewMode !== "iframe" ? "block" : "hidden"}>
           {isLoading && (
-            <div className="mt-8 space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-11/12" />
-              <Skeleton className="h-4 w-4/5" />
+            <div className="animate-in fade-in duration-300">
+              {/* Site name skeleton */}
+              <div className="flex items-center gap-3 mb-6">
+                <Skeleton className="size-5 rounded-sm" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+
+              {/* Title skeleton */}
+              <div className="space-y-3 mb-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-4/5" />
+              </div>
+
+              {/* Metadata skeleton */}
+              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+
+              {/* Content skeleton - article-like paragraphs */}
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-11/12" />
+                  <Skeleton className="h-4 w-4/5" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              </div>
             </div>
           )}
 

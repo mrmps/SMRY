@@ -70,6 +70,17 @@ export const ArticleResponseSchema = z.object({
 });
 export type ArticleResponse = z.infer<typeof ArticleResponseSchema>;
 
+// Auto endpoint response (same structure, but source is determined automatically)
+export const ArticleAutoResponseSchema = z.object({
+  source: SourceSchema,
+  cacheURL: z.string(),
+  article: ArticleSchema.optional(),
+  status: z.string().optional(),
+  error: z.string().optional(),
+  type: z.string().optional(),
+});
+export type ArticleAutoResponse = z.infer<typeof ArticleAutoResponseSchema>;
+
 // Error response schema
 export const ErrorResponseSchema = z.object({
   error: z.string(),

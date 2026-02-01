@@ -1,4 +1,4 @@
-import { ArticleResponse, Source, ErrorResponse } from "@/types/api";
+import { ArticleResponse, Source, ErrorResponse, ArticleAutoResponse } from "@/types/api";
 import { DebugContext } from "@/lib/errors/types";
 import { getApiUrl } from "./config";
 
@@ -45,6 +45,26 @@ export const articleAPI = {
 
     const data = await response.json();
     return data as ArticleResponse;
+  },
+
+  /**
+   * Fetch article using auto-selection (races all sources, returns first success)
+   */
+  async getArticleAuto(url: string): Promise<ArticleAutoResponse> {
+    const params = new URLSearchParams({ url });
+
+    const response = await fetch(getApiUrl(`/api/article/auto?${params.toString()}`));
+
+    if (!response.ok) {
+      const errorData: ErrorResponse = await response.json();
+      throw new ArticleFetchError(
+        errorData.error || `HTTP error! status: ${response.status}`,
+        errorData
+      );
+    }
+
+    const data = await response.json();
+    return data as ArticleAutoResponse;
   },
 };
 
