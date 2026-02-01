@@ -78,8 +78,25 @@ export const ArticleAutoResponseSchema = z.object({
   status: z.string().optional(),
   error: z.string().optional(),
   type: z.string().optional(),
+  // Flag indicating other sources may have longer content
+  // Client should poll /article/enhanced after a few seconds
+  mayHaveEnhanced: z.boolean().optional(),
 });
 export type ArticleAutoResponse = z.infer<typeof ArticleAutoResponseSchema>;
+
+// Enhanced article endpoint response
+export const ArticleEnhancedResponseSchema = z.union([
+  z.object({
+    enhanced: z.literal(true),
+    source: SourceSchema,
+    cacheURL: z.string(),
+    article: ArticleSchema,
+  }),
+  z.object({
+    enhanced: z.literal(false),
+  }),
+]);
+export type ArticleEnhancedResponse = z.infer<typeof ArticleEnhancedResponseSchema>;
 
 // Error response schema
 export const ErrorResponseSchema = z.object({

@@ -322,11 +322,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     lang: firstSuccessfulArticle?.lang,
   });
 
-  // Distribute ads: sidebar gets first ad, remaining go to inline positions
-  // This ensures we maximize ad visibility even with partial fill rates
-  // Gravity returns: [0]=below_response, [1]=right_response, [2-4]=inline_response
+  // Ad distribution: sidebar + one inline ad
+  // Gravity returns: [0]=below_response, [1]=right_response, [2]=inline_response
+  // Use fallback if inline placement not filled
   const sidebarAd = gravityAds[0] ?? null;
-  const inlineAds = gravityAds.slice(1).filter(Boolean); // All ads after the first one for inline
+  const inlineAd = gravityAds[2] ?? gravityAds[1] ?? null;
 
   // Handle article load: save to history
   useEffect(() => {
@@ -668,10 +668,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         source={source}
                         url={url}
                         viewMode={viewMode}
-                        inlineAds={!isPremium ? inlineAds : []}
-                        onInlineAdVisible={fireImpression}
-                        onInlineAdClick={fireClick}
-                        showInlineAds={!isPremium}
+                        inlineAd={!isPremium ? inlineAd : null}
+                        onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
+                        onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
+                        showInlineAd={!isPremium}
                       />
                     </div>
                   </div>
@@ -806,10 +806,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     source={source}
                     url={url}
                     viewMode={viewMode}
-                    inlineAds={!isPremium ? inlineAds : []}
-                    onInlineAdVisible={fireImpression}
-                    onInlineAdClick={fireClick}
-                    showInlineAds={!isPremium}
+                    inlineAd={!isPremium ? inlineAd : null}
+                    onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
+                    onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
+                    showInlineAd={!isPremium}
                   />
                 </div>
               </div>

@@ -526,6 +526,9 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
             htmlContent: bestResult.article.htmlContent,
           },
           status: "success",
+          // Flag to indicate other sources may have longer content
+          // Client should poll /article/enhanced after a few seconds
+          mayHaveEnhanced: bestResult.source === "smry-fast",
         };
       }
 
@@ -540,4 +543,83 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
     }
   },
   { query: t.Object({ url: t.String() }) }
+).get(
+  "/article/enhanced",
+  async ({ query, request, set }) => {
+    const clientIp = extractClientIp(request);
+    const ctx = createRequestContext({
+      method: "GET",
+      path: "/api/article/enhanced",
+      url: request.url,
+      ip: clientIp,
+    });
+    ctx.set("endpoint", "/api/article/enhanced");
+
+    try {
+      const { url, currentLength, currentSource } = query;
+      const initialLength = parseInt(currentLength, 10);
+      ctx.merge({ url_param: url, current_length: initialLength, current_source: currentSource });
+
+      // Check all sources for a longer article
+      let bestArticle: { source: string; article: CachedArticle; cacheURL: string } | null = null;
+      let bestLength = initialLength;
+
+      for (const source of SOURCES) {
+        // Skip the source we already have
+        if (source === currentSource) continue;
+
+        const cacheKey = `${source}:${url}`;
+        try {
+          const rawCachedArticle = await redis.get(cacheKey);
+          const cachedArticle = await decompressAsync(rawCachedArticle);
+          if (cachedArticle) {
+            const validation = CachedArticleSchema.safeParse(cachedArticle);
+            if (validation.success) {
+              const article = validation.data;
+              // Check if this article is significantly longer (>40% more content)
+              if (article.length > bestLength * 1.4) {
+                bestLength = article.length;
+                bestArticle = {
+                  source,
+                  article,
+                  cacheURL: getUrlWithSource(source, url),
+                };
+              }
+            }
+          }
+        } catch {
+          // Continue to next source on cache error
+        }
+      }
+
+      // Return enhanced version if found
+      if (bestArticle) {
+        ctx.merge({ enhanced: true, enhanced_source: bestArticle.source, enhanced_length: bestArticle.article.length });
+        ctx.success();
+        return {
+          enhanced: true,
+          source: bestArticle.source,
+          cacheURL: bestArticle.cacheURL,
+          article: {
+            title: bestArticle.article.title, byline: bestArticle.article.byline || null,
+            dir: bestArticle.article.dir || getTextDirection(bestArticle.article.lang, bestArticle.article.textContent),
+            lang: bestArticle.article.lang || "", content: bestArticle.article.content, textContent: bestArticle.article.textContent,
+            length: bestArticle.article.length, siteName: bestArticle.article.siteName,
+            publishedTime: bestArticle.article.publishedTime || null, image: bestArticle.article.image || null,
+            htmlContent: bestArticle.article.htmlContent,
+          },
+        };
+      }
+
+      // No enhanced version found
+      ctx.merge({ enhanced: false });
+      ctx.success();
+      return { enhanced: false };
+    } catch (error) {
+      ctx.error(error instanceof Error ? error : String(error), { error_type: "UNKNOWN_ERROR", status_code: 500 });
+      set.status = 500;
+      return { error: "An unexpected error occurred", type: "UNKNOWN_ERROR" };
+    }
+  },
+  { query: t.Object({ url: t.String(), currentLength: t.String(), currentSource: t.String() }) }
 );

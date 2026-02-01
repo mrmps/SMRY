@@ -26,19 +26,16 @@ import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 export type { Source };
 
 /**
- * Component that renders article content with inline ads
- * Ads are placed based on paragraph count:
- * - < 6 paragraphs: 0 ads
- * - 6-9 paragraphs: 1 ad
- * - 10-13 paragraphs: 2 ads
- * - 14+ paragraphs: 3 ads (max)
+ * Component that renders article content with a single inline ad
+ * Ad is placed after ~40% of the content (or after first paragraph if short)
+ * Always shows ad if available
  */
-const ArticleWithInlineAds = memo(function ArticleWithInlineAds({
+const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
   contentRef,
   content,
   dir,
   lang,
-  inlineAds,
+  inlineAd,
   onInlineAdVisible,
   onInlineAdClick,
 }: {
@@ -46,109 +43,83 @@ const ArticleWithInlineAds = memo(function ArticleWithInlineAds({
   content: string;
   dir: string;
   lang: string | undefined;
-  inlineAds: GravityAdType[];
-  onInlineAdVisible?: (ad: GravityAdType) => void;
-  onInlineAdClick?: (ad: GravityAdType) => void;
+  inlineAd?: GravityAdType | null;
+  onInlineAdVisible?: () => void;
+  onInlineAdClick?: () => void;
 }) {
-  // Split content into sections with ads between them
-  const sections = useMemo(() => {
-    if (!inlineAds.length || !content) {
-      return [{ content, ad: null }];
+  // Split content at a natural break point for ad insertion
+  const { beforeAd, afterAd } = useMemo(() => {
+    if (!inlineAd || !content) {
+      return { beforeAd: content, afterAd: null };
     }
 
-    // Find paragraph breaks - look for </p> tags
+    // Find paragraph breaks
     const paragraphEnds = [...content.matchAll(/<\/p>/gi)];
     const totalParagraphs = paragraphEnds.length;
 
-    // Ad placement based on paragraph count (with good spacing):
-    // < 8: 0 ads | 8-13: 1 ad | 14-19: 2 ads | 20+: 3 ads
-    let maxAds = 0;
-    if (totalParagraphs >= 20) {
-      maxAds = 3;
-    } else if (totalParagraphs >= 14) {
-      maxAds = 2;
-    } else if (totalParagraphs >= 8) {
-      maxAds = 1;
+    // No paragraphs found - show ad at end
+    if (totalParagraphs === 0) {
+      return { beforeAd: content, afterAd: "" };
     }
 
-    // Only show what we have available
-    maxAds = Math.min(maxAds, inlineAds.length);
+    // Insert ad after ~40% of content, minimum after 1st paragraph
+    const targetParagraph = Math.max(1, Math.floor(totalParagraphs * 0.4));
+    const splitIndex = paragraphEnds[targetParagraph - 1]?.index;
 
-    if (maxAds < 1) {
-      // Not enough content for inline ads
-      return [{ content, ad: null }];
+    if (splitIndex === undefined) {
+      return { beforeAd: content, afterAd: "" };
     }
 
-    // Calculate evenly spaced insertion points
-    // E.g., for 2 ads in 12 paragraphs: insert after paragraph 4 and 8
-    const spacing = Math.floor(totalParagraphs / (maxAds + 1));
-    const result: { content: string; ad: GravityAdType | null }[] = [];
-    let lastIndex = 0;
+    const splitPoint = splitIndex + 4; // +4 for "</p>"
+    return {
+      beforeAd: content.slice(0, splitPoint),
+      afterAd: content.slice(splitPoint),
+    };
+  }, [content, inlineAd]);
 
-    for (let i = 0; i < maxAds; i++) {
-      const targetParagraph = spacing * (i + 1);
-      const splitIndex = paragraphEnds[targetParagraph - 1]?.index;
-
-      if (splitIndex !== undefined) {
-        const splitPoint = splitIndex + 4; // +4 for "</p>"
-        result.push({
-          content: content.slice(lastIndex, splitPoint),
-          ad: inlineAds[i],
-        });
-        lastIndex = splitPoint;
-      }
-    }
-
-    // Add remaining content
-    if (lastIndex < content.length) {
-      result.push({
-        content: content.slice(lastIndex),
-        ad: null,
-      });
-    }
-
-    return result;
-  }, [content, inlineAds]);
-
-  // No ads - render simply
-  if (sections.length === 1 && !sections[0].ad) {
+  // No ad - render simply
+  if (afterAd === null) {
     return (
       <div
         ref={contentRef}
         className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
         dir={dir}
         lang={lang}
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: beforeAd }}
       />
     );
   }
 
-  // Render with inline ads
+  // Render with inline ad (inlineAd is guaranteed non-null here since afterAd exists)
   return (
     <div ref={contentRef} className="mt-6">
-      {sections.map((section, index) => (
-        <React.Fragment key={index}>
-          {/* Content section */}
-          <div
-            className="wrap-break-word prose dark:prose-invert max-w-none"
-            dir={dir}
-            lang={lang}
-            dangerouslySetInnerHTML={{ __html: section.content }}
-          />
+      {/* First part of article */}
+      <div
+        className="wrap-break-word prose dark:prose-invert max-w-none"
+        dir={dir}
+        lang={lang}
+        dangerouslySetInnerHTML={{ __html: beforeAd }}
+      />
 
-          {/* Inline ad after this section */}
-          {section.ad && onInlineAdVisible && (
-            <div className="my-8 -mx-4 sm:mx-0">
-              <GravityAd
-                ad={section.ad}
-                variant="inline"
-                onVisible={() => onInlineAdVisible(section.ad!)}
-                onClick={onInlineAdClick ? () => onInlineAdClick(section.ad!) : undefined}
-              />
-            </div>
-          )}
-        </React.Fragment>
-      ))}
+      {/* Mid-article ad */}
+      {inlineAd && (
+        <div className="my-8 -mx-4 sm:mx-0">
+          <GravityAd
+            ad={inlineAd}
+            variant="inline"
+            onVisible={onInlineAdVisible ?? (() => {})}
+            onClick={onInlineAdClick}
+          />
+        </div>
+      )}
+
+      {/* Rest of article */}
+      <div
+        className="wrap-break-word prose dark:prose-invert max-w-none"
+        dir={dir}
+        lang={lang}
+        dangerouslySetInnerHTML={{ __html: afterAd }}
+      />
     </div>
   );
 });
@@ -318,12 +289,11 @@ interface ArticleContentProps {
   viewMode?: "markdown" | "html" | "iframe";
   isFullScreen?: boolean;
   onFullScreenChange?: (fullScreen: boolean) => void;
-  // Inline ads support - appears mid-article for higher CTR
-  // Multiple ads are spaced evenly based on article length
-  inlineAds?: GravityAdType[];
-  onInlineAdVisible?: (ad: GravityAdType) => void;
-  onInlineAdClick?: (ad: GravityAdType) => void;
-  showInlineAds?: boolean;
+  // Single inline ad - appears mid-article for higher CTR
+  inlineAd?: GravityAdType | null;
+  onInlineAdVisible?: () => void;
+  onInlineAdClick?: () => void;
+  showInlineAd?: boolean;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
@@ -336,10 +306,10 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   viewMode = "markdown",
   isFullScreen = false,
   onFullScreenChange,
-  inlineAds = [],
+  inlineAd,
   onInlineAdVisible,
   onInlineAdClick,
-  showInlineAds = true,
+  showInlineAd = true,
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
@@ -676,13 +646,13 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                 )
               ) : sanitizedArticleContent ? (
                 <>
-                  {/* Article content with optional mid-article ads */}
-                  <ArticleWithInlineAds
+                  {/* Article content with optional mid-article ad */}
+                  <ArticleWithInlineAd
                     contentRef={contentRef}
                     content={sanitizedArticleContent}
                     dir={data?.article?.dir || "ltr"}
                     lang={data?.article?.lang || undefined}
-                    inlineAds={showInlineAds ? inlineAds : []}
+                    inlineAd={showInlineAd ? inlineAd : null}
                     onInlineAdVisible={onInlineAdVisible}
                     onInlineAdClick={onInlineAdClick}
                   />

@@ -1,4 +1,4 @@
-import { ArticleResponse, Source, ErrorResponse, ArticleAutoResponse } from "@/types/api";
+import { ArticleResponse, Source, ErrorResponse, ArticleAutoResponse, ArticleEnhancedResponse } from "@/types/api";
 import { DebugContext } from "@/lib/errors/types";
 import { getApiUrl } from "./config";
 
@@ -65,6 +65,32 @@ export const articleAPI = {
 
     const data = await response.json();
     return data as ArticleAutoResponse;
+  },
+
+  /**
+   * Check if an enhanced (longer) version of the article is available
+   * Call this after getArticleAuto returns mayHaveEnhanced: true
+   */
+  async getArticleEnhanced(
+    url: string,
+    currentLength: number,
+    currentSource: Source
+  ): Promise<ArticleEnhancedResponse> {
+    const params = new URLSearchParams({
+      url,
+      currentLength: String(currentLength),
+      currentSource,
+    });
+
+    const response = await fetch(getApiUrl(`/api/article/enhanced?${params.toString()}`));
+
+    if (!response.ok) {
+      // On error, just return not enhanced
+      return { enhanced: false };
+    }
+
+    const data = await response.json();
+    return data as ArticleEnhancedResponse;
   },
 };
 

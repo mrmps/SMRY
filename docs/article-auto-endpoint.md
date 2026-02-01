@@ -213,7 +213,8 @@ wayback:    ██████████████ (continues for cache)
     "lang": "en",
     "dir": "ltr"
   },
-  "status": "success"
+  "status": "success",
+  "mayHaveEnhanced": true          // Flag for optimistic updates (see below)
 }
 
 // Error response (all sources failed)
@@ -222,6 +223,86 @@ wayback:    ██████████████ (continues for cache)
   "type": "ALL_SOURCES_FAILED"
 }
 ```
+
+## Optimistic Update: Full Article Enhancement
+
+Sometimes `smry-fast` returns a partial article (due to paywalls, lazy loading, etc.) while slower sources like `wayback` have the full content. The system handles this with **optimistic updates**.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           OPTIMISTIC UPDATE FLOW                            │
+│                                                                             │
+│  1. Initial Request                                                         │
+│     ───────────────                                                         │
+│     GET /article/auto → Returns smry-fast result (2500 chars)               │
+│                         mayHaveEnhanced: true                               │
+│                                                                             │
+│  2. User Sees Article Immediately                                           │
+│     ──────────────────────────────                                          │
+│     [Article displayed - user starts reading]                               │
+│                                                                             │
+│  3. Background: Other Sources Cached                                        │
+│     ────────────────────────────────                                        │
+│     smry-slow finishes → cached (8000 chars)                                │
+│     wayback finishes → cached (7500 chars)                                  │
+│                                                                             │
+│  4. Client Checks for Enhanced Version (after 4s delay)                     │
+│     ─────────────────────────────────────────────────                       │
+│     GET /article/enhanced?url=...&currentLength=2500&currentSource=smry-fast│
+│                                                                             │
+│  5. Server Compares Cached Results                                          │
+│     ──────────────────────────────                                          │
+│     smry-slow: 8000 chars (220% longer!) ✓                                  │
+│     wayback: 7500 chars (200% longer)                                       │
+│     → Returns smry-slow article                                             │
+│                                                                             │
+│  6. Seamless Update                                                         │
+│     ───────────────                                                         │
+│     Article content updates without page reload                             │
+│     Scroll position preserved (content extends, doesn't shift)              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Enhanced Endpoint
+
+```typescript
+// GET /api/article/enhanced?url=...&currentLength=2500&currentSource=smry-fast
+
+// Enhanced version found (>40% longer)
+{
+  "enhanced": true,
+  "source": "smry-slow",
+  "cacheURL": "https://...",
+  "article": { ... }  // Full article
+}
+
+// No enhancement available
+{
+  "enhanced": false
+}
+```
+
+### Client Implementation
+
+```typescript
+// The useArticleAuto hook handles this automatically
+const { data, isLoading, wasEnhanced } = useArticleAuto(url);
+
+// wasEnhanced = true if article was upgraded to full version
+```
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **No jarring updates** | Content extends naturally, scroll position preserved |
+| **Silent failures** | If enhanced check fails, user still has initial article |
+| **One check per URL** | Won't repeatedly poll for same article |
+| **40% threshold** | Only updates if significantly more content (>40% longer) |
+| **4 second delay** | Gives slower sources time to complete and cache |
 
 ## Cache Strategy
 
@@ -241,3 +322,49 @@ If **all sources fail**, the client receives a single error with options:
 - Try Wayback Machine (external)
 - Retry the request
 - Open original page
+
+## Inline Ads
+
+Articles display contextual ads from Gravity AI. One inline ad is always placed mid-article (at ~40% of content, or after first paragraph for short articles).
+
+### Ad Placements Requested
+
+```typescript
+placements: [
+  { placement: "below_response", placement_id: "smry-summary-bottom" },  // Sidebar
+  { placement: "right_response", placement_id: "smry-sidebar-right" },   // Sidebar
+  { placement: "inline_response", placement_id: "smry-article-inline" }, // Mid-article
+]
+```
+
+### Ad Distribution
+
+| Index | Placement | Location |
+|-------|-----------|----------|
+| `gravityAds[0]` | below_response | Sidebar (below summary) |
+| `gravityAds[1]` | right_response | Sidebar (right) |
+| `gravityAds[2]` | inline_response | Mid-article (~40% into content) |
+
+### Inline Ad Placement Logic
+
+```typescript
+// Always show inline ad if available
+// Placed at ~40% of content, minimum after 1st paragraph
+const targetParagraph = Math.max(1, Math.floor(totalParagraphs * 0.4));
+```
+
+- **Always shown** - No minimum article length requirement
+- **Natural placement** - After ~40% of content for engaged readers
+- **Fallback** - After first paragraph if article is very short
+
+## Files Reference
+
+| File | Purpose |
+|------|---------|
+| `server/routes/article.ts` | `/article/auto` and `/article/enhanced` endpoints |
+| `server/routes/gravity.ts` | Gravity AI ad placements configuration |
+| `lib/api/client.ts` | `getArticleAuto()` and `getArticleEnhanced()` methods |
+| `lib/hooks/use-articles.ts` | `useArticleAuto()` hook with optimistic updates |
+| `types/api.ts` | TypeScript types for responses |
+| `components/article/content.tsx` | Article rendering with inline ad |
+| `components/features/proxy-content.tsx` | Main proxy page component |
