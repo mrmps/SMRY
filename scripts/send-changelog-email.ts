@@ -48,7 +48,7 @@ const inbound = INBOUND_API_KEY ? new Inbound({ apiKey: INBOUND_API_KEY }) : nul
 // Email configuration
 const FROM_EMAIL = "michael@smry.ai";
 const FROM_NAME = "Michael from Smry";
-const OWNER_EMAIL = "miryaboy@gmail.com";
+// const OWNER_EMAIL = "miryaboy@gmail.com";
 
 interface UserInfo {
   id: string;
