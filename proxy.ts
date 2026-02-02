@@ -19,7 +19,7 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const redirectUrl = buildProxyRedirectUrl(pathname, search, origin);
 
   if (redirectUrl) {
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.rewrite(redirectUrl);
   }
 
   // Run i18n middleware for locale handling

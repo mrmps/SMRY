@@ -32,6 +32,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   // Get the API URL - only fetch if we have a proper API URL configured
   const apiBaseUrl = process.env.NEXT_PUBLIC_URL;
 
+  // Build the canonical URL (the clean shareable format)
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_URL || 'https://smry.ai'}/${normalizedUrl}`;
+
   // If no API URL is configured, return basic metadata with URL info
   if (!apiBaseUrl) {
     const hostname = new URL(normalizedUrl).hostname.replace('www.', '');
@@ -43,7 +46,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         title: `Article from ${hostname}`,
         description: `Read this article from ${hostname} with Smry`,
         siteName: 'smry.ai',
-        url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(normalizedUrl)}`,
+        url: canonicalUrl,
       },
       twitter: {
         card: 'summary',
@@ -92,7 +95,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         title: article.title || 'Smry',
         description,
         siteName: 'smry.ai',
-        url: `${process.env.NEXT_PUBLIC_URL}/proxy?url=${encodeURIComponent(normalizedUrl)}`,
+        url: canonicalUrl,
       },
       twitter: {
         card: 'summary_large_image',
