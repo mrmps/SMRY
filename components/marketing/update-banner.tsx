@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 const STORAGE_KEY = "update-banner-dismissed-v1"; // Increment version for new announcements
 
@@ -22,6 +23,7 @@ interface UpdateBannerProps {
 }
 
 export function UpdateBanner({ className }: UpdateBannerProps) {
+  const t = useTranslations("updateBanner");
   const isClient = useIsClient();
   const [isDismissed, setIsDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -43,14 +45,14 @@ export function UpdateBanner({ className }: UpdateBannerProps) {
       )}
     >
       <div className="px-4 py-1.5 text-center text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">New:</span>
-        <span className="mx-1.5">Smart auto-fetch & optimistic content updates</span>
+        <span className="font-medium text-foreground">{t("new")}</span>
+        <span className="mx-1.5">{t("message")}</span>
         <span className="mx-1">·</span>
         <Link
           href="/changelog"
           className="font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground transition-colors"
         >
-          Changelog
+          {t("changelog")}
         </Link>
       </div>
       <button

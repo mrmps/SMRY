@@ -330,6 +330,11 @@
     "freePlanBadge": "Gratis plan",
     "addToBookmarks": "Toevoegen aan bladwijzerbalk"
   },
+  "updateBanner": {
+    "new": "Nieuw:",
+    "message": "Slimme auto-fetch en optimistische content updates",
+    "changelog": "Wijzigingslogboek"
+  },
   "changelog": {
     "title": "Wijzigingslogboek",
     "description": "Nieuwe functies, bugfixes en verbeteringen aan SMRY. We brengen regelmatig updates uit om je leeservaring te verbeteren.",

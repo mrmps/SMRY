@@ -25,18 +25,8 @@ export const metadata: Metadata = {
   description:
     "AI-powered reader that bypasses paywalls and summarizes any article. Paste a link, get the full text plus an AI summary. Free, no account needed.",
   keywords: ["bypass paywall", "paywall remover", "read paywalled articles", "free paywall bypass", "article summarizer", "AI reader", "research papers"],
-  alternates: {
-    canonical: "https://smry.ai",
-    languages: {
-      "en": "https://smry.ai",
-      "pt": "https://smry.ai/pt",
-      "de": "https://smry.ai/de",
-      "zh": "https://smry.ai/zh",
-      "es": "https://smry.ai/es",
-      "nl": "https://smry.ai/nl",
-      "x-default": "https://smry.ai",
-    },
-  },
+  // Note: alternates (canonical + hreflang) are set per-page in each page.tsx
+  // to ensure correct locale-specific URLs. Do NOT add global alternates here.
   openGraph: {
     type: "website",
     title: "Read Anything, Summarize Everything | Smry",

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { ChangelogContent } from '@/components/pages/changelog-content';
+import { generateAlternates } from '@/lib/seo/alternates';
 
 export const dynamic = 'force-static';
 
@@ -8,9 +9,7 @@ export const metadata: Metadata = {
   title: "Changelog - What's New | SMRY",
   description:
     'Latest updates, features, and improvements to SMRY - the AI article reader and paywall bypass tool.',
-  alternates: {
-    canonical: 'https://smry.ai/changelog',
-  },
+  alternates: generateAlternates('/changelog'),
   openGraph: {
     title: "What's New at SMRY",
     description:

@@ -2,6 +2,7 @@ import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { setRequestLocale } from 'next-intl/server';
 import type { Metadata } from 'next';
+import { generateAlternates } from '@/lib/seo/alternates';
 
 export const dynamic = 'force-static';
 
@@ -9,9 +10,7 @@ export const metadata: Metadata = {
   title: "Paywall Bypass Guide | SMRY",
   description:
     "An honest guide to bypassing paywalls. What works, what doesn't, and what to try when SMRY can't get your article.",
-  alternates: {
-    canonical: 'https://smry.ai/guide',
-  },
+  alternates: generateAlternates('/guide'),
   openGraph: {
     title: 'Paywall Bypass Guide | SMRY',
     description:

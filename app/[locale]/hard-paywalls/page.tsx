@@ -4,6 +4,7 @@ import { getSitesGroupedByCategory, CATEGORY_INFO, type PaywallCategory } from "
 import { setRequestLocale } from 'next-intl/server';
 import type { Metadata } from 'next';
 import { JsonLd, faqSchema } from "@/components/seo/json-ld";
+import { generateAlternates } from '@/lib/seo/alternates';
 
 export const dynamic = 'force-static';
 
@@ -11,9 +12,7 @@ export const metadata: Metadata = {
   title: "Understanding Paywalls | SMRY",
   description:
     "Learn the difference between hard and soft paywalls, and why some sites cannot be accessed through SMRY.",
-  alternates: {
-    canonical: 'https://smry.ai/hard-paywalls',
-  },
+  alternates: generateAlternates('/hard-paywalls'),
   openGraph: {
     title: 'Understanding Paywalls | SMRY',
     description:

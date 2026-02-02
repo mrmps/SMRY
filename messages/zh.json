@@ -330,6 +330,11 @@
     "freePlanBadge": "免费版",
     "addToBookmarks": "添加到书签栏"
   },
+  "updateBanner": {
+    "new": "新功能：",
+    "message": "智能自动获取和乐观内容更新",
+    "changelog": "更新日志"
+  },
   "changelog": {
     "title": "更新日志",
     "description": "SMRY的新功能、错误修复和改进。我们定期发布更新以改善您的阅读体验。",

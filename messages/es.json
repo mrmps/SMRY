@@ -330,6 +330,11 @@
     "freePlanBadge": "Plan gratuito",
     "addToBookmarks": "Añadir a la barra de marcadores"
   },
+  "updateBanner": {
+    "new": "Nuevo:",
+    "message": "Búsqueda automática inteligente y actualizaciones optimistas de contenido",
+    "changelog": "Registro de cambios"
+  },
   "changelog": {
     "title": "Registro de cambios",
     "description": "Nuevas funciones, correcciones de errores y mejoras en SMRY. Enviamos actualizaciones regularmente para mejorar tu experiencia de lectura.",

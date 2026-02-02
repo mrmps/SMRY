@@ -330,6 +330,11 @@
     "freePlanBadge": "Kostenlos",
     "addToBookmarks": "Zur Lesezeichen-Leiste hinzufügen"
   },
+  "updateBanner": {
+    "new": "Neu:",
+    "message": "Intelligentes Auto-Fetch und optimistische Inhaltsaktualisierungen",
+    "changelog": "Änderungsprotokoll"
+  },
   "changelog": {
     "title": "Änderungsprotokoll",
     "description": "Neue Funktionen, Fehlerbehebungen und Verbesserungen für SMRY. Wir veröffentlichen regelmäßig Updates, um Ihr Leseerlebnis zu verbessern.",

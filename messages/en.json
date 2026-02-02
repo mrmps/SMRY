@@ -330,6 +330,11 @@
     "freePlanBadge": "Free plan",
     "addToBookmarks": "Add to bookmarks bar"
   },
+  "updateBanner": {
+    "new": "New:",
+    "message": "Smart auto-fetch & optimistic content updates",
+    "changelog": "Changelog"
+  },
   "changelog": {
     "title": "Changelog",
     "description": "New features, bug fixes, and improvements to SMRY. We ship updates regularly to make your reading experience better.",
