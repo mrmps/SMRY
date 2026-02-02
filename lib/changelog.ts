@@ -14,6 +14,41 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "Feb 1, 2026",
+    changes: [
+      {
+        type: "new",
+        text: "Automatic smart source selection",
+        detail:
+          "Articles are now automatically fetched from the best available source. The system races multiple sources and picks the one with the most complete content.",
+      },
+      {
+        type: "new",
+        text: "Optimistic content updates",
+        detail:
+          "Content may be updated in real-time when a longer, more complete version is found from another source.",
+      },
+      {
+        type: "improved",
+        text: "Better loading experience",
+        detail:
+          "New richer loading skeleton and compact error display with streamlined retry options.",
+      },
+      {
+        type: "improved",
+        text: "Cleaner reading interface",
+        detail:
+          "Manual source selector is now hidden when auto-fetch is used. Mid-article and footer ad slots for less intrusive placement.",
+      },
+      {
+        type: "fix",
+        text: "Mobile horizontal scrolling",
+        detail:
+          "Fixed horizontal scrolling issues on mobile devices. Cards and ads now scale properly on all screen sizes.",
+      },
+    ],
+  },
+  {
     date: "Jan 25, 2025",
     changes: [
       {

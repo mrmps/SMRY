@@ -21,6 +21,7 @@ import { BottomCornerNav } from "@/components/shared/bottom-corner-nav";
 import { FAQ } from "@/components/marketing/faq";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { PromoBanner } from "@/components/marketing/promo-banner";
+import { UpdateBanner } from "@/components/marketing/update-banner";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
@@ -357,6 +358,7 @@ export const HomeContent = memo(function HomeContent() {
   return (
     <>
       <PromoBanner />
+      <UpdateBanner />
       <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
 
         {/* Auth - top right */}

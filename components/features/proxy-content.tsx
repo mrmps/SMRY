@@ -42,6 +42,7 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
+import { UpdateBanner } from "@/components/marketing/update-banner";
 import {
   Menu,
   MenuTrigger,
@@ -439,6 +440,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     <div className="flex h-dvh flex-col bg-background">
       {/* Promo Banner - desktop/tablet */}
       {showDesktopPromo && <PromoBanner />}
+      <UpdateBanner className="hidden md:block" />
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
@@ -752,6 +754,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 >
                   {showMobilePromo && <PromoBanner className="md:hidden" />}
+                  <UpdateBanner className="md:hidden" />
                   <header className="flex h-14 items-center bg-background px-4">
                     <div className="flex items-center gap-3 shrink-0">
                       <button
