@@ -300,16 +300,16 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   // ============================================
   if (variant === "inline") {
     return (
-      <div className={cn("border-t border-border/40 pt-6 pb-2", className)}>
+      <div className={cn("border-t border-border/40 pt-6 pb-2 overflow-hidden", className)}>
         <a
           ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="flex items-center gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
+          className="flex items-center gap-2 sm:gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
         >
-          <div className="size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          <div className="size-8 sm:size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
             {faviconSrc ? (
               <Image
                 src={faviconSrc!}
@@ -325,14 +325,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+            <p className="text-[13px] sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
             </p>
-            <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground/50 mt-0.5">
               {ad.brandName} · Sponsored
             </p>
           </div>
-          <span className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
+          <span className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
             {ctaText}
             <span className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
           </span>

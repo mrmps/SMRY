@@ -67,7 +67,7 @@ function FeatureText({ title, description, className }: { title: string; descrip
 // Source Fetching Card Visual
 function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, string | number>) => string }) {
   return (
-    <div className="relative flex max-w-[320px] flex-col gap-3">
+    <div className="relative flex w-full max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
       <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/[0.06] dark:bg-white/[0.06]" />
 
@@ -79,7 +79,7 @@ function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, strin
       </div>
 
       {/* Card */}
-      <div className="relative z-10 flex w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
           <p className="text-xs text-[#999] dark:text-[#777]">
             {t("racingSources", { count: 2 })}
@@ -123,7 +123,7 @@ function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, strin
 // Clean Reading Card Visual
 function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, string | number>) => string }) {
   return (
-    <div className="relative flex max-w-[320px] flex-col gap-3">
+    <div className="relative flex w-full max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
       <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/[0.06] dark:bg-white/[0.06]" />
 
@@ -135,7 +135,7 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
       </div>
 
       {/* Card */}
-      <div className="relative z-10 flex w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
           <p className="text-xs text-[#999] dark:text-[#777]">
             {t("removedDistractions", { count: 12 })}
@@ -189,7 +189,7 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
 // AI Summary Card Visual
 function AISummaryCard({ t }: { t: (key: string) => string }) {
   return (
-    <div className="w-[280px] overflow-hidden rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+    <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
           <FileText className="h-3.5 w-3.5" strokeWidth={2} />
@@ -448,7 +448,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="absolute bottom-56 left-1/2 w-full max-w-[400px] -translate-x-1/2 px-6">
+        <div className="absolute bottom-56 left-0 right-0 mx-auto w-full max-w-[400px] px-6">
           <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
             <h2 className="text-center text-[15px] font-medium text-foreground/90">
               {t("valuePropTitle")}
@@ -469,7 +469,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center">
+        <div className="absolute bottom-6 left-0 right-0 mx-auto flex w-fit flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });

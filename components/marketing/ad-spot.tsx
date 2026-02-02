@@ -508,7 +508,7 @@ export function AdSpotMobileBar({
   return (
     <div
       className={cn(
-        "fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40 transition-all duration-200",
+        "fixed bottom-0 inset-x-0 z-40 px-3 py-2 pb-safe bg-background/80 backdrop-blur-xl border-t border-border/40 transition-all duration-200 overflow-hidden",
         hidden
           ? "opacity-0 pointer-events-none translate-y-full"
           : "opacity-100 translate-y-0",
@@ -516,8 +516,8 @@ export function AdSpotMobileBar({
       )}
       aria-hidden={hidden}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 shrink-0">
           <MobileAdPill
             href={WISPR_REFERRAL_URL}
             imageSrc="/whisper-flow-transparent.png"
