@@ -478,3 +478,168 @@ Smry Notifications
     return { success: false, error: message };
   }
 }
+
+/**
+ * Send changelog/product update email to a user
+ */
+interface SendChangelogEmailParams {
+  to: string;
+  firstName?: string;
+}
+
+export async function sendChangelogEmail({
+  to,
+  firstName,
+}: SendChangelogEmailParams): Promise<{ success: boolean; error?: string }> {
+  try {
+    const greeting = firstName ? `Hey ${firstName}` : "Hey there";
+
+    const result = await inbound.emails.send({
+      from: `${FROM_NAME} <${OWNER_EMAIL}>`,
+      to,
+      subject: "What's new in Smry - Smart Auto-Fetch & More",
+      text: `${greeting},
+
+Quick update on what's new in Smry:
+
+SMART AUTO-FETCH
+Articles are now automatically fetched from the best available source. The system races multiple sources and picks the one with the most complete content.
+
+OPTIMISTIC CONTENT UPDATES
+Content may be updated in real-time when a longer, more complete version is found from another source.
+
+BETTER LOADING EXPERIENCE
+New richer loading skeleton and compact error display with streamlined retry options.
+
+CLEANER READING INTERFACE
+Manual source selector is now hidden when auto-fetch is used. Mid-article and footer ad slots for less intrusive placement.
+
+MOBILE IMPROVEMENTS
+Fixed horizontal scrolling issues on mobile devices. Cards and ads now scale properly on all screen sizes.
+
+See the full changelog: https://smry.ai/changelog
+
+As always, just reply to this email if you have any questions or feedback.
+
+Thanks,
+Michael
+`,
+      html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What's New in Smry</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb; line-height: 1.6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px 40px;">
+              <div style="font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 8px;">
+                smry
+              </div>
+              <div style="font-size: 14px; color: #6b7280;">
+                Product Update · Feb 2026
+              </div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">
+                ${greeting},
+              </p>
+
+              <p style="font-size: 16px; color: #374151; margin: 0 0 24px 0;">
+                Quick update on what's new in Smry:
+              </p>
+
+              <!-- Feature 1 -->
+              <div style="margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+                <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
+                  ⚡ Smart Auto-Fetch
+                </div>
+                <div style="font-size: 14px; color: #6b7280;">
+                  Articles are now automatically fetched from the best available source. The system races multiple sources and picks the most complete content.
+                </div>
+              </div>
+
+              <!-- Feature 2 -->
+              <div style="margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+                <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
+                  🔄 Optimistic Content Updates
+                </div>
+                <div style="font-size: 14px; color: #6b7280;">
+                  Content may be updated in real-time when a longer, more complete version is found.
+                </div>
+              </div>
+
+              <!-- Feature 3 -->
+              <div style="margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+                <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
+                  ✨ Better Loading & Cleaner UI
+                </div>
+                <div style="font-size: 14px; color: #6b7280;">
+                  New loading skeleton, compact error display, and hidden source selector for a cleaner reading experience.
+                </div>
+              </div>
+
+              <!-- Feature 4 -->
+              <div style="margin-bottom: 24px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+                <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
+                  📱 Mobile Improvements
+                </div>
+                <div style="font-size: 14px; color: #6b7280;">
+                  Fixed horizontal scrolling issues. Cards and ads now scale properly on all screen sizes.
+                </div>
+              </div>
+
+              <!-- CTA -->
+              <div style="text-align: center; margin-bottom: 24px;">
+                <a href="https://smry.ai/changelog" style="display: inline-block; padding: 12px 24px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                  View Full Changelog →
+                </a>
+              </div>
+
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">
+                As always, just reply to this email if you have any questions or feedback.
+              </p>
+
+              <p style="font-size: 16px; color: #374151; margin: 0;">
+                Thanks,<br>
+                <strong>Michael</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
+              <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                <a href="https://smry.ai" style="color: #6b7280; text-decoration: none;">smry.ai</a> · Read any article, anywhere
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `.trim(),
+    });
+
+    console.log(`[emails] Changelog email sent to ${to} (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[emails] Error sending changelog email to ${to}:`, message);
+    return { success: false, error: message };
+  }
+}

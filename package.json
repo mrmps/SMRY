@@ -25,7 +25,9 @@
     "pages:deploy": "bunx wrangler pages deploy .vercel/output/static",
     "prepare": "husky || true",
     "check-env": "bun scripts/check-env.ts",
-    "check-deps": "knip --dependencies --no-config-hints --exclude unlisted"
+    "check-deps": "knip --dependencies --no-config-hints --exclude unlisted",
+    "email:changelog": "bun scripts/send-changelog-email.ts",
+    "email:changelog:dry": "bun scripts/send-changelog-email.ts --dry-run"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
