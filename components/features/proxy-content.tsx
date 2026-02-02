@@ -177,7 +177,7 @@ function ThemeMenuItems() {
       <MenuSeparator />
       <MenuGroup>
         <MenuGroupLabel>Theme</MenuGroupLabel>
-        <div className="flex items-center gap-1 px-3 pb-1">
+        <div className="flex items-center gap-1 px-3 pb-1.5">
           <button
             onClick={() => setTheme("light")}
             className={cn(
@@ -339,9 +339,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     addArticleToHistory(url, firstSuccessfulArticle.title || "Untitled Article");
   }, [firstSuccessfulArticle, url]);
 
+  const settingsDrawerRef = React.useRef<SettingsDrawerHandle>(null);
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
+  const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
+  // Default to fullscreen for html/iframe views
+  const [isFullScreen, setIsFullScreen] = useState(viewMode === "html" || viewMode === "iframe");
+
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
       setQuery({ view: mode });
+      // Auto-enable fullscreen for html/iframe views
+      if (mode === "html" || mode === "iframe") {
+        setIsFullScreen(true);
+      }
     },
     [setQuery]
   );
@@ -352,11 +363,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     },
     [setQuery]
   );
-
-  const settingsDrawerRef = React.useRef<SettingsDrawerHandle>(null);
-  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
-  const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
-  const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
 
   // Mobile header hide-on-scroll state
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
@@ -670,6 +676,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         source={source}
                         url={url}
                         viewMode={viewMode}
+                        isFullScreen={isFullScreen}
+                        onFullScreenChange={setIsFullScreen}
                         inlineAd={!isPremium ? inlineAd : null}
                         onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
                         onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
@@ -812,6 +820,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     source={source}
                     url={url}
                     viewMode={viewMode}
+                    isFullScreen={isFullScreen}
+                    onFullScreenChange={setIsFullScreen}
                     inlineAd={!isPremium ? inlineAd : null}
                     onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
                     onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
