@@ -529,7 +529,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
 
               <ShareButton
-                url={`https://smry.ai/${url}`}
+                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 originalUrl={url}
                 source={source || "smry-fast"}
                 viewMode={viewMode || "markdown"}
@@ -903,7 +903,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               <MobileBottomBar
                 viewMode={viewMode || "markdown"}
                 onViewModeChange={handleViewModeChange}
-                smryUrl={`https://smry.ai/${url}`}
+                smryUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 originalUrl={url}
                 articleTitle={articleTitle}
                 onOpenSettings={() => settingsDrawerRef.current?.open()}

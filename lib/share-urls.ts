@@ -10,14 +10,14 @@ export interface ShareUrls {
 
 /**
  * Generates a clean smry.ai URL from an original article URL
- * @param originalUrl - The original article URL (e.g., "www.example.com/article")
- * @returns The clean smry.ai URL (e.g., "https://smry.ai/www.example.com/article")
+ * @param originalUrl - The original article URL (e.g., "https://www.example.com/article")
+ * @returns The clean smry.ai URL in proxy format (e.g., "https://smry.ai/proxy?url=https://www.example.com/article")
  */
 export function getSmryUrl(originalUrl: string): string {
   if (!originalUrl) {
     return "https://smry.ai/";
   }
-  return `https://smry.ai/${originalUrl}`;
+  return `https://smry.ai/proxy?url=${encodeURIComponent(originalUrl)}`;
 }
 
 /**
@@ -28,8 +28,8 @@ export function getSmryUrl(originalUrl: string): string {
 export function generateShareUrls(originalUrl: string): ShareUrls {
   const smryUrl = getSmryUrl(originalUrl);
 
-  // X/Twitter uses text parameter with short format (no https://)
-  const xShareText = originalUrl ? `smry.ai/${originalUrl}` : "smry.ai/";
+  // X/Twitter uses text parameter with proxy URL format
+  const xShareText = originalUrl ? smryUrl : "https://smry.ai/";
 
   return {
     x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(xShareText)}`,

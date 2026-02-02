@@ -72,8 +72,8 @@ export function MobileBottomBar({
   };
 
   const handleTweet = () => {
-    // Use short format without https:// for cleaner tweets
-    const xShareText = `smry.ai/${originalUrl}`;
+    // Use proxy URL format for tweets
+    const xShareText = `https://smry.ai/proxy?url=${encodeURIComponent(originalUrl)}`;
     const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(xShareText)}`;
     window.open(tweetUrl, "_blank", "noopener,noreferrer");
     setShareDrawerOpen(false);

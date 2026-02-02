@@ -3,18 +3,21 @@ import { getSmryUrl, generateShareUrls } from "./share-urls";
 
 describe("getSmryUrl", () => {
   it("generates clean smry.ai URL from original article URL", () => {
-    const result = getSmryUrl("www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091");
-    expect(result).toBe("https://smry.ai/www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091");
+    const originalUrl = "www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091";
+    const result = getSmryUrl(originalUrl);
+    expect(result).toBe(`https://smry.ai/proxy?url=${encodeURIComponent(originalUrl)}`);
   });
 
   it("handles URL with https:// prefix", () => {
-    const result = getSmryUrl("https://example.com/article");
-    expect(result).toBe("https://smry.ai/https://example.com/article");
+    const originalUrl = "https://example.com/article";
+    const result = getSmryUrl(originalUrl);
+    expect(result).toBe(`https://smry.ai/proxy?url=${encodeURIComponent(originalUrl)}`);
   });
 
   it("handles simple domain", () => {
-    const result = getSmryUrl("example.com");
-    expect(result).toBe("https://smry.ai/example.com");
+    const originalUrl = "example.com";
+    const result = getSmryUrl(originalUrl);
+    expect(result).toBe(`https://smry.ai/proxy?url=${encodeURIComponent(originalUrl)}`);
   });
 
   it("handles empty originalUrl", () => {
@@ -27,50 +30,31 @@ describe("generateShareUrls", () => {
   const testUrl = "www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091";
 
   describe("X/Twitter share URL", () => {
-    it("uses text parameter with smry.ai short format (no https://)", () => {
+    it("uses text parameter with proxy URL format", () => {
       const { x } = generateShareUrls(testUrl);
-      expect(x).toBe(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`smry.ai/${testUrl}`)}`);
-    });
-
-    it("does not include url parameter", () => {
-      const { x } = generateShareUrls(testUrl);
-      expect(x).not.toContain("&url=");
-    });
-
-    it("does not use proxy URL format", () => {
-      const { x } = generateShareUrls(testUrl);
-      expect(x).not.toContain("proxy?url=");
+      const expectedUrl = `https://smry.ai/proxy?url=${encodeURIComponent(testUrl)}`;
+      expect(x).toBe(`https://twitter.com/intent/tweet?text=${encodeURIComponent(expectedUrl)}`);
     });
 
     it("handles empty URL gracefully", () => {
       const { x } = generateShareUrls("");
-      expect(x).toBe(`https://twitter.com/intent/tweet?text=${encodeURIComponent("smry.ai/")}`);
+      expect(x).toBe(`https://twitter.com/intent/tweet?text=${encodeURIComponent("https://smry.ai/")}`);
     });
   });
 
   describe("LinkedIn share URL", () => {
-    it("uses full smry.ai URL with https://", () => {
+    it("uses proxy URL format", () => {
       const { linkedin } = generateShareUrls(testUrl);
-      const expectedUrl = `https://smry.ai/${testUrl}`;
+      const expectedUrl = `https://smry.ai/proxy?url=${encodeURIComponent(testUrl)}`;
       expect(linkedin).toBe(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(expectedUrl)}`);
-    });
-
-    it("does not use proxy URL format", () => {
-      const { linkedin } = generateShareUrls(testUrl);
-      expect(linkedin).not.toContain("proxy?url=");
     });
   });
 
   describe("Reddit share URL", () => {
-    it("uses full smry.ai URL with https://", () => {
+    it("uses proxy URL format", () => {
       const { reddit } = generateShareUrls(testUrl);
-      const expectedUrl = `https://smry.ai/${testUrl}`;
+      const expectedUrl = `https://smry.ai/proxy?url=${encodeURIComponent(testUrl)}`;
       expect(reddit).toBe(`https://www.reddit.com/submit?url=${encodeURIComponent(expectedUrl)}`);
-    });
-
-    it("does not use proxy URL format", () => {
-      const { reddit } = generateShareUrls(testUrl);
-      expect(reddit).not.toContain("proxy?url=");
     });
   });
 
@@ -80,9 +64,9 @@ describe("generateShareUrls", () => {
       const { x, linkedin, reddit } = generateShareUrls(urlWithParams);
 
       // All URLs should be properly encoded
-      expect(x).toContain(encodeURIComponent(`smry.ai/${urlWithParams}`));
-      expect(linkedin).toContain(encodeURIComponent(`https://smry.ai/${urlWithParams}`));
-      expect(reddit).toContain(encodeURIComponent(`https://smry.ai/${urlWithParams}`));
+      expect(x).toContain(encodeURIComponent(`https://smry.ai/proxy?url=${encodeURIComponent(urlWithParams)}`));
+      expect(linkedin).toContain(encodeURIComponent(`https://smry.ai/proxy?url=${encodeURIComponent(urlWithParams)}`));
+      expect(reddit).toContain(encodeURIComponent(`https://smry.ai/proxy?url=${encodeURIComponent(urlWithParams)}`));
     });
   });
 });
