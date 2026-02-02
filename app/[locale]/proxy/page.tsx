@@ -104,16 +104,38 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       },
     };
 
-    // Add OG image if available
+    // Add OG image if available - ensure absolute URL
     if (article.image) {
-      metadata.openGraph = {
-        ...metadata.openGraph,
-        images: [{ url: article.image }],
-      };
-      metadata.twitter = {
-        ...metadata.twitter,
-        images: [article.image],
-      };
+      try {
+        // Ensure image URL is absolute
+        let imageUrl: string;
+        if (article.image.startsWith('http://') || article.image.startsWith('https://')) {
+          imageUrl = article.image;
+        } else if (article.image.startsWith('//')) {
+          // Protocol-relative URL
+          imageUrl = `https:${article.image}`;
+        } else if (article.image.startsWith('/')) {
+          // Absolute path - resolve relative to article URL
+          imageUrl = new URL(article.image, normalizedUrl).toString();
+        } else {
+          // Relative path - resolve relative to article URL
+          imageUrl = new URL(article.image, normalizedUrl).toString();
+        }
+
+        // Validate the resulting URL is valid
+        new URL(imageUrl);
+
+        metadata.openGraph = {
+          ...metadata.openGraph,
+          images: [{ url: imageUrl }],
+        };
+        metadata.twitter = {
+          ...metadata.twitter,
+          images: [{ url: imageUrl }],
+        };
+      } catch {
+        // If image URL is invalid, don't add it to metadata
+      }
     }
 
     return metadata;

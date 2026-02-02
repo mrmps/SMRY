@@ -99,6 +99,37 @@ export function safeDecodeUrl(value: string): string {
 }
 
 /**
+ * Remove duplicate protocols from URLs.
+ * Handles cases like:
+ * - "https://https://example.com" → "https://example.com"
+ * - "example.com/https://example.com" → "https://example.com"
+ * - "https://example.com/https://example.com" → "https://example.com"
+ * - "example.comhttps://example.com" → "https://example.com"
+ */
+function removeDuplicateProtocols(url: string): string {
+  // First, handle cases where there's a domain followed by a protocol
+  // e.g., "example.com/https://example.com" or "https://example.com/https://example.com"
+  const domainProtocolMatch = url.match(/^(?:https?:\/\/)?[^/]+\/(https?:\/\/.+)$/);
+  if (domainProtocolMatch) {
+    return domainProtocolMatch[1];
+  }
+
+  // Handle cases where protocol appears directly after a domain without slash
+  // e.g., "example.comhttps://example.com" or "https://example.comhttps://example.com"
+  const domainNoSlashMatch = url.match(/^(?:https?:\/\/)?[^/]+(https?:\/\/.+)$/);
+  if (domainNoSlashMatch) {
+    return domainNoSlashMatch[1];
+  }
+
+  // Handle cases where there's just duplicate protocols at the start
+  // e.g., "https://https://example.com"
+  return url.replace(/^([a-zA-Z][a-zA-Z\d+\-.]*:\/\/)+/, (match) => {
+    const firstProtocol = match.match(/^([a-zA-Z][a-zA-Z\d+\-.]*:\/\/)/)?.[1];
+    return firstProtocol || match;
+  });
+}
+
+/**
  * Repair collapsed protocols in URL paths.
  * Browsers/servers can collapse "://" to ":/" in paths.
  * e.g., "https:/www.nytimes.com" → "https://www.nytimes.com"
@@ -124,8 +155,11 @@ export function normalizeUrl(input: string): string {
   // Decode first to handle already-encoded URLs
   const decoded = safeDecodeUrl(trimmed);
 
+  // Remove duplicate protocols (e.g., "https://https://example.com")
+  const deduplicated = removeDuplicateProtocols(decoded);
+
   // Repair single-slash protocols
-  const repaired = repairProtocol(decoded);
+  const repaired = repairProtocol(deduplicated);
 
   const candidate = PROTOCOL_REGEX.test(repaired)
     ? repaired
