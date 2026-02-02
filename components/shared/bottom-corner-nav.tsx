@@ -351,6 +351,7 @@ function ThemeSubmenu({ inline = false }: { inline?: boolean }) {
 
 function HelpPopoverContent() {
   const t = useTranslations("nav");
+  const tEntries = useTranslations("changelogEntries");
   const isClient = useIsClient();
   const isMobile = useIsMobile();
   const { has, isLoaded } = useAuth();
@@ -379,7 +380,7 @@ function HelpPopoverContent() {
   const recentChanges = getRecentChanges(2);
   const whatsNewItems: { text: string; isNew?: boolean; href?: string; showArrow?: boolean }[] = [
     ...recentChanges.map((change, i) => ({
-      text: change.text,
+      text: tEntries(change.textKey),
       isNew: i === 0,
       href: "/changelog",
     })),

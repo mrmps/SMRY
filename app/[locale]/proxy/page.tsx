@@ -11,6 +11,26 @@ type Props = {
 const DEFAULT_METADATA: Metadata = {
   title: 'Proxy | Smry',
   description: 'Read articles with Smry',
+  openGraph: {
+    type: 'website',
+    title: 'Proxy | Smry',
+    description: 'Read articles with Smry',
+    siteName: 'smry.ai',
+    images: [
+      {
+        url: 'https://smry.ai/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'smry - Read Anything, Summarize Everything',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Proxy | Smry',
+    description: 'Read articles with Smry',
+    images: ['https://smry.ai/opengraph-image'],
+  },
 };
 
 // Generate dynamic metadata for OG tags
@@ -47,11 +67,20 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         description: `Read this article from ${hostname} with Smry`,
         siteName: 'smry.ai',
         url: canonicalUrl,
+        images: [
+          {
+            url: 'https://smry.ai/opengraph-image',
+            width: 1200,
+            height: 630,
+            alt: 'smry - Read Anything, Summarize Everything',
+          },
+        ],
       },
       twitter: {
-        card: 'summary',
+        card: 'summary_large_image',
         title: `Article from ${hostname}`,
         description: `Read this article from ${hostname} with Smry`,
+        images: ['https://smry.ai/opengraph-image'],
       },
     };
   }
@@ -104,7 +133,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       },
     };
 
-    // Add OG image if available - ensure absolute URL
+    // Add OG image - use article image if available, otherwise use default
+    const defaultImage = {
+      url: 'https://smry.ai/opengraph-image',
+      width: 1200,
+      height: 630,
+      alt: 'smry - Read Anything, Summarize Everything',
+    };
+
     if (article.image) {
       try {
         // Ensure image URL is absolute
@@ -134,8 +170,26 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
           images: [{ url: imageUrl }],
         };
       } catch {
-        // If image URL is invalid, don't add it to metadata
+        // If image URL is invalid, fall back to default
+        metadata.openGraph = {
+          ...metadata.openGraph,
+          images: [defaultImage],
+        };
+        metadata.twitter = {
+          ...metadata.twitter,
+          images: ['https://smry.ai/opengraph-image'],
+        };
       }
+    } else {
+      // No article image - use default OG image
+      metadata.openGraph = {
+        ...metadata.openGraph,
+        images: [defaultImage],
+      };
+      metadata.twitter = {
+        ...metadata.twitter,
+        images: ['https://smry.ai/opengraph-image'],
+      };
     }
 
     return metadata;
@@ -146,6 +200,27 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     return {
       title: `Article from ${hostname} | Smry`,
       description: `Read this article from ${hostname} with Smry`,
+      openGraph: {
+        type: 'article',
+        title: `Article from ${hostname} | Smry`,
+        description: `Read this article from ${hostname} with Smry`,
+        siteName: 'smry.ai',
+        url: canonicalUrl,
+        images: [
+          {
+            url: 'https://smry.ai/opengraph-image',
+            width: 1200,
+            height: 630,
+            alt: 'smry - Read Anything, Summarize Everything',
+          },
+        ],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `Article from ${hostname} | Smry`,
+        description: `Read this article from ${hostname} with Smry`,
+        images: ['https://smry.ai/opengraph-image'],
+      },
     };
   }
 }

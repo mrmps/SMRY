@@ -19,11 +19,20 @@ export const metadata: Metadata = {
     title: 'Bypass Paywalls & Read Full Articles Free | Smry',
     description: 'Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account required.',
     url: 'https://smry.ai',
+    images: [
+      {
+        url: 'https://smry.ai/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'smry - Read Anything, Summarize Everything',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Bypass Paywalls & Read Full Articles Free | Smry',
     description: 'Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account required.',
+    images: ['https://smry.ai/opengraph-image'],
   },
 };
 

@@ -2,155 +2,149 @@ export type ChangeType = "new" | "fix" | "improved";
 
 export interface Change {
   type: ChangeType;
-  text: string;
-  detail?: string;
+  /** Translation key for the change text (e.g., "entry1_change1_text") */
+  textKey: string;
+  /** Translation key for the detail (e.g., "entry1_change1_detail") */
+  detailKey?: string;
   premium?: boolean;
 }
 
 export interface ChangelogEntry {
-  date: string;
+  /** Translation key for the date (e.g., "entry1_date") */
+  dateKey: string;
   changes: Change[];
 }
 
+/**
+ * Changelog entries using translation keys.
+ * Actual text is in messages/{locale}.json under "changelogEntries"
+ */
 export const changelog: ChangelogEntry[] = [
   {
-    date: "Feb 1, 2026",
+    dateKey: "entry1_date",
     changes: [
       {
         type: "new",
-        text: "Automatic smart source selection",
-        detail:
-          "Articles are now automatically fetched from the best available source. The system races multiple sources and picks the one with the most complete content.",
+        textKey: "entry1_change1_text",
+        detailKey: "entry1_change1_detail",
       },
       {
         type: "new",
-        text: "Optimistic content updates",
-        detail:
-          "Content may be updated in real-time when a longer, more complete version is found from another source.",
+        textKey: "entry1_change2_text",
+        detailKey: "entry1_change2_detail",
       },
       {
         type: "improved",
-        text: "Better loading experience",
-        detail:
-          "New richer loading skeleton and compact error display with streamlined retry options.",
+        textKey: "entry1_change3_text",
+        detailKey: "entry1_change3_detail",
       },
       {
         type: "improved",
-        text: "Cleaner reading interface",
-        detail:
-          "Manual source selector is now hidden when auto-fetch is used. Mid-article and footer ad slots for less intrusive placement.",
+        textKey: "entry1_change4_text",
+        detailKey: "entry1_change4_detail",
       },
       {
         type: "fix",
-        text: "Mobile horizontal scrolling",
-        detail:
-          "Fixed horizontal scrolling issues on mobile devices. Cards and ads now scale properly on all screen sizes.",
+        textKey: "entry1_change5_text",
+        detailKey: "entry1_change5_detail",
       },
     ],
   },
   {
-    date: "Jan 25, 2025",
+    dateKey: "entry2_date",
     changes: [
       {
         type: "new",
-        text: "Language switcher on article page",
-        detail:
-          "Switch languages directly from the reader view without returning to the homepage.",
+        textKey: "entry2_change1_text",
+        detailKey: "entry2_change1_detail",
       },
       {
         type: "fix",
-        text: "Fixed language switching",
-        detail:
-          "Language switching now works reliably across all pages and preserves your current article.",
+        textKey: "entry2_change2_text",
+        detailKey: "entry2_change2_detail",
       },
       {
         type: "fix",
-        text: "Fixed mobile keyboard behavior",
-        detail:
-          "The keyboard no longer auto-opens on mobile when visiting the homepage, avoiding an annoying UX issue.",
+        textKey: "entry2_change3_text",
+        detailKey: "entry2_change3_detail",
       },
     ],
   },
   {
-    date: "Jan 11, 2025",
+    dateKey: "entry3_date",
     changes: [
       {
         type: "new",
-        text: "Premium AI summaries",
-        detail:
-          "Premium users now get summaries powered by Claude 3.5 Haiku, Gemini 3 Flash, and GPT-5 Mini — higher quality and more accurate than free-tier models.",
+        textKey: "entry3_change1_text",
+        detailKey: "entry3_change1_detail",
         premium: true,
       },
-      { type: "new", text: "Changelog page" },
+      {
+        type: "new",
+        textKey: "entry3_change2_text"
+      },
     ],
   },
   {
-    date: "Jan 10, 2025",
+    dateKey: "entry4_date",
     changes: [
       {
         type: "new",
-        text: "Bypass status indicator",
-        detail:
-          "See whether each source successfully retrieved the full article, got partial content, or was blocked.",
+        textKey: "entry4_change1_text",
+        detailKey: "entry4_change1_detail",
         premium: true,
       },
     ],
   },
   {
-    date: "Dec 15, 2024",
+    dateKey: "entry5_date",
     changes: [
       {
         type: "new",
-        text: "Multi-language support",
-        detail:
-          "SMRY is now available in English, Spanish, German, Portuguese, Dutch, and Chinese.",
+        textKey: "entry5_change1_text",
+        detailKey: "entry5_change1_detail",
       },
       {
         type: "new",
-        text: "Reading history",
-        detail:
-          "Track and search through your reading history. Pro users get unlimited history with full-text search.",
+        textKey: "entry5_change2_text",
+        detailKey: "entry5_change2_detail",
         premium: true,
       },
     ],
   },
   {
-    date: "Dec 1, 2024",
+    dateKey: "entry6_date",
     changes: [
       {
         type: "improved",
-        text: "Parallel source fetching",
-        detail:
-          "Articles are now fetched from multiple sources simultaneously, reducing load times and improving bypass success rates.",
+        textKey: "entry6_change1_text",
+        detailKey: "entry6_change1_detail",
       },
     ],
   },
   {
-    date: "Nov 20, 2024",
+    dateKey: "entry7_date",
     changes: [
       {
         type: "new",
-        text: "AI summaries",
-        detail:
-          "Get AI-generated summaries of any article in seconds, available in 8 languages. Premium users get unlimited summaries.",
+        textKey: "entry7_change1_text",
+        detailKey: "entry7_change1_detail",
         premium: true,
       },
       {
         type: "new",
-        text: "Copy to LLMs",
-        detail:
-          "One-click copy articles as clean markdown for ChatGPT, Claude, or other AI assistants.",
+        textKey: "entry7_change2_text",
+        detailKey: "entry7_change2_detail",
       },
     ],
   },
   {
-    date: "Nov 10, 2024",
+    dateKey: "entry8_date",
     changes: [
       {
         type: "fix",
-        text: "Improved paywall detection",
-        detail:
-          "Better handling of soft paywalls that use JavaScript to hide content after page load.",
+        textKey: "entry8_change1_text",
+        detailKey: "entry8_change1_detail",
       },
     ],
   },

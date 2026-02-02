@@ -7,6 +7,7 @@ import { changelog } from "@/lib/changelog";
 
 export function ChangelogContent() {
   const t = useTranslations("changelog");
+  const tEntries = useTranslations("changelogEntries");
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -42,12 +43,12 @@ export function ChangelogContent() {
         {/* Premium highlight */}
         <div className="mb-12 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-            Pro features
+            {t("proFeatures")}
           </p>
           <p className="mt-1 text-sm text-amber-700 dark:text-amber-300/80">
-            Premium AI models, unlimited summaries, bypass indicators, and unlimited history.{" "}
+            {t("proFeaturesDescription")}{" "}
             <Link href="/pricing" className="underline underline-offset-2">
-              Upgrade
+              {t("upgrade")}
             </Link>
           </p>
         </div>
@@ -55,22 +56,24 @@ export function ChangelogContent() {
         <div className="space-y-12">
           {changelog.map((entry, i) => (
             <section key={i}>
-              <time className="text-sm font-medium text-muted-foreground">{entry.date}</time>
+              <time className="text-sm font-medium text-muted-foreground">
+                {tEntries(entry.dateKey)}
+              </time>
               <ul className="mt-4 space-y-4">
                 {entry.changes.map((change, j) => (
                   <li key={j}>
                     <div>
                       <p className="text-[15px] leading-relaxed">
-                        <span className="font-medium">{change.text}</span>
+                        <span className="font-medium">{tEntries(change.textKey)}</span>
                         {change.premium && (
                           <span className="ml-2 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                             Pro
                           </span>
                         )}
                       </p>
-                      {change.detail && (
+                      {change.detailKey && (
                         <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                          {change.detail}
+                          {tEntries(change.detailKey)}
                         </p>
                       )}
                     </div>

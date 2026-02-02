@@ -34,12 +34,21 @@ export const metadata: Metadata = {
     url: "https://smry.ai",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
+    images: [
+      {
+        url: "https://smry.ai/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "smry - Read Anything, Summarize Everything",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Read Anything, Summarize Everything | Smry",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
+    images: ["https://smry.ai/opengraph-image"],
   },
 };
 
