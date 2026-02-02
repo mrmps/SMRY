@@ -324,10 +324,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   });
 
   // Ad distribution: sidebar + inline ad + footer ad
-  // Gravity returns: [0]=below_response, [1]=right_response, [2]=inline_response
+  // Gravity returns: [0]=right_response (sidebar), [1]=inline_response, [2]=below_response (footer)
   const sidebarAd = gravityAds[0] ?? null;
-  const inlineAd = gravityAds[2] ?? null;
-  const footerAd = gravityAds[1] ?? null;  // right_response used as footer ad
+  const inlineAd = gravityAds[1] ?? null;
+  const footerAd = gravityAds[2] ?? null;
 
   // Handle article load: save to history
   useEffect(() => {

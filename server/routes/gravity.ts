@@ -55,6 +55,7 @@ interface GravityRequest {
   messages: GravityMessage[];
   sessionId: string;
   placements: GravityPlacement[];
+  numAds?: number;
   testAd?: boolean;
   relevancy?: number;
   device?: GravityDevice;
@@ -225,10 +226,11 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const gravityRequest: GravityRequest = {
         messages,
         sessionId,
+        numAds: 3,
         placements: [
-          { placement: "below_response", placement_id: "smry-summary-bottom" },
           { placement: "right_response", placement_id: "smry-sidebar-right" },
           { placement: "inline_response", placement_id: "smry-article-inline" },
+          { placement: "below_response", placement_id: "smry-footer-bottom" },
         ],
         ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0,
