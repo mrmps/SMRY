@@ -336,20 +336,12 @@ export const ArticleChat = memo(function ArticleChat({
                 </div>
               );
             })}
-            {/* Loading indicator - show when streaming but no text content yet */}
-            {(() => {
-              const lastMessage = messages[messages.length - 1];
-              const showLoader = isLoading && (
-                messages.length === 0 ||
-                lastMessage?.role === "user" ||
-                (lastMessage?.role === "assistant" && !lastMessage?.parts?.some(part => part.type === "text"))
-              );
-              return showLoader ? (
-                <div className="flex justify-start px-1">
-                  <ChatLoader />
-                </div>
-              ) : null;
-            })()}
+            {/* Loading indicator - show when waiting for assistant response */}
+            {isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "user" && (
+              <div className="flex justify-start px-1">
+                <ChatLoader />
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
