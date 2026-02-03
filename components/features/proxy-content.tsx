@@ -21,6 +21,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { FeedbackIcon, SummaryIcon } from "@/components/ui/custom-icons";
+import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
@@ -435,6 +436,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     }
   }, [sidebarOpen]);
 
+  // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
+        e.preventDefault();
+        handleSidebarChange(!sidebarOpen);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen, handleSidebarChange]);
+
   return (
     <div className="flex h-dvh flex-col bg-background">
       {/* Promo Banner - desktop/tablet */}
@@ -508,17 +522,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1.5">
-              {/* Chat button - shows when sidebar is closed */}
+              {/* Ask AI button - shows when sidebar is closed */}
               {!sidebarOpen && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => handleSidebarChange(true)}
-                  className="gap-1.5"
+                  className="relative h-9 pl-3 pr-12 text-sm text-muted-foreground bg-muted/50 border border-border rounded-lg hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <PanelRightOpen className="size-4" />
-                  Chat
-                </Button>
+                  <span className="mt-px">Ask AI</span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <Kbd>⌘I</Kbd>
+                  </span>
+                </button>
               )}
 
               <ShareButton

@@ -87,6 +87,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onHasMessagesChange,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const isPremium = usageData?.isPremium ?? false;
@@ -160,6 +161,17 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, lastMessageText, isLoading]);
+
+  // Auto-focus textarea when chat opens
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure the DOM is ready
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   const handleLanguageChange = useCallback(
     (newLang: string | null) => {
@@ -389,6 +401,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             onSubmit={handleSubmit}
             disabled={isLoading || isLimitReached}
             className="rounded-2xl"
+            textareaRef={textareaRef}
           >
             <PromptInputTextarea
               placeholder={isLimitReached ? "Daily limit reached" : "Ask about this article..."}
