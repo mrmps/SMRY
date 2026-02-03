@@ -34,6 +34,7 @@
     "@clerk/backend": "^2.29.0",
     "@clerk/nextjs": "^6.36.5",
     "@clickhouse/client": "^1.15.0",
+    "@databuddy/sdk": "^2.3.29",
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/cron": "^1.4.1",
     "@elysiajs/node": "^1.4.3",

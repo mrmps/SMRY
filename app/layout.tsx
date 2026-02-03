@@ -13,6 +13,7 @@ const syne = Syne({
 });
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { Databuddy } from "@databuddy/sdk/react"
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -95,6 +96,12 @@ export default async function RootLayout({
             themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "system"]}
             disableTransitionOnChange
           >
+            <Databuddy
+              clientId="638f8e5f-f436-4d00-a459-66dee9152e3c"
+              trackPerformance
+              trackWebVitals
+              trackErrors
+            />
             <GoogleAnalytics gaId="G-RFC55FX414" />
             <NuqsAdapter>
               <QueryProvider>
