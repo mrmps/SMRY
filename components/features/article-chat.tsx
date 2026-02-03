@@ -17,7 +17,6 @@ import {
   ArrowUp,
   Square,
   Zap,
-  Infinity,
   PanelRightClose,
   Trash,
   X,
@@ -36,6 +35,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChatSuggestions, Suggestion } from "@/components/ui/chat-suggestions";
 import { Logo } from "@/components/shared/logo";
+import {
+  SlashCommands,
+  useSlashCommands,
+} from "@/components/ui/slash-commands";
 
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
@@ -141,6 +144,30 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     sendMessage(suggestion);
   }, [sendMessage]);
 
+  // Slash commands hook
+  const {
+    isOpen: isSlashMenuOpen,
+    filter: slashFilter,
+    selectedIndex: slashSelectedIndex,
+    handleClose: handleSlashClose,
+    handleSelect: handleSlashSelect,
+    handleKeyDown: handleSlashKeyDown,
+    setSelectedIndex: setSlashSelectedIndex,
+  } = useSlashCommands({
+    input,
+    onSendMessage: sendMessage,
+    onInputChange: setInput,
+  });
+
+  // Handle textarea key down - integrate slash commands
+  const handleTextareaKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Let slash commands handle keyboard events when menu is open
+      handleSlashKeyDown(e);
+    },
+    [handleSlashKeyDown]
+  );
+
   // Expose clearMessages and hasMessages to parent via ref
   useImperativeHandle(ref, () => ({
     clearMessages,
@@ -228,12 +255,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">Chat</span>
-            {isPremium && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                <Infinity className="size-2.5" />
-                Unlimited
-              </span>
-            )}
           </div>
 
           <div className="flex min-w-0 items-center gap-1.5">
@@ -394,51 +415,64 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {/* Input area */}
       <div className="shrink-0">
         <div className="p-3 sm:p-4">
-          <PromptInput
-            value={input}
-            onValueChange={setInput}
-            isLoading={isLoading}
-            onSubmit={handleSubmit}
-            disabled={isLoading || isLimitReached}
-            className="rounded-2xl"
-            textareaRef={textareaRef}
-          >
-            <PromptInputTextarea
-              placeholder={isLimitReached ? "Daily limit reached" : "Ask about this article..."}
-              className="text-sm"
+          <div className="relative">
+            {/* Slash Commands Menu */}
+            <SlashCommands
+              isOpen={isSlashMenuOpen && !isLoading}
+              onClose={handleSlashClose}
+              onSelect={handleSlashSelect}
+              filter={slashFilter}
+              selectedIndex={slashSelectedIndex}
+              onSelectedIndexChange={setSlashSelectedIndex}
             />
-            <PromptInputActions className="justify-end px-2 pb-2">
-              {isLoading ? (
-                <PromptInputAction tooltip="Stop generating">
-                  <Button
-                    type="button"
-                    size="icon"
-                    onClick={stop}
-                    className="size-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    <Square className="size-4" />
-                  </Button>
-                </PromptInputAction>
-              ) : (
-                <PromptInputAction tooltip={isLimitReached ? "Daily limit reached" : "Send message"}>
-                  <Button
-                    type="button"
-                    size="icon"
-                    disabled={!input.trim() || isLimitReached}
-                    onClick={() => handleSubmit()}
-                    className={cn(
-                      "size-8 rounded-full transition-all",
-                      input.trim() && !isLimitReached
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    <ArrowUp className="size-4" />
-                  </Button>
-                </PromptInputAction>
-              )}
-            </PromptInputActions>
-          </PromptInput>
+
+            <PromptInput
+              value={input}
+              onValueChange={setInput}
+              isLoading={isLoading}
+              onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
+              disabled={isLimitReached}
+              className="rounded-2xl"
+              textareaRef={textareaRef}
+            >
+              <PromptInputTextarea
+                placeholder={isLimitReached ? "Daily limit reached" : "Ask anything, / for actions..."}
+                className="text-sm"
+                onKeyDown={handleTextareaKeyDown}
+              />
+              <PromptInputActions className="justify-end px-2 pb-2">
+                {isLoading ? (
+                  <PromptInputAction tooltip="Stop generating">
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={stop}
+                      className="size-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      <Square className="size-4" />
+                    </Button>
+                  </PromptInputAction>
+                ) : (
+                  <PromptInputAction tooltip={isLimitReached ? "Daily limit reached" : "Send message (Enter)"}>
+                      <Button
+                        type="button"
+                        size="icon"
+                        disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
+                        onClick={() => handleSubmit()}
+                        className={cn(
+                          "size-8 rounded-full transition-all",
+                          input.trim() && !isLimitReached && !isSlashMenuOpen
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        <ArrowUp className="size-4" />
+                      </Button>
+                    </PromptInputAction>
+                )}
+              </PromptInputActions>
+            </PromptInput>
+          </div>
         </div>
       </div>
 

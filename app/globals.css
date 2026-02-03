@@ -797,3 +797,95 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
   --sidebar-border: hsl(220 13% 91%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
+
+/* =============================================================================
+ * CHAT ANIMATIONS
+ * Refined animations for AI chat interactions
+ * ============================================================================= */
+
+/* Message fade in animation */
+@keyframes chat-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-message-animate {
+  animation: chat-message-in 0.25s ease-out;
+}
+
+/* Send button pulse on first message */
+@keyframes chat-send-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--glow);
+  }
+  50% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.chat-send-pulse {
+  animation: chat-send-pulse 1.5s ease-in-out infinite;
+}
+
+/* Slash command menu animation */
+@keyframes slash-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.slash-menu-animate {
+  animation: slash-menu-in 0.15s ease-out;
+}
+
+/* Suggestion chip hover animation */
+@keyframes suggestion-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Input focus glow */
+.chat-input-focus {
+  transition: box-shadow 0.2s ease;
+}
+
+.chat-input-focus:focus-within {
+  box-shadow: 0 0 0 2px var(--glow-muted);
+}
+
+/* Typing indicator animation */
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.2s;
+}
