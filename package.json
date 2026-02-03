@@ -30,6 +30,7 @@
     "email:changelog:dry": "bun scripts/send-changelog-email.ts --dry-run"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.70",
     "@base-ui/react": "^1.1.0",
     "@clerk/backend": "^2.29.0",
     "@clerk/nextjs": "^6.36.5",
