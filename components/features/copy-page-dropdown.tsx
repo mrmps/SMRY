@@ -170,11 +170,10 @@ export function CopyPageDropdown({
                 size="icon"
                 className={cn("h-8 w-8 text-muted-foreground hover:text-foreground", className)}
               >
-                {copied ? (
-                  <Check className="size-4 text-green-600" />
-                ) : (
-                  <Copy className="size-4" />
-                )}
+                <span className="relative size-4">
+                  <Copy className={cn("size-4 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-0 scale-75 blur-sm" : "opacity-100 scale-100 blur-0")} />
+                  <Check className={cn("size-4 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-75 blur-sm")} />
+                </span>
               </Button>
             );
           }}
@@ -237,7 +236,7 @@ export function CopyPageDropdown({
                 Copy as Markdown for LLMs
               </span>
             </div>
-            {copied && <Check className="ml-auto size-4 text-green-600" />}
+            {copied && <Check className="ml-auto size-4 text-muted-foreground" />}
           </MenuItem>
 
           <MenuSeparator />
@@ -295,12 +294,11 @@ export function CopyPageDropdown({
           onClick={handleCopy}
           className="h-8 rounded-r-none border-0 gap-1.5 text-xs font-medium hover:bg-accent"
         >
-          {copied ? (
-            <Check className="size-3.5 text-green-600" />
-          ) : (
-            <Copy className="size-3.5" />
-          )}
-          {copied ? "Copied" : "Copy page"}
+          <span className="relative size-3.5">
+            <Copy className={cn("size-3.5 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-0 scale-75 blur-sm" : "opacity-100 scale-100 blur-0")} />
+            <Check className={cn("size-3.5 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-75 blur-sm")} />
+          </span>
+          <span className="transition-opacity duration-200">{copied ? "Copied" : "Copy page"}</span>
         </Button>
 
         {/* Divider */}
@@ -383,7 +381,7 @@ export function CopyPageDropdown({
                   Copy as Markdown for LLMs
                 </span>
               </div>
-              {copied && <Check className="ml-auto size-4 text-green-600" />}
+              {copied && <Check className="ml-auto size-4 text-muted-foreground" />}
             </MenuItem>
 
             <MenuSeparator />
