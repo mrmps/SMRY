@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, memo } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 import Link from "next/link";
 import { LANGUAGES } from "@/types/api";
 import {
@@ -19,7 +19,7 @@ import {
   Zap,
   Infinity,
   PanelRightClose,
-  Trash2,
+  Trash,
   X,
   Copy,
   Check,
@@ -58,21 +58,34 @@ function getMessageText(message: UIMessage): string {
     .join("");
 }
 
+export interface ArticleChatHandle {
+  clearMessages: () => void;
+  hasMessages: boolean;
+}
+
 interface ArticleChatProps {
   articleContent: string;
   articleTitle?: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   variant?: "inline" | "sidebar";
+  hideHeader?: boolean;
+  language?: string;
+  onLanguageChange?: (language: string) => void;
+  onHasMessagesChange?: (hasMessages: boolean) => void;
 }
 
-export const ArticleChat = memo(function ArticleChat({
+export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
   articleContent,
   articleTitle,
   isOpen,
   onOpenChange,
   variant = "inline",
-}: ArticleChatProps) {
+  hideHeader = false,
+  language: languageProp,
+  onLanguageChange,
+  onHasMessagesChange,
+}, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
@@ -80,10 +93,14 @@ export const ArticleChat = memo(function ArticleChat({
   const showUsageCounter = usageData?.limit != null && usageData.limit > 0;
   const isLimitReached = !isPremium && usageData?.remaining === 0;
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
+  const [storedLanguage, setStoredLanguage] = useLocalStorage(
     "chat-language",
     "en",
   );
+
+  // Use prop if provided, otherwise use localStorage
+  const preferredLanguage = languageProp ?? storedLanguage;
+  const setPreferredLanguage = onLanguageChange ?? setStoredLanguage;
 
   const {
     messages,
@@ -122,6 +139,17 @@ export const ArticleChat = memo(function ArticleChat({
   const handleSuggestionClick = useCallback((suggestion: string) => {
     sendMessage(suggestion);
   }, [sendMessage]);
+
+  // Expose clearMessages and hasMessages to parent via ref
+  useImperativeHandle(ref, () => ({
+    clearMessages,
+    hasMessages: messages.length > 0,
+  }), [clearMessages, messages.length]);
+
+  // Notify parent when hasMessages changes
+  useEffect(() => {
+    onHasMessagesChange?.(messages.length > 0);
+  }, [messages.length, onHasMessagesChange]);
 
   // Get the last message text for scroll dependency
   const lastMessageText = messages.length > 0
@@ -179,81 +207,82 @@ export const ArticleChat = memo(function ArticleChat({
       )}
     >
       {/* Header */}
-      <div
-        className={cn(
-          "flex items-center justify-between gap-2 overflow-hidden px-3 py-2.5",
-          variant === "sidebar"
-            ? "border-b border-border"
-            : "border-b border-border bg-muted/50",
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">Chat</span>
-          {isPremium && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              <Infinity className="size-2.5" />
-              Unlimited
-            </span>
+      {!hideHeader && (
+        <div
+          className={cn(
+            "flex items-center justify-between gap-2 overflow-hidden px-3 py-2.5",
+            variant !== "sidebar" && "border-b border-border bg-muted/50",
           )}
-        </div>
-
-        <div className="flex min-w-0 items-center gap-1.5">
-          {messages.length > 0 && (
-            <button
-              onClick={clearMessages}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Clear chat"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          )}
-
-          <Select
-            value={preferredLanguage}
-            onValueChange={handleLanguageChange}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="h-7 w-auto min-w-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium shadow-sm">
-              <LanguageIcon className="size-3" />
-              <span className="truncate">
-                {LANGUAGES.find((l) => l.code === preferredLanguage)?.name ||
-                  "Lang"}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">Chat</span>
+            {isPremium && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                <Infinity className="size-2.5" />
+                Unlimited
               </span>
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang.code} value={lang.code}>
-                  {lang.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenChange(false);
-            }}
-            className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground z-10"
-            aria-label="Close chat"
-          >
-            {variant === "sidebar" ? (
-              <PanelRightClose className="size-4" />
-            ) : (
-              <X className="size-4" />
             )}
-          </button>
+          </div>
+
+          <div className="flex min-w-0 items-center gap-1.5">
+            {messages.length > 0 && (
+              <button
+                onClick={clearMessages}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Clear chat"
+              >
+                <Trash className="size-3.5" />
+              </button>
+            )}
+
+            <Select
+              value={preferredLanguage}
+              onValueChange={handleLanguageChange}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="h-7 w-auto min-w-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium shadow-sm">
+                <LanguageIcon className="size-3" />
+                <span className="truncate">
+                  {LANGUAGES.find((l) => l.code === preferredLanguage)?.name ||
+                    "Lang"}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenChange(false);
+              }}
+              className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground z-10"
+              aria-label="Close chat"
+            >
+              {variant === "sidebar" ? (
+                <PanelRightClose className="size-4" />
+              ) : (
+                <X className="size-4" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Messages - Mobile-first conversation container */}
-      <div
-        className={cn(
-          "flex-1 overflow-y-auto",
-          variant === "sidebar" ? "min-h-0" : "max-h-[300px] sm:max-h-[400px]",
-        )}
-      >
+      <div className="relative flex-1 min-h-0">
+        <div
+          className={cn(
+            "h-full overflow-y-auto",
+            variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",
+          )}
+        >
         {messages.length === 0 ? (
           <div className="flex h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
             <div className="flex-1 flex flex-col items-center justify-center text-center mb-4">
@@ -308,7 +337,7 @@ export const ArticleChat = memo(function ArticleChat({
 
                   {/* Action buttons for assistant messages */}
                   {showActions && (
-                    <div className="flex items-center gap-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 px-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         onClick={() => handleCopyMessage(message.id, messageText)}
@@ -345,6 +374,9 @@ export const ArticleChat = memo(function ArticleChat({
             <div ref={messagesEndRef} />
           </div>
         )}
+        </div>
+        {/* Fog effect at bottom */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-background to-transparent" />
       </div>
 
       {/* Input area */}
@@ -450,4 +482,4 @@ export const ArticleChat = memo(function ArticleChat({
       )}
     </div>
   );
-});
+}));

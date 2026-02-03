@@ -184,7 +184,19 @@ export function useArticleChat({
     [getToken],
   ) as typeof globalThis.fetch;
 
-  /* eslint-disable react-hooks/refs -- ref in customFetch is accessed in async callback, not during render */
+  // Use refs for dynamic values that need to be current at request time
+  const languageRef = useRef(language);
+  const articleContentRef = useRef(articleContent);
+  const articleTitleRef = useRef(articleTitle);
+
+  // Keep refs updated
+  useEffect(() => {
+    languageRef.current = language;
+    articleContentRef.current = articleContent;
+    articleTitleRef.current = articleTitle;
+  }, [language, articleContent, articleTitle]);
+
+  /* eslint-disable react-hooks/refs -- refs are accessed in async callback, not during render */
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -194,14 +206,14 @@ export function useArticleChat({
           return {
             body: {
               messages,
-              articleContent,
-              articleTitle,
-              language,
+              articleContent: articleContentRef.current,
+              articleTitle: articleTitleRef.current,
+              language: languageRef.current,
             },
           };
         },
       }),
-    [customFetch, articleContent, articleTitle, language],
+    [customFetch],
   );
   /* eslint-enable react-hooks/refs */
 

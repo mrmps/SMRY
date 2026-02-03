@@ -9,12 +9,14 @@ const Drawer = ({
   shouldScaleBackground = true,
   scrollLockTimeout = 100,
   closeThreshold = 0.15,
+  handleOnly = true,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
     shouldScaleBackground={shouldScaleBackground}
     scrollLockTimeout={scrollLockTimeout}
     closeThreshold={closeThreshold}
+    handleOnly={handleOnly}
     {...props}
   />
 )
@@ -38,12 +40,30 @@ const DrawerOverlay = React.forwardRef<
 ))
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
+const DrawerHandle = React.forwardRef<
+  React.ElementRef<typeof DrawerPrimitive.Handle>,
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Handle>
+>(({ className, ...props }, ref) => (
+  <DrawerPrimitive.Handle
+    ref={ref}
+    className={cn(
+      "flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none",
+      className
+    )}
+    {...props}
+  >
+    <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+  </DrawerPrimitive.Handle>
+))
+DrawerHandle.displayName = "DrawerHandle"
+
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & {
     overlayClassName?: string
+    showHandle?: boolean
   }
->(({ className, overlayClassName, children, ...props }, ref) => (
+>(({ className, overlayClassName, children, showHandle = true, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay className={overlayClassName} />
     <DrawerPrimitive.Content
@@ -54,10 +74,7 @@ const DrawerContent = React.forwardRef<
       )}
       {...props}
     >
-      {/* Larger drag handle area for easier swipe-to-close */}
-      <div className="flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing">
-        <div className="h-2 w-[100px] rounded-full bg-muted" />
-      </div>
+      {showHandle && <DrawerHandle />}
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
@@ -120,6 +137,7 @@ export {
   DrawerTrigger,
   DrawerClose,
   DrawerContent,
+  DrawerHandle,
   DrawerHeader,
   DrawerFooter,
   DrawerTitle,

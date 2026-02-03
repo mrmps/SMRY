@@ -15,7 +15,6 @@ import {
   MoreHorizontal,
   ExternalLink,
   PanelRightOpen,
-  X,
   Check,
   ArrowLeft,
   Copy,
@@ -36,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { ArticleContent } from "@/components/article/content";
 import { ArticleChat } from "@/components/features/article-chat";
+import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
@@ -825,50 +825,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
               {/* Elements below are OUTSIDE scroll container to prevent Vaul scroll lock interference */}
 
-              {/* Chat Panel - center-origin animation for snappy feel */}
-              {mobileSummaryOpen && (
-                <>
-                  {/* Backdrop */}
-                  <div
-                    className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
-                    onClick={() => setMobileSummaryOpen(false)}
-                  />
-                  {/* Panel */}
-                  <div
-                    className="fixed inset-x-3 top-[8vh] bottom-[8vh] z-50 flex flex-col rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Chat"
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") setMobileSummaryOpen(false);
-                    }}
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 pt-3 pb-3 border-b border-border shrink-0">
-                      <button
-                        onClick={() => setMobileSummaryOpen(false)}
-                        className="size-8 flex items-center justify-center rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
-                        aria-label="Close chat"
-                      >
-                        <X className="size-4" />
-                      </button>
-                      <span className="text-lg font-semibold">Chat</span>
-                      <div className="size-8" />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto touch-pan-y">
-                      <ArticleChat
-                        articleContent={articleTextContent || ""}
-                        articleTitle={articleTitle}
-                        isOpen={true}
-                        onOpenChange={() => setMobileSummaryOpen(false)}
-                        variant="sidebar"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+              {/* Mobile Chat Drawer */}
+              <MobileChatDrawer
+                open={mobileSummaryOpen}
+                onOpenChange={setMobileSummaryOpen}
+                articleContent={articleTextContent || ""}
+                articleTitle={articleTitle}
+              />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
               {!isPremium && sidebarAd && !mobileAdDismissed && (

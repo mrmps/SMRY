@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import {
   Share2 as ShareIcon,
-  Link as LinkIcon,
-  Check as CheckIcon,
+  Link2,
+  Check,
   Linkedin,
+  X,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generateShareUrls } from "@/lib/share-urls";
@@ -26,7 +28,7 @@ const RedditIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const XIcon = ({ className }: { className?: string }) => (
+const XTwitterIcon = ({ className }: { className?: string }) => (
   <svg
     className={className}
     viewBox="0 0 24 24"
@@ -46,10 +48,6 @@ interface ShareButtonDataProps {
   sidebarOpen?: boolean;
 }
 
-interface ShareContentProps extends ShareButtonDataProps {
-  onActionComplete?: () => void;
-}
-
 interface ShareButtonProps extends ShareButtonDataProps {
   triggerVariant?: "text" | "icon";
   triggerClassName?: string;
@@ -59,158 +57,155 @@ interface ShareButtonProps extends ShareButtonDataProps {
 const hasNativeShareSupport =
   typeof navigator !== "undefined" && "share" in navigator;
 
-export const ShareContent: React.FC<ShareContentProps> = React.memo(
-  function ShareContent({
-    url,
-    originalUrl,
-    articleTitle = "Article",
-    source = "smry-fast",
-    onActionComplete,
-  }) {
-    const [copied, setCopied] = useState(false);
+// Memoized modal content
+const ShareModalContent = React.memo(function ShareModalContent({
+  articleTitle,
+  url,
+  originalUrl,
+  source,
+  onClose,
+}: ShareButtonDataProps & { onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
 
-    const finalUrl = url;
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy link:", error);
+    }
+  };
 
-    const handleCopy = async () => {
+  const handleNativeShare = async () => {
+    if (navigator.share) {
       try {
-        await navigator.clipboard.writeText(finalUrl);
-        setCopied(true);
-        setTimeout(() => {
-          setCopied(false);
-          if (onActionComplete) onActionComplete();
-        }, 1500);
+        await navigator.share({ url });
+        onClose();
       } catch (error) {
-        console.error("Failed to copy link:", error);
+        console.log("Share cancelled:", error);
       }
-    };
+    }
+  };
 
-    const handleNativeShare = async () => {
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            url: finalUrl,
-          });
-          if (onActionComplete) onActionComplete();
-        } catch (error) {
-          console.log("Share cancelled or error:", error);
-        }
-      }
-    };
+  const shareUrls = generateShareUrls(originalUrl || "");
 
-    const shareUrls = generateShareUrls(originalUrl || "");
-    const socialLinks = [
-      {
-        name: "X",
-        icon: <XIcon className="size-3.5" />,
-        href: shareUrls.x,
-      },
-      {
-        name: "LinkedIn",
-        icon: <Linkedin className="size-3.5" />,
-        href: shareUrls.linkedin,
-      },
-      {
-        name: "Reddit",
-        icon: <RedditIcon className="size-3.5" />,
-        href: shareUrls.reddit,
-      },
-    ];
+  return (
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4">
+        <h2 className="text-base font-semibold text-foreground">Share</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors -mr-1"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
 
-    return (
-      <div className="flex flex-col">
-        {/* Article title preview - Linear-style input look */}
-        <div className="flex flex-row items-start gap-1 pt-0.5">
-          <div className="flex-1 self-start min-w-0 pt-0.5">
-            <div className="min-h-0">
-              <div
-                className="text-[18px] font-semibold leading-6 text-foreground break-words"
-                style={{ letterSpacing: '-0.12px' }}
-              >
-                {articleTitle || "Untitled article"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Source info - Linear-style muted text */}
-        <div className="pt-1.5 pb-4">
-          <p
-            className="text-[15px] font-[450] text-muted-foreground leading-[22.5px] break-words"
-            style={{ letterSpacing: '-0.1px' }}
-          >
-            smry.ai · {source}
+      {/* Content */}
+      <div className="px-4 pb-6">
+        {/* Article Preview Card */}
+        <div className="rounded-xl border border-border bg-muted/30 p-4 mb-5">
+          <p className="text-[15px] font-medium text-foreground leading-snug line-clamp-2 mb-1.5">
+            {articleTitle || "Untitled article"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            via smry.ai
           </p>
         </div>
 
-        {/* URL Preview - Copy button inline */}
+        {/* Copy Link Section */}
         <div className="mb-5">
-          <div className="mb-2">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              Link
-            </span>
-          </div>
-          <div className="flex items-center gap-2 rounded-[5px] border-[0.5px] border-border bg-muted/30 px-3 py-2.5">
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-[450] text-muted-foreground truncate">
-                {finalUrl}
-              </p>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
+            Link
+          </label>
+          <div className="flex gap-2">
+            <div className="flex-1 flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2.5 min-w-0">
+              <Link2 className="size-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground truncate">
+                {url}
+              </span>
             </div>
             <button
               onClick={handleCopy}
-              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent"
+              className={cn(
+                "shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all",
+                copied
+                  ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              )}
             >
               {copied ? (
                 <>
-                  <CheckIcon className="size-3.5 text-green-500" />
-                  <span>Copied</span>
+                  <Check className="size-4" />
+                  Copied
                 </>
               ) : (
                 <>
-                  <LinkIcon className="size-3.5" />
-                  <span>Copy</span>
+                  <Copy className="size-4" />
+                  Copy
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Share buttons - Linear-style toolbar */}
-        <div className="mb-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+        {/* Share Options */}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
             Share to
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 pb-2">
-          {hasNativeShareSupport && (
-            <button
-              onClick={handleNativeShare}
-              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <ShareIcon className="size-3.5" />
-              <span>More</span>
-            </button>
-          )}
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {hasNativeShareSupport && (
+              <button
+                onClick={handleNativeShare}
+                className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <ShareIcon className="size-3.5" />
+                <span>More</span>
+              </button>
+            )}
 
-          {socialLinks.map((social) => (
             <a
-              key={social.name}
-              href={social.href}
+              href={shareUrls.x}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={onActionComplete}
               className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
             >
-              {social.icon}
-              <span>{social.name}</span>
+              <XTwitterIcon className="size-3.5" />
+              <span>X</span>
             </a>
-          ))}
+
+            <a
+              href={shareUrls.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Linkedin className="size-3.5" />
+              <span>LinkedIn</span>
+            </a>
+
+            <a
+              href={shareUrls.reddit}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-[5px] border-[0.5px] border-border bg-surface-1 px-2.5 text-[12px] font-medium text-muted-foreground shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <RedditIcon className="size-3.5" />
+              <span>Reddit</span>
+            </a>
+          </div>
         </div>
       </div>
-    );
-  },
-);
+    </div>
+  );
+});
 
-// Memoized trigger component - must forward all props for Base UI's render prop to work
+// Memoized trigger component
 const ShareTrigger = React.memo(
   React.forwardRef<
     HTMLButtonElement,
@@ -242,77 +237,6 @@ const ShareTrigger = React.memo(
   }),
 );
 
-// Memoized modal content
-const ShareModalContent = React.memo(function ShareModalContent({
-  articleTitle,
-  url,
-  originalUrl,
-  source,
-  viewMode,
-  sidebarOpen,
-  onClose,
-}: ShareButtonDataProps & { onClose: () => void }) {
-  return (
-    <div className="flex h-full flex-col">
-      {/* Linear-style header with row-reverse for close button positioning */}
-      <div className="flex flex-row-reverse items-center px-3 pt-3 pb-1.5">
-        {/* Close button group - right side */}
-        <div className="flex shrink-0 items-center gap-1.5 pl-3">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <span className="flex size-4 items-center justify-center" aria-hidden="true">
-              <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16">
-                <path d="M2.96967 2.96967C3.26256 2.67678 3.73744 2.67678 4.03033 2.96967L8 6.939L11.9697 2.96967C12.2626 2.67678 12.7374 2.67678 13.0303 2.96967C13.3232 3.26256 13.3232 3.73744 13.0303 4.03033L9.061 8L13.0303 11.9697C13.2966 12.2359 13.3208 12.6526 13.1029 12.9462L13.0303 13.0303C12.7374 13.3232 12.2626 13.3232 11.9697 13.0303L8 9.061L4.03033 13.0303C3.73744 13.3232 3.26256 13.3232 2.96967 13.0303C2.67678 12.7374 2.67678 12.2626 2.96967 11.9697L6.939 8L2.96967 4.03033C2.7034 3.76406 2.6792 3.3474 2.89705 3.05379L2.96967 2.96967Z" />
-              </svg>
-            </span>
-          </button>
-        </div>
-        {/* Title breadcrumb - left side, grows to fill */}
-        <div className="flex flex-1 min-w-0 items-center gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="flex size-4 items-center justify-center text-muted-foreground">
-              <ShareIcon className="size-3.5" />
-            </span>
-            <span className="text-[13px] font-[450] text-foreground">Share article</span>
-          </div>
-        </div>
-      </div>
-      {/* Content area */}
-      <div className="flex flex-1 flex-col overflow-hidden px-1.5">
-        <div className="flex flex-1 flex-col gap-1.5 px-3 pb-4 md:pb-0 max-w-full">
-          <ShareContent
-            url={url}
-            originalUrl={originalUrl}
-            articleTitle={articleTitle}
-            source={source}
-            viewMode={viewMode}
-            sidebarOpen={sidebarOpen}
-            onActionComplete={onClose}
-          />
-        </div>
-      </div>
-
-      {/* Linear-style footer divider - hidden on mobile since drawer has its own close button */}
-      <div className="hidden md:flex w-full border-t-[0.5px] border-border" />
-
-      {/* Footer with done button - hidden on mobile since drawer has its own close button */}
-      <div className="hidden md:flex items-center justify-end gap-3 px-3 py-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-7 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-glow/40 bg-glow px-3.5 text-[12px] font-medium text-white shadow-[0_4px_4px_-1px_rgba(0,0,0,0.06),0_1px_1px_0_rgba(0,0,0,0.12)] transition-colors hover:bg-glow/90"
-        >
-          Done
-        </button>
-      </div>
-    </div>
-  );
-});
-
 const ShareButton: React.FC<ShareButtonProps> = React.memo(
   function ShareButton({
     triggerVariant = "text",
@@ -333,7 +257,13 @@ const ShareButton: React.FC<ShareButtonProps> = React.memo(
     );
 
     return (
-      <ResponsiveDrawer open={open} onOpenChange={setOpen} trigger={trigger} triggerId="share-modal-trigger" showCloseButton={false}>
+      <ResponsiveDrawer
+        open={open}
+        onOpenChange={setOpen}
+        trigger={trigger}
+        triggerId="share-modal-trigger"
+        showCloseButton={false}
+      >
         <ShareModalContent {...shareProps} onClose={handleClose} />
       </ResponsiveDrawer>
     );
@@ -341,3 +271,6 @@ const ShareButton: React.FC<ShareButtonProps> = React.memo(
 );
 
 export default ShareButton;
+
+// Export ShareContent for use elsewhere if needed
+export const ShareContent = ShareModalContent;
