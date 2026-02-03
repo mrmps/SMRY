@@ -84,6 +84,12 @@ export default async function RootLayout({
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
+          <Databuddy
+            clientId="638f8e5f-f436-4d00-a459-66dee9152e3c"
+            trackPerformance
+            trackWebVitals
+            trackErrors
+          />
           {/* Structured data for SEO - placed in body for Next.js App Router compatibility */}
           <JsonLd data={organizationSchema} />
           <JsonLd data={websiteSchema} />
@@ -96,12 +102,6 @@ export default async function RootLayout({
             themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "system"]}
             disableTransitionOnChange
           >
-            <Databuddy
-              clientId="638f8e5f-f436-4d00-a459-66dee9152e3c"
-              trackPerformance
-              trackWebVitals
-              trackErrors
-            />
             <GoogleAnalytics gaId="G-RFC55FX414" />
             <NuqsAdapter>
               <QueryProvider>
