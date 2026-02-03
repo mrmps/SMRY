@@ -3,6 +3,7 @@
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useState, useRef, useMemo, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
 import { useAuth } from "@clerk/nextjs";
 
@@ -21,72 +22,11 @@ function generateChatId(content: string): string {
 // Storage key for chat messages (localStorage fallback)
 const CHAT_STORAGE_PREFIX = "article-chat-";
 
-// Load chat history from server (for signed-in users)
-async function loadChatFromServer(
-  articleHash: string,
-  getToken: () => Promise<string | null>
-): Promise<UIMessage[] | null> {
-  try {
-    const token = await getToken();
-    if (!token) return null;
-
-    const response = await fetch(getApiUrl(`/api/chat-history/${articleHash}`), {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    return data.messages || null;
-  } catch {
-    return null;
-  }
-}
-
-// Save chat history to server (for signed-in users)
-async function saveChatToServer(
-  articleHash: string,
-  messages: UIMessage[],
-  getToken: () => Promise<string | null>
-): Promise<boolean> {
-  try {
-    const token = await getToken();
-    if (!token) return false;
-
-    const response = await fetch(getApiUrl(`/api/chat-history/${articleHash}`), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messages }),
-    });
-
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-// Delete chat history from server
-async function deleteChatFromServer(
-  articleHash: string,
-  getToken: () => Promise<string | null>
-): Promise<boolean> {
-  try {
-    const token = await getToken();
-    if (!token) return false;
-
-    const response = await fetch(getApiUrl(`/api/chat-history/${articleHash}`), {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
+// Query key factory for chat history
+const chatHistoryKeys = {
+  all: ['chat-history'] as const,
+  byArticle: (articleHash: string) => ['chat-history', articleHash] as const,
+};
 
 export interface UsageData {
   remaining: number;
@@ -109,10 +49,9 @@ export function useArticleChat({
   onUsageUpdate,
 }: UseArticleChatOptions) {
   const { getToken, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [input, setInput] = useState("");
-  const [serverMessages, setServerMessages] = useState<UIMessage[] | null>(null);
-  const [_isLoadingHistory, setIsLoadingHistory] = useState(false);
   const onUsageUpdateRef = useRef(onUsageUpdate);
 
   useEffect(() => {
@@ -124,28 +63,82 @@ export function useArticleChat({
   const articleHash = chatId.replace("chat-", ""); // Just the hash part
   const storageKey = `${CHAT_STORAGE_PREFIX}${chatId}`;
 
-  // Load chat history from server for signed-in users
-  useEffect(() => {
-    if (!isSignedIn) return;
+  // React Query: Fetch chat history from server (for signed-in users)
+  const {
+    data: serverMessages,
+    isLoading: isLoadingHistory,
+    isFetched: serverFetchComplete,
+  } = useQuery({
+    queryKey: chatHistoryKeys.byArticle(articleHash),
+    queryFn: async (): Promise<UIMessage[]> => {
+      const token = await getToken();
+      if (!token) return [];
 
-    setIsLoadingHistory(true);
-    loadChatFromServer(articleHash, getToken)
-      .then((messages) => {
-        if (messages && messages.length > 0) {
-          setServerMessages(messages);
-        }
-      })
-      .finally(() => setIsLoadingHistory(false));
-  }, [isSignedIn, articleHash, getToken]);
+      const response = await fetch(getApiUrl(`/api/chat-history/${articleHash}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  // Load initial messages - prefer server for signed-in, localStorage for anonymous
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      return data.messages || [];
+    },
+    enabled: !!isSignedIn, // Only fetch for signed-in users
+    staleTime: 0, // Always refetch on mount for fresh data
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+  });
+
+  // React Query: Save chat history mutation
+  const saveMutation = useMutation({
+    mutationFn: async (messages: UIMessage[]) => {
+      const token = await getToken();
+      if (!token) return false;
+
+      const response = await fetch(getApiUrl(`/api/chat-history/${articleHash}`), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages }),
+      });
+
+      return response.ok;
+    },
+    onSuccess: () => {
+      // Invalidate to keep cache in sync
+      queryClient.invalidateQueries({ queryKey: chatHistoryKeys.byArticle(articleHash) });
+    },
+  });
+
+  // React Query: Delete chat history mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const token = await getToken();
+      if (!token) return false;
+
+      const response = await fetch(getApiUrl(`/api/chat-history/${articleHash}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return response.ok;
+    },
+    onSuccess: () => {
+      // Clear the cache immediately
+      queryClient.setQueryData(chatHistoryKeys.byArticle(articleHash), []);
+    },
+  });
+
+  // Load initial messages - only use localStorage for anonymous users
+  // For signed-in users, React Query handles the server data
   const initialMessages = useMemo(() => {
-    // If we have server messages, use those
-    if (serverMessages && serverMessages.length > 0) {
-      return serverMessages;
+    // For signed-in users, use server messages from React Query cache
+    if (isSignedIn) {
+      return serverMessages ?? [];
     }
 
-    // Fallback to localStorage
+    // For anonymous users, use localStorage
     if (typeof window === "undefined") return [];
     try {
       const stored = localStorage.getItem(storageKey);
@@ -156,7 +149,7 @@ export function useArticleChat({
       // Ignore parse errors
     }
     return [];
-  }, [storageKey, serverMessages]);
+  }, [storageKey, serverMessages, isSignedIn]);
 
   const customFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -169,7 +162,7 @@ export function useArticleChat({
       } catch {
       }
       const response = await fetch(input, { ...init, headers });
-      
+
       const remaining = response.headers.get("X-Usage-Remaining");
       const limit = response.headers.get("X-Usage-Limit");
       const premium = response.headers.get("X-Is-Premium");
@@ -185,7 +178,7 @@ export function useArticleChat({
         setUsageData(usage);
         onUsageUpdateRef.current?.(usage);
       }
-      
+
       return response;
     },
     [getToken],
@@ -221,19 +214,34 @@ export function useArticleChat({
     },
   });
 
-  // Sync server messages to chat state when they load
-  // This is needed because useAIChat only uses initialMessages on first render
-  useEffect(() => {
-    if (serverMessages && serverMessages.length > 0 && chat.messages.length === 0) {
-      chat.setMessages(serverMessages);
-    }
-  }, [serverMessages, chat]);
-
-  // Persist messages when they change
-  // - Signed-in users: save to server (Redis)
-  // - Anonymous users: save to localStorage
+  // Refs for tracking sync state
+  const hasSyncedRef = useRef(false);
   const lastSavedRef = useRef<string>("");
 
+  // Sync server messages to chat state when React Query fetches complete
+  // This is needed because useAIChat only uses initialMessages on first render
+  useEffect(() => {
+    // Only sync once per server fetch completion for signed-in users
+    if (!isSignedIn || !serverFetchComplete || hasSyncedRef.current || isLoadingHistory) return;
+
+    // Mark as synced to prevent duplicate syncs
+    hasSyncedRef.current = true;
+
+    // Server is source of truth for signed-in users
+    if (serverMessages && serverMessages.length > 0) {
+      chat.setMessages(serverMessages);
+      lastSavedRef.current = JSON.stringify(serverMessages);
+    }
+  }, [serverMessages, serverFetchComplete, isSignedIn, isLoadingHistory, chat]);
+
+  // Reset sync flag when article changes or user signs out
+  useEffect(() => {
+    hasSyncedRef.current = false;
+  }, [articleHash, isSignedIn]);
+
+  // Persist messages when they change
+  // - Signed-in users: save to server via mutation
+  // - Anonymous users: save to localStorage
   useEffect(() => {
     if (chat.messages.length === 0) return;
 
@@ -243,8 +251,8 @@ export function useArticleChat({
     lastSavedRef.current = messagesJson;
 
     if (isSignedIn) {
-      // Save to server for signed-in users
-      saveChatToServer(articleHash, chat.messages, getToken);
+      // Save to server via React Query mutation
+      saveMutation.mutate(chat.messages);
     } else {
       // Save to localStorage for anonymous users
       try {
@@ -253,7 +261,7 @@ export function useArticleChat({
         // Ignore storage errors
       }
     }
-  }, [chat.messages, isSignedIn, articleHash, getToken, storageKey]);
+  }, [chat.messages, isSignedIn, storageKey, saveMutation]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -290,10 +298,11 @@ export function useArticleChat({
   const clearMessages = useCallback(() => {
     chat.setMessages([]);
     lastSavedRef.current = "";
+    hasSyncedRef.current = true; // Prevent re-population
 
     if (isSignedIn) {
-      // Clear from server for signed-in users
-      deleteChatFromServer(articleHash, getToken);
+      // Delete from server via React Query mutation
+      deleteMutation.mutate();
     }
     // Always clear localStorage too
     try {
@@ -301,7 +310,7 @@ export function useArticleChat({
     } catch {
       // Ignore storage errors
     }
-  }, [chat, storageKey, isSignedIn, articleHash, getToken]);
+  }, [chat, storageKey, isSignedIn, deleteMutation]);
 
   return {
     messages: chat.messages,
@@ -310,6 +319,7 @@ export function useArticleChat({
     handleInputChange,
     handleSubmit,
     isLoading: chat.status === "streaming" || chat.status === "submitted",
+    isLoadingHistory,
     error: chat.error,
     stop: chat.stop,
     reload: chat.regenerate,
