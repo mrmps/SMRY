@@ -332,7 +332,7 @@
   },
   "updateBanner": {
     "new": "Nieuw:",
-    "message": "Slimme auto-fetch en optimistische content updates",
+    "message": "Vraag AI alles over artikelen die je leest",
     "changelog": "Wijzigingslogboek"
   },
   "changelog": {
@@ -345,6 +345,15 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entry0_date": "3 februari 2026",
+    "entry0_change1_text": "Vraag AI over elk artikel",
+    "entry0_change1_detail": "Introductie van conversationele AI voor artikelen. In plaats van een eenrichtings-samenvatting kun je nu vragen stellen, uitleg vragen en dieper in elk onderwerp duiken. Het is alsof je een onderzoeksassistent hebt voor alles wat je leest.",
+    "entry0_change2_text": "Gesprekken die onthouden",
+    "entry0_change2_detail": "Je chatgeschiedenis synchroniseert automatisch. Log in om je gesprekken vanaf elk apparaat te openen, of gebruik het lokaal zonder account.",
+    "entry0_change3_text": "Realtime streaming antwoorden",
+    "entry0_change3_detail": "Zie AI-antwoorden woord voor woord verschijnen. Niet meer wachten op het volledige antwoord — begin direct met lezen terwijl het antwoord wordt gestreamd.",
+    "entry0_change4_text": "Slimme gespreksstarters",
+    "entry0_change4_detail": "Weet je niet wat je moet vragen? Begin met één-tik suggesties zoals \"Vat dit samen\" of \"Wat zijn de belangrijkste punten?\" om het gesprek te starten.",
     "entry1_date": "1 februari 2026",
     "entry1_change1_text": "Automatische slimme bronselectie",
     "entry1_change1_detail": "Artikelen worden nu automatisch opgehaald van de beste beschikbare bron. Het systeem laat meerdere bronnen tegelijk racen en kiest degene met de meest volledige inhoud.",

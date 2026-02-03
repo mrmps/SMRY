@@ -287,6 +287,9 @@ export function useArticleChat({
 
   const sendMessage = useCallback(
     (content: string) => {
+      if (!content.trim() || chat.status === "streaming" || chat.status === "submitted") {
+        return;
+      }
       chat.sendMessage({
         role: "user",
         parts: [{ type: "text", text: content }],
