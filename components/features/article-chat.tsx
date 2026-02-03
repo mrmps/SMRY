@@ -42,7 +42,7 @@ const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 // Default suggestions for article chat
 const DEFAULT_SUGGESTIONS: Suggestion[] = [
   { text: "Summarize the article" },
-  { text: "whate are the key takeaways?" },
+  { text: "what are the key takeaways?" },
   { text: "what are the important facts mentioned?" }
 ];
 
