@@ -113,19 +113,15 @@ export function SlashCommands({
     <div
       ref={listRef}
       className={cn(
-        "absolute bottom-full left-0 right-0 mb-2 z-50",
-        "bg-popover border border-border rounded-lg shadow-lg",
+        "absolute bottom-full left-0 right-0 mb-1.5 z-50",
         "max-h-[280px] overflow-y-auto",
-        "animate-in fade-in-0 slide-in-from-bottom-2 duration-200",
+        "animate-in fade-in-0 slide-in-from-bottom-2 duration-150",
         className
       )}
       role="listbox"
       aria-label="Slash commands"
     >
-      <div className="p-1">
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-          Commands
-        </div>
+      <div className="pb-1.5 flex flex-col-reverse">
         {filteredCommands.map((cmd, index) => {
           const Icon = cmd.icon;
           const isSelected = index === selectedIndex;
@@ -142,39 +138,20 @@ export function SlashCommands({
               onClick={() => onSelect(cmd)}
               onMouseEnter={() => onSelectedIndexChange(index)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left",
-                "transition-colors cursor-pointer",
-                "outline-none",
+                "flex w-full items-center gap-1.5 rounded-[10px] px-2 py-[7px] text-left",
+                "transition-opacity duration-150 cursor-pointer",
+                "outline-none text-[13px]",
                 isSelected
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50"
+                  ? "bg-muted/80 opacity-100"
+                  : "opacity-80 hover:opacity-100 hover:bg-muted/50"
               )}
             >
-              <div
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-md",
-                  "bg-muted/50"
-                )}
-              >
-                <Icon className="size-4 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{cmd.label}</span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {cmd.command}
-                    {cmd.hasArgument && (
-                      <span className="text-primary/60">
-                        {" "}
-                        {cmd.argumentPlaceholder}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  {cmd.description}
-                </p>
-              </div>
+              <span className="flex-shrink-0 w-[13px] h-[13px] flex items-center justify-center">
+                <Icon className="size-[13px] text-muted-foreground" />
+              </span>
+              <span className="text-foreground/85 truncate min-w-0 flex-1">
+                {cmd.command}
+              </span>
             </button>
           );
         })}

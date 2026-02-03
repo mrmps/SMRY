@@ -447,7 +447,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                       type="button"
                       size="icon"
                       onClick={stop}
-                      className="size-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      className="size-[30px] rounded-[10px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       <Square className="size-4" />
                     </Button>
@@ -460,13 +460,13 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
                         onClick={() => handleSubmit()}
                         className={cn(
-                          "size-8 rounded-full transition-all",
+                          "size-[30px] rounded-[10px] transition-all duration-200",
                           input.trim() && !isLimitReached && !isSlashMenuOpen
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                            ? "bg-primary text-primary-foreground shadow-[0_1px_2px_0_rgba(0,0,0,0.10)] hover:shadow-[0_2px_4px_1px_rgba(0,0,0,0.12)]"
                             : "bg-muted text-muted-foreground"
                         )}
                       >
-                        <ArrowUp className="size-4" />
+                        <ArrowUp className="size-3.5" />
                       </Button>
                     </PromptInputAction>
                 )}

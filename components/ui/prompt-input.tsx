@@ -95,7 +95,10 @@ function PromptInput({
         <div
           onClick={handleClick}
           className={cn(
-            "border-input bg-background cursor-text rounded-3xl border p-2 shadow-xs",
+            "bg-background cursor-text rounded-xl border p-2.5",
+            "border-border/50 hover:border-border/70 focus-within:border-border/80",
+            "shadow-[0_7px_12px_0_rgba(0,0,0,0.06)] focus-within:shadow-[0_10px_14px_0_rgba(0,0,0,0.12)]",
+            "transition-[border-color,box-shadow] duration-300 ease-out",
             disabled && "cursor-not-allowed opacity-60",
             className
           )}
