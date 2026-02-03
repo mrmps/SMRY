@@ -41,7 +41,7 @@
     "@heroicons/react": "^2.1.1",
     "@mozilla/readability": "^0.4.4",
     "@next/third-parties": "^16.1.1",
-    "@openrouter/sdk": "^0.3.11",
+    "@openrouter/sdk": "^0.5.1",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
