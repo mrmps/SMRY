@@ -6,8 +6,7 @@
  */
 
 import { Elysia, t } from "elysia";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateText } from "ai";
+import { OpenRouter } from "@openrouter/sdk";
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "../../lib/redis";
 import { compressAsync, decompressAsync } from "../../lib/redis-compression";
@@ -37,18 +36,31 @@ const minuteRateLimit = new Ratelimit({
   prefix: "ratelimit:bypass:minute",
 });
 
-// Initialize OpenRouter provider
-const openrouter = createOpenRouter({
+// Initialize OpenRouter SDK
+const openRouter = new OpenRouter({
   apiKey: env.OPENROUTER_API_KEY,
 });
 
 // Premium models - used for premium users (bypass detection is premium-only anyway)
-// Primary model with fallbacks if unavailable
 const PREMIUM_MODELS = [
   "anthropic/claude-3.5-haiku",
   "google/gemini-3-flash-preview",
   "openai/gpt-5-mini",
 ];
+
+// Helper to extract string content from OpenRouter response
+function extractContent(content: unknown): string | null {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    // Find the first text content item
+    for (const item of content) {
+      if (item && typeof item === "object" && "type" in item && item.type === "text" && "text" in item) {
+        return String(item.text);
+      }
+    }
+  }
+  return null;
+}
 
 // Clean HTML by removing non-content junk (scripts, styles, etc.)
 function cleanHtml(html: string): { cleaned: string; beforeSize: number; afterSize: number } {
@@ -266,22 +278,22 @@ export const bypassDetectionRoutes = new Elysia({ prefix: "/api" }).post(
       // Build the prompt
       const userPrompt = buildUserPrompt(analysis, url);
 
-      // Use premium models with fallback (bypass detection is premium-only)
-      let aiResponse: string;
+      // Use premium models (bypass detection is premium-only)
+      let aiResponse: string | null = null;
 
       try {
-        const result = await generateText({
-          model: openrouter(PREMIUM_MODELS[0], {
-            models: PREMIUM_MODELS,
-          }),
-          system: systemPrompt,
-          prompt: userPrompt,
+        const result = await openRouter.chat.send({
+          model: PREMIUM_MODELS[0],
+          models: PREMIUM_MODELS,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          stream: false,
         });
 
-        aiResponse = result.text;
-        // Log which model was actually used (from provider metadata if available)
-        const modelUsed = (result.providerMetadata?.openrouter as { model?: string })?.model || PREMIUM_MODELS[0];
-        ctx.merge({ model_used: modelUsed });
+        aiResponse = extractContent(result.choices?.[0]?.message?.content);
+        ctx.merge({ model_used: PREMIUM_MODELS[0] });
       } catch (aiError) {
         ctx.error(
           aiError instanceof Error ? aiError : String(aiError),
