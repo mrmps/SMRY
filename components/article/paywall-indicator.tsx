@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipTrigger,
-  TooltipPopup,
+  TooltipContent,
 } from "@/components/ui/tooltip";
 import type { BypassStatus } from "@/types/api";
 
@@ -48,13 +48,13 @@ export function PaywallIndicator({
         <TooltipTrigger
           render={<span />}
           className={cn(
-            "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center",
+            "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center cursor-help",
             className
           )}
         >
           <span className="size-2 animate-pulse rounded-full bg-muted-foreground" />
         </TooltipTrigger>
-        <TooltipPopup>Analyzing...</TooltipPopup>
+        <TooltipContent>Analyzing...</TooltipContent>
       </Tooltip>
     );
   }
@@ -72,7 +72,7 @@ export function PaywallIndicator({
         >
           !
         </TooltipTrigger>
-        <TooltipPopup>Analysis failed</TooltipPopup>
+        <TooltipContent>Analysis failed</TooltipContent>
       </Tooltip>
     );
   }
@@ -93,7 +93,7 @@ export function PaywallIndicator({
       >
         {config.icon}
       </TooltipTrigger>
-      <TooltipPopup>{config.tooltip}</TooltipPopup>
+      <TooltipContent>{config.tooltip}</TooltipContent>
     </Tooltip>
   );
 }

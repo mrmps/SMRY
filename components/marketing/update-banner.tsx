@@ -6,7 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
-const STORAGE_KEY = "update-banner-dismissed-v1"; // Increment version for new announcements
+const STORAGE_KEY = "update-banner-dismissed-v2"; // Increment version for new announcements
 
 const emptySubscribe = () => () => {};
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useAuth } from "@clerk/nextjs";
@@ -35,7 +35,7 @@ import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { ArticleContent } from "@/components/article/content";
-import { InlineSummary } from "@/components/features/inline-summary";
+import { ArticleChat } from "@/components/features/article-chat";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
@@ -239,13 +239,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Get the source that was actually used by the auto endpoint
   const source = articleQuery.data?.source || "smry-fast";
 
-  // Adapter for InlineSummary which still expects multi-source results format
-  // This creates a compatible structure using the single auto result
-  const summaryResults = useMemo(() => ({
-    "smry-fast": articleQuery,
-    "smry-slow": articleQuery,
-    "wayback": articleQuery,
-  }), [articleQuery]);
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
@@ -515,7 +508,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1.5">
-              {/* Summary button - shows when sidebar is closed */}
+              {/* Chat button - shows when sidebar is closed */}
               {!sidebarOpen && (
                 <Button
                   variant="outline"
@@ -524,7 +517,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   className="gap-1.5"
                 >
                   <PanelRightOpen className="size-4" />
-                  Summary
+                  Chat
                 </Button>
               )}
 
@@ -657,7 +650,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 <button
                   onClick={() => handleSidebarChange(true)}
                   className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-6 h-12 bg-muted/80 hover:bg-muted border border-border border-r-0 rounded-l-md text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Open summary sidebar"
+                  aria-label="Open chat sidebar"
                 >
                   <PanelRightOpen className="size-4" />
                 </button>
@@ -717,15 +710,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   }}
                 >
                   <div className="h-full border-l border-border">
-                    <InlineSummary
-                      urlProp={url}
-                      articleResults={summaryResults}
+                    <ArticleChat
+                      articleContent={articleTextContent || ""}
+                      articleTitle={articleTitle}
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
-                      ad={!isPremium ? sidebarAd : null}
-                      onAdVisible={sidebarAd ? () => fireImpression(sidebarAd) : undefined}
-                      onAdClick={sidebarAd ? () => fireClick(sidebarAd) : undefined}
                     />
                   </div>
                 </ResizablePanel>
@@ -793,7 +783,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                             ? "bg-primary/10 text-primary"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
-                        aria-label="Open summary"
+                        aria-label="Open chat"
                       >
                         <SummaryIcon className="size-5" />
                       </button>
@@ -835,7 +825,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
               {/* Elements below are OUTSIDE scroll container to prevent Vaul scroll lock interference */}
 
-              {/* Summary Panel - center-origin animation for snappy feel */}
+              {/* Chat Panel - center-origin animation for snappy feel */}
               {mobileSummaryOpen && (
                 <>
                   {/* Backdrop */}
@@ -848,7 +838,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     className="fixed inset-x-3 top-[8vh] bottom-[8vh] z-50 flex flex-col rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200"
                     role="dialog"
                     aria-modal="true"
-                    aria-label="Summary"
+                    aria-label="Chat"
                     onKeyDown={(e) => {
                       if (e.key === "Escape") setMobileSummaryOpen(false);
                     }}
@@ -858,19 +848,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       <button
                         onClick={() => setMobileSummaryOpen(false)}
                         className="size-8 flex items-center justify-center rounded-full bg-muted/60 hover:bg-muted text-muted-foreground"
-                        aria-label="Close summary"
+                        aria-label="Close chat"
                       >
                         <X className="size-4" />
                       </button>
-                      <span className="text-lg font-semibold">Summary</span>
+                      <span className="text-lg font-semibold">Chat</span>
                       <div className="size-8" />
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto touch-pan-y">
-                      <InlineSummary
-                        urlProp={url}
-                        articleResults={summaryResults}
+                      <ArticleChat
+                        articleContent={articleTextContent || ""}
+                        articleTitle={articleTitle}
                         isOpen={true}
                         onOpenChange={() => setMobileSummaryOpen(false)}
                         variant="sidebar"

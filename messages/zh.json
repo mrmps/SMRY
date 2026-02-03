@@ -332,7 +332,7 @@
   },
   "updateBanner": {
     "new": "新功能：",
-    "message": "智能自动获取和乐观内容更新",
+    "message": "向AI询问您阅读的任何文章",
     "changelog": "更新日志"
   },
   "changelog": {
@@ -345,6 +345,15 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entry0_date": "2026年2月3日",
+    "entry0_change1_text": "向AI询问任何文章",
+    "entry0_change1_detail": "推出文章对话式AI。不再只是单向摘要，现在您可以提问、请求解释，深入探讨任何话题。就像拥有一位研究助手，陪伴您阅读的一切。",
+    "entry0_change2_text": "记忆您的对话",
+    "entry0_change2_detail": "您的聊天记录自动同步。登录后可从任何设备访问对话，或无需账户本地使用。",
+    "entry0_change3_text": "实时流式响应",
+    "entry0_change3_detail": "观看AI逐字生成回复。无需等待完整答案——回复流式传输时即可开始阅读。",
+    "entry0_change4_text": "智能对话启动器",
+    "entry0_change4_detail": "不知道该问什么？使用一键建议开始对话，如\"总结一下\"或\"有哪些要点？\"",
     "entry1_date": "2026年2月1日",
     "entry1_change1_text": "自动智能来源选择",
     "entry1_change1_detail": "文章现在会自动从最佳可用来源获取。系统同时查询多个来源，并选择内容最完整的那个。",

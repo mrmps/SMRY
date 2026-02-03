@@ -403,6 +403,8 @@
 
     "@openrouter/sdk": ["@openrouter/sdk@0.5.1", "", { "dependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-Kl0N1jIj7A3lnkM5dO3SGP8JP3jAozzs6JWcHVuZUBt5DsGKxFGNH1Y15bCfsJiLNA2ylAQpCN3aNcgEYkkL5Q=="],
 
+    "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
+
     "@oxc-resolver/binding-android-arm-eabi": ["@oxc-resolver/binding-android-arm-eabi@11.17.0", "", { "os": "android", "cpu": "arm" }, "sha512-kVnY21v0GyZ/+LG6EIO48wK3mE79BUuakHUYLIqobO/Qqq4mJsjuYXMSn3JtLcKZpN1HDVit4UHpGJHef1lrlw=="],
 
     "@oxc-resolver/binding-android-arm64": ["@oxc-resolver/binding-android-arm64@11.17.0", "", { "os": "android", "cpu": "arm64" }, "sha512-Pf8e3XcsK9a8RHInoAtEcrwf2vp7V9bSturyUUYxw9syW6E7cGi7z9+6ADXxm+8KAevVfLA7pfBg8NXTvz/HOw=="],

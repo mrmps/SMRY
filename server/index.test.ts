@@ -8,14 +8,12 @@
 import { describe, expect, it, beforeAll } from "bun:test";
 import { Elysia } from "elysia";
 import { articleRoutes } from "./routes/article";
-import { summaryRoutes } from "./routes/summary";
 import { adminRoutes } from "./routes/admin";
 
 // Create test app with all routes
 const createTestApp = () => {
   return new Elysia()
     .use(articleRoutes)
-    .use(summaryRoutes)
     .use(adminRoutes)
     .get("/health", () => ({
       status: "ok",
@@ -96,142 +94,6 @@ describe("Elysia API Server", () => {
 
       const body = await response.json();
       expect(body.type).toBe("PAYWALL_ERROR");
-    });
-  });
-
-  describe("Summary Route - POST /api/summary", () => {
-    it("should reject requests without content or prompt", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: "Test" }),
-        })
-      );
-      expect(response.status).toBe(422); // Validation error
-    });
-
-    it("should reject content that is too short", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: "Too short",
-          }),
-        })
-      );
-      expect(response.status).toBe(422); // Content must be at least 100 chars
-    });
-
-    it("should reject prompt that is too short", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: "Too short",
-          }),
-        })
-      );
-      expect(response.status).toBe(422); // Content must be at least 100 chars
-    });
-
-    it("should accept valid content field", async () => {
-      const longContent = "This is a test article content. ".repeat(50); // > 100 chars
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: longContent,
-            title: "Test Article",
-          }),
-        })
-      );
-
-      // The route either streams successfully or returns rate limit/error
-      expect([200, 429, 500]).toContain(response.status);
-    });
-
-    it("should accept valid prompt field (AI SDK compatibility)", async () => {
-      const longPrompt = "This is a test article for AI SDK useCompletion. ".repeat(50);
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: longPrompt,
-            title: "Test Article",
-            url: "https://example.com/article",
-            language: "en",
-          }),
-        })
-      );
-
-      // Verify route accepts prompt field
-      expect([200, 429, 500]).toContain(response.status);
-    });
-
-    it("should accept optional language parameter", async () => {
-      const longContent = "Este es un articulo de prueba. ".repeat(50);
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: longContent,
-            language: "es",
-          }),
-        })
-      );
-
-      expect([200, 429, 500]).toContain(response.status);
-    });
-
-    it("should prefer prompt over content when both are provided", async () => {
-      const longPrompt = "This is the prompt content that should be used. ".repeat(50);
-      const longContent = "This is the content field that should be fallback. ".repeat(50);
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: longPrompt,
-            content: longContent,
-            title: "Test",
-          }),
-        })
-      );
-
-      // Should succeed - prompt takes precedence
-      expect([200, 429, 500]).toContain(response.status);
-    });
-
-    it("should return streaming response with correct content-type", async () => {
-      const uniqueContent = `Unique streaming test ${Date.now()} about technology. `.repeat(20);
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Forwarded-For": `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-          },
-          body: JSON.stringify({
-            prompt: uniqueContent,
-            title: "Streaming Test",
-          }),
-        })
-      );
-
-      if (response.status === 200) {
-        const contentType = response.headers.get("content-type");
-        expect(contentType).toContain("text/plain");
-
-        // Verify body is readable (streaming or cached)
-        const text = await response.text();
-        expect(text.length).toBeGreaterThan(0);
-      }
     });
   });
 
@@ -342,12 +204,6 @@ describe("Elysia API Server", () => {
       );
       expect(articleRoute).toBeDefined();
 
-      // Check summary route
-      const summaryRoute = routes.find(
-        (r) => r.path === "/api/summary" && r.method === "POST"
-      );
-      expect(summaryRoute).toBeDefined();
-
       // Check admin route
       const adminRoute = routes.find(
         (r) => r.path === "/api/admin" && r.method === "GET"
@@ -368,18 +224,6 @@ describe("Elysia API Server", () => {
         new Request("http://localhost/api/unknown")
       );
       expect(response.status).toBe(404);
-    });
-
-    it("should return validation error for malformed JSON in POST", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/api/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "not valid json",
-        })
-      );
-      // Should get a parse error or validation error
-      expect([400, 422]).toContain(response.status);
     });
   });
 });

@@ -332,7 +332,7 @@
   },
   "updateBanner": {
     "new": "Nuevo:",
-    "message": "Búsqueda automática inteligente y actualizaciones optimistas de contenido",
+    "message": "Pregunta a la IA cualquier cosa sobre los artículos que lees",
     "changelog": "Registro de cambios"
   },
   "changelog": {
@@ -345,6 +345,15 @@
     "upgrade": "Actualizar"
   },
   "changelogEntries": {
+    "entry0_date": "3 de febrero de 2026",
+    "entry0_change1_text": "Pregunta a la IA sobre cualquier artículo",
+    "entry0_change1_detail": "Presentamos IA conversacional para artículos. En lugar de un resumen unidireccional, ahora puedes hacer preguntas, pedir explicaciones y profundizar en cualquier tema. Es como tener un asistente de investigación para todo lo que lees.",
+    "entry0_change2_text": "Conversaciones que recuerdan",
+    "entry0_change2_detail": "Tu historial de chat se sincroniza automáticamente. Inicia sesión para acceder a tus conversaciones desde cualquier dispositivo, o úsalo localmente sin cuenta.",
+    "entry0_change3_text": "Respuestas en streaming en tiempo real",
+    "entry0_change3_detail": "Observa cómo las respuestas de IA aparecen palabra por palabra. No más esperas por la respuesta completa — comienza a leer inmediatamente mientras la respuesta se transmite.",
+    "entry0_change4_text": "Iniciadores de conversación inteligentes",
+    "entry0_change4_detail": "¿No sabes qué preguntar? Empieza con sugerencias de un toque como \"Resume esto\" o \"¿Cuáles son los puntos clave?\" para iniciar la conversación.",
     "entry1_date": "1 de febrero de 2026",
     "entry1_change1_text": "Selección automática inteligente de fuente",
     "entry1_change1_detail": "Los artículos ahora se obtienen automáticamente de la mejor fuente disponible. El sistema compite entre múltiples fuentes y elige la que tiene el contenido más completo.",

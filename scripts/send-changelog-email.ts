@@ -137,58 +137,62 @@ function generateEmailHtml(firstName?: string): string {
               </p>
 
               <p style="font-size: 16px; color: #374151; margin: 0 0 24px 0;">
-                Quick update on what's new in Smry:
+                Big update: <strong>AI Chat is here.</strong> Instead of just getting a summary, you can now have a conversation with any article.
               </p>
 
               <!-- Feature 1 -->
-              <div style="margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
+              <div style="margin-bottom: 20px; padding: 16px; background-color: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
                 <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
-                  Smart Auto-Fetch
+                  Ask AI About Any Article
                 </div>
                 <div style="font-size: 14px; color: #6b7280;">
-                  Articles are now automatically fetched from the best available source. The system races multiple sources and picks the most complete content.
+                  Ask questions, request explanations, and dive deeper into any topic. It's like having a research assistant for everything you read.
                 </div>
               </div>
 
               <!-- Feature 2 -->
               <div style="margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
                 <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
-                  Optimistic Content Updates
+                  Conversations That Remember
                 </div>
                 <div style="font-size: 14px; color: #6b7280;">
-                  Content may be updated in real-time when a longer, more complete version is found.
+                  Your chat history syncs automatically. Sign in to access your conversations from any device.
                 </div>
               </div>
 
               <!-- Feature 3 -->
               <div style="margin-bottom: 20px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
                 <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
-                  Better Loading & Cleaner UI
+                  Real-Time Streaming
                 </div>
                 <div style="font-size: 14px; color: #6b7280;">
-                  New loading skeleton, compact error display, and hidden source selector for a cleaner reading experience.
+                  Watch AI responses appear word by word. No more waiting for the full answer.
                 </div>
               </div>
 
               <!-- Feature 4 -->
               <div style="margin-bottom: 24px; padding: 16px; background-color: #f9fafb; border-radius: 8px;">
                 <div style="font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 6px;">
-                  Mobile Improvements
+                  Smart Suggestions
                 </div>
                 <div style="font-size: 14px; color: #6b7280;">
-                  Fixed horizontal scrolling issues. Cards and ads now scale properly on all screen sizes.
+                  Not sure what to ask? Start with one-tap suggestions like "Summarize this" or "What are the key points?"
                 </div>
               </div>
 
               <!-- CTA -->
               <div style="text-align: center; margin-bottom: 24px;">
-                <a href="https://smry.ai/changelog" style="display: inline-block; padding: 12px 24px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">
-                  View Full Changelog
+                <a href="https://smry.ai" style="display: inline-block; padding: 12px 24px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                  Try AI Chat Now
                 </a>
               </div>
 
               <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">
-                As always, just reply to this email if you have any questions or feedback.
+                Check out the <a href="https://smry.ai/changelog" style="color: #0ea5e9; text-decoration: none;">full changelog</a> for more details.
+              </p>
+
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">
+                As always, reply to this email if you have feedback.
               </p>
 
               <p style="font-size: 16px; color: #374151; margin: 0;">
@@ -220,26 +224,25 @@ function generateEmailText(firstName?: string): string {
 
   return `${greeting},
 
-Quick update on what's new in Smry:
+Big update: AI Chat is here. Instead of just getting a summary, you can now have a conversation with any article.
 
-SMART AUTO-FETCH
-Articles are now automatically fetched from the best available source. The system races multiple sources and picks the one with the most complete content.
+ASK AI ABOUT ANY ARTICLE
+Ask questions, request explanations, and dive deeper into any topic. It's like having a research assistant for everything you read.
 
-OPTIMISTIC CONTENT UPDATES
-Content may be updated in real-time when a longer, more complete version is found from another source.
+CONVERSATIONS THAT REMEMBER
+Your chat history syncs automatically. Sign in to access your conversations from any device.
 
-BETTER LOADING EXPERIENCE
-New richer loading skeleton and compact error display with streamlined retry options.
+REAL-TIME STREAMING
+Watch AI responses appear word by word. No more waiting for the full answer.
 
-CLEANER READING INTERFACE
-Manual source selector is now hidden when auto-fetch is used. Mid-article and footer ad slots for less intrusive placement.
+SMART SUGGESTIONS
+Not sure what to ask? Start with one-tap suggestions like "Summarize this" or "What are the key points?"
 
-MOBILE IMPROVEMENTS
-Fixed horizontal scrolling issues on mobile devices. Cards and ads now scale properly on all screen sizes.
+Try it now: https://smry.ai
 
-See the full changelog: https://smry.ai/changelog
+Check out the full changelog for more details: https://smry.ai/changelog
 
-As always, just reply to this email if you have any questions or feedback.
+As always, reply to this email if you have feedback.
 
 Thanks,
 Michael
@@ -256,7 +259,7 @@ async function sendEmail(to: string, firstName?: string, retries = 3): Promise<{
       const result = await inbound.emails.send({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
         to,
-        subject: "What's new in Smry - Smart Auto-Fetch & More",
+        subject: "New: Ask AI about any article on Smry",
         text: generateEmailText(firstName),
         html: generateEmailHtml(firstName),
       });
