@@ -113,15 +113,14 @@ export function SlashCommands({
     <div
       ref={listRef}
       className={cn(
-        "absolute bottom-full left-0 right-0 mb-1.5 z-50",
-        "max-h-[280px] overflow-y-auto",
-        "animate-in fade-in-0 slide-in-from-bottom-2 duration-150",
+        "max-h-[200px] overflow-y-auto",
+        "animate-in fade-in-0 duration-150",
         className
       )}
       role="listbox"
       aria-label="Slash commands"
     >
-      <div className="pb-1.5 flex flex-col-reverse">
+      <div className="py-1.5 flex flex-col">
         {filteredCommands.map((cmd, index) => {
           const Icon = cmd.icon;
           const isSelected = index === selectedIndex;

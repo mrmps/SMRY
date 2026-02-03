@@ -415,16 +415,28 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {/* Input area */}
       <div className="shrink-0">
         <div className="p-3 sm:p-4">
-          <div className="relative">
-            {/* Slash Commands Menu */}
-            <SlashCommands
-              isOpen={isSlashMenuOpen && !isLoading}
-              onClose={handleSlashClose}
-              onSelect={handleSlashSelect}
-              filter={slashFilter}
-              selectedIndex={slashSelectedIndex}
-              onSelectedIndexChange={setSlashSelectedIndex}
-            />
+          {/* Outer container with gradient background */}
+          <div
+            className="rounded-[17px] p-[5px] backdrop-blur-xl"
+            style={{
+              background: "radial-gradient(144% 100% at 50% 0%, hsl(var(--muted) / 0.8) 0%, hsl(var(--muted) / 0.6) 100%)",
+              boxShadow: "inset 0 1.5px 0 0 hsl(var(--background) / 0.95), 0 1px 3px 0 rgba(0,0,0,0.09)",
+            }}
+          >
+            {/* Slash Commands Menu - inside the container */}
+            {isSlashMenuOpen && !isLoading && (
+              <div className="px-1">
+                <SlashCommands
+                  isOpen={true}
+                  onClose={handleSlashClose}
+                  onSelect={handleSlashSelect}
+                  filter={slashFilter}
+                  selectedIndex={slashSelectedIndex}
+                  onSelectedIndexChange={setSlashSelectedIndex}
+                  className="relative bottom-auto mb-0"
+                />
+              </div>
+            )}
 
             <PromptInput
               value={input}
@@ -432,7 +444,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               isLoading={isLoading}
               onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
               disabled={isLimitReached}
-              className="rounded-2xl"
+              className="rounded-xl border-[1.5px]"
               textareaRef={textareaRef}
             >
               <PromptInputTextarea
@@ -475,7 +487,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           </div>
         </div>
       </div>
-
 
       {/* Footer usage counter */}
       {(isPremium || showUsageCounter) && (
