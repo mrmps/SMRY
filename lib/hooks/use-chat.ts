@@ -221,6 +221,14 @@ export function useArticleChat({
     },
   });
 
+  // Sync server messages to chat state when they load
+  // This is needed because useAIChat only uses initialMessages on first render
+  useEffect(() => {
+    if (serverMessages && serverMessages.length > 0 && chat.messages.length === 0) {
+      chat.setMessages(serverMessages);
+    }
+  }, [serverMessages, chat]);
+
   // Persist messages when they change
   // - Signed-in users: save to server (Redis)
   // - Anonymous users: save to localStorage

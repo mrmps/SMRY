@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/prompt-input";
 import { Button } from "@/components/ui/button";
 import { ChatSuggestions, Suggestion } from "@/components/ui/chat-suggestions";
+import { Logo } from "@/components/shared/logo";
 
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
@@ -254,7 +255,13 @@ export const ArticleChat = memo(function ArticleChat({
         )}
       >
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col justify-end px-3 py-4 sm:px-4 sm:py-6">
+          <div className="flex h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
+            <div className="flex-1 flex flex-col items-center justify-center text-center mb-4">
+              <Logo size="lg" className="text-primary/80 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Ask anything about this article
+              </p>
+            </div>
             <ChatSuggestions
               suggestions={DEFAULT_SUGGESTIONS}
               onSuggestionClick={handleSuggestionClick}
