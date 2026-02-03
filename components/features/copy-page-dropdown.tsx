@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Check, Copy, ChevronDown, ArrowUpRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,37 @@ export const ClaudeIcon = ({ className }: { className?: string }) => (
   >
     <path d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017l-1.344 3.46H0L6.57 3.522zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z" />
   </svg>
+);
+
+// Animated icon swap with Emil Kowalski-style spring physics
+const AnimatedCopyIcon = ({ copied, size = "size-4" }: { copied: boolean; size?: string }) => (
+  <span className={cn("relative", size)}>
+    <AnimatePresence mode="popLayout" initial={false}>
+      {copied ? (
+        <motion.span
+          key="check"
+          initial={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          exit={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className={cn("absolute inset-0 flex items-center justify-center")}
+        >
+          <Check className={size} />
+        </motion.span>
+      ) : (
+        <motion.span
+          key="copy"
+          initial={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          exit={{ opacity: 0, scale: 0.9, filter: "blur(2px)" }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className={cn("absolute inset-0 flex items-center justify-center")}
+        >
+          <Copy className={size} />
+        </motion.span>
+      )}
+    </AnimatePresence>
+  </span>
 );
 
 interface Source {
@@ -170,10 +202,7 @@ export function CopyPageDropdown({
                 size="icon"
                 className={cn("h-8 w-8 text-muted-foreground hover:text-foreground", className)}
               >
-                <span className="relative size-4">
-                  <Copy className={cn("size-4 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-0 scale-75 blur-sm" : "opacity-100 scale-100 blur-0")} />
-                  <Check className={cn("size-4 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-75 blur-sm")} />
-                </span>
+                <AnimatedCopyIcon copied={copied} size="size-4" />
               </Button>
             );
           }}
@@ -294,11 +323,18 @@ export function CopyPageDropdown({
           onClick={handleCopy}
           className="h-8 rounded-r-none border-0 gap-1.5 text-xs font-medium hover:bg-accent"
         >
-          <span className="relative size-3.5">
-            <Copy className={cn("size-3.5 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-0 scale-75 blur-sm" : "opacity-100 scale-100 blur-0")} />
-            <Check className={cn("size-3.5 absolute inset-0 transition-all duration-300 ease-out", copied ? "opacity-100 scale-100 blur-0" : "opacity-0 scale-75 blur-sm")} />
-          </span>
-          <span className="transition-opacity duration-200">{copied ? "Copied" : "Copy page"}</span>
+          <AnimatedCopyIcon copied={copied} size="size-3.5" />
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={copied ? "copied" : "copy"}
+              initial={{ opacity: 0, y: 2 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -2 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+            >
+              {copied ? "Copied" : "Copy page"}
+            </motion.span>
+          </AnimatePresence>
         </Button>
 
         {/* Divider */}
