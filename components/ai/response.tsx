@@ -56,18 +56,23 @@ const hardenConfig = {
 };
 
 const components: StreamdownProps['components'] = {
+  p: ({ node: _node, children, className, ...props }) => (
+    <p className={cn('mb-3 last:mb-0 leading-relaxed', className)} {...props}>
+      {children}
+    </p>
+  ),
   ol: ({ node: _node, children, className, ...props }) => (
-    <ol className={cn('ml-4 list-outside list-decimal', className)} {...props}>
+    <ol className={cn('ml-4 mb-3 list-outside list-decimal space-y-1', className)} {...props}>
       {children}
     </ol>
   ),
   li: ({ node: _node, children, className, ...props }) => (
-    <li className={cn('py-1', className)} {...props}>
+    <li className={cn('leading-relaxed', className)} {...props}>
       {children}
     </li>
   ),
   ul: ({ node: _node, children, className, ...props }) => (
-    <ul className={cn('ml-4 list-outside list-disc', className)} {...props}>
+    <ul className={cn('ml-4 mb-3 list-outside list-disc space-y-1', className)} {...props}>
       {children}
     </ul>
   ),

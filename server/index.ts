@@ -8,7 +8,8 @@ import { cors } from "@elysiajs/cors";
 import { cron } from "@elysiajs/cron";
 import { articleRoutes } from "./routes/article";
 import { adminRoutes } from "./routes/admin";
-import { summaryRoutes } from "./routes/summary";
+import { chatRoutes } from "./routes/chat";
+import { chatHistoryRoutes } from "./routes/chat-history";
 import { webhookRoutes } from "./routes/webhooks";
 import { bypassDetectionRoutes } from "./routes/bypass-detection";
 import { gravityRoutes } from "./routes/gravity";
@@ -68,7 +69,8 @@ const app = new Elysia({ adapter: node() })
   })
   .use(articleRoutes)
   .use(adminRoutes)
-  .use(summaryRoutes)
+  .use(chatRoutes)
+  .use(chatHistoryRoutes)
   .use(webhookRoutes)
   .use(bypassDetectionRoutes)
   .use(gravityRoutes)

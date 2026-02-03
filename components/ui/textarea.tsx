@@ -1,51 +1,26 @@
-"use client";
+import * as React from "react"
 
-import { Field as FieldPrimitive } from "@base-ui/react/field";
-import { mergeProps } from "@base-ui/react/merge-props";
-import type * as React from "react";
+import { cn } from "@/lib/utils"
 
-import { cn } from "@/lib/utils";
-
-type TextareaProps = React.ComponentProps<"textarea"> & {
-  size?: "sm" | "default" | "lg" | number;
-  unstyled?: boolean;
-};
-
-function Textarea({
-  className,
-  size = "default",
-  unstyled = false,
-  ...props
-}: TextareaProps) {
-  return (
-    <span
-      className={
-        cn(
-          !unstyled &&
-            "relative inline-flex w-full rounded-lg border border-input bg-background bg-clip-padding text-sm shadow-xs ring-ring/24 transition-shadow before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] has-focus-visible:has-aria-invalid:border-destructive/64 has-focus-visible:has-aria-invalid:ring-destructive/16 has-aria-invalid:border-destructive/36 has-focus-visible:border-ring has-disabled:opacity-64 has-[:disabled,:focus-visible,[aria-invalid]]:shadow-none has-focus-visible:ring-[3px] not-has-disabled:has-not-focus-visible:not-has-aria-invalid:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:bg-clip-border dark:has-aria-invalid:ring-destructive/24 dark:not-has-disabled:has-not-focus-visible:not-has-aria-invalid:before:shadow-[0_-1px_--theme(--color-white/8%)]",
-          className,
-        ) || undefined
-      }
-      data-size={size}
-      data-slot="textarea-control"
-    >
-      <FieldPrimitive.Control
-        render={(defaultProps) => (
-          <textarea
-            className={cn(
-              "field-sizing-content min-h-16 w-full rounded-[inherit] px-[calc(--spacing(2.5)-1px)] py-[calc(--spacing(1)-1px)] outline-none max-sm:min-h-18",
-              size === "sm" &&
-                "min-h-14 px-[calc(--spacing(2)-1px)] py-[calc(--spacing(0.5)-1px)] max-sm:min-h-16",
-              size === "lg" &&
-                "min-h-18 py-[calc(--spacing(1.5)-1px)] max-sm:min-h-20",
-            )}
-            data-slot="textarea"
-            {...mergeProps(defaultProps, props)}
-          />
-        )}
-      />
-    </span>
-  );
+export type TextareaProps = React.ComponentProps<"textarea"> & {
+  unstyled?: boolean
 }
 
-export { Textarea, type TextareaProps };
+const Textarea = React.forwardRef<
+  HTMLTextAreaElement,
+  TextareaProps
+>(({ className, unstyled = false, ...props }, ref) => {
+  return (
+    <textarea
+      className={cn(
+        !unstyled && "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        className
+      )}
+      ref={ref}
+      {...props}
+    />
+  )
+})
+Textarea.displayName = "Textarea"
+
+export { Textarea }

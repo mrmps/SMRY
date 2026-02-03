@@ -11,9 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipTrigger,
-  TooltipPopup,
+  TooltipContent,
 } from "@/components/ui/tooltip";
-import { InlineSummary } from "@/components/features/inline-summary";
 import { PaywallIndicator } from "./paywall-indicator";
 import { useBypassDetection } from "@/lib/hooks/use-bypass-detection";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
@@ -98,9 +97,9 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
                   >
                     ✗
                   </TooltipTrigger>
-                  <TooltipPopup>
+                  <TooltipContent>
                     <p>Failed to load content</p>
-                  </TooltipPopup>
+                  </TooltipContent>
                 </Tooltip>
               ) : isPremium && (bypassStatuses[source] || bypassLoadingStates[source] || bypassErrorStates[source]) ? (
                 <PaywallIndicator
@@ -134,9 +133,6 @@ interface TabProps {
   viewMode: "markdown" | "html" | "iframe";
   activeSource: Source;
   onSourceChange: (source: Source) => void;
-  summaryOpen: boolean;
-  onSummaryOpenChange: (open: boolean) => void;
-  showInlineSummary?: boolean;
   className?: string;
   mobileHeaderVisible?: boolean;
 }
@@ -147,9 +143,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
   viewMode,
   activeSource,
   onSourceChange,
-  summaryOpen,
-  onSummaryOpenChange,
-  showInlineSummary = true,
   mobileHeaderVisible = true,
   className,
 }) {
@@ -287,16 +280,6 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
             bypassErrorStates={bypassErrorStates}
           />
         </div>
-
-        {showInlineSummary && (
-          <InlineSummary
-            urlProp={url}
-            articleResults={results}
-            isOpen={summaryOpen}
-            onOpenChange={onSummaryOpenChange}
-            variant="inline"
-          />
-        )}
 
         <TabsContent id="article-panel-smry-fast" value={"smry-fast"} keepMounted>
           <ArticleContent
