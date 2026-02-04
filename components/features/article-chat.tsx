@@ -77,10 +77,15 @@ interface ArticleChatProps {
   language?: string;
   onLanguageChange?: (language: string) => void;
   onHasMessagesChange?: (hasMessages: boolean) => void;
+  // Header ad (compact variant)
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
   onAdClick?: () => void;
   onAdDismiss?: () => void;
+  // Micro ad below input
+  microAd?: GravityAdType | null;
+  onMicroAdVisible?: () => void;
+  onMicroAdClick?: () => void;
 }
 
 export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
@@ -97,6 +102,9 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onAdVisible,
   onAdClick,
   onAdDismiss,
+  microAd,
+  onMicroAdVisible,
+  onMicroAdClick,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -510,14 +518,14 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             </PromptInput>
           </div>
 
-          {/* Micro ad below input - subtle text ad */}
-          {ad && (
+          {/* Micro ad below input - subtle text ad (desktop sidebar only) */}
+          {microAd && variant === "sidebar" && (
             <div className="pt-2 px-1">
               <GravityAd
-                ad={ad}
+                ad={microAd}
                 variant="micro"
-                onVisible={onAdVisible ?? (() => {})}
-                onClick={onAdClick}
+                onVisible={onMicroAdVisible ?? (() => {})}
+                onClick={onMicroAdClick}
               />
             </div>
           )}

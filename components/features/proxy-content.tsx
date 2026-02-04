@@ -318,11 +318,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   });
 
   // Ad distribution: sidebar + inline ad + footer ad + chat ad + micro ad
-  // Gravity returns: [0]=sidebar, [1]=inline, [2]=footer, [3]=chat header, [4]=micro (below input)
+  // Gravity returns up to 5 ads: [0]=sidebar, [1]=inline, [2]=footer, [3]=chat, [4]=micro
+  // Fallback: reuse ads if we don't get enough from Gravity
   const sidebarAd = gravityAds[0] ?? null;
-  const inlineAd = gravityAds[1] ?? null;
-  const footerAd = gravityAds[2] ?? null;
-  const chatAd = gravityAds[3] ?? gravityAds[0] ?? null; // Chat header ad
+  const inlineAd = gravityAds[1] ?? gravityAds[0] ?? null; // Fallback to sidebar ad
+  const footerAd = gravityAds[2] ?? gravityAds[1] ?? gravityAds[0] ?? null; // Fallback chain
+  const chatAd = gravityAds[3] ?? gravityAds[0] ?? null; // Fallback to sidebar ad
+  const microAd = gravityAds[4] ?? gravityAds[1] ?? gravityAds[0] ?? null; // Micro ad below chat input
 
   // Handle article load: save to history
   useEffect(() => {
@@ -731,10 +733,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
-                      ad={!isPremium ? sidebarAd : null}
-                      onAdVisible={sidebarAd ? () => fireImpression(sidebarAd) : undefined}
-                      onAdClick={sidebarAd ? () => fireClick(sidebarAd) : undefined}
-                      onAdDismiss={sidebarAd ? () => fireDismiss(sidebarAd) : undefined}
+                      ad={!isPremium ? chatAd : null}
+                      onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
+                      onAdClick={chatAd ? () => fireClick(chatAd) : undefined}
+                      onAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
+                      microAd={!isPremium ? microAd : null}
+                      onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
+                      onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}
                     />
                   </div>
                 </ResizablePanel>

@@ -226,11 +226,13 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const gravityRequest: GravityRequest = {
         messages,
         sessionId,
-        numAds: 3,
+        numAds: 5, // Request 5 ads: sidebar, inline, footer, chat, micro
         placements: [
           { placement: "right_response", placement_id: "smry-sidebar-right" },
           { placement: "inline_response", placement_id: "smry-article-inline" },
           { placement: "below_response", placement_id: "smry-footer-bottom" },
+          { placement: "above_response", placement_id: "smry-chat-header" },
+          { placement: "below_response", placement_id: "smry-input-micro" },
         ],
         ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0,

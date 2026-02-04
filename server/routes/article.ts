@@ -425,92 +425,108 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         }
       }
 
-      // OPTIMIZED: "First success wins" pattern
-      // Returns immediately when first source succeeds, others continue in background for caching
+      // OPTIMIZED: Staggered fallback pattern
+      // 1. Try smry-fast first (fastest, no external API cost)
+      // 2. If smry-fast fails or is slow, start smry-slow after delay
+      // 3. Wayback as last resort after longer delay
+      // This reduces load when smry-fast succeeds quickly
       const fetchStart = Date.now();
 
       type FetchResult = { source: typeof SOURCES[number]; article: CachedArticle; cacheURL: string };
-
-      const fetchPromises: Promise<FetchResult | null>[] = [
-        fetchArticleWithSmryFast(url).then(r => "article" in r ? { source: "smry-fast" as const, ...r } : null),
-        fetchArticleWithDiffbotWrapper(url, "smry-slow").then(r => "article" in r ? { source: "smry-slow" as const, ...r } : null),
-        fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback").then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
-      ];
 
       // Track cached sources to prevent duplicate writes
       const cachedSources = new Set<string>();
 
       const cacheResult = (result: FetchResult) => {
-        if (cachedSources.has(result.source)) return; // Already cached
+        if (cachedSources.has(result.source)) return;
         cachedSources.add(result.source);
         const cacheKey = `${result.source}:${url}`;
         saveOrReturnLongerArticle(cacheKey, result.article).catch(() => {});
       };
 
-      // Helper: race for first quality result, but don't cancel others
-      const raceForFirstSuccess = async (): Promise<FetchResult | null> => {
+      // Staggered fetch with early return
+      const fetchWithStaggeredFallback = async (): Promise<FetchResult | null> => {
         return new Promise((resolve) => {
           let resolved = false;
+          const pendingFetches: Promise<FetchResult | null>[] = [];
+          const results: (FetchResult | null)[] = [null, null, null];
           let completedCount = 0;
-          const results: (FetchResult | null)[] = [];
-          let winningSource: string | null = null;
 
-          // Cache all results in background after race completes (excluding winner if specified)
-          const cacheAllInBackground = () => {
-            results.forEach((r) => {
-              // Skip if already cached as winner
-              if (r && r.source !== winningSource) cacheResult(r);
-            });
+          const handleResult = (result: FetchResult | null, index: number, source: string) => {
+            completedCount++;
+            results[index] = result;
+
+            // If we have a quality result and haven't resolved, resolve immediately
+            if (!resolved && result && result.article.length > 500) {
+              resolved = true;
+              ctx.set("fetch_ms", Date.now() - fetchStart);
+              ctx.set("winning_source", source);
+              cacheResult(result);
+
+              // Cache other successful results in background
+              Promise.allSettled(pendingFetches).then(() => {
+                results.forEach((r) => {
+                  if (r && r.source !== source) cacheResult(r);
+                });
+              });
+
+              resolve(result);
+            }
+
+            // All fetches completed without success
+            if (!resolved && completedCount === pendingFetches.length) {
+              resolved = true;
+              ctx.set("fetch_ms", Date.now() - fetchStart);
+              // Cache any partial results
+              results.forEach((r) => { if (r) cacheResult(r); });
+              resolve(results.find(r => r !== null) ?? null);
+            }
           };
 
-          fetchPromises.forEach((promise, index) => {
-            promise.then((result) => {
-              completedCount++;
-              results[index] = result;
+          // 1. Start smry-fast immediately (fast, free)
+          const smryFastPromise = fetchArticleWithSmryFast(url)
+            .then(r => "article" in r ? { source: "smry-fast" as const, ...r } : null)
+            .then(r => { handleResult(r, 0, "smry-fast"); return r; })
+            .catch(() => { handleResult(null, 0, "smry-fast"); return null; });
+          pendingFetches.push(smryFastPromise);
 
-              // If we have a quality result and haven't resolved yet, resolve immediately
-              if (!resolved && result && result.article.length > 500) {
-                resolved = true;
-                winningSource = result.source;
-                ctx.set("fetch_ms", Date.now() - fetchStart);
-                ctx.set("winning_source", result.source);
-
-                // Cache winner immediately
-                cacheResult(result);
-
-                // Let other fetches continue and cache in background (winner excluded)
-                Promise.allSettled(fetchPromises).then(cacheAllInBackground);
-
-                resolve(result);
+          // 2. Start smry-slow after 300ms delay (short delay to let smry-fast try first)
+          const smrySlowPromise = new Promise<FetchResult | null>((res) => {
+            setTimeout(async () => {
+              if (resolved) { res(null); return; } // Skip if already resolved
+              try {
+                const r = await fetchArticleWithDiffbotWrapper(url, "smry-slow");
+                const result = "article" in r ? { source: "smry-slow" as const, ...r } : null;
+                handleResult(result, 1, "smry-slow");
+                res(result);
+              } catch {
+                handleResult(null, 1, "smry-slow");
+                res(null);
               }
-
-              // If all completed and we still haven't resolved, use best available or null
-              if (!resolved && completedCount === fetchPromises.length) {
-                resolved = true;
-                ctx.set("fetch_ms", Date.now() - fetchStart);
-
-                // Cache all successful results
-                cacheAllInBackground();
-
-                // Return best available
-                resolve(results.find(r => r !== null) ?? null);
-              }
-            }).catch(() => {
-              completedCount++;
-              results[index] = null;
-
-              // Check if all failed
-              if (!resolved && completedCount === fetchPromises.length) {
-                resolved = true;
-                ctx.set("fetch_ms", Date.now() - fetchStart);
-                resolve(null);
-              }
-            });
+            }, 300);
           });
+          pendingFetches.push(smrySlowPromise);
+
+          // 3. Start wayback after 600ms delay (last resort, staggered from smry-slow)
+          const waybackPromise = new Promise<FetchResult | null>((res) => {
+            setTimeout(async () => {
+              if (resolved) { res(null); return; } // Skip if already resolved
+              try {
+                const r = await fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback");
+                const result = "article" in r ? { source: "wayback" as const, ...r } : null;
+                handleResult(result, 2, "wayback");
+                res(result);
+              } catch {
+                handleResult(null, 2, "wayback");
+                res(null);
+              }
+            }, 600);
+          });
+          pendingFetches.push(waybackPromise);
         });
       };
 
-      const bestResult = await raceForFirstSuccess();
+      const bestResult = await fetchWithStaggeredFallback();
 
       // Return best result
       if (bestResult) {
