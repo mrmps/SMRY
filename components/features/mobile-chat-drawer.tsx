@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { X, Trash } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
+import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
@@ -40,7 +41,11 @@ export function MobileChatDrawer({
   onChatAdDismiss,
 }: MobileChatDrawerProps) {
   const chatRef = useRef<ArticleChatHandle>(null);
+  const drawerContentRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
+  const { isOpen: isKeyboardOpen, viewportHeight } = useMobileKeyboard();
+  const wasKeyboardOpenRef = useRef(false);
 
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
     "chat-language",
@@ -62,6 +67,51 @@ export function MobileChatDrawer({
     onOpenChange(false);
   }, [onOpenChange]);
 
+  useEffect(() => {
+    if (isKeyboardOpen && inputContainerRef.current && drawerContentRef.current) {
+      const timer = setTimeout(() => {
+        if (inputContainerRef.current) {
+          inputContainerRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "end",
+            inline: "nearest",
+          });
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isKeyboardOpen]);
+
+  useEffect(() => {
+    const wasOpen = wasKeyboardOpenRef.current;
+    wasKeyboardOpenRef.current = isKeyboardOpen;
+
+    if (wasOpen && !isKeyboardOpen && hasMessages) {
+      const timer = setTimeout(() => {
+        const messagesContainer = drawerContentRef.current?.querySelector('.overflow-y-auto');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        const messagesEnd = messagesContainer?.querySelector('[data-messages-end]') || 
+                            messagesContainer?.lastElementChild;
+        if (messagesEnd) {
+          messagesEnd.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isKeyboardOpen, hasMessages]);
+
+  const getDrawerHeight = () => {
+    if (isKeyboardOpen && viewportHeight > 0) {
+      const minHeight = typeof window !== "undefined" ? window.innerHeight * 0.5 : 400;
+      return `${Math.max(viewportHeight, minHeight)}px`;
+    }
+    return "85vh";
+  };
+
+  const drawerHeight = getDrawerHeight();
+
   return (
     <DrawerPrimitive.Root
       open={open}
@@ -76,16 +126,23 @@ export function MobileChatDrawer({
         />
 
         <DrawerPrimitive.Content
+          ref={drawerContentRef}
           className={cn(
             "fixed inset-x-0 bottom-0 z-50",
-            "h-[85vh] max-h-[85vh]",
             "rounded-t-[20px]",
             "bg-background",
             "flex flex-col",
             "outline-none",
             "shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.12)]",
-            "dark:shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.35)]"
+            "dark:shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.35)]",
+            "transition-all duration-200 ease-out",
+            "pb-[env(safe-area-inset-bottom,0px)]"
           )}
+          style={{
+            height: drawerHeight,
+            maxHeight: drawerHeight,
+            minHeight: isKeyboardOpen ? "50vh" : undefined,
+          }}
         >
           {/* Drag handle area with subtle background */}
           <div className="flex justify-center pt-3 pb-2 shrink-0 bg-muted/20">
@@ -173,6 +230,7 @@ export function MobileChatDrawer({
               language={preferredLanguage}
               onLanguageChange={setPreferredLanguage}
               onHasMessagesChange={setHasMessages}
+              inputContainerRef={inputContainerRef}
             />
           </div>
         </DrawerPrimitive.Content>

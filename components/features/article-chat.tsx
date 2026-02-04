@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 import Link from "next/link";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { LANGUAGES } from "@/types/api";
 import {
   Select,
@@ -86,6 +87,8 @@ interface ArticleChatProps {
   microAd?: GravityAdType | null;
   onMicroAdVisible?: () => void;
   onMicroAdClick?: () => void;
+  // Ref for input container (used for mobile keyboard scrolling)
+  inputContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
@@ -105,9 +108,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   microAd,
   onMicroAdVisible,
   onMicroAdClick,
+  inputContainerRef,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isMobile = useIsMobile();
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const isPremium = usageData?.isPremium ?? false;
@@ -139,6 +144,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     language: preferredLanguage,
     onUsageUpdate: setUsageData,
   });
+
+  const [justSubmitted, setJustSubmitted] = useState(false);
 
   // Copy state for messages
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -181,8 +188,17 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // Let slash commands handle keyboard events when menu is open
       handleSlashKeyDown(e);
+      
+      // Handle Enter key from mobile keyboard
+      if (e.key === "Enter" && !e.shiftKey && !isSlashMenuOpen && input.trim()) {
+        setJustSubmitted(true);
+        // Blur textarea to close keyboard on mobile
+        setTimeout(() => {
+          textareaRef.current?.blur();
+        }, 100);
+      }
     },
-    [handleSlashKeyDown]
+    [handleSlashKeyDown, isSlashMenuOpen, input]
   );
 
   // Expose clearMessages and hasMessages to parent via ref
@@ -203,19 +219,26 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
   // Auto-scroll to bottom when messages change or during streaming
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, lastMessageText, isLoading]);
+    const delay = justSubmitted ? 450 : 150;
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (justSubmitted) {
+        setJustSubmitted(false);
+      }
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [messages, lastMessageText, isLoading, justSubmitted]);
 
   // Auto-focus textarea when chat opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isMobile) {
       // Small delay to ensure the DOM is ready
       const timer = setTimeout(() => {
         textareaRef.current?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   const handleLanguageChange = useCallback(
     (newLang: string | null) => {
@@ -436,7 +459,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 <ChatLoader />
               </div>
             )}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} data-messages-end />
           </div>
         )}
         </div>
@@ -445,7 +468,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       </div>
 
       {/* Input area - floating style */}
-      <div className="shrink-0">
+      <div className="shrink-0" ref={inputContainerRef}>
         <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
           {/* Outer container with gradient background */}
           <div
