@@ -17,7 +17,6 @@ import {
   ArrowUp,
   Square,
   Zap,
-  PanelRightClose,
   Trash,
   X,
   Copy,
@@ -39,6 +38,8 @@ import {
   SlashCommands,
   useSlashCommands,
 } from "@/components/ui/slash-commands";
+import { GravityAd } from "@/components/ads/gravity-ad";
+import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
@@ -76,6 +77,10 @@ interface ArticleChatProps {
   language?: string;
   onLanguageChange?: (language: string) => void;
   onHasMessagesChange?: (hasMessages: boolean) => void;
+  ad?: GravityAdType | null;
+  onAdVisible?: () => void;
+  onAdClick?: () => void;
+  onAdDismiss?: () => void;
 }
 
 export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
@@ -88,6 +93,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   language: languageProp,
   onLanguageChange,
   onHasMessagesChange,
+  ad,
+  onAdVisible,
+  onAdClick,
+  onAdDismiss,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -241,7 +250,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       className={cn(
         "overflow-hidden",
         variant === "sidebar"
-          ? "flex h-full w-full flex-col"
+          ? "flex h-full w-full flex-col bg-card"
           : "rounded-xl border border-border bg-card shadow-sm mb-6",
       )}
     >
@@ -249,15 +258,17 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {!hideHeader && (
         <div
           className={cn(
-            "flex items-center justify-between gap-2 overflow-hidden px-3 py-2.5",
-            variant !== "sidebar" && "border-b border-border bg-muted/50",
+            "relative z-10 flex items-center justify-between gap-2 px-3 py-2.5 shrink-0",
+            variant === "sidebar"
+              ? "bg-muted/40 border-b border-border/30"
+              : "border-b border-border bg-muted/50",
           )}
         >
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">Chat</span>
           </div>
 
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
@@ -291,25 +302,35 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
             <button
               type="button"
-              onClick={(e) => {
+              onClick={() => onOpenChange(false)}
+              onPointerDown={(e) => {
                 e.stopPropagation();
-                onOpenChange(false);
               }}
-              className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground z-10"
+              className="ml-1 flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer select-none"
+              style={{ touchAction: 'manipulation' }}
               aria-label="Close chat"
             >
-              {variant === "sidebar" ? (
-                <PanelRightClose className="size-4" />
-              ) : (
-                <X className="size-4" />
-              )}
+              <X className="size-[18px]" />
             </button>
           </div>
         </div>
       )}
 
+      {/* Ad below header - shown on desktop sidebar only when header is visible */}
+      {ad && variant === "sidebar" && !hideHeader && (
+        <div className="px-3 py-2.5 bg-muted/20 border-b border-border/30 shrink-0">
+          <GravityAd
+            ad={ad}
+            variant="compact"
+            onVisible={onAdVisible ?? (() => {})}
+            onClick={onAdClick}
+            onDismiss={onAdDismiss}
+          />
+        </div>
+      )}
+
       {/* Messages - Mobile-first conversation container */}
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         <div
           className={cn(
             "h-full overflow-y-auto",
@@ -317,10 +338,13 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           )}
         >
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
+          <div className="flex min-h-[200px] h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
             <div className="flex-1 flex flex-col items-center justify-center text-center mb-4">
-              <Logo size="lg" className="text-primary/80 mb-2" />
-              <p className="text-sm text-muted-foreground">
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
+                <Logo size="lg" className="text-primary/80 mb-2 relative" />
+              </div>
+              <p className="text-sm text-muted-foreground/80">
                 Ask anything about this article
               </p>
             </div>
@@ -349,7 +373,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                     className={cn(
                       "px-3 py-2 sm:px-4 sm:py-3",
                       message.role === "user"
-                        ? "max-w-[90%] sm:max-w-[85%] bg-muted rounded-2xl"
+                        ? "max-w-[90%] sm:max-w-[85%] bg-linear-to-br from-muted to-muted/70 rounded-2xl shadow-sm"
                         : "w-full",
                     )}
                   >
@@ -409,18 +433,18 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         )}
         </div>
         {/* Fog effect at bottom */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-background to-transparent" />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
       </div>
 
-      {/* Input area */}
+      {/* Input area - floating style */}
       <div className="shrink-0">
-        <div className="p-3 sm:p-4">
+        <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
           {/* Outer container with gradient background */}
           <div
             className="rounded-[17px] p-[5px] backdrop-blur-xl"
             style={{
-              background: "radial-gradient(144% 100% at 50% 0%, hsl(var(--muted) / 0.8) 0%, hsl(var(--muted) / 0.6) 100%)",
-              boxShadow: "inset 0 1.5px 0 0 hsl(var(--background) / 0.95), 0 1px 3px 0 rgba(0,0,0,0.09)",
+              background: "radial-gradient(144% 100% at 50% 0%, hsl(var(--muted) / 0.9) 0%, hsl(var(--muted) / 0.5) 100%)",
+              boxShadow: "inset 0 1.5px 0 0 hsl(var(--background) / 0.95), 0 2px 8px -2px rgba(0,0,0,0.1), 0 1px 3px 0 rgba(0,0,0,0.06)",
             }}
           >
             {/* Slash Commands Menu - inside the container */}
@@ -485,6 +509,18 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </PromptInputActions>
             </PromptInput>
           </div>
+
+          {/* Micro ad below input - subtle text ad */}
+          {ad && (
+            <div className="pt-2 px-1">
+              <GravityAd
+                ad={ad}
+                variant="micro"
+                onVisible={onAdVisible ?? (() => {})}
+                onClick={onAdClick}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -492,8 +528,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {(isPremium || showUsageCounter) && (
         <div
           className={cn(
-            "border-t border-border px-3 py-2 text-center",
-            variant === "sidebar" && "shrink-0",
+            "px-3 py-2 text-center",
+            variant === "sidebar"
+              ? "shrink-0"
+              : "border-t border-border",
           )}
         >
           {isPremium && usageData?.model && (

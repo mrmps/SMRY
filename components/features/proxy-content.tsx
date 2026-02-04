@@ -317,11 +317,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     lang: firstSuccessfulArticle?.lang,
   });
 
-  // Ad distribution: sidebar + inline ad + footer ad
-  // Gravity returns: [0]=right_response (sidebar), [1]=inline_response, [2]=below_response (footer)
+  // Ad distribution: sidebar + inline ad + footer ad + chat ad + micro ad
+  // Gravity returns: [0]=sidebar, [1]=inline, [2]=footer, [3]=chat header, [4]=micro (below input)
   const sidebarAd = gravityAds[0] ?? null;
   const inlineAd = gravityAds[1] ?? null;
   const footerAd = gravityAds[2] ?? null;
+  const chatAd = gravityAds[3] ?? gravityAds[0] ?? null; // Chat header ad
 
   // Handle article load: save to history
   useEffect(() => {
@@ -430,7 +431,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     if (sidebarOpen === isExpanded) return;
 
     if (sidebarOpen) {
-      panel.expand(25);
+      panel.expand(32);
     } else {
       panel.collapse();
     }
@@ -706,13 +707,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 />
 
-                {/* Summary sidebar panel - resizable between 18-40% for flexibility.
-                    Unlike resizable-modal which uses fixed 25%, this allows users to adjust based on content. */}
+                {/* Summary sidebar panel - resizable between 25-50% for flexibility.
+                    Default width of ~35% provides comfortable chat experience. */}
                 <ResizablePanel
                   ref={summaryPanelRef}
-                  defaultSize={sidebarOpen ? 25 : 0}
-                  minSize={18}
-                  maxSize={40}
+                  defaultSize={sidebarOpen ? 32 : 0}
+                  minSize={25}
+                  maxSize={45}
                   collapsible
                   collapsedSize={0}
                   className="bg-card"
@@ -723,13 +724,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     if (!sidebarOpen) handleSidebarChange(true);
                   }}
                 >
-                  <div className="h-full border-l border-border">
+                  <div className="h-full border-l border-border/40">
                     <ArticleChat
                       articleContent={articleTextContent || ""}
                       articleTitle={articleTitle}
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
+                      ad={!isPremium ? sidebarAd : null}
+                      onAdVisible={sidebarAd ? () => fireImpression(sidebarAd) : undefined}
+                      onAdClick={sidebarAd ? () => fireClick(sidebarAd) : undefined}
+                      onAdDismiss={sidebarAd ? () => fireDismiss(sidebarAd) : undefined}
                     />
                   </div>
                 </ResizablePanel>
@@ -756,7 +761,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Scrollable content area */}
               <div
                 ref={mobileScrollRef}
-                className="h-full overflow-y-auto bg-card pb-16 touch-pan-y"
+                className={cn(
+                  "h-full overflow-y-auto bg-card touch-pan-y",
+                  !isPremium && sidebarAd && !mobileAdDismissed ? "pb-36" : "pb-16"
+                )}
               >
                 {/* Mobile promo + header stack with safe-area support */}
                 <div
@@ -845,6 +853,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onOpenChange={setMobileSummaryOpen}
                 articleContent={articleTextContent || ""}
                 articleTitle={articleTitle}
+                chatAd={!isPremium ? chatAd : null}
+                onChatAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
+                onChatAdClick={chatAd ? () => fireClick(chatAd) : undefined}
+                onChatAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}

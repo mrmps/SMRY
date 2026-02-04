@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"
 
 const Drawer = ({
   shouldScaleBackground = true,
-  scrollLockTimeout = 100,
+  scrollLockTimeout = 0,
   closeThreshold = 0.15,
   handleOnly = true,
+  repositionInputs = true,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
@@ -17,6 +18,7 @@ const Drawer = ({
     scrollLockTimeout={scrollLockTimeout}
     closeThreshold={closeThreshold}
     handleOnly={handleOnly}
+    repositionInputs={repositionInputs}
     {...props}
   />
 )
