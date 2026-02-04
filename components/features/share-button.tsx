@@ -62,7 +62,7 @@ const ShareModalContent = React.memo(function ShareModalContent({
   articleTitle,
   url,
   originalUrl,
-  source,
+  source: _source,
   onClose,
 }: ShareButtonDataProps & { onClose: () => void }) {
   const [copied, setCopied] = useState(false);

@@ -75,7 +75,7 @@ interface SlashCommandsProps {
 
 export function SlashCommands({
   isOpen,
-  onClose,
+  onClose: _onClose,
   onSelect,
   filter = "",
   commands = DEFAULT_SLASH_COMMANDS,
@@ -205,7 +205,7 @@ export function useSlashCommands({
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: reset index when filter changes
       setSelectedIndex(0);
     }
-  });
+  }, [filter, setSelectedIndex]);
 
   const handleClose = useCallback(() => {
     // Close by clearing input
