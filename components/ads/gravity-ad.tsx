@@ -82,10 +82,11 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   // 0 = gravity favicon, 1 = DuckDuckGo fallback, 2 = letter icon
   const [faviconStage, setFaviconStage] = useState(0);
 
+  // DuckDuckGo favicon fallback - use ad.url (landing page) not clickUrl (Gravity tracking redirect)
   const ddgFavicon = useMemo(() => {
-    const domain = getDomain(ad.clickUrl);
+    const domain = getDomain(ad.url || ad.clickUrl);
     return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
-  }, [ad.clickUrl]);
+  }, [ad.url, ad.clickUrl]);
 
   // Resolve which favicon src to use (null = use FallbackIcon)
   const faviconSrc =
@@ -103,7 +104,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
     setHasTrackedImpression(false);
     setFaviconStage(0);
-  }, [ad.clickUrl]);
+  }, [ad.impUrl]); // Use impUrl as unique identifier for each ad
 
   // Impression tracking - useLayoutEffect ensures ref is available after DOM mount
   useLayoutEffect(() => {
