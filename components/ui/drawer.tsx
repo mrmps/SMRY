@@ -9,7 +9,7 @@ const Drawer = ({
   shouldScaleBackground = true,
   scrollLockTimeout = 0,
   closeThreshold = 0.15,
-  handleOnly = true,
+  handleOnly = false,
   repositionInputs = true,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
@@ -43,19 +43,19 @@ const DrawerOverlay = React.forwardRef<
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
 const DrawerHandle = React.forwardRef<
-  React.ElementRef<typeof DrawerPrimitive.Handle>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Handle>
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <DrawerPrimitive.Handle
+  <div
     ref={ref}
     className={cn(
-      "flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none",
+      "flex justify-center pt-3 pb-2 shrink-0 bg-muted/20",
       className
     )}
     {...props}
   >
-    <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-  </DrawerPrimitive.Handle>
+    <div className="w-9 h-1 rounded-full bg-muted-foreground/25" />
+  </div>
 ))
 DrawerHandle.displayName = "DrawerHandle"
 
@@ -71,7 +71,8 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[20px] border bg-background",
+        "shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.12)] dark:shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.35)]",
         className
       )}
       {...props}
