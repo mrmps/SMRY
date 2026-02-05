@@ -11,7 +11,7 @@
  * 5. Great at every breakpoint
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -104,21 +104,25 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
     setFaviconStage(0);
   }, [ad.clickUrl]);
 
-  // Impression tracking
-  useEffect(() => {
-    if (hasTrackedImpression || !adRef.current) return;
+  // Impression tracking - useLayoutEffect ensures ref is available after DOM mount
+  useLayoutEffect(() => {
+    if (hasTrackedImpression) return;
+
+    const element = adRef.current;
+    if (!element) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !hasTrackedImpression) {
+        if (entries[0]?.isIntersecting) {
           setHasTrackedImpression(true);
           onVisible();
         }
       },
       { threshold: 0.5 }
     );
-    observer.observe(adRef.current);
+    observer.observe(element);
     return () => observer.disconnect();
-  }, [hasTrackedImpression, onVisible]);
+  }, [hasTrackedImpression, onVisible, ad.impUrl]); // ad.impUrl triggers re-setup on ad change
 
   // Derived content - prioritize VALUE (adText) over brand repetition
   const valueProp = ad.adText || ad.title; // The actual value/benefit

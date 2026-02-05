@@ -2039,9 +2039,11 @@ function AdAnalyticsTab({
   };
 
   // Calculate impression rate for alerting
+  // Expected: >50% (ads are deduplicated, so 1 filled = 1+ unique ads shown)
+  // Lower rates may indicate: ads below fold, quick page exits, or tracking issues
   const impressionRate = filledCount > 0 ? (impressionsCount / filledCount) * 100 : 0;
-  const hasImpressionIssue = filledCount > 100 && impressionRate < 50;
-  const hasCriticalImpressionIssue = filledCount > 100 && impressionRate < 30;
+  const hasImpressionIssue = filledCount > 100 && impressionRate < 40;
+  const hasCriticalImpressionIssue = filledCount > 100 && impressionRate < 25;
 
   return (
     <div className="space-y-6">
@@ -2053,7 +2055,7 @@ function AdAnalyticsTab({
             <h3 className="font-bold text-red-400 text-lg">Critical: Impression Tracking Issue Detected</h3>
             <p className="text-red-300/80 text-sm mt-1">
               Only <span className="font-bold">{impressionRate.toFixed(1)}%</span> of filled ads are being tracked as impressions.
-              This indicates a potential bug in the ad tracking code. Expected rate: 60-80%.
+              This may indicate a tracking bug. Expected rate: &gt;50%.
             </p>
             <div className="mt-2 text-xs text-red-400/60">
               Filled: {filledCount.toLocaleString()} → Impressions: {impressionsCount.toLocaleString()} (Gap: {(filledCount - impressionsCount).toLocaleString()})
@@ -2069,8 +2071,8 @@ function AdAnalyticsTab({
           <div>
             <h3 className="font-bold text-amber-400">Warning: Low Impression Rate</h3>
             <p className="text-amber-300/80 text-sm mt-1">
-              Impression rate at <span className="font-bold">{impressionRate.toFixed(1)}%</span> is below expected 60-80%.
-              Monitor for potential tracking issues.
+              Impression rate at <span className="font-bold">{impressionRate.toFixed(1)}%</span> is below expected &gt;50%.
+              May be due to ads below fold, quick exits, or tracking issues.
             </p>
           </div>
         </div>
@@ -2256,7 +2258,7 @@ function AdAnalyticsTab({
             {/* Impression Rate Alert - Critical for detecting tracking bugs */}
             {filledCount > 0 && (() => {
               const impressionRate = (impressionsCount / filledCount) * 100;
-              if (impressionRate < 30) {
+              if (impressionRate < 25) {
                 return (
                   <AdInsightCard
                     type="warning"
@@ -2265,16 +2267,16 @@ function AdAnalyticsTab({
                   />
                 );
               }
-              if (impressionRate < 50) {
+              if (impressionRate < 40) {
                 return (
                   <AdInsightCard
                     type="warning"
                     title="Low Impression Rate"
-                    message={`${impressionRate.toFixed(1)}% impression rate. Expected 60-80%. May indicate tracking issue.`}
+                    message={`${impressionRate.toFixed(1)}% impression rate. Expected >50%. May be due to ads below fold or quick exits.`}
                   />
                 );
               }
-              if (impressionRate >= 60) {
+              if (impressionRate >= 50) {
                 return (
                   <AdInsightCard
                     type="success"

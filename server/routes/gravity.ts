@@ -225,16 +225,19 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         email: user?.email,
       } : undefined;
 
+      // Request ads from Gravity
+      // Note: Gravity may return duplicate ads if inventory is limited
+      // We deduplicate on our side before showing to users
       const gravityRequest: GravityRequest = {
         messages,
         sessionId,
-        numAds: 5, // Request 5 ads: sidebar, inline, footer, chat, micro
+        numAds: 5,
         placements: [
           { placement: "right_response", placement_id: "smry-sidebar-right" },
           { placement: "inline_response", placement_id: "smry-article-inline" },
           { placement: "below_response", placement_id: "smry-footer-bottom" },
           { placement: "above_response", placement_id: "smry-chat-header" },
-          { placement: "below_response", placement_id: "smry-input-micro" },
+          { placement: "left_response", placement_id: "smry-input-micro" },
         ],
         ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0,
