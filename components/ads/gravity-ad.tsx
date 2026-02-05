@@ -11,7 +11,7 @@
  * 5. Great at every breakpoint
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -97,8 +97,9 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
     setFaviconStage((s) => s + 1);
   };
 
-  // Reset on ad change
-  useEffect(() => {
+  // Reset on ad change - must use useLayoutEffect to run BEFORE impression tracking
+  // useLayoutEffect runs in declaration order, so this must come before the impression effect
+  useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
     setHasTrackedImpression(false);
     setFaviconStage(0);
