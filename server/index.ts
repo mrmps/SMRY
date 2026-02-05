@@ -14,6 +14,7 @@ import { webhookRoutes } from "./routes/webhooks";
 import { bypassDetectionRoutes } from "./routes/bypass-detection";
 import { gravityRoutes } from "./routes/gravity";
 import { adtrackRoutes } from "./routes/adtrack";
+import { highlightsRoutes } from "./routes/highlights";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
 import { checkErrorRateAndAlert } from "../lib/alerting";
 import { env } from "./env";
@@ -75,6 +76,7 @@ const app = new Elysia({ adapter: node() })
   .use(bypassDetectionRoutes)
   .use(gravityRoutes)
   .use(adtrackRoutes)
+  .use(highlightsRoutes)
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {

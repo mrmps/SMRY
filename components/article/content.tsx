@@ -22,6 +22,9 @@ import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
 import { Newspaper } from "lucide-react";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
+import { HighlightToolbar } from "@/components/features/highlight-toolbar";
+import { HighlightsPanel } from "@/components/features/highlights-panel";
+import { useHighlights } from "@/lib/hooks/use-highlights";
 
 export type { Source };
 
@@ -321,6 +324,15 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
   const sanitizedArticleContent = useSanitizedHtml(articleContent);
+  const articleTitle = data?.article?.title;
+
+  // Highlights functionality
+  const {
+    highlights,
+    addHighlight,
+    updateHighlight,
+    deleteHighlight,
+  } = useHighlights(url, articleTitle);
 
   // Add click-to-expand for images
   useEffect(() => {
@@ -653,6 +665,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                 )
               ) : sanitizedArticleContent ? (
                 <>
+                  {/* Highlight toolbar - appears on text selection */}
+                  <HighlightToolbar
+                    onHighlight={addHighlight}
+                    containerRef={contentRef}
+                  />
+
                   {/* Article content with optional mid-article ad */}
                   <ArticleWithInlineAd
                     contentRef={contentRef}
@@ -663,6 +681,19 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                     onInlineAdVisible={onInlineAdVisible}
                     onInlineAdClick={onInlineAdClick}
                   />
+
+                  {/* Highlights panel - shows saved highlights */}
+                  {highlights.length > 0 && (
+                    <HighlightsPanel
+                      highlights={highlights}
+                      articleUrl={url}
+                      articleTitle={articleTitle}
+                      onDelete={deleteHighlight}
+                      onUpdateNote={updateHighlight}
+                      className="mt-8"
+                    />
+                  )}
+
                   <UpgradeCTA dismissable="mobile-only" />
                   {/* Footer ad - appears below the subscription card */}
                   {footerAd && (
