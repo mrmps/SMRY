@@ -80,62 +80,78 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   .post(
     "/px",
     async ({ query, body, set }) => {
-      const impUrl = query.url;
+      // Prefer query.url, fall back to body.impUrl for impressions
+      const impUrl = query.url || body.impUrl;
       const eventType = body.type;
 
       // Track validation/forwarding status for analytics
       let gravityStatusCode = 0;
       let validationError = "";
+      let forwardingSuccess = false;
 
       // For impressions, validate and forward to Gravity for billing
-      if (eventType === "impression" && impUrl) {
-        // Validate URL is from Gravity
-        let isValidUrl = false;
-        try {
-          const parsedUrl = new URL(impUrl);
-          if (parsedUrl.hostname.endsWith("trygravity.ai")) {
-            isValidUrl = true;
-          } else {
-            validationError = "Invalid impression URL: not from trygravity.ai";
+      if (eventType === "impression") {
+        if (!impUrl) {
+          // Flag missing impression URL - this is a client bug
+          validationError = "Missing impression URL";
+          logger.warn({ sessionId: body.sessionId, hostname: body.hostname }, validationError);
+        } else {
+          // Validate URL is from Gravity
+          let isValidUrl = false;
+          try {
+            const parsedUrl = new URL(impUrl);
+            if (parsedUrl.hostname.endsWith("trygravity.ai")) {
+              isValidUrl = true;
+            } else {
+              validationError = "Invalid impression URL: not from trygravity.ai";
+              logger.warn({ impUrl }, validationError);
+            }
+          } catch {
+            validationError = "Invalid URL format";
             logger.warn({ impUrl }, validationError);
           }
-        } catch {
-          validationError = "Invalid URL format";
-          logger.warn({ impUrl }, validationError);
-        }
 
-        // Forward to Gravity only if URL is valid
-        if (isValidUrl) {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
+          // Forward to Gravity only if URL is valid
+          if (isValidUrl) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
 
-          try {
-            logger.info({ impUrl }, "Forwarding impression to Gravity");
-            const response = await fetch(impUrl, {
-              method: "GET",
-              headers: {
-                "User-Agent": "13ft-impression-proxy/1.0",
-              },
-              signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
-            await response.text().catch(() => {});
-            gravityStatusCode = response.status;
+            try {
+              logger.info({ impUrl }, "Forwarding impression to Gravity");
+              const response = await fetch(impUrl, {
+                method: "GET",
+                headers: {
+                  "User-Agent": "13ft-impression-proxy/1.0",
+                },
+                signal: controller.signal,
+              });
+              clearTimeout(timeoutId);
+              await response.text().catch(() => {});
+              gravityStatusCode = response.status;
 
-            if (response.ok) {
-              logger.info({ impUrl, status: response.status }, "Impression forwarded successfully");
-            } else {
-              validationError = `Gravity returned ${response.status}`;
-              logger.warn({ impUrl, status: response.status }, "Gravity returned non-2xx status");
+              if (response.ok) {
+                forwardingSuccess = true;
+                logger.info({ impUrl, status: response.status }, "Impression forwarded successfully");
+              } else {
+                validationError = `Gravity returned ${response.status}`;
+                logger.warn({ impUrl, status: response.status }, "Gravity returned non-2xx status");
+              }
+            } catch (error) {
+              clearTimeout(timeoutId);
+              const errorMsg = String(error);
+              const isTimeout = errorMsg.includes("abort");
+              validationError = isTimeout ? "Timeout forwarding to Gravity" : `Failed to forward: ${errorMsg}`;
+              logger.warn({ impUrl, error: errorMsg, isTimeout }, "Failed to forward impression");
             }
-          } catch (error) {
-            clearTimeout(timeoutId);
-            const errorMsg = String(error);
-            const isTimeout = errorMsg.includes("abort");
-            validationError = isTimeout ? "Timeout forwarding to Gravity" : `Failed to forward: ${errorMsg}`;
-            logger.warn({ impUrl, error: errorMsg, isTimeout }, "Failed to forward impression");
           }
         }
+      }
+
+      let trackingStatus: "filled" | "forwarding_failed";
+      if (eventType === "impression") {
+        trackingStatus = forwardingSuccess ? "filled" : "forwarding_failed";
+      } else {
+        trackingStatus = "filled";
       }
 
       // Always track event locally for analytics (even if Gravity forwarding failed)
@@ -147,13 +163,13 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         ad_title: body.adTitle || "",
         ad_text: body.adText || "",
         click_url: body.clickUrl || "",
-        imp_url: body.impUrl || impUrl || "",
+        imp_url: impUrl || "",
         cta: body.cta || "",
         favicon: body.favicon || "",
         device_type: body.deviceType || "",
         os: body.os || "",
         browser: body.browser || "",
-        status: "filled",
+        status: trackingStatus,
         gravity_status_code: gravityStatusCode,
         error_message: validationError,
       });
@@ -161,6 +177,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         type: eventType,
         hostname: body.hostname,
         brandName: body.brandName,
+        status: trackingStatus,
         gravityStatusCode,
         validationError: validationError || undefined,
       }, "Ad event tracked");

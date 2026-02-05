@@ -115,7 +115,8 @@ export interface AnalyticsEvent {
 // =============================================================================
 
 // Ad event status - matches ContextResponseStatus in types/api.ts
-export type AdEventStatus = "filled" | "no_fill" | "premium_user" | "gravity_error" | "timeout" | "error";
+// "forwarding_failed" is for impression events where Gravity URL forwarding failed
+export type AdEventStatus = "filled" | "no_fill" | "premium_user" | "gravity_error" | "timeout" | "error" | "forwarding_failed";
 
 // Event type for tracking funnel: request -> impression -> click/dismiss
 export type AdEventType = "request" | "impression" | "click" | "dismiss";
