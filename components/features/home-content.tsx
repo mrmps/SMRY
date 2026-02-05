@@ -18,6 +18,7 @@ import { NormalizedUrlSchema } from "@/lib/validation/url";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BottomCornerNav } from "@/components/shared/bottom-corner-nav";
+import { Footer } from "@/components/shared/footer";
 import { FAQ } from "@/components/marketing/faq";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { PromoBanner } from "@/components/marketing/promo-banner";
@@ -530,6 +531,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
       </section>
 
+      <Footer />
       <BottomCornerNav />
     </>
   );
