@@ -1,6 +1,6 @@
 import { createLogger } from "./logger";
 import { randomUUID } from "crypto";
-import { trackEvent, ErrorSeverity } from "./clickhouse";
+import { trackEvent, ErrorSeverity } from "./posthog";
 import { env } from "../server/env";
 
 /**
@@ -146,8 +146,7 @@ export function createRequestContext(initial?: InitialContext): RequestContext {
       logger.error(event, "request completed");
     }
 
-    // Send to Clickhouse analytics (fire-and-forget, non-blocking)
-    // trackEvent is memory-safe: bounded buffer, auto-flush, no errors thrown
+    // Send to PostHog analytics (fire-and-forget, non-blocking)
     trackEvent({
       request_id: event.request_id as string,
       timestamp: event.timestamp as string,

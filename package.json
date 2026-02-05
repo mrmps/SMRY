@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "docker-compose up -d clickhouse && bun run --watch server/index.ts & next dev",
+    "dev": "bun run --watch server/index.ts & next dev",
     "dev:server": "bun run --watch server/index.ts",
     "dev:next": "next dev",
     "dev:app-only": "bun run --watch server/index.ts & next dev",
@@ -34,7 +34,6 @@
     "@base-ui/react": "^1.1.0",
     "@clerk/backend": "^2.29.0",
     "@clerk/nextjs": "^6.36.5",
-    "@clickhouse/client": "^1.15.0",
     "@databuddy/sdk": "^2.3.29",
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/cron": "^1.4.1",
@@ -74,6 +73,8 @@
     "next-themes": "^0.4.6",
     "nuqs": "^2.8.0",
     "pino": "^8.19.0",
+    "posthog-js": "^1.341.1",
+    "posthog-node": "^5.24.10",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-markdown": "^9.0.1",

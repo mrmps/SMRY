@@ -1,11 +1,11 @@
 /**
  * Error Rate Alerting
  *
- * Monitors ClickHouse for error rate spikes and sends alerts via inbound.new.
+ * Monitors PostHog for error rate spikes and sends alerts via inbound.new.
  * Runs on a cron schedule from the Elysia server.
  */
 
-import { queryClickhouse } from "./clickhouse";
+import { queryPostHog } from "./posthog";
 import { sendAlertEmail } from "./emails";
 import { env } from "../server/env";
 
@@ -38,15 +38,16 @@ interface TopError {
 async function getErrorRateStats(): Promise<ErrorRateStats | null> {
   const query = `
     SELECT
-      countIf(outcome = 'error' AND timestamp > now() - INTERVAL 5 MINUTE) as recent_errors,
+      countIf(properties.outcome = 'error' AND timestamp > now() - INTERVAL 5 MINUTE) as recent_errors,
       countIf(timestamp > now() - INTERVAL 5 MINUTE) as recent_total,
-      countIf(outcome = 'error' AND timestamp <= now() - INTERVAL 5 MINUTE AND timestamp > now() - INTERVAL 1 HOUR) as baseline_errors,
+      countIf(properties.outcome = 'error' AND timestamp <= now() - INTERVAL 5 MINUTE AND timestamp > now() - INTERVAL 1 HOUR) as baseline_errors,
       countIf(timestamp <= now() - INTERVAL 5 MINUTE AND timestamp > now() - INTERVAL 1 HOUR) as baseline_total
-    FROM request_events
-    WHERE timestamp > now() - INTERVAL 1 HOUR
+    FROM events
+    WHERE event = 'request_event'
+      AND timestamp > now() - INTERVAL 1 HOUR
   `;
 
-  const results = await queryClickhouse<{
+  const results = await queryPostHog<{
     recent_errors: number;
     recent_total: number;
     baseline_errors: number;
@@ -72,18 +73,19 @@ async function getErrorRateStats(): Promise<ErrorRateStats | null> {
 async function getTopRecentErrors(): Promise<TopError[]> {
   const query = `
     SELECT
-      error_type,
-      error_message,
+      properties.error_type as error_type,
+      properties.error_message as error_message,
       count() as count
-    FROM request_events
-    WHERE timestamp > now() - INTERVAL 5 MINUTE
-      AND outcome = 'error'
+    FROM events
+    WHERE event = 'request_event'
+      AND timestamp > now() - INTERVAL 5 MINUTE
+      AND properties.outcome = 'error'
     GROUP BY error_type, error_message
     ORDER BY count DESC
     LIMIT 5
   `;
 
-  return queryClickhouse<TopError>(query);
+  return queryPostHog<TopError>(query);
 }
 
 /**
@@ -93,7 +95,7 @@ export async function checkErrorRateAndAlert(): Promise<void> {
   try {
     const stats = await getErrorRateStats();
     if (!stats) {
-      console.log("[alerting] No data from ClickHouse");
+      console.log("[alerting] No data from PostHog");
       return;
     }
 

@@ -1,33 +1,7 @@
-# Local dev services - ClickHouse starts automatically with: bun run dev
+# Local dev services
 # For full Docker stack: bun run dev:docker
 
 services:
-  # Clickhouse analytics database (memory-optimized)
-  clickhouse:
-    build:
-      context: ./docker/clickhouse
-      dockerfile: Dockerfile
-    container_name: smry-clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
-    volumes:
-      - clickhouse-data:/var/lib/clickhouse
-      - ./docs/clickhouse-schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    environment:
-      CLICKHOUSE_DB: smry_analytics
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: clickhouse
-    healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-
   # Next.js app
   app:
     build:
@@ -42,22 +16,16 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      # Clickhouse (internal Docker network)
-      CLICKHOUSE_URL: http://clickhouse:8123
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: clickhouse
-      CLICKHOUSE_DATABASE: smry_analytics
-      ANALYTICS_SECRET_KEY: dev_secret_key
       # Pass through from host .env
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY}
+      POSTHOG_HOST: ${POSTHOG_HOST}
+      POSTHOG_PROJECT_ID: ${POSTHOG_PROJECT_ID}
+      POSTHOG_PERSONAL_API_KEY: ${POSTHOG_PERSONAL_API_KEY}
+      NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY}
+      NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST}
       UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
       DIFFBOT_API_KEY: ${DIFFBOT_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-    depends_on:
-      clickhouse:
-        condition: service_healthy
-
-volumes:
-  clickhouse-data:
