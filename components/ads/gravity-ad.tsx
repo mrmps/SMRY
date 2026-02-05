@@ -23,7 +23,7 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro";
+  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat";
 }
 
 // Dismiss button - consistent across all variants
@@ -290,6 +290,38 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
         <span className="group-hover:underline underline-offset-2 decoration-muted-foreground/40">
           {ad.brandName} — {valueProp}
         </span>
+      </a>
+    );
+  }
+
+  // ============================================
+  // INLINE-CHAT VARIANT - Elegant sponsored suggestion
+  // Styled like a blockquote with left border
+  // ============================================
+  if (variant === "inline-chat") {
+    return (
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
+        className={cn(
+          "group block pl-3 border-l-2 border-border/40 hover:border-primary/40 transition-colors",
+          className
+        )}
+      >
+        <p className="text-[12px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">
+          <span className="font-medium text-foreground/70 group-hover:text-foreground/90">{ad.brandName}</span>
+          {" — "}
+          {valueProp}
+          {" "}
+          <span className="inline-flex items-center gap-0.5 font-medium text-primary/60 group-hover:text-primary transition-colors whitespace-nowrap">
+            {ctaText}
+            <span className="text-[10px]">↗</span>
+          </span>
+        </p>
+        <span className="text-[9px] text-muted-foreground/30 mt-0.5 block">Sponsored</span>
       </a>
     );
   }

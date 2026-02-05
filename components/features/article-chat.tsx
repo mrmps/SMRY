@@ -438,12 +438,12 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         </div>
                       )}
 
-                      {/* Inline ad after last assistant message - ultra subtle */}
+                      {/* Inline ad after last assistant message - elegant sponsored suggestion */}
                       {isLastMessage && !isLoading && ad && variant === "sidebar" && (
                         <div className="mt-3">
                           <GravityAd
                             ad={ad}
-                            variant="compact"
+                            variant="inline-chat"
                             onVisible={onAdVisible ?? (() => {})}
                             onClick={onAdClick}
                           />
