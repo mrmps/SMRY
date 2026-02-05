@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Twitter,
   FileText,
-  Copy,
   Settings,
   BookOpen,
   Code,
@@ -160,20 +159,6 @@ export function MobileBottomBar({
                     <Link2 className="size-5 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1">Copy smry link</span>
                     {copiedItem === "smry" && (
-                      <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
-                    )}
-                  </button>
-                  <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
-                </div>
-
-                <div className="relative">
-                  <button
-                    onClick={() => handleCopy(originalUrl, "original")}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
-                  >
-                    <Copy className="size-5 text-muted-foreground" aria-hidden="true" />
-                    <span className="flex-1">Copy original link</span>
-                    {copiedItem === "original" && (
                       <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
                     )}
                   </button>
