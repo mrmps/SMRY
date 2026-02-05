@@ -4,15 +4,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { X, Trash } from "lucide-react";
-import { LanguageIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
-import { LANGUAGES } from "@/types/api";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -50,13 +42,6 @@ export function MobileChatDrawer({
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
     "chat-language",
     "en"
-  );
-
-  const handleLanguageChange = useCallback(
-    (newLang: string | null) => {
-      if (newLang) setPreferredLanguage(newLang);
-    },
-    [setPreferredLanguage]
   );
 
   const handleClearMessages = useCallback(() => {
@@ -171,26 +156,6 @@ export function MobileChatDrawer({
                   <Trash className="size-3" />
                 </button>
               )}
-
-              {/* Language selector */}
-              <Select
-                value={preferredLanguage}
-                onValueChange={handleLanguageChange}
-              >
-                <SelectTrigger className="h-6 w-auto min-w-0 gap-1 rounded-md border-0 bg-muted/50 px-2 text-[11px] font-medium shadow-none hover:bg-muted/70 transition-colors">
-                  <LanguageIcon className="size-2.5" />
-                  <span className="truncate text-muted-foreground">
-                    {LANGUAGES.find((l) => l.code === preferredLanguage)?.name || "English"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
               {/* Close button */}
               <button
