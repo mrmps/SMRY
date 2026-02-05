@@ -11,8 +11,7 @@
  * 5. Great at every breakpoint
  */
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import { useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
@@ -56,55 +55,83 @@ function DismissButton({
   );
 }
 
-// Extract domain from a URL for favicon lookup
-function getDomain(url: string): string | null {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
+/**
+ * AdFavicon - Simple favicon with cascading fallbacks
+ *
+ * Tries in order:
+ * 1. Gravity-provided favicon (src prop)
+ * 2. DuckDuckGo favicon lookup (from fallbackUrl domain)
+ * 3. Letter icon (first letter of brandName)
+ */
+function AdFavicon({
+  src,
+  fallbackUrl,
+  brandName,
+  size = 32,
+  className,
+}: {
+  src?: string;
+  fallbackUrl?: string;
+  brandName: string;
+  size?: number;
+  className?: string;
+}) {
+  const [stage, setStage] = useState(0); // 0=primary, 1=ddg, 2=letter
 
-// Fallback icon when no favicon
-function FallbackIcon({ brandName }: { brandName: string }) {
+  // Build DuckDuckGo fallback URL from domain
+  const ddgUrl = fallbackUrl ? (() => {
+    try {
+      const domain = new URL(fallbackUrl).hostname;
+      return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+    } catch {
+      return null;
+    }
+  })() : null;
+
+  // Determine current src based on stage
+  const currentSrc = stage === 0 && src ? src
+    : stage <= 1 && ddgUrl ? ddgUrl
+    : null;
+
+  // Reset stage when src changes (new ad)
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when src prop changes
+    setStage(0);
+  }, [src]);
+
+  // Letter fallback
+  if (!currentSrc) {
+    return (
+      <div className={cn("size-full rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center", className)}>
+        <span className="text-primary font-bold text-xs">
+          {brandName.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div className="size-full rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-      <span className="text-primary font-bold text-xs">
-        {brandName.charAt(0).toUpperCase()}
-      </span>
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={currentSrc}
+      alt=""
+      width={size}
+      height={size}
+      className={cn("size-full object-cover", className)}
+      onError={() => setStage(s => s + 1)}
+    />
   );
 }
 
 export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
-  // 0 = gravity favicon, 1 = DuckDuckGo fallback, 2 = letter icon
-  const [faviconStage, setFaviconStage] = useState(0);
 
-  // DuckDuckGo favicon fallback - use ad.url (landing page) not clickUrl (Gravity tracking redirect)
-  const ddgFavicon = useMemo(() => {
-    const domain = getDomain(ad.url || ad.clickUrl);
-    return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
-  }, [ad.url, ad.clickUrl]);
-
-  // Resolve which favicon src to use (null = use FallbackIcon)
-  const faviconSrc =
-    faviconStage === 0 && ad.favicon ? ad.favicon
-    : faviconStage <= 1 && ddgFavicon ? ddgFavicon
-    : null;
-
-  const handleFaviconError = () => {
-    setFaviconStage((s) => s + 1);
-  };
-
-  // Reset on ad change - must use useLayoutEffect to run BEFORE impression tracking
-  // useLayoutEffect runs in declaration order, so this must come before the impression effect
+  // Reset on ad change
   useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad changes
     setHasTrackedImpression(false);
-    setFaviconStage(0);
-  }, [ad.impUrl]); // Use impUrl as unique identifier for each ad
+  }, [ad.impUrl]);
 
   // Impression tracking - useLayoutEffect ensures ref is available after DOM mount
   useLayoutEffect(() => {
@@ -124,10 +151,10 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [hasTrackedImpression, onVisible, ad.impUrl]); // ad.impUrl triggers re-setup on ad change
+  }, [hasTrackedImpression, onVisible, ad.impUrl]);
 
   // Derived content - prioritize VALUE (adText) over brand repetition
-  const valueProp = ad.adText || ad.title; // The actual value/benefit
+  const valueProp = ad.adText || ad.title;
   const ctaText = ad.cta || "Learn more";
 
   // ============================================
@@ -150,24 +177,9 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className
         )}
       >
-        {/* Icon with light bg for dark mode visibility */}
         <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-          {faviconSrc ? (
-            <Image
-              src={faviconSrc}
-              alt=""
-              width={32}
-              height={32}
-              className="size-full object-cover"
-              onError={handleFaviconError}
-              unoptimized
-            />
-          ) : (
-            <FallbackIcon brandName={ad.brandName} />
-          )}
+          <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={32} />
         </div>
-
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {valueProp}
@@ -176,8 +188,6 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             {ad.brandName} · Ad
           </p>
         </div>
-
-        {/* Dismiss only - no CTA button, whole thing is clickable */}
         <DismissButton onDismiss={onDismiss} />
       </a>
     );
@@ -198,19 +208,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
         >
           <div className="size-7 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            {faviconSrc ? (
-              <Image
-                src={faviconSrc!}
-                alt=""
-                width={28}
-                height={28}
-                className="size-full object-cover"
-                onError={handleFaviconError}
-                unoptimized
-              />
-            ) : (
-              <FallbackIcon brandName={ad.brandName} />
-            )}
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={28} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
@@ -244,19 +242,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
         >
           <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            {faviconSrc ? (
-              <Image
-                src={faviconSrc!}
-                alt=""
-                width={32}
-                height={32}
-                className="size-full object-cover"
-                onError={handleFaviconError}
-                unoptimized
-              />
-            ) : (
-              <FallbackIcon brandName={ad.brandName} />
-            )}
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={32} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
@@ -276,7 +262,6 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
 
   // ============================================
   // MICRO VARIANT - Single-line text ad, nearly invisible
-  // Just: "Ad · BrandName — value prop"
   // ============================================
   if (variant === "micro") {
     return (
@@ -302,7 +287,6 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
 
   // ============================================
   // INLINE-CHAT VARIANT - Elegant sponsored suggestion
-  // Styled like a blockquote with left border
   // ============================================
   if (variant === "inline-chat") {
     return (
@@ -334,7 +318,6 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
 
   // ============================================
   // INLINE VARIANT - End-of-article horizontal strip
-  // No card, no shadow — just a quiet separator + horizontal row
   // ============================================
   if (variant === "inline") {
     return (
@@ -348,19 +331,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           className="flex items-center gap-2 sm:gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
         >
           <div className="size-8 sm:size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            {faviconSrc ? (
-              <Image
-                src={faviconSrc!}
-                alt=""
-                width={36}
-                height={36}
-                className="size-full object-cover"
-                onError={handleFaviconError}
-                unoptimized
-              />
-            ) : (
-              <FallbackIcon brandName={ad.brandName} />
-            )}
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={36} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
@@ -393,19 +364,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
       {/* Header: logo + brand + dismiss */}
       <div className="flex items-center gap-2.5 mb-2">
         <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-          {faviconSrc ? (
-            <Image
-              src={faviconSrc!}
-              alt=""
-              width={32}
-              height={32}
-              className="size-full object-cover"
-              onError={handleFaviconError}
-              unoptimized
-            />
-          ) : (
-            <FallbackIcon brandName={ad.brandName} />
-          )}
+          <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={32} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-foreground truncate">{ad.brandName}</p>
