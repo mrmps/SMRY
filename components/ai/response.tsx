@@ -223,7 +223,8 @@ export const Response = memo(
         <Streamdown
           components={components}
           isAnimating={isAnimating}
-          mode={isAnimating ? undefined : 'static'}
+          mode={isAnimating ? 'streaming' : 'static'}
+          parseIncompleteMarkdown={isAnimating}
           shikiTheme={shikiThemes}
           rehypePlugins={[
             defaultRehypePlugins.raw,

@@ -221,7 +221,7 @@ export function useArticleChat({
     id: chatId,
     messages: initialMessages,
     transport,
-    experimental_throttle: 50, // Throttle updates to 50ms to prevent jitter during streaming
+    experimental_throttle: 100, // Throttle updates to 100ms for smoother streaming with less jitter
     onError: (error: Error) => {
       console.error("Chat error:", error);
     },
