@@ -57,7 +57,6 @@ interface GravityRequest {
   messages: GravityMessage[];
   sessionId: string;
   placements: GravityPlacement[];
-  numAds?: number;
   testAd?: boolean;
   relevancy?: number;
   device?: GravityDevice;
@@ -319,10 +318,10 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       // Request ads from Gravity
       // Note: Gravity may return duplicate ads if inventory is limited
       // We deduplicate on our side before showing to users
+      // Number of ads returned = placements array length (per Gravity docs)
       const gravityRequest: GravityRequest = {
         messages,
         sessionId,
-        numAds: 5,
         placements: [
           { placement: "right_response", placement_id: "smry-sidebar-right" },
           { placement: "inline_response", placement_id: "smry-article-inline" },
