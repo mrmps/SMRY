@@ -1,13 +1,10 @@
 "use client";
 
 /**
- * useGravityAd - High-performance hook for fetching contextual ads from Gravity AI
+ * useGravityAd - Hook for fetching contextual ads from Gravity AI
  *
- * Performance optimizations:
- * - Aggressive caching with staleTime to prevent unnecessary refetches
- * - Device info collected once and cached at module level
- * - Stable query keys to maximize cache hits
- * - Memoized callbacks to prevent re-renders
+ * Collects device info for better ad targeting and higher CPMs.
+ * Uses navigator.sendBeacon for reliable impression tracking.
  */
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
@@ -16,40 +13,75 @@ import { getApiUrl } from "@/lib/api/config";
 import { useAuth, useUser } from "@clerk/nextjs";
 import type { ContextAd, ContextDevice, ContextRequest, ContextResponse } from "@/types/api";
 
-// Empty subscribe for useSyncExternalStore (values never change after init)
-const emptySubscribe = () => () => {};
-
 const SESSION_ID_KEY = "gravity-session-id";
 
 // Re-export for consumers
 export type { ContextAd as GravityAd };
 
-// ============================================
-// Module-level caching (computed once per page load)
-// ============================================
+function generateSessionId(): string {
+  return crypto.randomUUID();
+}
 
-let cachedSessionId: string | null = null;
-let cachedDeviceInfo: ContextDevice | null = null;
-
-function getSessionId(): string {
-  if (cachedSessionId) return cachedSessionId;
-
+function getOrCreateSessionId(): string {
   if (typeof window === "undefined") {
-    return crypto.randomUUID();
+    return generateSessionId();
   }
 
   let sessionId = localStorage.getItem(SESSION_ID_KEY);
   if (!sessionId) {
-    sessionId = crypto.randomUUID();
+    sessionId = generateSessionId();
     localStorage.setItem(SESSION_ID_KEY, sessionId);
   }
-  cachedSessionId = sessionId;
   return sessionId;
 }
 
-function getDeviceInfo(): ContextDevice {
-  if (cachedDeviceInfo) return cachedDeviceInfo;
+function getDeviceType(): "desktop" | "mobile" | "tablet" {
+  if (typeof window === "undefined") return "desktop";
+  const ua = navigator.userAgent.toLowerCase();
+  if (/tablet|ipad|playbook|silk/i.test(ua)) return "tablet";
+  if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua)) return "mobile";
+  return "desktop";
+}
 
+function getOS(): string {
+  if (typeof window === "undefined") return "unknown";
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return "windows";
+  if (/Mac OS X|Macintosh/i.test(ua)) return "macos";
+  if (/Linux/i.test(ua) && !/Android/i.test(ua)) return "linux";
+  if (/Android/i.test(ua)) return "android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/CrOS/i.test(ua)) return "chromeos";
+  return "unknown";
+}
+
+function getBrowser(): string {
+  if (typeof window === "undefined") return "unknown";
+
+  // Use modern userAgentData API if available (Chrome 90+, Edge 90+, Opera 76+)
+  const uaData = (navigator as Navigator & { userAgentData?: { brands?: Array<{ brand: string }> } }).userAgentData;
+  if (uaData?.brands) {
+    const dominated = ["Google Chrome", "Microsoft Edge", "Opera", "Brave"];
+    for (const { brand } of uaData.brands) {
+      if (dominated.includes(brand)) {
+        return brand.split(" ").pop()?.toLowerCase() || "unknown";
+      }
+    }
+  }
+
+  // Fallback to UA string parsing
+  const ua = navigator.userAgent;
+  // Order matters - check more specific browsers first
+  if (/Edg\//i.test(ua)) return "edge";
+  if (/OPR\//i.test(ua) || /Opera/i.test(ua)) return "opera";
+  if (/Firefox/i.test(ua)) return "firefox";
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) return "chrome";
+  if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return "safari";
+  if (/MSIE|Trident/i.test(ua)) return "ie";
+  return "unknown";
+}
+
+function collectDeviceInfo(): ContextDevice {
   if (typeof window === "undefined") {
     return {
       timezone: "UTC",
@@ -66,64 +98,20 @@ function getDeviceInfo(): ContextDevice {
     };
   }
 
-  const ua = navigator.userAgent;
-  const uaLower = ua.toLowerCase();
-
-  // Device type detection
-  let deviceType: "desktop" | "mobile" | "tablet" = "desktop";
-  if (/tablet|ipad|playbook|silk/i.test(uaLower)) deviceType = "tablet";
-  else if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(uaLower)) deviceType = "mobile";
-
-  // OS detection
-  let os = "unknown";
-  if (/Windows/i.test(ua)) os = "windows";
-  else if (/Mac OS X|Macintosh/i.test(ua)) os = "macos";
-  else if (/Linux/i.test(ua) && !/Android/i.test(ua)) os = "linux";
-  else if (/Android/i.test(ua)) os = "android";
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = "ios";
-  else if (/CrOS/i.test(ua)) os = "chromeos";
-
-  // Browser detection
-  let browser = "unknown";
-  const uaData = (navigator as Navigator & { userAgentData?: { brands?: Array<{ brand: string }> } }).userAgentData;
-  if (uaData?.brands) {
-    const dominated = ["Google Chrome", "Microsoft Edge", "Opera", "Brave"];
-    for (const { brand } of uaData.brands) {
-      if (dominated.includes(brand)) {
-        browser = brand.split(" ").pop()?.toLowerCase() || "unknown";
-        break;
-      }
-    }
-  }
-  if (browser === "unknown") {
-    if (/Edg\//i.test(ua)) browser = "edge";
-    else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browser = "opera";
-    else if (/Firefox/i.test(ua)) browser = "firefox";
-    else if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = "chrome";
-    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "safari";
-    else if (/MSIE|Trident/i.test(ua)) browser = "ie";
-  }
-
-  cachedDeviceInfo = {
+  return {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     locale: navigator.language || "en-US",
     language: navigator.language?.split("-")[0] || "en",
-    ua,
-    os,
-    browser,
-    deviceType,
+    ua: navigator.userAgent,
+    os: getOS(),
+    browser: getBrowser(),
+    deviceType: getDeviceType(),
     screenWidth: window.screen.width,
     screenHeight: window.screen.height,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
   };
-
-  return cachedDeviceInfo;
 }
-
-// ============================================
-// Types
-// ============================================
 
 export interface UseGravityAdOptions {
   /** URL of the article - triggers immediate ad fetch */
@@ -155,20 +143,29 @@ export interface UseGravityAdResult {
   fireDismiss: (ad?: ContextAd) => void;
 }
 
-// ============================================
-// Constants
-// ============================================
+// Ad refresh interval in milliseconds (45 seconds)
+const AD_REFRESH_INTERVAL_MS = 45_000;
 
-// Cache ads for 30 seconds to prevent flickering and unnecessary refetches
-const AD_STALE_TIME_MS = 30_000;
-// Keep ads in cache for 2 minutes even if unused
-const AD_GC_TIME_MS = 120_000;
-// Refresh ads every 60 seconds for users who stay on the page
-const AD_REFRESH_INTERVAL_MS = 60_000;
+// SSR-safe store subscriptions for immediate client-side values
+const emptySubscribe = () => () => {};
 
-// ============================================
-// Hook
-// ============================================
+// Cached client-side values to avoid recomputing on every render
+let cachedSessionId: string | null = null;
+let cachedDeviceInfo: ContextDevice | null = null;
+
+function getClientSessionId(): string {
+  if (cachedSessionId === null) {
+    cachedSessionId = getOrCreateSessionId();
+  }
+  return cachedSessionId;
+}
+
+function getClientDeviceInfo(): ContextDevice {
+  if (cachedDeviceInfo === null) {
+    cachedDeviceInfo = collectDeviceInfo();
+  }
+  return cachedDeviceInfo;
+}
 
 export function useGravityAd({
   url,
@@ -184,21 +181,21 @@ export function useGravityAd({
   const { getToken } = useAuth();
   const { user } = useUser();
 
-  // SSR-safe access to client values using useSyncExternalStore
-  // Server returns empty/null, client returns cached values immediately
+  // Use useSyncExternalStore for SSR-safe immediate client values
+  // Server returns empty/null, client returns real values immediately (no effect delay)
   const sessionId = useSyncExternalStore(
     emptySubscribe,
-    getSessionId,
-    () => "" // Server snapshot
+    getClientSessionId,
+    () => "" // Server snapshot - empty string
   );
 
   const deviceInfo = useSyncExternalStore(
     emptySubscribe,
-    getDeviceInfo,
-    () => null // Server snapshot
+    getClientDeviceInfo,
+    () => null // Server snapshot - null
   );
 
-  // Memoize user info
+  // Memoize user info to avoid recreating on every render
   const userInfo = useMemo(() => {
     if (!user) return undefined;
     return {
@@ -207,29 +204,23 @@ export function useGravityAd({
     };
   }, [user]);
 
-  // Stable query key - only url matters for cache identity
-  // Other params are passed in body but don't affect cache key
-  const queryKey = useMemo(() => ["gravity-ad", url] as const, [url]);
-
-  // Determine if query should be enabled
-  // Wait for title to be available to avoid wasting requests
-  const isEnabled = !isPremium && !!url && !!title && !!sessionId;
-
   const query = useQuery({
-    queryKey,
+    queryKey: ["context", url, sessionId, title, prompt],
     queryFn: async (): Promise<ContextAd[] | null> => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
 
       // Add auth token if available
-      try {
-        const token = await getToken();
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
+      if (typeof getToken === "function") {
+        try {
+          const token = await getToken();
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
+        } catch {
+          // Continue without auth
         }
-      } catch {
-        // Continue without auth
       }
 
       // Truncate textContent to ~4000 chars for better ad targeting
@@ -242,6 +233,7 @@ export function useGravityAd({
         sessionId,
         device: deviceInfo ?? undefined,
         user: userInfo,
+        // Additional metadata for better ad targeting
         byline: byline || undefined,
         siteName: siteName || undefined,
         publishedTime: publishedTime || undefined,
@@ -263,126 +255,110 @@ export function useGravityAd({
 
       const data: ContextResponse = await response.json();
 
-      // Only return ads if status is "filled"
+      // Log the response status for debugging
       if (data.status !== "filled") {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[useGravityAd] No ad:", data.status);
-        }
-        return null;
+        console.log("[useGravityAd] No ad:", data.status, data.debug);
       }
 
+      // Only return ads if status is "filled"
+      if (data.status !== "filled") return null;
       // Prefer the ads array, fall back to single ad
       if (data.ads && data.ads.length > 0) return data.ads;
       if (data.ad) return [data.ad];
       return null;
     },
-    // Performance: Cache ads to prevent flickering
-    staleTime: AD_STALE_TIME_MS,
-    gcTime: AD_GC_TIME_MS,
-    // Only fetch when conditions are met
-    enabled: isEnabled,
-    // Refresh ads periodically for long sessions
-    refetchInterval: AD_REFRESH_INTERVAL_MS,
-    refetchIntervalInBackground: false,
-    // Don't refetch on window focus (annoying for users)
+    // Never cache - always fetch fresh ads
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
-    // Don't retry failed requests (ad not critical)
+    // Refresh ads every 45 seconds for users who stay on the page
+    refetchInterval: AD_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false, // Don't refresh when tab is hidden
+    // Only fetch when we have session info, article content, and user is not premium
+    // Wait for title to avoid wasting a request before article loads
+    enabled: !!sessionId && !!deviceInfo && !isPremium && !!url && !!title,
     retry: false,
-    // Use previous data while refetching to prevent flickering
-    placeholderData: (prev) => prev,
   });
 
-  // Stable tracking function - memoized to prevent re-renders
-  const sendTrackingEvent = useCallback(
-    (type: "impression" | "click" | "dismiss", ad: ContextAd | null) => {
-      if (!ad || !sessionId) return;
+  // Helper to send tracking events via sendBeacon (non-blocking)
+  const sendTrackingEvent = useCallback((type: "impression" | "click" | "dismiss", ad: ContextAd | null) => {
+    if (!ad || !sessionId) return;
 
-      let hostname = "";
-      try {
-        hostname = new URL(url).hostname;
-      } catch {
-        // Ignore invalid URLs
-      }
+    // Extract hostname from current page URL
+    let hostname = "";
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      // Ignore invalid URLs
+    }
 
-      const payload = JSON.stringify({
-        type,
-        sessionId,
-        hostname,
-        brandName: ad.brandName,
-        adTitle: ad.title,
-        adText: ad.adText,
-        clickUrl: ad.clickUrl,
-        impUrl: ad.impUrl,
-        cta: ad.cta,
-        favicon: ad.favicon,
-        deviceType: deviceInfo?.deviceType,
-        os: deviceInfo?.os,
-        browser: deviceInfo?.browser,
-      });
+    const payload = JSON.stringify({
+      type,
+      sessionId,
+      hostname,
+      brandName: ad.brandName,
+      adTitle: ad.title,
+      adText: ad.adText,
+      clickUrl: ad.clickUrl,
+      impUrl: ad.impUrl,
+      cta: ad.cta,
+      favicon: ad.favicon,
+      deviceType: deviceInfo?.deviceType,
+      os: deviceInfo?.os,
+      browser: deviceInfo?.browser,
+    });
 
-      const trackUrl = getApiUrl("/api/adtrack");
+    const trackUrl = getApiUrl("/api/adtrack");
 
-      // Use sendBeacon for reliable non-blocking tracking
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        navigator.sendBeacon(trackUrl, new Blob([payload], { type: "application/json" }));
-      } else {
-        fetch(trackUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: payload,
-          keepalive: true,
-        }).catch(() => {});
-      }
-    },
-    [sessionId, url, deviceInfo]
-  );
+    // Use sendBeacon for reliable non-blocking tracking
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      navigator.sendBeacon(trackUrl, new Blob([payload], { type: "application/json" }));
+    } else {
+      // Fallback to fetch (non-blocking, fire-and-forget)
+      fetch(trackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true, // Ensure request completes even if page unloads
+      }).catch(() => {});
+    }
+  }, [sessionId, url, deviceInfo]);
 
-  // Memoized event handlers
-  const fireImpression = useCallback(
-    (targetAd?: ContextAd) => {
-      const ad = targetAd ?? query.data?.[0];
-      if (!ad) return;
+  const fireImpression = useCallback((targetAd?: ContextAd) => {
+    const ad = targetAd ?? query.data?.[0];
+    if (!ad) return;
 
-      // Fire impression to Gravity via proxy (for billing)
-      const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(ad.impUrl)}`);
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        navigator.sendBeacon(proxyUrl);
-      } else {
-        fetch(proxyUrl, { method: "POST", keepalive: true }).catch(() => {});
-      }
+    // 1. Fire impression to Gravity via our proxy (for billing)
+    const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(ad.impUrl)}`);
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      navigator.sendBeacon(proxyUrl);
+    } else {
+      fetch(proxyUrl, { method: "POST" }).catch(() => {});
+    }
 
-      // Track locally for analytics
-      sendTrackingEvent("impression", ad);
-    },
-    [query.data, sendTrackingEvent]
-  );
+    // 2. Track locally for our analytics (non-blocking)
+    sendTrackingEvent("impression", ad);
+  }, [query.data, sendTrackingEvent]);
 
-  const fireClick = useCallback(
-    (targetAd?: ContextAd) => {
-      const ad = targetAd ?? query.data?.[0];
-      sendTrackingEvent("click", ad ?? null);
-    },
-    [query.data, sendTrackingEvent]
-  );
+  const fireClick = useCallback((targetAd?: ContextAd) => {
+    const ad = targetAd ?? query.data?.[0];
+    sendTrackingEvent("click", ad ?? null);
+  }, [query.data, sendTrackingEvent]);
 
-  const fireDismiss = useCallback(
-    (targetAd?: ContextAd) => {
-      const ad = targetAd ?? query.data?.[0];
-      sendTrackingEvent("dismiss", ad ?? null);
-    },
-    [query.data, sendTrackingEvent]
-  );
+  const fireDismiss = useCallback((targetAd?: ContextAd) => {
+    const ad = targetAd ?? query.data?.[0];
+    sendTrackingEvent("dismiss", ad ?? null);
+  }, [query.data, sendTrackingEvent]);
 
-  // Memoize the result to prevent object recreation
-  return useMemo(() => {
-    const ads = query.data ?? [];
-    return {
-      ad: ads[0] ?? null,
-      ads,
-      isLoading: query.isLoading,
-      fireImpression,
-      fireClick,
-      fireDismiss,
-    };
-  }, [query.data, query.isLoading, fireImpression, fireClick, fireDismiss]);
+  const ads = query.data ?? [];
+
+  return {
+    ad: ads[0] ?? null,
+    ads,
+    isLoading: query.isLoading,
+    fireImpression,
+    fireClick,
+    fireDismiss,
+  };
 }

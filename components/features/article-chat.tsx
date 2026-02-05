@@ -443,7 +443,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         <div className="mt-3">
                           <GravityAd
                             ad={ad}
-                            variant="inline-chat"
+                            variant="compact"
                             onVisible={onAdVisible ?? (() => {})}
                             onClick={onAdClick}
                           />

@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * GravityAd - High-performance contextual ad display component
+ * GravityAd - Contextual ad display component
  *
- * Performance optimizations:
- * - Single IntersectionObserver per component (ref-based, not recreated)
- * - Impression tracking via ref to avoid re-renders
- * - CSS-based favicon fallback (no state updates)
- * - Memoized component with proper comparison
+ * Design principles (after 15 rounds of review):
+ * 1. Compact & respectful - minimal intrusion
+ * 2. Title + description hierarchy when space allows
+ * 3. Always-visible CTA with smart fallback
+ * 4. Dismiss on most variants (sidebar is non-dismissable on desktop)
+ * 5. Great at every breakpoint
  */
 
-import { memo, useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,41 +23,26 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat";
+  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro";
 }
 
-// Extract domain from URL for favicon lookup
-function getDomain(url: string): string | null {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
-
-// Dismiss button component
-const DismissButton = memo(function DismissButton({
+// Dismiss button - consistent across all variants
+function DismissButton({
   onDismiss,
   className,
 }: {
   onDismiss?: () => void;
   className?: string;
 }) {
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onDismiss?.();
-    },
-    [onDismiss]
-  );
-
   if (!onDismiss) return null;
-
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDismiss();
+      }}
       className={cn(
         "shrink-0 flex items-center justify-center rounded-full transition-all",
         "size-6 text-muted-foreground/30 hover:text-muted-foreground/60 hover:bg-muted/60",
@@ -68,161 +54,79 @@ const DismissButton = memo(function DismissButton({
       <X className="size-3" />
     </button>
   );
-});
+}
 
-// Favicon with CSS fallback (no state needed)
-const AdFavicon = memo(function AdFavicon({
-  favicon,
-  clickUrl,
-  brandName,
-  size = 32,
-}: {
-  favicon?: string;
-  clickUrl: string;
-  brandName: string;
-  size?: number;
-}) {
-  const domain = getDomain(clickUrl);
-  const ddgFavicon = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
-  const initial = brandName.charAt(0).toUpperCase();
-  const imgSrc = favicon || ddgFavicon;
+// Extract domain from a URL for favicon lookup
+function getDomain(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
 
+// Fallback icon when no favicon
+function FallbackIcon({ brandName }: { brandName: string }) {
   return (
-    <div
-      className="relative rounded-lg overflow-hidden bg-linear-to-br from-primary/20 to-primary/10 ring-1 ring-border/20 flex items-center justify-center shrink-0"
-      style={{ width: size, height: size }}
-    >
-      {/* Fallback letter always rendered behind */}
-      <span className="text-primary font-bold text-xs">{initial}</span>
-
-      {/* Primary favicon - only render if we have a valid src */}
-      {imgSrc && (
-        <Image
-          src={imgSrc}
-          alt=""
-          width={size}
-          height={size}
-          className="absolute inset-0 size-full object-cover bg-white"
-          onError={(e) => {
-            // On error, hide the image to show fallback letter
-            e.currentTarget.style.display = "none";
-          }}
-          unoptimized
-        />
-      )}
+    <div className="size-full rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+      <span className="text-primary font-bold text-xs">
+        {brandName.charAt(0).toUpperCase()}
+      </span>
     </div>
   );
-});
+}
 
-// Main component
-function GravityAdComponent({
-  ad,
-  onVisible,
-  onDismiss,
-  onClick,
-  className,
-  variant = "default",
-}: GravityAdProps) {
+export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
-  const hasTrackedRef = useRef(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  // Store latest callback in ref to avoid stale closure issues
-  const onVisibleRef = useRef(onVisible);
+  const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
+  // 0 = gravity favicon, 1 = DuckDuckGo fallback, 2 = letter icon
+  const [faviconStage, setFaviconStage] = useState(0);
 
-  // Keep the ref updated with latest callback
+  const ddgFavicon = useMemo(() => {
+    const domain = getDomain(ad.clickUrl);
+    return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
+  }, [ad.clickUrl]);
+
+  // Resolve which favicon src to use (null = use FallbackIcon)
+  const faviconSrc =
+    faviconStage === 0 && ad.favicon ? ad.favicon
+    : faviconStage <= 1 && ddgFavicon ? ddgFavicon
+    : null;
+
+  const handleFaviconError = () => {
+    setFaviconStage((s) => s + 1);
+  };
+
+  // Reset on ad change
   useEffect(() => {
-    onVisibleRef.current = onVisible;
-  }, [onVisible]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad prop changes
+    setHasTrackedImpression(false);
+    setFaviconStage(0);
+  }, [ad.clickUrl]);
 
-  // Single effect for intersection observer - stable dependencies
+  // Impression tracking
   useEffect(() => {
-    const element = adRef.current;
-    if (!element) return;
-
-    // Reset tracking and create fresh observer when ad changes
-    hasTrackedRef.current = false;
-
-    // Clean up any existing observer
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    observerRef.current = new IntersectionObserver(
+    if (hasTrackedImpression || !adRef.current) return;
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !hasTrackedRef.current) {
-          hasTrackedRef.current = true;
-          // Always call the latest callback via ref
-          onVisibleRef.current();
-          observerRef.current?.disconnect();
+        if (entries[0].isIntersecting && !hasTrackedImpression) {
+          setHasTrackedImpression(true);
+          onVisible();
         }
       },
       { threshold: 0.5 }
     );
+    observer.observe(adRef.current);
+    return () => observer.disconnect();
+  }, [hasTrackedImpression, onVisible]);
 
-    observerRef.current.observe(element);
-
-    return () => {
-      observerRef.current?.disconnect();
-    };
-  }, [ad.clickUrl]); // Only recreate when ad changes
-
-  // Derived content
-  const valueProp = ad.adText || ad.title;
+  // Derived content - prioritize VALUE (adText) over brand repetition
+  const valueProp = ad.adText || ad.title; // The actual value/benefit
   const ctaText = ad.cta || "Learn more";
 
-  // MICRO VARIANT - ultra compact text ad
-  if (variant === "micro") {
-    return (
-      <a
-        ref={adRef}
-        href={ad.clickUrl}
-        target="_blank"
-        rel="sponsored noopener"
-        onClick={onClick}
-        className={cn(
-          "group block text-center text-[10px] leading-tight text-muted-foreground/60 transition-colors hover:text-muted-foreground",
-          className
-        )}
-      >
-        <span className="text-muted-foreground/40">Ad</span>
-        <span className="text-muted-foreground/30"> · </span>
-        <span className="group-hover:underline underline-offset-2 decoration-muted-foreground/30">
-          {ad.brandName} — {valueProp}
-        </span>
-      </a>
-    );
-  }
-
-  // INLINE-CHAT VARIANT - elegant sponsored suggestion
-  if (variant === "inline-chat") {
-    return (
-      <a
-        ref={adRef}
-        href={ad.clickUrl}
-        target="_blank"
-        rel="sponsored noopener"
-        onClick={onClick}
-        className={cn(
-          "group block pl-3 border-l-2 border-border/40 hover:border-primary/40 transition-colors",
-          className
-        )}
-      >
-        <p className="text-[12px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">
-          <span className="font-medium text-foreground/70 group-hover:text-foreground/90">{ad.brandName}</span>
-          {" — "}
-          {valueProp}
-          {" "}
-          <span className="inline-flex items-center gap-0.5 font-medium text-primary/60 group-hover:text-primary transition-colors whitespace-nowrap">
-            {ctaText}
-            <span className="text-[10px]">↗</span>
-          </span>
-        </p>
-        <span className="text-[9px] text-muted-foreground/30 mt-0.5 block">Sponsored</span>
-      </a>
-    );
-  }
-
-  // MOBILE VARIANT
+  // ============================================
+  // MOBILE VARIANT - Clean, minimal, no button
+  // ============================================
   if (variant === "mobile") {
     return (
       <a
@@ -233,13 +137,31 @@ function GravityAdComponent({
         onClick={onClick}
         className={cn(
           "flex items-center gap-3 bg-card border-t border-border/30",
-          "px-3 py-2.5 sm:px-4",
+          "px-3 py-2.5",
+          "sm:px-4",
           "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
           "group",
           className
         )}
       >
-        <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} />
+        {/* Icon with light bg for dark mode visibility */}
+        <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          {faviconSrc ? (
+            <Image
+              src={faviconSrc}
+              alt=""
+              width={32}
+              height={32}
+              className="size-full object-cover"
+              onError={handleFaviconError}
+              unoptimized
+            />
+          ) : (
+            <FallbackIcon brandName={ad.brandName} />
+          )}
+        </div>
+
+        {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {valueProp}
@@ -248,12 +170,16 @@ function GravityAdComponent({
             {ad.brandName} · Ad
           </p>
         </div>
+
+        {/* Dismiss only - no CTA button, whole thing is clickable */}
         <DismissButton onDismiss={onDismiss} />
       </a>
     );
   }
 
-  // COMPACT VARIANT
+  // ============================================
+  // COMPACT VARIANT - Minimal inline
+  // ============================================
   if (variant === "compact") {
     return (
       <div className={cn("flex items-center gap-2", className)}>
@@ -265,7 +191,21 @@ function GravityAdComponent({
           onClick={onClick}
           className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
         >
-          <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} size={28} />
+          <div className="size-7 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            {faviconSrc ? (
+              <Image
+                src={faviconSrc!}
+                alt=""
+                width={28}
+                height={28}
+                className="size-full object-cover"
+                onError={handleFaviconError}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
               {valueProp}
@@ -283,7 +223,9 @@ function GravityAdComponent({
     );
   }
 
-  // SIDEBAR VARIANT
+  // ============================================
+  // SIDEBAR VARIANT - Native content feel
+  // ============================================
   if (variant === "sidebar") {
     return (
       <div className={cn("flex items-start gap-2.5 group", className)}>
@@ -295,7 +237,21 @@ function GravityAdComponent({
           onClick={onClick}
           className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
         >
-          <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} />
+          <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            {faviconSrc ? (
+              <Image
+                src={faviconSrc!}
+                alt=""
+                width={32}
+                height={32}
+                className="size-full object-cover"
+                onError={handleFaviconError}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
@@ -312,7 +268,36 @@ function GravityAdComponent({
     );
   }
 
-  // INLINE VARIANT
+  // ============================================
+  // MICRO VARIANT - Single-line text ad, nearly invisible
+  // Just: "Ad · BrandName — value prop"
+  // ============================================
+  if (variant === "micro") {
+    return (
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
+        className={cn(
+          "group text-center text-[11px] text-muted-foreground/70 transition-colors hover:text-muted-foreground",
+          className
+        )}
+      >
+        <span className="text-muted-foreground/50">Ad</span>
+        <span className="text-muted-foreground/40"> · </span>
+        <span className="group-hover:underline underline-offset-2 decoration-muted-foreground/40">
+          {ad.brandName} — {valueProp}
+        </span>
+      </a>
+    );
+  }
+
+  // ============================================
+  // INLINE VARIANT - End-of-article horizontal strip
+  // No card, no shadow — just a quiet separator + horizontal row
+  // ============================================
   if (variant === "inline") {
     return (
       <div className={cn("border-t border-border/40 pt-6 pb-2 overflow-hidden", className)}>
@@ -324,7 +309,21 @@ function GravityAdComponent({
           onClick={onClick}
           className="flex items-center gap-2 sm:gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
         >
-          <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} size={36} />
+          <div className="size-8 sm:size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            {faviconSrc ? (
+              <Image
+                src={faviconSrc!}
+                alt=""
+                width={36}
+                height={36}
+                className="size-full object-cover"
+                onError={handleFaviconError}
+                unoptimized
+              />
+            ) : (
+              <FallbackIcon brandName={ad.brandName} />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
@@ -342,7 +341,9 @@ function GravityAdComponent({
     );
   }
 
-  // DEFAULT VARIANT
+  // ============================================
+  // DEFAULT VARIANT - Desktop card (vertical layout)
+  // ============================================
   return (
     <div
       className={cn(
@@ -351,14 +352,31 @@ function GravityAdComponent({
         className
       )}
     >
+      {/* Header: logo + brand + dismiss */}
       <div className="flex items-center gap-2.5 mb-2">
-        <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} />
+        <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          {faviconSrc ? (
+            <Image
+              src={faviconSrc!}
+              alt=""
+              width={32}
+              height={32}
+              className="size-full object-cover"
+              onError={handleFaviconError}
+              unoptimized
+            />
+          ) : (
+            <FallbackIcon brandName={ad.brandName} />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-foreground truncate">{ad.brandName}</p>
           <p className="text-[10px] text-muted-foreground/50">Sponsored</p>
         </div>
         <DismissButton onDismiss={onDismiss} />
       </div>
+
+      {/* Value prop - full width, can breathe */}
       <a
         ref={adRef}
         href={ad.clickUrl}
@@ -377,15 +395,3 @@ function GravityAdComponent({
     </div>
   );
 }
-
-// Memoized export with proper comparison
-export const GravityAd = memo(GravityAdComponent, (prev, next) => {
-  return (
-    prev.ad.clickUrl === next.ad.clickUrl &&
-    prev.variant === next.variant &&
-    prev.className === next.className &&
-    prev.onVisible === next.onVisible &&
-    prev.onDismiss === next.onDismiss &&
-    prev.onClick === next.onClick
-  );
-});
