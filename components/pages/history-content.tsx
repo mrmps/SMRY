@@ -16,7 +16,6 @@ import {
   Crown,
   Search,
   X,
-  Newspaper,
   ChevronRight,
   Grid3X3,
   List,
@@ -177,33 +176,19 @@ function getGoogleFaviconUrl(domain: string): string {
 function FaviconImage({
   domain,
   className,
-  fallbackIcon: FallbackIcon = GlobeIcon,
-  fallbackClassName,
 }: {
   domain: string;
   className?: string;
-  fallbackIcon?: React.ComponentType<{ className?: string }>;
-  fallbackClassName?: string;
 }) {
   const [errorCount, setErrorCount] = useState(0);
 
   const src = useMemo(() => {
-    if (errorCount === 0) {
-      return getFaviconUrl(domain);
-    }
-    if (errorCount === 1) {
-      return getGoogleFaviconUrl(domain);
-    }
+    if (errorCount === 0) return getFaviconUrl(domain);
+    if (errorCount === 1) return getGoogleFaviconUrl(domain);
     return null;
   }, [domain, errorCount]);
 
-  if (!src) {
-    return (
-      <div className="size-full flex items-center justify-center">
-        <FallbackIcon className={fallbackClassName ?? className} />
-      </div>
-    );
-  }
+  if (!src) return null;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -428,7 +413,6 @@ function HistoryItemCard({
           <FaviconImage
             domain={item.domain}
             className="size-full"
-            fallbackClassName="size-3 text-muted-foreground"
           />
         </div>
 
@@ -499,7 +483,6 @@ function HistoryItemCard({
             <FaviconImage
               domain={item.domain}
               className="size-full"
-              fallbackClassName="size-3 text-muted-foreground"
             />
           </div>
           <span className="text-xs text-muted-foreground truncate flex-1">
@@ -566,8 +549,6 @@ function HistoryItemCard({
           <FaviconImage
             domain={item.domain}
             className="size-full rounded-sm"
-            fallbackIcon={Newspaper}
-            fallbackClassName="size-full text-muted-foreground"
           />
         </div>
       </div>
@@ -852,7 +833,6 @@ function DomainGroupHeader({
         <FaviconImage
           domain={domain}
           className="size-full"
-          fallbackClassName="size-full text-muted-foreground"
         />
       </div>
       <span className="text-xs font-medium text-muted-foreground truncate">

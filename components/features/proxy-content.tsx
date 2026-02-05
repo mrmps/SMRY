@@ -527,12 +527,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Ask AI button - toggles sidebar */}
               <button
                 onClick={() => handleSidebarChange(!sidebarOpen)}
-                className={cn(
-                  "relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer",
-                  sidebarOpen
-                    ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/15"
-                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-                )}
+                className="relative h-9 pl-3 pr-12 text-sm text-muted-foreground bg-muted/50 border border-border rounded-lg hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
               >
                 <span className="mt-px">Ask AI</span>
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
