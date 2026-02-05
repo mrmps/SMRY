@@ -47,28 +47,26 @@ export function HighlightsPanel({
   return (
     <div className={cn("border border-border rounded-lg bg-card", className)}>
       {/* Header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-3">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-2 hover:text-foreground transition-colors"
+        >
           <span className="font-medium text-sm">
             {highlights.length} Highlight{highlights.length !== 1 ? "s" : ""}
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ExportHighlights
-            highlights={highlights}
-            articleUrl={articleUrl}
-            articleTitle={articleTitle}
-          />
           {expanded ? (
             <ChevronUp className="size-4 text-muted-foreground" />
           ) : (
             <ChevronDown className="size-4 text-muted-foreground" />
           )}
-        </div>
-      </button>
+        </button>
+        <ExportHighlights
+          highlights={highlights}
+          articleUrl={articleUrl}
+          articleTitle={articleTitle}
+        />
+      </div>
 
       {/* Highlights list */}
       {expanded && (
