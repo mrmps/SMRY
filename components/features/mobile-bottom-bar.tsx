@@ -7,14 +7,13 @@ import {
   Upload,
   Link2,
   ExternalLink,
+  Twitter,
   FileText,
+  Copy,
   Settings,
   BookOpen,
   Code,
 } from "lucide-react";
-
-import { FaXTwitter } from "react-icons/fa6";
-
 import {
   Drawer,
   DrawerContent,
@@ -146,7 +145,7 @@ export function MobileBottomBar({
                   className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   onClick={handleTweet}
                 >
-                  <FaXTwitter className="size-4" aria-hidden="true" />
+                  <Twitter className="size-4" aria-hidden="true" />
                   Tweet
                 </button>
               </div>
@@ -161,6 +160,20 @@ export function MobileBottomBar({
                     <Link2 className="size-5 text-muted-foreground" aria-hidden="true" />
                     <span className="flex-1">Copy smry link</span>
                     {copiedItem === "smry" && (
+                      <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
+                    )}
+                  </button>
+                  <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
+                </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => handleCopy(originalUrl, "original")}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
+                  >
+                    <Copy className="size-5 text-muted-foreground" aria-hidden="true" />
+                    <span className="flex-1">Copy original link</span>
+                    {copiedItem === "original" && (
                       <span className="text-xs text-primary" role="status" aria-live="polite">Copied!</span>
                     )}
                   </button>
