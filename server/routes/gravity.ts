@@ -3,7 +3,7 @@
  *
  * /api/context - Fetches contextual ads from Gravity AI for free users.
  * /api/px - Unified tracking for impressions, clicks, dismissals.
- *           For impressions, wraps Gravity forwarding + ClickHouse logging atomically.
+ *           For impressions, wraps Gravity forwarding + PostHog logging atomically.
  *
  * Endpoint names are neutral to avoid content blockers (no "ad" or "track" in names).
  */
@@ -13,7 +13,7 @@ import { getAuthInfo } from "../middleware/auth";
 import { env } from "../env";
 import { extractClientIp } from "../../lib/request-context";
 import { createLogger } from "../../lib/logger";
-import { trackAdEvent, type AdEventStatus } from "../../lib/clickhouse";
+import { trackAdEvent, type AdEventStatus } from "../../lib/posthog";
 
 const logger = createLogger("api:gravity");
 
@@ -133,7 +133,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
    * Unified tracking endpoint for impressions, clicks, and dismissals.
    *
    * CRITICAL: For impressions, this endpoint WRAPS the Gravity impression pixel call.
-   * This ensures ClickHouse accurately reflects whether Gravity received the impression.
+   * This ensures PostHog accurately reflects whether Gravity received the impression.
    * Without this, we'd log impressions locally without knowing if we got paid.
    *
    * Named "/px" to avoid ad blocker detection (no "ad" or "track" in the name).
@@ -151,7 +151,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         gravityResult = await forwardImpressionToGravity(impUrl);
       }
 
-      // Now track to ClickHouse WITH the Gravity result
+      // Now track to PostHog WITH the Gravity result
       try {
         trackAdEvent({
           event_type: type,

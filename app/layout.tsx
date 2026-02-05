@@ -19,6 +19,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from 'next-intl/server';
 import { JsonLd, organizationSchema, websiteSchema } from "@/components/seo/json-ld";
+import { PostHogProvider } from "@/components/providers/posthog-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://smry.ai"),
@@ -84,6 +85,7 @@ export default async function RootLayout({
         <body
           className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
         >
+          <PostHogProvider>
           <Databuddy
             clientId="638f8e5f-f436-4d00-a459-66dee9152e3c"
             trackPerformance
@@ -109,6 +111,7 @@ export default async function RootLayout({
               </QueryProvider>
             </NuqsAdapter>
           </ThemeProvider>
+          </PostHogProvider>
         </body>
       </html>
     </ClerkProvider>
