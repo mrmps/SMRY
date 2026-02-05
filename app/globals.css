@@ -588,6 +588,16 @@
   .shadow-glow-md {
     box-shadow: 0 0 40px -10px var(--glow);
   }
+
+  /* Hide scrollbar while maintaining scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* =============================================================================

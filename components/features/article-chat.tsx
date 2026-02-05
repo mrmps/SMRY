@@ -44,11 +44,11 @@ import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
-// Default suggestions for article chat
+// Default suggestions for article chat - Cursor-style concise prompts
 const DEFAULT_SUGGESTIONS: Suggestion[] = [
-  { text: "Summarize the article" },
-  { text: "what are the key takeaways?" },
-  { text: "what are the important facts mentioned?" }
+  { text: "Summarize this" },
+  { text: "Key takeaways" },
+  { text: "Important facts" },
 ];
 
 // Bouncing dots loader (CSS in globals.css)
@@ -285,28 +285,21 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           : "rounded-xl border border-border bg-card shadow-sm mb-6",
       )}
     >
-      {/* Header */}
-      {!hideHeader && (
-        <div
-          className={cn(
-            "relative z-10 flex items-center justify-between gap-2 px-3 py-2.5 shrink-0",
-            variant === "sidebar"
-              ? "bg-muted/40 border-b border-border/30"
-              : "border-b border-border bg-muted/50",
-          )}
-        >
+      {/* Header - only show for non-sidebar variant (sidebar moves controls to footer) */}
+      {!hideHeader && variant !== "sidebar" && (
+        <div className="relative z-10 flex items-center justify-between gap-2 px-3 py-2 shrink-0 border-b border-border/50 bg-muted/30">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">Chat</span>
+            <span className="text-[13px] font-semibold text-foreground">Chat</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
                 aria-label="Clear chat"
               >
-                <Trash className="size-3.5" />
+                <Trash className="size-3" />
               </button>
             )}
 
@@ -315,11 +308,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               onValueChange={handleLanguageChange}
               disabled={isLoading}
             >
-              <SelectTrigger className="h-7 w-auto min-w-0 gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium shadow-sm">
-                <LanguageIcon className="size-3" />
-                <span className="truncate">
-                  {LANGUAGES.find((l) => l.code === preferredLanguage)?.name ||
-                    "Lang"}
+              <SelectTrigger className="h-6 w-auto min-w-0 gap-1 rounded-md border-0 bg-muted/50 px-2 text-[11px] font-medium shadow-none hover:bg-muted/70 transition-colors">
+                <LanguageIcon className="size-2.5" />
+                <span className="truncate text-muted-foreground">
+                  {LANGUAGES.find((l) => l.code === preferredLanguage)?.name || "Lang"}
                 </span>
               </SelectTrigger>
               <SelectContent>
@@ -337,28 +329,16 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               onPointerDown={(e) => {
                 e.stopPropagation();
               }}
-              className="ml-1 flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer select-none"
+              className="ml-0.5 flex size-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground cursor-pointer select-none"
               style={{ touchAction: 'manipulation' }}
               aria-label="Close chat"
             >
-              <X className="size-[18px]" />
+              <X className="size-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Ad below header - shown on desktop sidebar only when header is visible */}
-      {ad && variant === "sidebar" && !hideHeader && (
-        <div className="px-3 py-2.5 bg-muted/20 border-b border-border/30 shrink-0">
-          <GravityAd
-            ad={ad}
-            variant="compact"
-            onVisible={onAdVisible ?? (() => {})}
-            onClick={onAdClick}
-            onDismiss={onAdDismiss}
-          />
-        </div>
-      )}
 
       {/* Messages - Mobile-first conversation container */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
@@ -370,22 +350,23 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         >
         {messages.length === 0 ? (
           <div className="flex min-h-[200px] h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
-            <div className="flex-1 flex flex-col items-center justify-center text-center mb-4">
-              <div className="relative">
+            <div className="flex-1 flex flex-col items-center justify-center text-center mb-6">
+              <div className="relative mb-3">
                 <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
-                <Logo size="lg" className="text-primary/80 mb-2 relative" />
+                <Logo size="lg" className="text-primary/70 relative" />
               </div>
-              <p className="text-sm text-muted-foreground/80">
+              <p className="text-[13px] text-muted-foreground/60">
                 Ask anything about this article
               </p>
             </div>
             <ChatSuggestions
               suggestions={DEFAULT_SUGGESTIONS}
               onSuggestionClick={handleSuggestionClick}
+              variant="default"
             />
           </div>
         ) : (
-          <div className="px-3 py-3 sm:px-4 sm:py-4 space-y-3 sm:space-y-4">
+          <div className="px-3 py-1 sm:px-4 sm:py-3 space-y-4 overflow-x-hidden">
             {messages.map((message, messageIndex) => {
               const messageText = getMessageText(message);
               const isLastMessage = messageIndex === messages.length - 1;
@@ -396,20 +377,30 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 <div
                   key={message.id}
                   className={cn(
-                    "group flex flex-col gap-1",
-                    message.role === "user" ? "items-end" : "items-start",
+                    "group relative",
+                    message.role === "user" ? "mb-4" : "",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "px-3 py-2 sm:px-4 sm:py-3",
-                      message.role === "user"
-                        ? "max-w-[90%] sm:max-w-[85%] bg-linear-to-br from-muted to-muted/70 rounded-2xl shadow-sm"
-                        : "w-full",
-                    )}
-                  >
-                    {isAssistant ? (
-                      <div className="text-sm leading-relaxed">
+                  {/* User message - Cursor-style with border and semi-transparent bg */}
+                  {message.role === "user" ? (
+                    <div className="rounded-[10px]">
+                      <div
+                        className={cn(
+                          "px-3 py-2",
+                          "bg-muted/40 dark:bg-muted/30",
+                          "border border-border/60",
+                          "rounded-[10px]",
+                        )}
+                      >
+                        <p className="text-[14px] leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
+                          {messageText}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Assistant message - Cursor-style clean content */
+                    <div className="px-2 overflow-hidden">
+                      <div className="text-[14px] leading-[22.75px] overflow-x-auto">
                         <Response
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}
@@ -418,35 +409,45 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           {messageText}
                         </Response>
                       </div>
-                    ) : (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{messageText}</p>
-                    )}
-                  </div>
 
-                  {/* Action buttons for assistant messages */}
-                  {showActions && (
-                    <div className="flex items-center gap-1 px-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => handleCopyMessage(message.id, messageText)}
-                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                        aria-label="Copy message"
-                      >
-                        {copiedMessageId === message.id ? (
-                          <Check className="size-3.5 text-green-500" />
-                        ) : (
-                          <Copy className="size-3.5" />
-                        )}
-                      </button>
-                      {isLastMessage && (
-                        <button
-                          type="button"
-                          onClick={handleReload}
-                          className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                          aria-label="Regenerate response"
-                        >
-                          <RotateCcw className="size-3.5" />
-                        </button>
+                      {/* Action buttons - Cursor-style subtle actions */}
+                      {showActions && (
+                        <div className="flex items-center gap-0.5 mt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyMessage(message.id, messageText)}
+                            className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                            aria-label="Copy message"
+                          >
+                            {copiedMessageId === message.id ? (
+                              <Check className="size-3 text-green-500" />
+                            ) : (
+                              <Copy className="size-3" />
+                            )}
+                          </button>
+                          {isLastMessage && (
+                            <button
+                              type="button"
+                              onClick={handleReload}
+                              className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                              aria-label="Regenerate response"
+                            >
+                              <RotateCcw className="size-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Inline ad after last assistant message - ultra subtle */}
+                      {isLastMessage && !isLoading && ad && variant === "sidebar" && (
+                        <div className="mt-3">
+                          <GravityAd
+                            ad={ad}
+                            variant="inline-chat"
+                            onVisible={onAdVisible ?? (() => {})}
+                            onClick={onAdClick}
+                          />
+                        </div>
                       )}
                     </div>
                   )}
@@ -467,20 +468,16 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
       </div>
 
-      {/* Input area - floating style */}
+      {/* Input area - Cursor-style clean design */}
       <div className="shrink-0" ref={inputContainerRef}>
         <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
-          {/* Outer container with gradient background */}
+          {/* Cursor-style input container with subtle border */}
           <div
-            className="rounded-[17px] p-[5px] backdrop-blur-xl"
-            style={{
-              background: "radial-gradient(144% 100% at 50% 0%, hsl(var(--muted) / 0.9) 0%, hsl(var(--muted) / 0.5) 100%)",
-              boxShadow: "inset 0 1.5px 0 0 hsl(var(--background) / 0.95), 0 2px 8px -2px rgba(0,0,0,0.1), 0 1px 3px 0 rgba(0,0,0,0.06)",
-            }}
+            className="relative rounded-[10px] border border-border/60 bg-background overflow-hidden"
           >
             {/* Slash Commands Menu - inside the container */}
             {isSlashMenuOpen && !isLoading && (
-              <div className="px-1">
+              <div className="px-2 pt-2">
                 <SlashCommands
                   isOpen={true}
                   onClose={handleSlashClose}
@@ -493,57 +490,66 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
 
-            <PromptInput
-              value={input}
-              onValueChange={setInput}
-              isLoading={isLoading}
-              onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
-              disabled={isLimitReached}
-              className="rounded-xl border-[1.5px]"
-              textareaRef={textareaRef}
-            >
-              <PromptInputTextarea
-                placeholder={isLimitReached ? "Daily limit reached" : "Ask anything, / for actions..."}
-                className="text-sm"
-                onKeyDown={handleTextareaKeyDown}
-              />
-              <PromptInputActions className="justify-end px-2 pb-2">
-                {isLoading ? (
-                  <PromptInputAction tooltip="Stop generating">
-                    <Button
-                      type="button"
-                      size="icon"
-                      onClick={stop}
-                      className="size-[30px] rounded-[10px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      <Square className="size-4" />
-                    </Button>
-                  </PromptInputAction>
-                ) : (
-                  <PromptInputAction tooltip={isLimitReached ? "Daily limit reached" : "Send message (Enter)"}>
-                      <Button
-                        type="button"
-                        size="icon"
-                        disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
-                        onClick={() => handleSubmit()}
-                        className={cn(
-                          "size-[30px] rounded-[10px] transition-all duration-200",
-                          input.trim() && !isLimitReached && !isSlashMenuOpen
-                            ? "bg-primary text-primary-foreground shadow-[0_1px_2px_0_rgba(0,0,0,0.10)] hover:shadow-[0_2px_4px_1px_rgba(0,0,0,0.12)]"
-                            : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        <ArrowUp className="size-3.5" />
-                      </Button>
-                    </PromptInputAction>
-                )}
-              </PromptInputActions>
-            </PromptInput>
+            {/* Inner content wrapper with semi-transparent bg like Cursor */}
+            <div className="bg-muted/30 dark:bg-muted/20">
+              <PromptInput
+                value={input}
+                onValueChange={setInput}
+                isLoading={isLoading}
+                onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
+                disabled={isLimitReached}
+                className="rounded-none border-0 shadow-none bg-transparent"
+                textareaRef={textareaRef}
+              >
+                <PromptInputTextarea
+                  placeholder={isLimitReached ? "Daily limit reached" : "Ask anything..."}
+                  className="text-[14px] min-h-[40px]"
+                  onKeyDown={handleTextareaKeyDown}
+                />
+                <PromptInputActions className="justify-between px-2 pb-2">
+                  {/* Left side - could add mode/model selector here later */}
+                  <div className="flex items-center gap-1" />
+
+                  {/* Right side - submit button */}
+                  <div className="flex items-center">
+                    {isLoading ? (
+                      <PromptInputAction tooltip="Stop generating">
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={stop}
+                          className="size-7 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          <Square className="size-3.5" />
+                        </Button>
+                      </PromptInputAction>
+                    ) : (
+                      <PromptInputAction tooltip={isLimitReached ? "Daily limit reached" : "Send message (Enter)"}>
+                        <Button
+                          type="button"
+                          size="icon"
+                          disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
+                          onClick={() => handleSubmit()}
+                          className={cn(
+                            "size-7 rounded-full transition-all duration-150",
+                            input.trim() && !isLimitReached && !isSlashMenuOpen
+                              ? "bg-foreground/90 text-background hover:bg-foreground shadow-sm"
+                              : "bg-foreground/10 text-muted-foreground pointer-events-none opacity-50"
+                          )}
+                        >
+                          <ArrowUp className="size-4" strokeWidth={2.5} />
+                        </Button>
+                      </PromptInputAction>
+                    )}
+                  </div>
+                </PromptInputActions>
+              </PromptInput>
+            </div>
           </div>
 
           {/* Micro ad below input - subtle text ad (desktop sidebar only) */}
           {microAd && variant === "sidebar" && (
-            <div className="pt-2 px-1">
+            <div className="pt-1 px-1">
               <GravityAd
                 ad={microAd}
                 variant="micro"
@@ -555,56 +561,83 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
       </div>
 
-      {/* Footer usage counter */}
-      {(isPremium || showUsageCounter) && (
+      {/* Footer - controls + usage counter (always show for sidebar) */}
+      {(variant === "sidebar" || isPremium || showUsageCounter) && (
         <div
           className={cn(
-            "px-3 py-2 text-center",
+            "px-3 py-1.5 shrink-0",
             variant === "sidebar"
-              ? "shrink-0"
-              : "border-t border-border",
+              ? "bg-muted/15 border-t border-border/20"
+              : "border-t border-border/50",
           )}
         >
-          {isPremium && usageData?.model && (
-            <div className="text-[10px] text-muted-foreground/60">
-              <Zap className="mr-1 inline-block size-2.5" />
-              {usageData.model}
-            </div>
-          )}
-          {!isPremium && showUsageCounter && usageData && (
-            <>
-              {usageData.remaining > 0 ? (
-                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground/60">
-                  <span>
-                    {usageData.limit - usageData.remaining}/{usageData.limit} messages used
-                  </span>
-                  <Link
-                    href="/pricing"
-                    className="rounded-sm bg-primary/10 px-1.5 py-0.5 font-medium text-primary hover:bg-primary/20"
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-tight text-muted-foreground/50">
+            {/* Controls for sidebar variant */}
+            {variant === "sidebar" && (
+              <div className="flex items-center gap-0.5 mr-auto">
+                {messages.length > 0 && (
+                  <button
+                    onClick={clearMessages}
+                    className="flex size-5 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                    aria-label="Clear chat"
+                    title="Clear chat"
                   >
-                    Upgrade
-                  </Link>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-1.5 py-1">
-                  <span className="text-xs text-muted-foreground">
-                    Daily limit reached ({usageData.limit}/{usageData.limit})
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="/pricing"
-                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                    >
-                      Upgrade for unlimited
-                    </Link>
-                    <span className="text-[10px] text-muted-foreground/60">
-                      or try again in 24 hours
+                    <Trash className="size-2.5" />
+                  </button>
+                )}
+                <Select
+                  value={preferredLanguage}
+                  onValueChange={handleLanguageChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger
+                    className="h-5 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    title="Response language"
+                  >
+                    <LanguageIcon className="size-2.5" />
+                    <span className="text-[10px] font-sans">
+                      {LANGUAGES.find((l) => l.code === preferredLanguage)?.code.toUpperCase() || "EN"}
                     </span>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Model info for premium */}
+            {isPremium && usageData?.model && (
+              <span className={cn("flex items-center gap-1", variant !== "sidebar" && "mr-auto")}>
+                <Zap className="size-2" />
+                {usageData.model}
+              </span>
+            )}
+
+            {/* Usage counter for free users */}
+            {!isPremium && showUsageCounter && usageData && (
+              <>
+                <span className={cn(usageData.remaining === 0 ? "text-destructive/60" : "", variant !== "sidebar" && !isPremium && "ml-auto")}>
+                  {usageData.limit - usageData.remaining}/{usageData.limit}
+                </span>
+                <Link
+                  href="/pricing"
+                  className={cn(
+                    "font-sans text-[9px] font-medium transition-colors",
+                    usageData.remaining === 0
+                      ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
+                      : "text-primary/70 hover:text-primary hover:underline"
+                  )}
+                >
+                  Upgrade
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

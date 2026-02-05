@@ -55,38 +55,39 @@ const hardenConfig = {
   allowDataImages: false,
 };
 
+// Cursor-style typography: 14px base, 18px h2 with 28px line height
 const components: StreamdownProps['components'] = {
   p: ({ node: _node, children, className, ...props }) => (
-    <p className={cn('mb-3 last:mb-0 leading-relaxed', className)} {...props}>
+    <p className={cn('mb-2 last:mb-0 leading-[22.75px]', className)} {...props}>
       {children}
     </p>
   ),
   ol: ({ node: _node, children, className, ...props }) => (
-    <ol className={cn('ml-4 mb-3 list-outside list-decimal space-y-1', className)} {...props}>
+    <ol className={cn('ml-5 mb-2 mt-2 list-outside list-decimal space-y-1', className)} {...props}>
       {children}
     </ol>
   ),
   li: ({ node: _node, children, className, ...props }) => (
-    <li className={cn('leading-relaxed', className)} {...props}>
+    <li className={cn('leading-5 my-1', className)} {...props}>
       {children}
     </li>
   ),
   ul: ({ node: _node, children, className, ...props }) => (
-    <ul className={cn('ml-4 mb-3 list-outside list-disc space-y-1', className)} {...props}>
+    <ul className={cn('ml-5 mb-2 mt-2 list-outside list-disc space-y-1', className)} {...props}>
       {children}
     </ul>
   ),
   hr: ({ node: _node, className, ...props }) => (
-    <hr className={cn('my-6 border-border', className)} {...props} />
+    <hr className={cn('my-4 border-border', className)} {...props} />
   ),
   strong: ({ node: _node, children, className, ...props }) => (
-    <span className={cn('font-semibold', className)} {...props}>
+    <span className={cn('font-bold', className)} {...props}>
       {children}
     </span>
   ),
   a: ({ node: _node, children, className, ...props }) => (
     <a
-      className={cn('font-medium text-primary underline', className)}
+      className={cn('font-medium text-primary underline underline-offset-2', className)}
       rel="noreferrer"
       target="_blank"
       {...props}
@@ -96,7 +97,7 @@ const components: StreamdownProps['components'] = {
   ),
   h1: ({ node: _node, children, className, ...props }) => (
     <h1
-      className={cn('mt-6 mb-2 font-semibold text-3xl', className)}
+      className={cn('mt-4 mb-2 font-semibold text-xl leading-7', className)}
       {...props}
     >
       {children}
@@ -104,32 +105,32 @@ const components: StreamdownProps['components'] = {
   ),
   h2: ({ node: _node, children, className, ...props }) => (
     <h2
-      className={cn('mt-6 mb-2 font-semibold text-2xl', className)}
+      className={cn('mt-3 mb-2 font-semibold text-lg leading-7', className)}
       {...props}
     >
       {children}
     </h2>
   ),
   h3: ({ node: _node, children, className, ...props }) => (
-    <h3 className={cn('mt-6 mb-2 font-semibold text-xl', className)} {...props}>
+    <h3 className={cn('mt-3 mb-2 font-semibold text-base leading-6', className)} {...props}>
       {children}
     </h3>
   ),
   h4: ({ node: _node, children, className, ...props }) => (
-    <h4 className={cn('mt-6 mb-2 font-semibold text-lg', className)} {...props}>
+    <h4 className={cn('mt-3 mb-2 font-semibold text-[15px] leading-6', className)} {...props}>
       {children}
     </h4>
   ),
   h5: ({ node: _node, children, className, ...props }) => (
     <h5
-      className={cn('mt-6 mb-2 font-semibold text-base', className)}
+      className={cn('mt-3 mb-2 font-semibold text-sm leading-5', className)}
       {...props}
     >
       {children}
     </h5>
   ),
   h6: ({ node: _node, children, className, ...props }) => (
-    <h6 className={cn('mt-6 mb-2 font-semibold text-sm', className)} {...props}>
+    <h6 className={cn('mt-3 mb-2 font-semibold text-sm leading-5', className)} {...props}>
       {children}
     </h6>
   ),

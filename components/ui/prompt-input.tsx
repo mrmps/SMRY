@@ -95,10 +95,9 @@ function PromptInput({
         <div
           onClick={handleClick}
           className={cn(
-            "bg-background cursor-text rounded-xl border p-2.5",
-            "border-border/50 hover:border-border/70 focus-within:border-border/80",
-            "shadow-[0_7px_12px_0_rgba(0,0,0,0.06)] focus-within:shadow-[0_10px_14px_0_rgba(0,0,0,0.12)]",
-            "transition-[border-color,box-shadow] duration-300 ease-out",
+            "bg-background cursor-text rounded-[10px] border p-2",
+            "border-border/50 hover:border-border/60 focus-within:border-border/70",
+            "transition-[border-color] duration-150 ease-out",
             disabled && "cursor-not-allowed opacity-60",
             className
           )}
@@ -127,7 +126,7 @@ function PromptInputTextarea({
   const adjustHeight = (el: HTMLTextAreaElement | null, isInitial = false) => {
     if (!el || disableAutosize) return
 
-    const minHeight = 44
+    const minHeight = 40
     
     if (isInitial) {
       el.style.overflowY = "hidden"
@@ -196,7 +195,7 @@ function PromptInputTextarea({
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       className={cn(
-        "text-primary min-h-[44px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+        "text-foreground min-h-[40px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50",
         className
       )}
       rows={1}

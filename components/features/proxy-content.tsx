@@ -14,7 +14,6 @@ import {
   History as HistoryIcon,
   MoreHorizontal,
   ExternalLink,
-  PanelRightOpen,
   Check,
   ArrowLeft,
   Copy,
@@ -662,21 +661,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
           ) : isDesktop ? (
             // Desktop: Resizable panels with sidebar
             <div className="h-full relative">
-              {/* Expand button when collapsed */}
-              {!sidebarOpen && (
-                <button
-                  onClick={() => handleSidebarChange(true)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-6 h-12 bg-muted/80 hover:bg-muted border border-border border-r-0 rounded-l-md text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Open chat sidebar"
-                >
-                  <PanelRightOpen className="size-4" />
-                </button>
-              )}
-
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={70} minSize={50}>
-                  <div className="h-full overflow-y-auto bg-card">
+                  <div className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
                         data={articleQuery.data}
@@ -700,12 +688,15 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   </div>
                 </ResizablePanel>
 
-                {/* Resize handle */}
+                {/* Cursor-style resize handle with toggle button */}
                 <ResizableHandle
-                  withHandle
+                  withToggle
+                  isCollapsed={!sidebarOpen}
+                  onToggle={() => handleSidebarChange(!sidebarOpen)}
+                  panelPosition="right"
                   className={cn(
                     "transition-opacity duration-150",
-                    !sidebarOpen && "opacity-0 pointer-events-none"
+                    !sidebarOpen && "opacity-0 hover:opacity-100"
                   )}
                 />
 
