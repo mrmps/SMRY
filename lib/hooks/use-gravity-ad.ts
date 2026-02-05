@@ -292,10 +292,11 @@ export function useGravityAd({
     placeholderData: (prev) => prev,
   });
 
-  // Stable tracking function - memoized to prevent re-renders
-  const sendTrackingEvent = useCallback(
-    (type: "impression" | "click" | "dismiss", ad: ContextAd | null) => {
-      if (!ad || !sessionId) return;
+  // Shared helper to send ad events to /api/px
+  // All ad tracking goes through this single endpoint
+  const sendAdEvent = useCallback(
+    (type: "impression" | "click" | "dismiss", ad: ContextAd) => {
+      if (!sessionId) return;
 
       let hostname = "";
       try {
@@ -303,6 +304,11 @@ export function useGravityAd({
       } catch {
         // Ignore invalid URLs
       }
+
+      // For impressions, include the Gravity URL for billing; clicks/dismisses don't need it
+      const trackUrl = type === "impression"
+        ? getApiUrl(`/api/px?url=${encodeURIComponent(ad.impUrl)}`)
+        : getApiUrl("/api/px");
 
       const payload = JSON.stringify({
         type,
@@ -319,8 +325,6 @@ export function useGravityAd({
         os: deviceInfo?.os,
         browser: deviceInfo?.browser,
       });
-
-      const trackUrl = getApiUrl("/api/adtrack");
 
       // Use sendBeacon for reliable non-blocking tracking
       if (typeof navigator !== "undefined" && navigator.sendBeacon) {
@@ -341,36 +345,25 @@ export function useGravityAd({
   const fireImpression = useCallback(
     (targetAd?: ContextAd) => {
       const ad = targetAd ?? query.data?.[0];
-      if (!ad) return;
-
-      // Fire impression to Gravity via proxy (for billing)
-      const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(ad.impUrl)}`);
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        navigator.sendBeacon(proxyUrl);
-      } else {
-        fetch(proxyUrl, { method: "POST", keepalive: true }).catch(() => {});
-      }
-
-      // Track locally for analytics
-      sendTrackingEvent("impression", ad);
+      if (ad) sendAdEvent("impression", ad);
     },
-    [query.data, sendTrackingEvent]
+    [query.data, sendAdEvent]
   );
 
   const fireClick = useCallback(
     (targetAd?: ContextAd) => {
       const ad = targetAd ?? query.data?.[0];
-      sendTrackingEvent("click", ad ?? null);
+      if (ad) sendAdEvent("click", ad);
     },
-    [query.data, sendTrackingEvent]
+    [query.data, sendAdEvent]
   );
 
   const fireDismiss = useCallback(
     (targetAd?: ContextAd) => {
       const ad = targetAd ?? query.data?.[0];
-      sendTrackingEvent("dismiss", ad ?? null);
+      if (ad) sendAdEvent("dismiss", ad);
     },
-    [query.data, sendTrackingEvent]
+    [query.data, sendAdEvent]
   );
 
   // Memoize the result to prevent object recreation
