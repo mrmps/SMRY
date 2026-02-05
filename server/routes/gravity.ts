@@ -173,11 +173,11 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         url: t.Optional(t.String()),
       }),
       body: t.Object({
-        type: t.Optional(t.Union([
+        type: t.Union([
           t.Literal("impression"),
           t.Literal("click"),
           t.Literal("dismiss"),
-        ])),
+        ]),
         sessionId: t.String(),
         hostname: t.Optional(t.String()),
         brandName: t.Optional(t.String()),
