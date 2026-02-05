@@ -83,37 +83,48 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const impUrl = query.url;
       const eventType = body.type || "impression";
 
-      // For impressions, forward to Gravity for billing
+      // Track validation/forwarding status for analytics
+      let gravityForwarded = false;
+      let validationError = "";
+
+      // For impressions, validate and forward to Gravity for billing
       if (eventType === "impression" && impUrl) {
         // Validate URL is from Gravity
+        let isValidUrl = false;
         try {
           const parsedUrl = new URL(impUrl);
-          if (!parsedUrl.hostname.endsWith("trygravity.ai")) {
-            set.status = 400;
-            return { error: "Invalid impression URL" };
+          if (parsedUrl.hostname.endsWith("trygravity.ai")) {
+            isValidUrl = true;
+          } else {
+            validationError = "Invalid impression URL: not from trygravity.ai";
+            logger.warn({ impUrl }, validationError);
           }
         } catch {
-          set.status = 400;
-          return { error: "Invalid URL format" };
+          validationError = "Invalid URL format";
+          logger.warn({ impUrl }, validationError);
         }
 
-        // Forward the impression request to Gravity
-        try {
-          logger.info({ impUrl }, "Forwarding impression to Gravity");
-          const response = await fetch(impUrl, {
-            method: "GET",
-            headers: {
-              "User-Agent": "13ft-impression-proxy/1.0",
-            },
-          });
-          await response.text().catch(() => {});
-          logger.info({ impUrl, status: response.status }, "Impression forwarded successfully");
-        } catch (error) {
-          logger.warn({ impUrl, error: String(error) }, "Failed to forward impression");
+        // Forward to Gravity only if URL is valid
+        if (isValidUrl) {
+          try {
+            logger.info({ impUrl }, "Forwarding impression to Gravity");
+            const response = await fetch(impUrl, {
+              method: "GET",
+              headers: {
+                "User-Agent": "13ft-impression-proxy/1.0",
+              },
+            });
+            await response.text().catch(() => {});
+            gravityForwarded = true;
+            logger.info({ impUrl, status: response.status }, "Impression forwarded successfully");
+          } catch (error) {
+            validationError = `Failed to forward: ${String(error)}`;
+            logger.warn({ impUrl, error: String(error) }, "Failed to forward impression");
+          }
         }
       }
 
-      // Track event locally for analytics
+      // Always track event locally for analytics (even if Gravity forwarding failed)
       trackAdEvent({
         event_type: eventType as "impression" | "click" | "dismiss",
         session_id: body.sessionId,
@@ -129,8 +140,16 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         os: body.os || "",
         browser: body.browser || "",
         status: "filled",
+        gravity_status_code: gravityForwarded ? 200 : 0,
+        error_message: validationError,
       });
-      logger.debug({ type: eventType, hostname: body.hostname, brandName: body.brandName }, "Ad event tracked");
+      logger.debug({
+        type: eventType,
+        hostname: body.hostname,
+        brandName: body.brandName,
+        gravityForwarded,
+        validationError: validationError || undefined,
+      }, "Ad event tracked");
 
       set.status = 204;
       return;
