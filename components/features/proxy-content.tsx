@@ -339,16 +339,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
-  // Default to fullscreen for html/iframe views
-  const [isFullScreen, setIsFullScreen] = useState(viewMode === "html" || viewMode === "iframe");
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
       setQuery({ view: mode });
-      // Auto-enable fullscreen for html/iframe views
-      if (mode === "html" || mode === "iframe") {
-        setIsFullScreen(true);
-      }
     },
     [setQuery]
   );
