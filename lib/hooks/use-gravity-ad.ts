@@ -282,6 +282,7 @@ export function useGravityAd({
   });
 
   // Helper to send tracking events via sendBeacon (non-blocking)
+  // Uses /api/px endpoint (named to avoid ad blocker detection)
   const sendTrackingEvent = useCallback((type: "impression" | "click" | "dismiss", ad: ContextAd | null) => {
     if (!ad || !sessionId) return;
 
@@ -309,7 +310,8 @@ export function useGravityAd({
       browser: deviceInfo?.browser,
     });
 
-    const trackUrl = getApiUrl("/api/adtrack");
+    // /api/px handles both Gravity forwarding (for impressions) and ClickHouse logging
+    const trackUrl = getApiUrl("/api/px");
 
     // Use sendBeacon for reliable non-blocking tracking
     if (typeof navigator !== "undefined" && navigator.sendBeacon) {
@@ -329,15 +331,10 @@ export function useGravityAd({
     const ad = targetAd ?? query.data?.[0];
     if (!ad) return;
 
-    // 1. Fire impression to Gravity via our proxy (for billing)
-    const proxyUrl = getApiUrl(`/api/px?url=${encodeURIComponent(ad.impUrl)}`);
-    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-      navigator.sendBeacon(proxyUrl);
-    } else {
-      fetch(proxyUrl, { method: "POST" }).catch(() => {});
-    }
-
-    // 2. Track locally for our analytics (non-blocking)
+    // Single unified call to /api/px which:
+    // 1. Forwards impression to Gravity (for billing)
+    // 2. Logs to ClickHouse WITH the Gravity result
+    // This ensures ClickHouse accurately reflects if we got paid
     sendTrackingEvent("impression", ad);
   }, [query.data, sendTrackingEvent]);
 

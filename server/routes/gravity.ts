@@ -1,9 +1,11 @@
 /**
- * Gravity Context Routes - POST /api/context, POST /api/px
+ * Gravity Routes - POST /api/context, POST /api/px
  *
- * Fetches contextual content from Gravity AI for free users.
- * Passes device/user info for better targeting.
- * Endpoint names are neutral to avoid content blockers.
+ * /api/context - Fetches contextual ads from Gravity AI for free users.
+ * /api/px - Unified tracking for impressions, clicks, dismissals.
+ *           For impressions, wraps Gravity forwarding + ClickHouse logging atomically.
+ *
+ * Endpoint names are neutral to avoid content blockers (no "ad" or "track" in names).
  */
 
 import { Elysia, t } from "elysia";
@@ -73,53 +75,142 @@ export interface GravityAdResponse {
   cta?: string;
 }
 
+// Timeout for Gravity impression forwarding (keep short to not block)
+const GRAVITY_IMPRESSION_TIMEOUT_MS = 3000;
+
+/**
+ * Forward impression to Gravity and return the result
+ * This is the critical path for monetization - if this fails, we don't get paid
+ */
+async function forwardImpressionToGravity(impUrl: string): Promise<{
+  forwarded: boolean;
+  statusCode: number;
+  error?: string;
+}> {
+  // Validate URL is from Gravity
+  try {
+    const parsedUrl = new URL(impUrl);
+    if (!parsedUrl.hostname.endsWith("trygravity.ai")) {
+      return { forwarded: false, statusCode: 0, error: "Invalid impression URL domain" };
+    }
+  } catch {
+    return { forwarded: false, statusCode: 0, error: "Invalid URL format" };
+  }
+
+  // Forward the impression to Gravity with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GRAVITY_IMPRESSION_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(impUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "13ft-impression-proxy/1.0",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    // Consume body to release connection resources
+    await response.text().catch(() => {});
+
+    logger.info({ impUrl: impUrl.slice(-50), status: response.status }, "Impression forwarded to Gravity");
+    return { forwarded: true, statusCode: response.status };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    const errorMsg = String(error);
+    const isTimeout = errorMsg.includes("abort");
+    logger.warn({ impUrl: impUrl.slice(-50), error: errorMsg, isTimeout }, "Failed to forward impression to Gravity");
+    return {
+      forwarded: false,
+      statusCode: 0,
+      error: isTimeout ? "timeout" : errorMsg.slice(0, 100)
+    };
+  }
+}
+
 export const gravityRoutes = new Elysia({ prefix: "/api" })
+  /**
+   * Unified tracking endpoint for impressions, clicks, and dismissals.
+   *
+   * CRITICAL: For impressions, this endpoint WRAPS the Gravity impression pixel call.
+   * This ensures ClickHouse accurately reflects whether Gravity received the impression.
+   * Without this, we'd log impressions locally without knowing if we got paid.
+   *
+   * Named "/px" to avoid ad blocker detection (no "ad" or "track" in the name).
+   */
   .post(
     "/px",
-    async ({ query, set }) => {
-      const url = query.url;
+    async ({ body, set }) => {
+      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser } = body;
 
-      if (!url) {
-        set.status = 400;
-        return { error: "Missing url parameter" };
+      // For impressions with impUrl, forward to Gravity first
+      // This is THE critical tracking point - we need to know if Gravity got paid
+      let gravityResult: { forwarded: boolean; statusCode: number; error?: string } | null = null;
+
+      if (type === "impression" && impUrl) {
+        gravityResult = await forwardImpressionToGravity(impUrl);
       }
 
-      // Validate URL is from Gravity
+      // Now track to ClickHouse WITH the Gravity result
       try {
-        const parsedUrl = new URL(url);
-        if (!parsedUrl.hostname.endsWith("trygravity.ai")) {
-          set.status = 400;
-          return { error: "Invalid impression URL" };
-        }
-      } catch {
-        set.status = 400;
-        return { error: "Invalid URL format" };
-      }
-
-      // Forward the impression request to Gravity
-      try {
-        logger.info({ impUrl: url }, "Forwarding impression to Gravity");
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "User-Agent": "13ft-impression-proxy/1.0",
-          },
+        trackAdEvent({
+          event_type: type,
+          session_id: sessionId,
+          hostname,
+          brand_name: brandName,
+          ad_title: adTitle,
+          ad_text: adText,
+          click_url: clickUrl,
+          imp_url: impUrl,
+          cta,
+          favicon,
+          device_type: deviceType,
+          os,
+          browser,
+          status: "filled", // Client-side events only fire for filled ads
+          // Include Gravity forwarding result for impressions
+          // gravity_forwarded = 1 means Gravity received it (we got paid)
+          gravity_forwarded: gravityResult?.forwarded ? 1 : 0,
+          gravity_status_code: gravityResult?.statusCode ?? 0,
+          error_message: gravityResult?.error ?? "",
         });
-        // Consume body to release connection resources
-        await response.text().catch(() => {});
-        logger.info({ impUrl: url, status: response.status }, "Impression forwarded successfully");
+
+        logger.debug({
+          type,
+          hostname,
+          brandName,
+          gravityForwarded: gravityResult?.forwarded,
+          gravityStatus: gravityResult?.statusCode,
+        }, "Event tracked");
       } catch (error) {
-        logger.warn({ impUrl: url, error: String(error) }, "Failed to forward impression");
-        // Silently fail - impression tracking is best-effort
+        // Log but don't fail the request - tracking is best-effort
+        logger.warn({ error: String(error), type }, "Failed to track event");
       }
 
-      // Return 204 No Content - the client doesn't need a response
+      // Return 204 No Content - client doesn't need a response body
       set.status = 204;
       return;
     },
     {
-      query: t.Object({
-        url: t.String(),
+      body: t.Object({
+        type: t.Union([
+          t.Literal("impression"),
+          t.Literal("click"),
+          t.Literal("dismiss"),
+        ]),
+        sessionId: t.String(),
+        hostname: t.String(),
+        brandName: t.Optional(t.String()),
+        adTitle: t.Optional(t.String()),
+        adText: t.Optional(t.String()),
+        clickUrl: t.Optional(t.String()),
+        impUrl: t.Optional(t.String()),
+        cta: t.Optional(t.String()),
+        favicon: t.Optional(t.String()),
+        deviceType: t.Optional(t.String()),
+        os: t.Optional(t.String()),
+        browser: t.Optional(t.String()),
       }),
     }
   )

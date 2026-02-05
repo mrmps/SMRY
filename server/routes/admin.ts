@@ -240,6 +240,17 @@ interface AdHourlyFunnel {
   dismissals: number;
 }
 
+interface AdFunnelTimeSeries {
+  time_bucket: string;
+  requests: number;
+  filled: number;
+  impressions: number;
+  clicks: number;
+  dismissals: number;
+  gravity_forwarded: number;
+  gravity_failed: number;
+}
+
 interface AdDismissRateByDevice {
   device_type: string;
   impressions: number;
@@ -492,6 +503,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adBotDetection,
         adCTRByHourDevice,
         adFilledImpressionGap,
+        adFunnelTimeSeries,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
         queryClickhouse<HostnameStats>(`
@@ -1179,6 +1191,26 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
           ORDER BY gap_count DESC
           LIMIT 20
         `).catch(() => [] as AdFilledImpressionGap[]),
+
+        // 37. Ad Funnel Time Series - minute-level granularity for real-time monitoring
+        // Tracks the full funnel: requests -> filled -> impressions -> clicks/dismissals
+        // Also tracks Gravity forwarding success for revenue assurance
+        queryClickhouse<AdFunnelTimeSeries>(`
+          SELECT
+            formatDateTime(toStartOfMinute(timestamp), '%Y-%m-%d %H:%i') AS time_bucket,
+            countIf(event_type = 'request') AS requests,
+            countIf(event_type = 'request' AND status = 'filled') AS filled,
+            countIf(event_type = 'impression') AS impressions,
+            countIf(event_type = 'click') AS clicks,
+            countIf(event_type = 'dismiss') AS dismissals,
+            countIf(event_type = 'impression' AND gravity_forwarded = 1) AS gravity_forwarded,
+            countIf(event_type = 'impression' AND gravity_forwarded = 0) AS gravity_failed
+          FROM ad_events
+          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
+            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+          GROUP BY time_bucket
+          ORDER BY time_bucket
+        `).catch(() => [] as AdFunnelTimeSeries[]),
       ]);
 
       // Get buffer stats for monitoring
@@ -1261,6 +1293,8 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adBotDetection,
         adCTRByHourDevice,
         adFilledImpressionGap,
+        // Real-time funnel with minute granularity
+        adFunnelTimeSeries,
       };
     } catch (error) {
       console.error("[analytics] Query error:", error);
