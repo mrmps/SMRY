@@ -84,7 +84,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const eventType = body.type || "impression";
 
       // Track validation/forwarding status for analytics
-      let gravityForwarded = false;
+      let gravityStatusCode = 0;
       let validationError = "";
 
       // For impressions, validate and forward to Gravity for billing
@@ -106,6 +106,9 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         // Forward to Gravity only if URL is valid
         if (isValidUrl) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
+
           try {
             logger.info({ impUrl }, "Forwarding impression to Gravity");
             const response = await fetch(impUrl, {
@@ -113,13 +116,24 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
               headers: {
                 "User-Agent": "13ft-impression-proxy/1.0",
               },
+              signal: controller.signal,
             });
+            clearTimeout(timeoutId);
             await response.text().catch(() => {});
-            gravityForwarded = true;
-            logger.info({ impUrl, status: response.status }, "Impression forwarded successfully");
+            gravityStatusCode = response.status;
+
+            if (response.ok) {
+              logger.info({ impUrl, status: response.status }, "Impression forwarded successfully");
+            } else {
+              validationError = `Gravity returned ${response.status}`;
+              logger.warn({ impUrl, status: response.status }, "Gravity returned non-2xx status");
+            }
           } catch (error) {
-            validationError = `Failed to forward: ${String(error)}`;
-            logger.warn({ impUrl, error: String(error) }, "Failed to forward impression");
+            clearTimeout(timeoutId);
+            const errorMsg = String(error);
+            const isTimeout = errorMsg.includes("abort");
+            validationError = isTimeout ? "Timeout forwarding to Gravity" : `Failed to forward: ${errorMsg}`;
+            logger.warn({ impUrl, error: errorMsg, isTimeout }, "Failed to forward impression");
           }
         }
       }
@@ -140,14 +154,14 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         os: body.os || "",
         browser: body.browser || "",
         status: "filled",
-        gravity_status_code: gravityForwarded ? 200 : 0,
+        gravity_status_code: gravityStatusCode,
         error_message: validationError,
       });
       logger.debug({
         type: eventType,
         hostname: body.hostname,
         brandName: body.brandName,
-        gravityForwarded,
+        gravityStatusCode,
         validationError: validationError || undefined,
       }, "Ad event tracked");
 
