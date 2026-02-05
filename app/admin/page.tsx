@@ -2038,8 +2038,44 @@ function AdAnalyticsTab({
     muted: "#71717a",
   };
 
+  // Calculate impression rate for alerting
+  const impressionRate = filledCount > 0 ? (impressionsCount / filledCount) * 100 : 0;
+  const hasImpressionIssue = filledCount > 100 && impressionRate < 50;
+  const hasCriticalImpressionIssue = filledCount > 100 && impressionRate < 30;
+
   return (
     <div className="space-y-6">
+      {/* Critical Alert Banner */}
+      {hasCriticalImpressionIssue && (
+        <div className="bg-red-950/50 border border-red-800 rounded-xl p-4 flex items-start gap-3">
+          <div className="text-red-500 text-2xl">🚨</div>
+          <div>
+            <h3 className="font-bold text-red-400 text-lg">Critical: Impression Tracking Issue Detected</h3>
+            <p className="text-red-300/80 text-sm mt-1">
+              Only <span className="font-bold">{impressionRate.toFixed(1)}%</span> of filled ads are being tracked as impressions.
+              This indicates a potential bug in the ad tracking code. Expected rate: 60-80%.
+            </p>
+            <div className="mt-2 text-xs text-red-400/60">
+              Filled: {filledCount.toLocaleString()} → Impressions: {impressionsCount.toLocaleString()} (Gap: {(filledCount - impressionsCount).toLocaleString()})
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Warning Alert Banner */}
+      {hasImpressionIssue && !hasCriticalImpressionIssue && (
+        <div className="bg-amber-950/50 border border-amber-800 rounded-xl p-4 flex items-start gap-3">
+          <div className="text-amber-500 text-2xl">⚠️</div>
+          <div>
+            <h3 className="font-bold text-amber-400">Warning: Low Impression Rate</h3>
+            <p className="text-amber-300/80 text-sm mt-1">
+              Impression rate at <span className="font-bold">{impressionRate.toFixed(1)}%</span> is below expected 60-80%.
+              Monitor for potential tracking issues.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Device Filter */}
       <div className="flex items-center gap-4 bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
         <span className="text-sm text-zinc-400">Filter by device:</span>
@@ -2212,6 +2248,38 @@ function AdAnalyticsTab({
                     type={botPct > 10 ? "warning" : "info"}
                     title="Bot Traffic"
                     message={`${botPct.toFixed(1)}% of filled ads have no device info (${botData.filled_count.toLocaleString()} requests)`}
+                  />
+                );
+              }
+              return null;
+            })()}
+            {/* Impression Rate Alert - Critical for detecting tracking bugs */}
+            {filledCount > 0 && (() => {
+              const impressionRate = (impressionsCount / filledCount) * 100;
+              if (impressionRate < 30) {
+                return (
+                  <AdInsightCard
+                    type="warning"
+                    title="⚠️ Critical: Low Impressions"
+                    message={`Only ${impressionRate.toFixed(1)}% of filled ads tracked as impressions! Check tracking code.`}
+                  />
+                );
+              }
+              if (impressionRate < 50) {
+                return (
+                  <AdInsightCard
+                    type="warning"
+                    title="Low Impression Rate"
+                    message={`${impressionRate.toFixed(1)}% impression rate. Expected 60-80%. May indicate tracking issue.`}
+                  />
+                );
+              }
+              if (impressionRate >= 60) {
+                return (
+                  <AdInsightCard
+                    type="success"
+                    title="Healthy Impressions"
+                    message={`${impressionRate.toFixed(1)}% impression rate. Tracking working normally.`}
                   />
                 );
               }
