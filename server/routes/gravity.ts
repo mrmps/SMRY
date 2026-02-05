@@ -81,7 +81,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
     "/px",
     async ({ query, body, set }) => {
       const impUrl = query.url;
-      const eventType = body.type || "impression";
+      const eventType = body.type;
 
       // Track validation/forwarding status for analytics
       let gravityStatusCode = 0;
