@@ -59,115 +59,91 @@ function ThreadItem({
   };
 
   return (
-    <div className="relative px-2 mb-1">
-      <a
-        href={`/chat/${thread.id}`}
-        onClick={(e) => {
-          e.preventDefault();
-          onSelect();
+    <div className="group relative px-2">
+      <button
+        onClick={onSelect}
+        onDoubleClick={() => {
+          setEditValue(thread.title);
+          setIsEditing(true);
         }}
         className={cn(
-          "group flex items-center relative w-full rounded-lg overflow-hidden",
-          "p-1 pr-2 transition-colors",
-          isActive
-            ? "bg-accent/60"
-            : "hover:bg-accent/40"
+          "flex items-center w-full rounded-lg overflow-hidden",
+          "py-2 px-2 text-left transition-colors",
+          isActive ? "bg-accent" : "hover:bg-accent/50"
         )}
       >
-        <div className="flex items-center relative w-full">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditing(true);
-            }}
-            className="w-full text-left"
-          >
-            <div className="relative w-full">
-              {isEditing ? (
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleSubmitRename}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSubmitRename();
-                    if (e.key === "Escape") {
-                      setEditValue(thread.title);
-                      setIsEditing(false);
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    "w-full bg-transparent rounded px-1 py-0.5",
-                    "text-sm text-primary-foreground/90",
-                    "focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  )}
-                  aria-label="Thread title"
-                />
-              ) : (
-                <span
-                  className={cn(
-                    "block truncate text-sm px-1 py-0.5",
-                    "text-primary-foreground/80"
-                  )}
-                  title={thread.title}
-                >
-                  {thread.title}
-                </span>
-              )}
-            </div>
-          </button>
+        <div className="flex-1 min-w-0 relative">
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSubmitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmitRename();
+                if (e.key === "Escape") {
+                  setEditValue(thread.title);
+                  setIsEditing(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full bg-background rounded px-1.5 py-0.5 text-sm text-foreground border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Thread title"
+            />
+          ) : (
+            <span
+              className="block truncate text-sm text-foreground/80"
+              title={thread.title}
+            >
+              {thread.title}
+            </span>
+          )}
+        </div>
+      </button>
 
-          {/* Action buttons - visible on hover */}
+      {/* Action buttons - visible on hover */}
+      {!isEditing && (
+        <div
+          className={cn(
+            "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5",
+            "opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          )}
+        >
+          {/* Gradient fade for text truncation */}
           <div
             className={cn(
-              "absolute right-0 flex items-center z-50",
-              "opacity-0 group-hover:opacity-100 transition-opacity"
+              "absolute -left-6 w-6 h-8 pointer-events-none",
+              isActive
+                ? "bg-gradient-to-l from-accent to-transparent"
+                : "bg-gradient-to-l from-card to-transparent group-hover:from-accent/50"
             )}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePin();
+            }}
+            className={cn(
+              "p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent",
+              thread.isPinned && "text-primary"
+            )}
+            aria-label={thread.isPinned ? "Unpin" : "Pin"}
           >
-            {/* Gradient fade */}
-            <div
-              className={cn(
-                "absolute -left-8 w-8 h-12 pointer-events-none",
-                isActive
-                  ? "bg-gradient-to-l from-accent/60 to-transparent"
-                  : "bg-gradient-to-l from-background to-transparent"
-              )}
-            />
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onTogglePin();
-              }}
-              className={cn(
-                "p-1.5 rounded-md",
-                "text-muted-foreground hover:text-foreground hover:bg-accent/50",
-                thread.isPinned && "text-primary"
-              )}
-              aria-label={thread.isPinned ? "Unpin Thread" : "Pin Thread"}
-            >
-              <Pin className="size-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete();
-              }}
-              className={cn(
-                "p-1.5 rounded-md",
-                "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              )}
-              aria-label="Delete thread"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+            <Pin className="size-3.5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent"
+            aria-label="Delete"
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
-      </a>
+      )}
     </div>
   );
 }
@@ -192,21 +168,23 @@ function ThreadGroup({
   if (threads.length === 0) return null;
 
   return (
-    <div className="mb-2">
-      <div className="px-3.5 py-2 pb-1">
-        <span className="text-xs font-medium text-primary/60">{label}</span>
+    <div className="mb-1">
+      <div className="px-4 py-2">
+        <span className="text-xs font-medium text-primary/70">{label}</span>
       </div>
-      {threads.map((thread) => (
-        <ThreadItem
-          key={thread.id}
-          thread={thread}
-          isActive={activeThreadId === thread.id}
-          onSelect={() => onSelect(thread.id)}
-          onDelete={() => onDelete(thread.id)}
-          onTogglePin={() => onTogglePin(thread.id)}
-          onRename={(title) => onRename(thread.id, title)}
-        />
-      ))}
+      <div className="space-y-0.5">
+        {threads.map((thread) => (
+          <ThreadItem
+            key={thread.id}
+            thread={thread}
+            isActive={activeThreadId === thread.id}
+            onSelect={() => onSelect(thread.id)}
+            onDelete={() => onDelete(thread.id)}
+            onTogglePin={() => onTogglePin(thread.id)}
+            onRename={(title) => onRename(thread.id, title)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -220,12 +198,8 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const { isSignedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const {
-    groupedThreads,
-    deleteThread,
-    togglePin,
-    renameThread,
-  } = useChatThreads();
+  const { groupedThreads, deleteThread, togglePin, renameThread } =
+    useChatThreads();
 
   const groups = groupedThreads();
 
@@ -242,19 +216,14 @@ export function ChatSidebar({
     : groups;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col h-full bg-background",
-        "border-r border-border/40"
-      )}
-    >
+    <div className="flex flex-col h-full bg-card border-r border-border/40">
       {/* Header */}
-      <div className="flex flex-col gap-2 p-2 mx-1 mt-1">
+      <div className="flex flex-col gap-2 p-2">
         {/* Logo and close button */}
-        <div className="flex items-center justify-between h-8 mb-1">
+        <div className="flex items-center justify-between px-2 py-1">
           <Link
             href="/"
-            className="flex items-center justify-center transition-opacity hover:opacity-80"
+            className="flex items-center transition-opacity hover:opacity-80"
           >
             <Image
               src="/logo.svg"
@@ -267,11 +236,7 @@ export function ChatSidebar({
           </Link>
           <button
             onClick={() => onOpenChange(false)}
-            className={cn(
-              "p-1.5 rounded-md",
-              "text-muted-foreground hover:text-foreground hover:bg-accent/50",
-              "transition-colors"
-            )}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Close sidebar"
           >
             <PanelLeftClose className="size-4" />
@@ -279,49 +244,30 @@ export function ChatSidebar({
         </div>
 
         {/* New Chat button */}
-        <div className="px-1">
-          <button
-            onClick={onNewChat}
-            className={cn(
-              "relative w-full inline-flex items-center justify-center gap-2",
-              "h-9 px-4 rounded-lg",
-              "text-sm font-semibold",
-              "bg-primary/20 text-primary",
-              "shadow-sm",
-              "transition-colors hover:bg-primary/30",
-              // Gradient border using pseudo-element
-              "before:absolute before:inset-0 before:rounded-lg before:p-px",
-              "before:bg-gradient-to-b before:from-primary/0 before:via-primary/40 before:to-primary/10",
-              "before:-z-10"
-            )}
-          >
-            New Chat
-          </button>
-        </div>
+        <button
+          onClick={onNewChat}
+          className="w-full flex items-center justify-center h-9 rounded-lg text-sm font-semibold bg-primary/10 text-primary border border-primary/20 transition-colors hover:bg-primary/20"
+        >
+          New Chat
+        </button>
 
         {/* Search */}
-        <div className="px-3 pb-2 border-b border-border/40">
-          <div className="flex items-center h-9">
-            <Search className="size-4 mr-3 -ml-0.5 text-muted-foreground/70 shrink-0" />
-            <input
-              type="search"
-              role="searchbox"
-              aria-label="Search threads"
-              placeholder="Search your threads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
-                "flex-1 bg-transparent",
-                "text-sm text-foreground placeholder:text-muted-foreground/50",
-                "focus:outline-none"
-              )}
-            />
-          </div>
+        <div className="flex items-center gap-3 px-3 py-2 border-b border-border/40">
+          <Search className="size-4 text-muted-foreground/50 shrink-0" />
+          <input
+            type="search"
+            role="searchbox"
+            aria-label="Search threads"
+            placeholder="Search your threads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+          />
         </div>
       </div>
 
       {/* Thread list */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 scrollbar-hide">
         {filteredGroups.length > 0 ? (
           filteredGroups.map((group) => (
             <ThreadGroup
@@ -337,7 +283,7 @@ export function ChatSidebar({
           ))
         ) : (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm text-muted-foreground/60">
+            <p className="text-sm text-muted-foreground/50">
               {searchQuery ? "No matching threads" : "No chat history yet"}
             </p>
           </div>
@@ -346,18 +292,13 @@ export function ChatSidebar({
 
       {/* Footer - Login prompt for unauthenticated users */}
       {!isSignedIn && (
-        <div className="p-2">
+        <div className="p-2 border-t border-border/40">
           <SignInButton
             mode="modal"
             fallbackRedirectUrl={buildUrlWithReturn("/auth/redirect")}
           >
             <button
-              className={cn(
-                "flex items-center gap-4 w-full",
-                "p-4 rounded-lg",
-                "text-muted-foreground hover:text-foreground hover:bg-accent/40",
-                "transition-colors"
-              )}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm"
               aria-label="Login"
             >
               <LogIn className="size-4" />
@@ -410,7 +351,6 @@ export function ResizableChatLayout({
         maxSize={30}
         collapsible
         collapsedSize={0}
-        className="bg-background"
         onCollapse={() => {
           if (isOpen) onOpenChange(false);
         }}

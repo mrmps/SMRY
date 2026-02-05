@@ -22,8 +22,10 @@ interface StorageEventDetail {
   value: ChatThread[];
 }
 
+let idCounter = 0;
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  idCounter++;
+  return `${Date.now()}-${idCounter}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 /**
@@ -41,7 +43,18 @@ export function useChatThreads() {
         const item = window.localStorage.getItem(THREADS_KEY);
         if (item) {
           const parsed = JSON.parse(item) as ChatThread[];
-          setThreads(parsed);
+          // Deduplicate by ID (keep first occurrence)
+          const seen = new Set<string>();
+          const deduped = parsed.filter((thread) => {
+            if (seen.has(thread.id)) return false;
+            seen.add(thread.id);
+            return true;
+          });
+          // Save deduped list if there were duplicates
+          if (deduped.length !== parsed.length) {
+            window.localStorage.setItem(THREADS_KEY, JSON.stringify(deduped));
+          }
+          setThreads(deduped);
         }
       } catch (error) {
         console.warn("Error reading threads from localStorage:", error);
