@@ -319,14 +319,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     lang: firstSuccessfulArticle?.lang,
   });
 
-  // Ad distribution: sidebar + inline ad + footer ad + chat ad + micro ad
-  // Gravity returns up to 5 ads: [0]=sidebar, [1]=inline, [2]=footer, [3]=chat, [4]=micro
-  // Fallback: reuse ads if we don't get enough from Gravity
-  const sidebarAd = gravityAds[0] ?? null;
-  const inlineAd = gravityAds[1] ?? gravityAds[0] ?? null; // Fallback to sidebar ad
-  const footerAd = gravityAds[2] ?? gravityAds[1] ?? gravityAds[0] ?? null; // Fallback chain
-  const chatAd = gravityAds[3] ?? gravityAds[0] ?? null; // Fallback to sidebar ad
-  const microAd = gravityAds[4] ?? gravityAds[1] ?? gravityAds[0] ?? null; // Micro ad below chat input
+  // Ad distribution: Show UNIQUE ads only - don't duplicate the same ad across placements
+  // Gravity may return 1-5 ads. We assign each unique ad to exactly one placement.
+  // This prevents the same ad from being tracked multiple times as different impressions.
+  const sidebarAd = gravityAds[0] ?? null;        // Fixed position ad (always visible)
+  const inlineAd = gravityAds[1] ?? null;         // Mid-article ad - only if we have a 2nd ad
+  const footerAd = gravityAds[2] ?? null;         // End-of-article ad - only if we have a 3rd ad
+  const chatAd = gravityAds[3] ?? null;           // Chat header ad - only if we have a 4th ad
+  const microAd = gravityAds[4] ?? null;          // Below chat input - only if we have a 5th ad
+
+  // Debug: Log how many unique ads we received
+  if (typeof window !== 'undefined' && gravityAds.length > 0) {
+    console.log(`[Ads] Received ${gravityAds.length} ads from Gravity:`,
+      gravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(', '));
+  }
 
   // Handle article load: save to history
   useEffect(() => {

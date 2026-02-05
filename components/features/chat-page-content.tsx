@@ -34,6 +34,11 @@ function getMessageText(message: UIMessage): string {
     .join("");
 }
 
+// Bouncing dots loader (CSS in globals.css)
+function ChatLoader() {
+  return <div className="chat-loader text-muted-foreground/60" />;
+}
+
 interface ChatPageContentProps {
   threadId?: string;
 }
@@ -355,6 +360,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                       </div>
                     );
                   })}
+                  {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+                  {isLoading && messages.length > 0 && (
+                    messages[messages.length - 1]?.role === "user" ||
+                    (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
+                  ) && (
+                    <div className="flex justify-start px-2">
+                      <ChatLoader />
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}

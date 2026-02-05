@@ -150,6 +150,7 @@ export interface AdEvent {
   imp_url: string;
   cta: string;
   favicon: string;
+  ad_count: number; // Number of ads returned in this request
   // Performance
   duration_ms: number;
   // Environment
@@ -204,6 +205,7 @@ async function ensureAdSchema(): Promise<void> {
             imp_url String DEFAULT '',
             cta LowCardinality(String) DEFAULT '',
             favicon String DEFAULT '',
+            ad_count UInt8 DEFAULT 0,
             -- Performance
             duration_ms UInt32 DEFAULT 0,
             -- Environment
@@ -236,6 +238,9 @@ async function ensureAdSchema(): Promise<void> {
       });
       await clickhouse.command({
         query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS favicon String DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS ad_count UInt8 DEFAULT 0`,
       });
     } catch {
       // Ignore errors - columns may already exist
@@ -373,6 +378,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     imp_url: (event.imp_url || "").slice(0, 2000),
     cta: (event.cta || "").slice(0, 100),
     favicon: (event.favicon || "").slice(0, 500),
+    ad_count: event.ad_count || 0,
     duration_ms: event.duration_ms || 0,
     env: event.env || env.NODE_ENV,
   };

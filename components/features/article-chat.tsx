@@ -454,8 +454,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 </div>
               );
             })}
-            {/* Loading indicator - show when waiting for assistant response */}
-            {isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "user" && (
+            {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+            {isLoading && messages.length > 0 && (
+              messages[messages.length - 1]?.role === "user" ||
+              (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
+            ) && (
               <div className="flex justify-start px-1">
                 <ChatLoader />
               </div>

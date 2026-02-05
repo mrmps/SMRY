@@ -147,6 +147,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       favicon?: string;
       userId?: string | null;
       isPremium?: boolean;
+      adCount?: number;
     } = {}) => {
       trackAdEvent({
         event_type: "request", // Server-side events are always "request" type
@@ -170,6 +171,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         imp_url: extra.impUrl ?? "",
         cta: extra.cta ?? "",
         favicon: extra.favicon ?? "",
+        ad_count: extra.adCount ?? 0,
         duration_ms: Date.now() - startTime,
       });
     };
@@ -292,24 +294,38 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         const ads = (await response.json()) as GravityAdResponse[];
 
         if (ads && ads.length > 0) {
-          logger.info({ url, brandName: ads[0].brandName, adCount: ads.length }, "Ad(s) received from Gravity");
-          // Track each ad
-          for (const ad of ads) {
-            track("filled", {
-              gravityStatus: 200,
-              brandName: ad.brandName,
-              adTitle: ad.title,
-              adText: ad.adText,
-              clickUrl: ad.clickUrl,
-              impUrl: ad.impUrl,
-              cta: ad.cta,
-              favicon: ad.favicon,
-              userId,
-            });
-          }
+          // Log detailed info about each ad to debug duplicate issue
+          const adSummary = ads.map((ad, i) => ({
+            index: i,
+            brandName: ad.brandName,
+            title: ad.title?.slice(0, 50),
+            impUrl: ad.impUrl?.slice(-20), // Last 20 chars to see if they're unique
+          }));
+          logger.info({
+            url,
+            adCount: ads.length,
+            uniqueBrands: [...new Set(ads.map(a => a.brandName))].length,
+            uniqueImpUrls: [...new Set(ads.map(a => a.impUrl))].length,
+            ads: adSummary,
+          }, "Ad(s) received from Gravity - detailed");
+          // Track ONE "filled" event per successful request (not per ad returned)
+          // This ensures filled count matches actual ad requests, not ads returned
+          const primaryAd = ads[0];
+          track("filled", {
+            gravityStatus: 200,
+            brandName: primaryAd.brandName,
+            adTitle: primaryAd.title,
+            adText: primaryAd.adText,
+            clickUrl: primaryAd.clickUrl,
+            impUrl: primaryAd.impUrl,
+            cta: primaryAd.cta,
+            favicon: primaryAd.favicon,
+            userId,
+            adCount: ads.length, // Track how many ads were returned for analytics
+          });
           return {
             status: "filled" as const,
-            ad: ads[0],
+            ad: primaryAd,
             ads,
           };
         }
