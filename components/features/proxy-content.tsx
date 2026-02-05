@@ -38,9 +38,6 @@ import { ArticleChat } from "@/components/features/article-chat";
 import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
-import { ChatSidebar } from "@/components/features/chat-sidebar";
-import { useChatThreads } from "@/lib/hooks/use-chat-threads";
-import { PanelLeft } from "lucide-react";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -350,11 +347,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  // Left sidebar (chat history) state
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const historyPanelRef = useRef<ImperativePanelHandle>(null);
-  const { createThread, setActiveThreadId } = useChatThreads();
-
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
       setQuery({ view: mode });
@@ -447,34 +439,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     }
   }, [sidebarOpen]);
 
-  // Sync history panel with historyOpen state
-  useEffect(() => {
-    const panel = historyPanelRef.current;
-    if (!panel) return;
-
-    const isExpanded = panel.getSize() > 0;
-    if (historyOpen === isExpanded) return;
-
-    if (historyOpen) {
-      panel.expand(18);
-    } else {
-      panel.collapse();
-    }
-  }, [historyOpen]);
-
-  // Handle new chat from history sidebar
-  const handleNewChat = React.useCallback(() => {
-    createThread();
-    // Close history sidebar after creating new chat
-    setHistoryOpen(false);
-  }, [createThread]);
-
-  // Handle thread selection from history sidebar
-  const handleSelectThread = React.useCallback((threadId: string) => {
-    setActiveThreadId(threadId);
-    // Optionally close history sidebar on selection
-  }, [setActiveThreadId]);
-
   // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -496,22 +460,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
-          {/* Desktop Header - History toggle + Logo */}
+          {/* Desktop Header - Logo */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* History sidebar toggle */}
-            <button
-              onClick={() => setHistoryOpen(!historyOpen)}
-              className={cn(
-                "flex items-center justify-center size-8 rounded-md transition-colors",
-                historyOpen
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              )}
-              aria-label={historyOpen ? "Close history" : "Open history"}
-            >
-              <PanelLeft className="size-4" />
-            </button>
-
             <Link
               href="/"
               className="flex items-center gap-2 transition-opacity hover:opacity-80"
@@ -711,45 +661,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             // Desktop: Resizable panels with sidebars
             <div className="h-full relative">
               <ResizablePanelGroup direction="horizontal" className="h-full">
-                {/* Left sidebar panel - Chat history */}
-                <ResizablePanel
-                  ref={historyPanelRef}
-                  defaultSize={historyOpen ? 18 : 0}
-                  minSize={15}
-                  maxSize={25}
-                  collapsible
-                  collapsedSize={0}
-                  className="bg-background"
-                  onCollapse={() => {
-                    if (historyOpen) setHistoryOpen(false);
-                  }}
-                  onExpand={() => {
-                    if (!historyOpen) setHistoryOpen(true);
-                  }}
-                >
-                  <ChatSidebar
-                    isOpen={historyOpen}
-                    onOpenChange={setHistoryOpen}
-                    onNewChat={handleNewChat}
-                    onSelectThread={handleSelectThread}
-                    activeThreadId={null}
-                  />
-                </ResizablePanel>
-
-                {/* Left resize handle */}
-                <ResizableHandle
-                  withToggle
-                  isCollapsed={!historyOpen}
-                  onToggle={() => setHistoryOpen(!historyOpen)}
-                  panelPosition="left"
-                  className={cn(
-                    "transition-opacity duration-150",
-                    !historyOpen && "opacity-0 hover:opacity-100"
-                  )}
-                />
-
                 {/* Main content panel */}
-                <ResizablePanel defaultSize={historyOpen ? 52 : 70} minSize={40}>
+                <ResizablePanel defaultSize={sidebarOpen ? 68 : 100} minSize={40}>
                   <div className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
