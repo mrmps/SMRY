@@ -126,38 +126,45 @@ function GravityAdComponent({
   const adRef = useRef<HTMLAnchorElement>(null);
   const hasTrackedRef = useRef(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  // Store latest callback in ref to avoid stale closure issues
+  const onVisibleRef = useRef(onVisible);
 
-  // Single effect for intersection observer - no dependencies that cause recreation
+  // Keep the ref updated with latest callback
+  useEffect(() => {
+    onVisibleRef.current = onVisible;
+  }, [onVisible]);
+
+  // Single effect for intersection observer - stable dependencies
   useEffect(() => {
     const element = adRef.current;
-    if (!element || hasTrackedRef.current) return;
+    if (!element) return;
 
-    // Reuse existing observer or create new one
-    if (!observerRef.current) {
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]?.isIntersecting && !hasTrackedRef.current) {
-            hasTrackedRef.current = true;
-            onVisible();
-            // Disconnect after firing
-            observerRef.current?.disconnect();
-          }
-        },
-        { threshold: 0.5 }
-      );
+    // Reset tracking and create fresh observer when ad changes
+    hasTrackedRef.current = false;
+
+    // Clean up any existing observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
     }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !hasTrackedRef.current) {
+          hasTrackedRef.current = true;
+          // Always call the latest callback via ref
+          onVisibleRef.current();
+          observerRef.current?.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
 
     observerRef.current.observe(element);
 
     return () => {
       observerRef.current?.disconnect();
     };
-  }, [onVisible]);
-
-  // Reset tracking when ad changes
-  useEffect(() => {
-    hasTrackedRef.current = false;
-  }, [ad.clickUrl]);
+  }, [ad.clickUrl]); // Only recreate when ad changes
 
   // Derived content
   const valueProp = ad.adText || ad.title;
