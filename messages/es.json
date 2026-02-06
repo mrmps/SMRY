@@ -8,9 +8,9 @@
     "twitterDescription": "Pega cualquier enlace de artículo con muro de pago y obtén el texto completo más un resumen de IA. Gratis, sin cuenta, sin extensión."
   },
   "home": {
-    "tagline": "Lee cualquier artículo, salta cualquier paywall. Más de 260K lectores confían en nosotros.",
+    "tagline": "Lee cualquier artículo, salta cualquier paywall. Más de 300K lectores confían en nosotros.",
     "tryIt": "Pruébalo",
-    "trustedBy": "Más de 260K lectores mensuales",
+    "trustedBy": "Más de 300K lectores mensuales",
     "placeholder": "Pega la URL de cualquier artículo con paywall...",
     "by": "por",
     "support": "Apoyar",
@@ -219,7 +219,7 @@
     "smryProLabel": "smry Pro",
     "smryProSubtext": "Todo lo anterior + 1.000 más",
     "savingsCallout": "Son <highlight>${savings}/mes</highlight> de vuelta en tu bolsillo",
-    "joinReaders": "Únete a 260.000+ lectores en todo el mundo",
+    "joinReaders": "Únete a 300.000+ lectores en todo el mundo",
     "statMonthlySavings": "Ahorro mensual promedio",
     "statArticlesRead": "Artículos leídos",
     "statSuccessRate": "Tasa de éxito",
@@ -442,7 +442,7 @@
       },
       "whatsIncluded": "Qué incluye",
       "benefits": {
-        "reach": "Alcanza 260K+ lectores comprometidos al mes",
+        "reach": "Alcanza 300K+ lectores comprometidos al mes",
         "placement": "Ubicación premium en sidebar y banner móvil",
         "rotation": "Rotación justa de 10 segundos con otros patrocinadores",
         "analytics": "Informes de rendimiento mensuales",

@@ -8,9 +8,9 @@
     "twitterDescription": "粘贴任何付费墙文章链接，获取完整文本和AI摘要。免费，无需账户，无需扩展。"
   },
   "home": {
-    "tagline": "阅读任何文章，绕过任何付费墙。26万+读者信赖之选。",
+    "tagline": "阅读任何文章，绕过任何付费墙。30万+读者信赖之选。",
     "tryIt": "试试看",
-    "trustedBy": "每月超过26万读者信赖",
+    "trustedBy": "每月超过30万读者信赖",
     "placeholder": "粘贴任何付费墙文章URL...",
     "by": "作者",
     "support": "支持",
@@ -219,7 +219,7 @@
     "smryProLabel": "smry Pro",
     "smryProSubtext": "以上全部 + 1,000多个",
     "savingsCallout": "这意味着<highlight>每月${savings}</highlight>回到您的口袋",
-    "joinReaders": "加入全球260,000+读者",
+    "joinReaders": "加入全球300,000+读者",
     "statMonthlySavings": "平均月节省",
     "statArticlesRead": "已读文章",
     "statSuccessRate": "成功率",
@@ -442,7 +442,7 @@
       },
       "whatsIncluded": "包含内容",
       "benefits": {
-        "reach": "每月触达260K+活跃读者",
+        "reach": "每月触达300K+活跃读者",
         "placement": "优质侧边栏和移动端横幅广告位",
         "rotation": "与其他赞助商公平轮换（每10秒）",
         "analytics": "月度效果报告",

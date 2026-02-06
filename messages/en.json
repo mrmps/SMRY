@@ -8,9 +8,9 @@
     "twitterDescription": "Paste any paywalled article link and get the full text plus an AI summary. Free, no account, no extension."
   },
   "home": {
-    "tagline": "Read any article, bypass any paywall. Trusted by 260K+ readers.",
+    "tagline": "Read any article, bypass any paywall. Trusted by 300K+ readers.",
     "tryIt": "Try it",
-    "trustedBy": "Trusted by 260K+ readers monthly",
+    "trustedBy": "Trusted by 300K+ readers monthly",
     "placeholder": "Paste any paywalled article URL...",
     "by": "by",
     "support": "Support",
@@ -219,7 +219,7 @@
     "smryProLabel": "smry Pro",
     "smryProSubtext": "All of the above + 1,000 more",
     "savingsCallout": "That's <highlight>${savings}/month</highlight> back in your pocket",
-    "joinReaders": "Join 260,000+ readers worldwide",
+    "joinReaders": "Join 300,000+ readers worldwide",
     "statMonthlySavings": "Avg. Monthly Savings",
     "statArticlesRead": "Articles Read",
     "statSuccessRate": "Success Rate",
@@ -442,7 +442,7 @@
       },
       "whatsIncluded": "What's included",
       "benefits": {
-        "reach": "Reach 260K+ engaged readers monthly",
+        "reach": "Reach 300K+ engaged readers monthly",
         "placement": "Premium sidebar & mobile banner placement",
         "rotation": "Fair 10-second rotation with other sponsors",
         "analytics": "Monthly performance reports",

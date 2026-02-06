@@ -8,9 +8,9 @@
     "twitterDescription": "Fügen Sie einen beliebigen Paywall-Artikellink ein und erhalten Sie den vollständigen Text plus eine KI-Zusammenfassung. Kostenlos, kein Konto, keine Erweiterung."
   },
   "home": {
-    "tagline": "Lesen Sie jeden Artikel, umgehen Sie jede Paywall. Von 260.000+ Lesern vertraut.",
+    "tagline": "Lesen Sie jeden Artikel, umgehen Sie jede Paywall. Von 300.000+ Lesern vertraut.",
     "tryIt": "Ausprobieren",
-    "trustedBy": "Über 260.000 Leser monatlich",
+    "trustedBy": "Über 300.000 Leser monatlich",
     "placeholder": "Beliebige Paywall-Artikel-URL einfügen...",
     "by": "von",
     "support": "Unterstützen",
@@ -219,7 +219,7 @@
     "smryProLabel": "smry Pro",
     "smryProSubtext": "Alles oben + 1.000 mehr",
     "savingsCallout": "Das sind <highlight>${savings}/Monat</highlight> zurück in Ihrer Tasche",
-    "joinReaders": "Schließen Sie sich 260.000+ Lesern weltweit an",
+    "joinReaders": "Schließen Sie sich 300.000+ Lesern weltweit an",
     "statMonthlySavings": "Durchschn. monatl. Ersparnis",
     "statArticlesRead": "Gelesene Artikel",
     "statSuccessRate": "Erfolgsrate",
@@ -442,7 +442,7 @@
       },
       "whatsIncluded": "Was enthalten ist",
       "benefits": {
-        "reach": "Erreichen Sie 260K+ engagierte Leser monatlich",
+        "reach": "Erreichen Sie 300K+ engagierte Leser monatlich",
         "placement": "Premium Seitenleiste & Mobile Banner Platzierung",
         "rotation": "Faire 10-Sekunden-Rotation mit anderen Sponsoren",
         "analytics": "Monatliche Leistungsberichte",

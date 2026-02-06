@@ -8,9 +8,9 @@
     "twitterDescription": "Plak een link naar een artikel met betaalmuur en krijg de volledige tekst plus een AI-samenvatting. Gratis, geen account, geen extensie."
   },
   "home": {
-    "tagline": "Lees elk artikel, omzeil elke betaalmuur. Vertrouwd door 260.000+ lezers.",
+    "tagline": "Lees elk artikel, omzeil elke betaalmuur. Vertrouwd door 300.000+ lezers.",
     "tryIt": "Probeer het",
-    "trustedBy": "Meer dan 260K lezers per maand",
+    "trustedBy": "Meer dan 300K lezers per maand",
     "placeholder": "Plak een artikel-URL met betaalmuur...",
     "by": "door",
     "support": "Ondersteunen",
@@ -219,7 +219,7 @@
     "smryProLabel": "smry Pro",
     "smryProSubtext": "Alles hierboven + 1.000 meer",
     "savingsCallout": "Dat is <highlight>${savings}/maand</highlight> terug in je zak",
-    "joinReaders": "Sluit je aan bij 260.000+ lezers wereldwijd",
+    "joinReaders": "Sluit je aan bij 300.000+ lezers wereldwijd",
     "statMonthlySavings": "Gem. maandelijkse besparing",
     "statArticlesRead": "Gelezen artikelen",
     "statSuccessRate": "Succespercentage",
@@ -442,7 +442,7 @@
       },
       "whatsIncluded": "Wat is inbegrepen",
       "benefits": {
-        "reach": "Bereik 260K+ betrokken lezers per maand",
+        "reach": "Bereik 300K+ betrokken lezers per maand",
         "placement": "Premium zijbalk & mobiele banner plaatsing",
         "rotation": "Eerlijke 10-seconden rotatie met andere sponsors",
         "analytics": "Maandelijkse prestatierapporten",
