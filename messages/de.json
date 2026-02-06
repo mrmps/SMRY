@@ -8,10 +8,10 @@
     "twitterDescription": "Fügen Sie einen beliebigen Paywall-Artikellink ein und erhalten Sie den vollständigen Text plus eine KI-Zusammenfassung. Kostenlos, kein Konto, keine Erweiterung."
   },
   "home": {
-    "tagline": "Lesen Sie jeden Artikel im Web — mit KI-Zusammenfassungen.",
+    "tagline": "Lesen Sie jeden Artikel, umgehen Sie jede Paywall. Von 260.000+ Lesern vertraut.",
     "tryIt": "Ausprobieren",
     "trustedBy": "Über 260.000 Leser monatlich",
-    "placeholder": "Artikel-URL einfügen...",
+    "placeholder": "Beliebige Paywall-Artikel-URL einfügen...",
     "by": "von",
     "support": "Unterstützen",
     "prepend": "Sie können smry auch verwenden, indem Sie",
@@ -38,17 +38,20 @@
     "statusRemoved": "Entfernt",
     "readyToRead": "Bereit zum Lesen",
     "summaryLabel": "Zusammenfassung",
-    "valuePropTitle": "Jeden Artikel im Web lesen",
-    "valuePropDescription": "Fügen Sie einen Link ein und wir holen den vollständigen Text, entfernen Störendes und fassen mit KI zusammen.",
+    "valuePropTitle": "Sehen Sie es in Aktion",
+    "valuePropDescription": "Sehen Sie, wie SMRY eine echte Paywall umgeht, den Ballast entfernt und in unter 5 Sekunden zusammenfasst.",
     "tryPaywalledArticle": "Mit einem Paywall-Artikel testen",
-    "learnMore": "Mehr erfahren",
-    "scrollToLearnMore": "Scrollen Sie, um mehr zu erfahren",
-    "featureSourcesTitle": "Drei Quellen rennen, die schnellste gewinnt",
-    "featureSourcesDescription": "Wir rufen gleichzeitig mit schnellem Direktzugriff, einem Proxy-Fallback und Wayback Machine ab. Der Erste mit dem Artikel gewinnt.",
-    "featureCleanTitle": "Der ganze Inhalt, ohne Störendes",
-    "featureCleanDescription": "Paywalls, Popups, Cookie-Banner, Werbung – alles weg. Nur der Artikeltext und Bilder, bereit zum Lesen.",
-    "featureSummaryTitle": "TL;DR in Ihrer Sprache",
-    "featureSummaryDescription": "KI-gestützte Zusammenfassungen in 8 Sprachen. Erhalten Sie die wichtigsten Punkte, ohne den gesamten Artikel zu lesen."
+    "learnMore": "So funktioniert es",
+    "scrollToLearnMore": "Scrollen Sie, um zu sehen, wie es funktioniert",
+    "featureSourcesTitle": "Funktioniert, wenn andere Tools versagen",
+    "featureSourcesDescription": "Wir rufen von 3 Quellen gleichzeitig ab. Wenn eine blockiert ist, kommt eine andere durch.",
+    "featureCleanTitle": "Sauberes, ablenkungsfreies Lesen",
+    "featureCleanDescription": "Keine Popups, keine Cookie-Banner, keine Werbung. Nur der Artikel.",
+    "featureSummaryTitle": "KI-Zusammenfassungen in Sekunden",
+    "featureSummaryDescription": "Die wichtigsten Punkte in Ihrer Sprache. Scrollen überflüssig.",
+    "trustNoSignup": "Keine Anmeldung nötig",
+    "trustWorksWith": "Funktioniert auf 1.000+ Seiten",
+    "trustFree": "Kostenlos nutzbar"
   },
   "banner": {
     "heading": "Diese Paywalls überspringen:"
@@ -110,7 +113,7 @@
     "theMath": "Die Rechnung",
     "smryPremium": "SMRY Premium",
     "allOfAbove": "Alles oben genannte",
-    "readWithoutLimits": "Lesen ohne Grenzen.",
+    "readWithoutLimits": "Jeder Artikel. Jede Publikation. Ein Preis.",
     "fullAccessFrom": "Voller Zugang zu 1000+ Publikationen ab nur",
     "perDay": "pro Tag",
     "yearly": "Jährlich",
@@ -397,11 +400,11 @@
     "entry8_change1_detail": "Bessere Handhabung von weichen Paywalls, die JavaScript verwenden, um Inhalte nach dem Laden der Seite zu verstecken."
   },
   "promo": {
-    "benefit": "Keine Werbung, alles schneller",
-    "cta": "Premium für 0,00 $ testen",
+    "benefit": "Unbegrenzte Artikel · KI-Zusammenfassungen · Keine Werbung",
+    "cta": "Die ersten 7 Tage sind kostenlos. Keine Karte nötig.",
     "dismiss": "Schließen",
-    "sourceBenefit": "Keine Werbung · Sieh, welche Quellen funktioniert haben",
-    "upgrade": "Upgraden"
+    "sourceBenefit": "Werbefreies Lesen spart ~4 Min. pro Artikel",
+    "upgrade": "Werbefrei lesen"
   },
   "ads": {
     "advertise": "Werben",

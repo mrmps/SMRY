@@ -899,3 +899,16 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
 .typing-dot:nth-child(3) {
   animation-delay: 0.2s;
 }
+
+/* Get Pro button shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}

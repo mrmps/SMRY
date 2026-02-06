@@ -42,3 +42,5 @@ artifacts/
 scripts/mem/
 *.heapprofile
 *.heapsnapshot
+
+/bypass-article-model

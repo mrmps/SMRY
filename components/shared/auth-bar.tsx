@@ -106,11 +106,15 @@ export function AuthBar({
           href="/pricing"
           onClick={() => storeReturnUrl()}
           className={cn(
-            "font-medium rounded-full border transition-colors",
-            "border-border bg-background text-foreground hover:bg-accent",
+            "group relative font-semibold rounded-full overflow-hidden transition-all",
+            "bg-linear-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%]",
+            "text-black shadow-[0_0_12px_rgba(251,191,36,0.3)]",
+            "hover:shadow-[0_0_20px_rgba(251,191,36,0.5)] hover:scale-105",
+            "active:scale-95",
+            "animate-[shimmer_2.5s_ease-in-out_infinite]",
             isCompact
               ? "px-2.5 py-0.5 text-xs"
-              : "px-3 py-1 text-sm"
+              : "px-3.5 py-1.5 text-sm"
           )}
         >
           Get Pro

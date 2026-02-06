@@ -75,7 +75,7 @@ const testimonials = [
     url: "https://x.com/Rombert59836/status/1932906877995938047",
   },
   {
-    name: "abhi",
+    name: "Abhi",
     handle: "@awwbhi2",
     avatar: "https://unavatar.io/twitter/awwbhi2",
     text: "smry.ai is super useful. Thank you!",

@@ -8,10 +8,10 @@
     "twitterDescription": "粘贴任何付费墙文章链接，获取完整文本和AI摘要。免费，无需账户，无需扩展。"
   },
   "home": {
-    "tagline": "阅读网上任何文章 — 附带AI摘要。",
+    "tagline": "阅读任何文章，绕过任何付费墙。26万+读者信赖之选。",
     "tryIt": "试试看",
     "trustedBy": "每月超过26万读者信赖",
-    "placeholder": "粘贴文章URL...",
+    "placeholder": "粘贴任何付费墙文章URL...",
     "by": "作者",
     "support": "支持",
     "prepend": "您也可以通过在任何URL前添加",
@@ -38,17 +38,20 @@
     "statusRemoved": "已移除",
     "readyToRead": "准备阅读",
     "summaryLabel": "摘要",
-    "valuePropTitle": "阅读网上任何文章",
-    "valuePropDescription": "粘贴链接，我们将获取全文、清除杂乱并用AI进行摘要。",
+    "valuePropTitle": "看看实际效果",
+    "valuePropDescription": "观看SMRY绕过真实付费墙、清除杂乱内容，并在5秒内生成摘要。",
     "tryPaywalledArticle": "试试付费墙文章",
-    "learnMore": "了解更多",
-    "scrollToLearnMore": "滚动了解更多",
-    "featureSourcesTitle": "三个来源竞速，最快者胜出",
-    "featureSourcesDescription": "我们同时通过快速直接访问、代理备用和Wayback Machine获取。第一个获得文章的来源获胜。",
-    "featureCleanTitle": "所有内容，无干扰",
-    "featureCleanDescription": "付费墙、弹窗、Cookie横幅、广告——全部移除。只有文章文字和图片，即可阅读。",
-    "featureSummaryTitle": "您语言的TL;DR",
-    "featureSummaryDescription": "8种语言的AI摘要。无需阅读全文即可获取要点。"
+    "learnMore": "看看怎么用",
+    "scrollToLearnMore": "滚动查看使用方法",
+    "featureSourcesTitle": "其他工具失败时，我们依然有效",
+    "featureSourcesDescription": "我们同时从3个来源获取。如果一个被阻止，另一个会成功。",
+    "featureCleanTitle": "干净、无干扰的阅读",
+    "featureCleanDescription": "没有弹窗，没有Cookie横幅，没有广告。只有文章本身。",
+    "featureSummaryTitle": "AI秒速生成摘要",
+    "featureSummaryDescription": "用您的语言获取要点。无需滚动全文。",
+    "trustNoSignup": "无需注册",
+    "trustWorksWith": "支持1,000+网站",
+    "trustFree": "免费使用"
   },
   "banner": {
     "heading": "跳过这些付费墙："
@@ -110,7 +113,7 @@
     "theMath": "算笔账",
     "smryPremium": "SMRY高级版",
     "allOfAbove": "以上全部",
-    "readWithoutLimits": "无限阅读。",
+    "readWithoutLimits": "每篇文章。每家媒体。一个价格。",
     "fullAccessFrom": "全面访问1000+出版物，仅需",
     "perDay": "每天",
     "yearly": "年付",
@@ -397,11 +400,11 @@
     "entry8_change1_detail": "更好地处理使用JavaScript在页面加载后隐藏内容的软付费墙。"
   },
   "promo": {
-    "benefit": "无广告、一切更快",
-    "cta": "免费试用高级版",
+    "benefit": "无限文章 · AI摘要 · 无广告",
+    "cta": "前7天免费。无需绑定银行卡。",
     "dismiss": "关闭",
-    "sourceBenefit": "无广告 · 查看哪些来源有效",
-    "upgrade": "升级"
+    "sourceBenefit": "无广告阅读每篇文章节省约4分钟",
+    "upgrade": "去除广告"
   },
   "ads": {
     "advertise": "投放广告",

@@ -8,10 +8,10 @@
     "twitterDescription": "Plak een link naar een artikel met betaalmuur en krijg de volledige tekst plus een AI-samenvatting. Gratis, geen account, geen extensie."
   },
   "home": {
-    "tagline": "Lees elk artikel op het web — met AI-samenvattingen.",
+    "tagline": "Lees elk artikel, omzeil elke betaalmuur. Vertrouwd door 260.000+ lezers.",
     "tryIt": "Probeer het",
     "trustedBy": "Meer dan 260K lezers per maand",
-    "placeholder": "Plak artikel-URL...",
+    "placeholder": "Plak een artikel-URL met betaalmuur...",
     "by": "door",
     "support": "Ondersteunen",
     "prepend": "Je kunt smry ook gebruiken door",
@@ -38,17 +38,20 @@
     "statusRemoved": "Verwijderd",
     "readyToRead": "Klaar om te lezen",
     "summaryLabel": "Samenvatting",
-    "valuePropTitle": "Lees elk artikel op het web",
-    "valuePropDescription": "Plak een link en we halen de volledige tekst op, verwijderen rommel en vatten samen met AI.",
+    "valuePropTitle": "Zie het in actie",
+    "valuePropDescription": "Bekijk hoe SMRY een echte betaalmuur omzeilt, de rommel verwijdert en samenvat in minder dan 5 seconden.",
     "tryPaywalledArticle": "Probeer met een betaalmuur-artikel",
-    "learnMore": "Meer info",
-    "scrollToLearnMore": "Scroll voor meer informatie",
-    "featureSourcesTitle": "Drie bronnen racen, de snelste wint",
-    "featureSourcesDescription": "We halen tegelijk op met snelle directe toegang, een proxy-fallback en Wayback Machine. De eerste met het artikel wint.",
-    "featureCleanTitle": "Alle inhoud, zonder rommel",
-    "featureCleanDescription": "Betaalmuren, pop-ups, cookie-banners, advertenties—allemaal weg. Alleen de artikeltekst en afbeeldingen, klaar om te lezen.",
-    "featureSummaryTitle": "TL;DR in je taal",
-    "featureSummaryDescription": "AI-samenvattingen in 8 talen. Krijg de kernpunten zonder het hele artikel te lezen."
+    "learnMore": "Zo werkt het",
+    "scrollToLearnMore": "Scroll om te zien hoe het werkt",
+    "featureSourcesTitle": "Werkt wanneer andere tools falen",
+    "featureSourcesDescription": "We halen van 3 bronnen tegelijk op. Als één geblokkeerd is, komt een andere erdoor.",
+    "featureCleanTitle": "Schoon, afleidingsvrij lezen",
+    "featureCleanDescription": "Geen pop-ups, geen cookie-banners, geen advertenties. Alleen het artikel.",
+    "featureSummaryTitle": "AI-samenvattingen in seconden",
+    "featureSummaryDescription": "De kernpunten in jouw taal. Niet meer hoeven scrollen.",
+    "trustNoSignup": "Geen registratie nodig",
+    "trustWorksWith": "Werkt op 1.000+ sites",
+    "trustFree": "Gratis te gebruiken"
   },
   "banner": {
     "heading": "Spring over deze betaalmuren:"
@@ -110,7 +113,7 @@
     "theMath": "De berekening",
     "smryPremium": "SMRY Premium",
     "allOfAbove": "Al het bovenstaande",
-    "readWithoutLimits": "Lees zonder limieten.",
+    "readWithoutLimits": "Elk artikel. Elke publicatie. Eén prijs.",
     "fullAccessFrom": "Volledige toegang tot 1000+ publicaties vanaf slechts",
     "perDay": "per dag",
     "yearly": "Jaarlijks",
@@ -397,11 +400,11 @@
     "entry8_change1_detail": "Betere afhandeling van zachte paywalls die JavaScript gebruiken om content te verbergen na het laden van de pagina."
   },
   "promo": {
-    "benefit": "Geen advertenties, alles sneller",
-    "cta": "Probeer Premium voor $0,00",
+    "benefit": "Onbeperkte artikelen · AI-samenvattingen · Geen advertenties",
+    "cta": "De eerste 7 dagen zijn gratis. Geen kaart nodig.",
     "dismiss": "Sluiten",
-    "sourceBenefit": "Geen advertenties · Zie welke bronnen werkten",
-    "upgrade": "Upgraden"
+    "sourceBenefit": "Advertentievrij lezen bespaart ~4 min per artikel",
+    "upgrade": "Advertentievrij"
   },
   "ads": {
     "advertise": "Adverteren",

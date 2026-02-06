@@ -8,10 +8,10 @@
     "twitterDescription": "Paste any paywalled article link and get the full text plus an AI summary. Free, no account, no extension."
   },
   "home": {
-    "tagline": "Read any article on the web — with AI summaries.",
+    "tagline": "Read any article, bypass any paywall. Trusted by 260K+ readers.",
     "tryIt": "Try it",
     "trustedBy": "Trusted by 260K+ readers monthly",
-    "placeholder": "https://...",
+    "placeholder": "Paste any paywalled article URL...",
     "by": "by",
     "support": "Support",
     "prepend": "You can also use smry by prepending",
@@ -38,17 +38,20 @@
     "statusRemoved": "Removed",
     "readyToRead": "Ready to read",
     "summaryLabel": "Summary",
-    "valuePropTitle": "Read any article on the web",
-    "valuePropDescription": "Paste a link and we'll fetch the full text, clean up the clutter, and summarize it with AI.",
+    "valuePropTitle": "See it in action",
+    "valuePropDescription": "Watch SMRY bypass a real paywall, clean the clutter, and summarize in under 5 seconds.",
     "tryPaywalledArticle": "Try with a paywalled article",
-    "learnMore": "Learn more",
-    "scrollToLearnMore": "Scroll to learn more",
-    "featureSourcesTitle": "Three sources race, the fastest wins",
-    "featureSourcesDescription": "We fetch using fast direct access, a proxy fallback, and Wayback Machine simultaneously. First one with the article wins.",
-    "featureCleanTitle": "All the content, none of the clutter",
-    "featureCleanDescription": "Paywalls, popups, cookie banners, ads—all gone. Just the article text and images, ready to read.",
-    "featureSummaryTitle": "TL;DR in your language",
-    "featureSummaryDescription": "AI-powered summaries in 8 languages. Get the key points without reading the full article."
+    "learnMore": "See how it works",
+    "scrollToLearnMore": "Scroll to see how it works",
+    "featureSourcesTitle": "Works when other tools don't",
+    "featureSourcesDescription": "We fetch from 3 sources simultaneously. If one is blocked, another gets through.",
+    "featureCleanTitle": "Clean, distraction-free reading",
+    "featureCleanDescription": "No popups, no cookie banners, no ads. Just the article.",
+    "featureSummaryTitle": "AI summaries in seconds",
+    "featureSummaryDescription": "Get the key points in your language. Skip the scroll.",
+    "trustNoSignup": "No signup required",
+    "trustWorksWith": "Works on 1,000+ sites",
+    "trustFree": "Free to use"
   },
   "banner": {
     "heading": "Hop over these paywalls:"
@@ -110,7 +113,7 @@
     "theMath": "The math",
     "smryPremium": "SMRY Premium",
     "allOfAbove": "All of the above",
-    "readWithoutLimits": "Read without limits.",
+    "readWithoutLimits": "Every article. Every publication. One price.",
     "fullAccessFrom": "Full access to 1000+ publications from only",
     "perDay": "per day",
     "yearly": "Yearly",
@@ -397,11 +400,11 @@
     "entry8_change1_detail": "Better handling of soft paywalls that use JavaScript to hide content after page load."
   },
   "promo": {
-    "benefit": "No ads, faster everything",
-    "cta": "Try Premium for $0.00",
+    "benefit": "Unlimited articles · AI summaries · No ads",
+    "cta": "Your first 7 days are free. No card required to start.",
     "dismiss": "Dismiss",
-    "sourceBenefit": "No ads · See which sources worked",
-    "upgrade": "Upgrade"
+    "sourceBenefit": "Reading ad-free saves ~4 min per article",
+    "upgrade": "Go Ad-Free"
   },
   "ads": {
     "advertise": "Advertise",

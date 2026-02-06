@@ -22,7 +22,7 @@ import { Footer } from "@/components/shared/footer";
 import { FAQ } from "@/components/marketing/faq";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { PromoBanner } from "@/components/marketing/promo-banner";
-import { UpdateBanner } from "@/components/marketing/update-banner";
+// import { UpdateBanner } from "@/components/marketing/update-banner";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
@@ -359,7 +359,7 @@ export const HomeContent = memo(function HomeContent() {
   return (
     <>
       <PromoBanner />
-      <UpdateBanner />
+      {/* <UpdateBanner /> */}
       <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
 
         {/* Auth - top right */}
@@ -383,6 +383,11 @@ export const HomeContent = memo(function HomeContent() {
             smry
             <span className="sr-only"> - Bypass Paywalls & Read Full Articles Free</span>
           </h1>
+
+          {/* Hero tagline */}
+          <p className="mt-3 text-center text-[15px] text-muted-foreground/70">
+            {t("tagline")}
+          </p>
 
           {/* Input container - nested radius pattern */}
           <form onSubmit={handleSubmit} className="mt-6 w-full">
@@ -436,22 +441,29 @@ export const HomeContent = memo(function HomeContent() {
             </p>
           )}
 
-          {/* Micro sponsor line */}
-          {!isPremium && !isPremiumLoading && ad && (
-            <div className="mt-4 flex justify-center">
+          {/* Trust bar + sponsor — single muted footer under input */}
+          <div className="mt-4 flex flex-col items-center gap-1.5">
+            <p className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground/50">
+              <span>{t("trustNoSignup")}</span>
+              <span aria-hidden="true">·</span>
+              <span>{t("trustWorksWith")}</span>
+              <span aria-hidden="true">·</span>
+              <span>{t("trustFree")}</span>
+            </p>
+            {!isPremium && !isPremiumLoading && ad && (
               <GravityAd
                 ad={ad}
                 variant="micro"
                 onVisible={() => fireImpression(ad)}
                 onClick={() => fireClick(ad)}
               />
-            </div>
-          )}
+            )}
+          </div>
 
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="absolute bottom-56 left-0 right-0 mx-auto w-full max-w-[400px] px-6">
+        <div className="absolute bottom-42 left-0 right-0 mx-auto w-full max-w-[400px] px-6">
           <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
             <h2 className="text-center text-[15px] font-medium text-foreground/90">
               {t("valuePropTitle")}

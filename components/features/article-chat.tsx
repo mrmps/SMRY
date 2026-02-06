@@ -463,6 +463,28 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 <ChatLoader />
               </div>
             )}
+            {/* Upgrade card when daily limit is reached */}
+            {isLimitReached && (
+              <div className="mx-1 my-4 rounded-xl border border-border/60 bg-muted/30 dark:bg-muted/20 p-4">
+                <p className="text-[15px] font-medium text-foreground">
+                  Want unlimited summaries?
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                  Pro readers get unlimited AI conversations, premium models, and ad-free reading.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <Link
+                    href="/pricing"
+                    className="inline-flex items-center justify-center rounded-lg bg-foreground px-3.5 py-1.5 text-[13px] font-medium text-background transition-colors hover:bg-foreground/90"
+                  >
+                    Try Pro free for 7 days
+                  </Link>
+                  <span className="text-[11px] text-muted-foreground/60">
+                    Cancel anytime
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} data-messages-end />
           </div>
         )}
