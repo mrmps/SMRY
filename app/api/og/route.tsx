@@ -10,11 +10,13 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const url = searchParams.get("url");
   const titleParam = searchParams.get("title");
+  const imageParam = searchParams.get("image");
 
   // Default values
   let title = titleParam || "Read articles without paywalls";
   let siteName = "smry.ai";
   let hostname = "";
+  let articleImage = imageParam || "";
 
   if (url) {
     try {
@@ -23,8 +25,8 @@ export async function GET(request: NextRequest) {
       hostname = parsedUrl.hostname.replace("www.", "");
       siteName = hostname;
 
-      // If no title provided, try to fetch article data
-      if (!titleParam) {
+      // If no title or image provided, try to fetch article data
+      if (!titleParam || !imageParam) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_URL || "https://smry.ai";
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -40,11 +42,14 @@ export async function GET(request: NextRequest) {
 
           if (response.ok) {
             const data = await response.json();
-            if (data.article?.title) {
+            if (data.article?.title && !titleParam) {
               title = data.article.title;
             }
             if (data.article?.siteName) {
               siteName = data.article.siteName;
+            }
+            if (data.article?.image && !imageParam) {
+              articleImage = data.article.image;
             }
           }
         } catch {
@@ -87,7 +92,23 @@ export async function GET(request: NextRequest) {
           position: "relative",
         }}
       >
-        {/* Background gradient */}
+        {/* Article image as background (if available) */}
+        {articleImage && (
+          <img
+            src={articleImage}
+            alt=""
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.3,
+            }}
+          />
+        )}
+        {/* Dark overlay for readability */}
         <div
           style={{
             position: "absolute",
@@ -95,8 +116,9 @@ export async function GET(request: NextRequest) {
             left: 0,
             right: 0,
             bottom: 0,
-            background:
-              "radial-gradient(ellipse at top left, rgba(94, 105, 209, 0.15) 0%, transparent 50%)",
+            background: articleImage
+              ? "linear-gradient(to bottom, rgba(9, 9, 11, 0.7) 0%, rgba(9, 9, 11, 0.95) 100%)"
+              : "radial-gradient(ellipse at top left, rgba(94, 105, 209, 0.15) 0%, transparent 50%)",
           }}
         />
 

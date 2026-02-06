@@ -118,8 +118,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       ? article.textContent.slice(0, 200).trim() + '...'
       : 'Read articles with Smry';
 
-    // Include title in OG image URL for faster rendering (avoids extra API call)
-    const ogImageWithTitle = `${OG_BASE_URL}/api/og?url=${encodeURIComponent(normalizedUrl)}&title=${encodeURIComponent(article.title || '')}`;
+    // Include title and image in OG image URL for faster rendering (avoids extra API call)
+    const ogImageWithTitle = `${OG_BASE_URL}/api/og?url=${encodeURIComponent(normalizedUrl)}&title=${encodeURIComponent(article.title || '')}${article.image ? `&image=${encodeURIComponent(article.image)}` : ''}`;
 
     return {
       title,
