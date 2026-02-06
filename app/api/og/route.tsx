@@ -97,14 +97,17 @@ export async function GET(request: NextRequest) {
           <img
             src={articleImage}
             alt=""
+            width="1200"
+            height="630"
             style={{
               position: "absolute",
               top: 0,
               left: 0,
-              width: "100%",
-              height: "100%",
+              width: 1200,
+              height: 630,
               objectFit: "cover",
-              opacity: 0.3,
+              objectPosition: "center",
+              opacity: 0.35,
             }}
           />
         )}
