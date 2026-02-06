@@ -1,22 +1,18 @@
 import { ImageResponse } from "next/og";
+import { NextRequest } from "next/server";
 
-export const alt = "Article on Smry";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const runtime = "edge";
 
-// Cache Twitter images for 1 hour
+// Cache OG images for 1 hour
 export const revalidate = 3600;
 
-type Props = {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ url?: string }>;
-};
-
-export default async function TwitterImage({ searchParams }: Props) {
-  const { url } = await searchParams;
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const url = searchParams.get("url");
+  const titleParam = searchParams.get("title");
 
   // Default values
-  let title = "Read articles without paywalls";
+  let title = titleParam || "Read articles without paywalls";
   let siteName = "smry.ai";
   let hostname = "";
 
@@ -27,33 +23,33 @@ export default async function TwitterImage({ searchParams }: Props) {
       hostname = parsedUrl.hostname.replace("www.", "");
       siteName = hostname;
 
-      // Try to fetch article data for the title
-      const apiBaseUrl = process.env.NEXT_PUBLIC_URL || "https://smry.ai";
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      // If no title provided, try to fetch article data
+      if (!titleParam) {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_URL || "https://smry.ai";
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-      try {
-        const response = await fetch(
-          `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(url)}`,
-          {
-            signal: controller.signal,
-            next: { revalidate: 3600 },
-          }
-        );
-        clearTimeout(timeoutId);
+        try {
+          const response = await fetch(
+            `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(url)}`,
+            {
+              signal: controller.signal,
+            }
+          );
+          clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.article?.title) {
-            title = data.article.title;
+          if (response.ok) {
+            const data = await response.json();
+            if (data.article?.title) {
+              title = data.article.title;
+            }
+            if (data.article?.siteName) {
+              siteName = data.article.siteName;
+            }
           }
-          if (data.article?.siteName) {
-            siteName = data.article.siteName;
-          }
+        } catch {
+          clearTimeout(timeoutId);
         }
-      } catch {
-        // Use defaults on fetch error
-        clearTimeout(timeoutId);
       }
     } catch {
       // Invalid URL, use defaults
@@ -230,12 +226,16 @@ export default async function TwitterImage({ searchParams }: Props) {
       </div>
     ),
     {
-      ...size,
+      width: 1200,
+      height: 630,
       fonts: [
         { name: "Syne", data: syneBold, weight: 700 as const },
         { name: "Inter", data: interRegular, weight: 400 as const },
         { name: "Inter", data: interMedium, weight: 500 as const },
       ],
+      headers: {
+        "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+      },
     }
   );
 }
