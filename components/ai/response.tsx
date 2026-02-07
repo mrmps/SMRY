@@ -18,14 +18,18 @@
 
 import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   Streamdown,
   defaultRehypePlugins,
   type StreamdownProps,
-  type BundledTheme,
+  type PluginConfig,
 } from 'streamdown';
+import { createCodePlugin } from '@streamdown/code';
+import { math } from '@streamdown/math';
+import { cjk } from '@streamdown/cjk';
 import { harden } from 'rehype-harden';
+import 'katex/dist/katex.min.css';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
@@ -37,8 +41,13 @@ export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   lang?: string;
 };
 
-// Shiki themes for light and dark mode
-const shikiThemes: [BundledTheme, BundledTheme] = ['github-light', 'github-dark'];
+// CJK language codes that benefit from the CJK plugin
+const CJK_LANGUAGES = new Set(['zh', 'ja', 'ko']);
+
+// Code plugin with GitHub themes for light/dark mode
+const codePlugin = createCodePlugin({
+  themes: ['github-light', 'github-dark'],
+});
 
 // Security configuration for AI-generated content
 const hardenConfig = {
@@ -186,7 +195,7 @@ const components: StreamdownProps['components'] = {
   code: ({ node, className, ...props }) => {
     const inline = node?.position?.start.line === node?.position?.end.line;
     if (!inline) {
-      // Block code is handled by Shiki via shikiTheme prop
+      // Block code is handled by the code plugin
       return <code className={className} {...props} />;
     }
     return (
@@ -201,6 +210,18 @@ const components: StreamdownProps['components'] = {
   },
 };
 
+// Base plugins (always active)
+const basePlugins: PluginConfig = {
+  code: codePlugin,
+  math,
+};
+
+// Plugins with CJK support
+const cjkPlugins: PluginConfig = {
+  ...basePlugins,
+  cjk,
+};
+
 export const Response = memo(
   ({
     className,
@@ -210,6 +231,12 @@ export const Response = memo(
     lang,
     ...props
   }: ResponseProps) => {
+    // Enable CJK plugin when the language is Chinese, Japanese, or Korean
+    const plugins = useMemo(
+      () => (lang && CJK_LANGUAGES.has(lang) ? cjkPlugins : basePlugins),
+      [lang]
+    );
+
     return (
       <div
         className={cn(
@@ -225,13 +252,15 @@ export const Response = memo(
           isAnimating={isAnimating}
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
-          shikiTheme={shikiThemes}
+          plugins={plugins}
+          caret={isAnimating ? 'block' : undefined}
           rehypePlugins={[
             defaultRehypePlugins.raw,
             [harden, hardenConfig],
           ]}
           controls={{
             code: true,
+            table: true,
           }}
         >
           {children}
@@ -242,8 +271,8 @@ export const Response = memo(
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
     prevProps.dir === nextProps.dir &&
+    prevProps.lang === nextProps.lang &&
     prevProps.isAnimating === nextProps.isAnimating
 );
 
 Response.displayName = 'Response';
-
