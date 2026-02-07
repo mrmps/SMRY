@@ -360,7 +360,7 @@ export const HomeContent = memo(function HomeContent() {
     <>
       <PromoBanner />
       {/* <UpdateBanner /> */}
-      <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
+      <main className="relative flex min-h-[100dvh] sm:min-h-screen flex-col items-center bg-background px-6 pt-16 sm:pt-[22vh] text-foreground overflow-hidden">
 
         {/* Auth - top right */}
         <AuthBar className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6" />
@@ -377,7 +377,7 @@ export const HomeContent = memo(function HomeContent() {
           <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
 
-        <div className="relative mx-auto flex w-full max-w-[528px] flex-col items-center">
+        <div className="relative mx-auto flex flex-1 sm:flex-none w-full max-w-[528px] flex-col items-center justify-center sm:justify-start">
           {/* Wordmark - Syne for brand recognition */}
           <h1 className="font-syne text-5xl font-semibold tracking-tight text-foreground text-balance">
             smry
@@ -443,12 +443,12 @@ export const HomeContent = memo(function HomeContent() {
 
           {/* Trust bar + sponsor — single muted footer under input */}
           <div className="mt-4 flex flex-col items-center gap-1.5">
-            <p className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground/50">
-              <span>{t("trustNoSignup")}</span>
+            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[12px] text-muted-foreground/50">
+              <span className="whitespace-nowrap">{t("trustNoSignup")}</span>
               <span aria-hidden="true">·</span>
-              <span>{t("trustWorksWith")}</span>
+              <span className="whitespace-nowrap">{t("trustWorksWith")}</span>
               <span aria-hidden="true">·</span>
-              <span>{t("trustFree")}</span>
+              <span className="whitespace-nowrap">{t("trustFree")}</span>
             </p>
             {!isPremium && !isPremiumLoading && ad && (
               <GravityAd
@@ -463,7 +463,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="absolute bottom-42 left-0 right-0 mx-auto w-full max-w-[400px] px-6">
+        <div className="mt-auto pt-8 sm:pt-0 sm:absolute sm:bottom-42 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] sm:px-6">
           <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
             <h2 className="text-center text-[15px] font-medium text-foreground/90">
               {t("valuePropTitle")}
@@ -484,7 +484,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-6 left-0 right-0 mx-auto flex w-fit flex-col items-center">
+        <div className="mt-6 pb-6 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });
