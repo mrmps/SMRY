@@ -158,6 +158,8 @@ export interface AdEvent {
   ad_count: number; // Number of ads returned in this request
   // Provider (gravity or zeroclick)
   ad_provider: AdProvider;
+  // ZeroClick offer ID (for impression reconciliation)
+  zeroclick_id: string;
   // Performance
   duration_ms: number;
   // Environment
@@ -261,6 +263,10 @@ async function ensureAdSchema(): Promise<void> {
       // Track which ad provider served the ad (gravity or zeroclick)
       await clickhouse.command({
         query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS ad_provider LowCardinality(String) DEFAULT 'gravity'`,
+      });
+      // ZeroClick offer ID for impression reconciliation
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS zeroclick_id String DEFAULT ''`,
       });
     } catch {
       // Ignore errors - columns may already exist
@@ -401,6 +407,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     favicon: (event.favicon || "").slice(0, 500),
     ad_count: event.ad_count || 0,
     ad_provider: event.ad_provider || "gravity",
+    zeroclick_id: event.zeroclick_id || "",
     duration_ms: event.duration_ms || 0,
     env: event.env || env.NODE_ENV,
   };

@@ -145,7 +145,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
     async ({ body, set }) => {
       const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser, provider, zeroClickId } = body;
 
-      const adProvider = (provider || "gravity") as AdProvider;
+      // Validate provider against known values — reject arbitrary strings from client
+      const adProvider: AdProvider = provider === "zeroclick" ? "zeroclick" : "gravity";
 
       // For Gravity impressions with impUrl, forward to Gravity first
       // This is THE critical tracking point - we need to know if Gravity got paid
@@ -174,6 +175,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           browser,
           status: "filled", // Client-side events only fire for filled ads
           ad_provider: adProvider,
+          zeroclick_id: adProvider === "zeroclick" ? (zeroClickId || "") : "",
           // Include Gravity forwarding result for impressions
           // gravity_forwarded = 1 means Gravity received it (we got paid)
           gravity_forwarded: gravityResult?.forwarded ? 1 : 0,
@@ -417,29 +419,23 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       // Cap to available ad slots
       gravityAds = gravityAds.slice(0, MAX_AD_SLOTS);
 
-      // Tag Gravity ads with provider
+      // Normalize Gravity ads to ContextAd shape (same shape as ZeroClick ads)
+      // so allAds has a consistent type for the client
       const taggedGravityAds = gravityAds.map(ad => ({
-        ...ad,
+        adText: ad.adText,
+        title: ad.title,
+        clickUrl: ad.clickUrl,
+        impUrl: ad.impUrl,
+        brandName: ad.brandName,
+        url: ad.url,
+        favicon: ad.favicon,
+        cta: ad.cta,
         provider: "gravity" as const,
       }));
 
-      // Track Gravity request event
-      if (gravityAds.length > 0) {
-        const primaryAd = gravityAds[0];
-        track("filled", {
-          gravityStatus,
-          brandName: primaryAd.brandName,
-          adTitle: primaryAd.title,
-          adText: primaryAd.adText,
-          clickUrl: primaryAd.clickUrl,
-          impUrl: primaryAd.impUrl,
-          cta: primaryAd.cta,
-          favicon: primaryAd.favicon,
-          userId,
-          adCount: gravityAds.length,
-          adProvider: "gravity",
-        });
-      } else {
+      // Track Gravity failures immediately (diagnostic — helps monitor Gravity health)
+      // "filled" is tracked once in Phase 3 to avoid double-counting with ZeroClick
+      if (gravityAds.length === 0) {
         const status: AdEventStatus = gravityError.includes("abort") ? "timeout"
           : gravityError || (gravityStatus !== 0 && gravityStatus !== 200 && gravityStatus !== 204) ? "gravity_error"
           : "no_fill";
@@ -457,7 +453,10 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const remainingSlots = MAX_AD_SLOTS - gravityAds.length;
       let zeroClickAds: Array<ReturnType<typeof normalizeZeroClickOffer>> = [];
 
-      if (remainingSlots > 0) {
+      // ZeroClick requires a valid client IP for server-side requests (returns 400 otherwise)
+      const hasValidIp = clientIp && clientIp !== "unknown";
+
+      if (remainingSlots > 0 && hasValidIp) {
         logger.info({ remainingSlots, gravityCount: gravityAds.length }, "Calling ZeroClick fallback");
 
         const { offers, durationMs } = await fetchZeroClickOffers({
@@ -485,17 +484,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             ads: adSummary,
           }, "Ad(s) received from ZeroClick");
 
-          // Track ZeroClick fill event
-          const primaryOffer = zeroClickAds[0];
-          track("filled", {
-            brandName: primaryOffer.brandName,
-            adTitle: primaryOffer.title,
-            adText: primaryOffer.adText,
-            clickUrl: primaryOffer.clickUrl,
-            userId,
-            adCount: zeroClickAds.length,
-            adProvider: "zeroclick",
-          });
+          // "filled" tracked once in Phase 3 to avoid double-counting with Gravity
         } else {
           logger.info({ url, durationMs }, "No matching ad from ZeroClick");
           track("no_fill", {
@@ -504,14 +493,33 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             adProvider: "zeroclick",
           });
         }
+      } else if (remainingSlots > 0 && !hasValidIp) {
+        logger.info({ remainingSlots, clientIp }, "Skipping ZeroClick — no valid client IP");
       }
 
       // =========================================================================
-      // Phase 3: Combine and return
+      // Phase 3: Combine, track once, and return
       // =========================================================================
       const allAds = [...taggedGravityAds, ...zeroClickAds];
 
       if (allAds.length > 0) {
+        // Single "filled" event per /api/context call — no double-counting
+        // adProvider reflects which provider supplied the primary (first) ad
+        const primaryAd = allAds[0];
+        track("filled", {
+          gravityStatus,
+          brandName: primaryAd.brandName,
+          adTitle: primaryAd.title,
+          adText: primaryAd.adText,
+          clickUrl: primaryAd.clickUrl,
+          impUrl: primaryAd.impUrl,
+          cta: primaryAd.cta,
+          favicon: primaryAd.favicon,
+          userId,
+          adCount: allAds.length,
+          adProvider: primaryAd.provider,
+        });
+
         return {
           status: "filled" as const,
           ad: allAds[0],

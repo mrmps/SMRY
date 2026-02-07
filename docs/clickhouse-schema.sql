@@ -162,6 +162,8 @@ CREATE TABLE IF NOT EXISTS ad_events
 
     -- Provider (gravity or zeroclick)
     ad_provider LowCardinality(String) DEFAULT 'gravity',
+    -- ZeroClick offer ID (for impression reconciliation)
+    zeroclick_id String DEFAULT '',
 
     -- Performance
     duration_ms UInt32 DEFAULT 0,
