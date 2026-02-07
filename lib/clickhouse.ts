@@ -218,8 +218,9 @@ async function ensureAdSchema(): Promise<void> {
             cta LowCardinality(String) DEFAULT '',
             favicon String DEFAULT '',
             ad_count UInt8 DEFAULT 0,
-            -- Provider (gravity or zeroclick)
             ad_provider LowCardinality(String) DEFAULT 'gravity',
+            -- ZeroClick offer ID (for impression reconciliation)
+            zeroclick_id String DEFAULT '',
             -- Performance
             duration_ms UInt32 DEFAULT 0,
             -- Environment
