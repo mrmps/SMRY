@@ -1240,7 +1240,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             countIf(event_type = 'click') AS clicks,
             countIf(event_type = 'dismiss') AS dismissals,
             countIf(event_type = 'impression' AND gravity_forwarded = 1) AS gravity_forwarded,
-            countIf(event_type = 'impression' AND gravity_forwarded = 0) AS gravity_failed,
+            countIf(event_type = 'impression' AND gravity_forwarded = 0 AND (ad_provider = 'gravity' OR ad_provider = '')) AS gravity_failed,
             countIf(event_type = 'impression' AND ad_provider = 'zeroclick') AS zeroclick_impressions
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
