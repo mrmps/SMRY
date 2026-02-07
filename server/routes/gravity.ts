@@ -13,12 +13,14 @@ import { getAuthInfo } from "../middleware/auth";
 import { env } from "../env";
 import { extractClientIp } from "../../lib/request-context";
 import { createLogger } from "../../lib/logger";
-import { trackAdEvent, type AdEventStatus } from "../../lib/clickhouse";
+import { trackAdEvent, type AdEventStatus, type AdProvider } from "../../lib/clickhouse";
+import { fetchOffers as fetchZeroClickOffers, normalizeOffer as normalizeZeroClickOffer } from "../../lib/api/zeroclick";
 
 const logger = createLogger("api:gravity");
 
 const GRAVITY_API_URL = "https://server.trygravity.ai/api/v1/ad";
 const GRAVITY_TIMEOUT_MS = 6000;
+const MAX_AD_SLOTS = 5;
 
 // Use test ads in development
 const USE_TEST_ADS = env.NODE_ENV === "development";
@@ -141,13 +143,17 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   .post(
     "/px",
     async ({ body, set }) => {
-      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser } = body;
+      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser, provider, zeroClickId } = body;
 
-      // For impressions with impUrl, forward to Gravity first
+      // Validate provider against known values — reject arbitrary strings from client
+      const adProvider: AdProvider = provider === "zeroclick" ? "zeroclick" : "gravity";
+
+      // For Gravity impressions with impUrl, forward to Gravity first
       // This is THE critical tracking point - we need to know if Gravity got paid
+      // ZeroClick impressions are tracked client-side via sendBeacon — no server forwarding needed
       let gravityResult: { forwarded: boolean; statusCode: number; error?: string } | null = null;
 
-      if (type === "impression" && impUrl) {
+      if (type === "impression" && adProvider === "gravity" && impUrl) {
         gravityResult = await forwardImpressionToGravity(impUrl);
       }
 
@@ -168,6 +174,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           os,
           browser,
           status: "filled", // Client-side events only fire for filled ads
+          ad_provider: adProvider,
+          zeroclick_id: adProvider === "zeroclick" ? (zeroClickId || "") : "",
           // Include Gravity forwarding result for impressions
           // gravity_forwarded = 1 means Gravity received it (we got paid)
           gravity_forwarded: gravityResult?.forwarded ? 1 : 0,
@@ -179,6 +187,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           type,
           hostname,
           brandName,
+          provider: adProvider,
           gravityForwarded: gravityResult?.forwarded,
           gravityStatus: gravityResult?.statusCode,
         }, "Event tracked");
@@ -210,6 +219,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         deviceType: t.Optional(t.String()),
         os: t.Optional(t.String()),
         browser: t.Optional(t.String()),
+        provider: t.Optional(t.String()),
+        zeroClickId: t.Optional(t.String()),
       }),
     }
   )
@@ -238,6 +249,9 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       userId?: string | null;
       isPremium?: boolean;
       adCount?: number;
+      gravityAdCount?: number;
+      zeroClickAdCount?: number;
+      adProvider?: AdProvider;
     } = {}) => {
       trackAdEvent({
         event_type: "request", // Server-side events are always "request" type
@@ -262,6 +276,9 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         cta: extra.cta ?? "",
         favicon: extra.favicon ?? "",
         ad_count: extra.adCount ?? 0,
+        gravity_ad_count: extra.gravityAdCount ?? 0,
+        zeroclick_ad_count: extra.zeroClickAdCount ?? 0,
+        ad_provider: extra.adProvider ?? "gravity",
         duration_ms: Date.now() - startTime,
       });
     };
@@ -346,7 +363,13 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         testAd: USE_TEST_ADS,
       }, "Sending ad request to Gravity");
 
-      // Call Gravity API with timeout
+      // =========================================================================
+      // Phase 1: Call Gravity API
+      // =========================================================================
+      let gravityAds: GravityAdResponse[] = [];
+      let gravityStatus = 0;
+      let gravityError = "";
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
 
@@ -362,86 +385,174 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         });
 
         clearTimeout(timeoutId);
+        gravityStatus = response.status;
 
-        // No matching ad from Gravity
         if (response.status === 204) {
           logger.info({ url, status: 204 }, "No matching ad from Gravity");
-          track("no_fill", { gravityStatus: 204, userId });
-          return {
-            status: "no_fill" as const,
-            debug: { gravityStatus: 204 },
-          };
+        } else if (!response.ok) {
+          gravityError = (await response.text().catch(() => "")).slice(0, 200);
+          logger.warn({ url, status: response.status, error: gravityError }, "Gravity API error");
+        } else {
+          const ads = (await response.json()) as GravityAdResponse[];
+          if (ads && ads.length > 0) {
+            gravityAds = ads;
+            const adSummary = ads.map((ad, i) => ({
+              index: i,
+              brandName: ad.brandName,
+              title: ad.title?.slice(0, 50),
+              impUrl: ad.impUrl?.slice(-20),
+            }));
+            logger.info({
+              url,
+              adCount: ads.length,
+              uniqueBrands: [...new Set(ads.map(a => a.brandName))].length,
+              uniqueImpUrls: [...new Set(ads.map(a => a.impUrl))].length,
+              ads: adSummary,
+            }, "Ad(s) received from Gravity");
+          } else {
+            logger.info({ url }, "Empty ad array from Gravity");
+          }
         }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        gravityError = String(fetchError).slice(0, 200);
+        const isTimeout = gravityError.includes("abort");
+        logger.warn({ error: gravityError, isTimeout }, "Gravity fetch error");
+      }
 
-        // Gravity API error
-        if (!response.ok) {
-          const errorBody = await response.text().catch(() => "");
-          logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
-          track("gravity_error", { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200), userId });
-          return {
-            status: "gravity_error" as const,
-            debug: { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200) },
-          };
-        }
+      // Cap to available ad slots
+      gravityAds = gravityAds.slice(0, MAX_AD_SLOTS);
 
-        const ads = (await response.json()) as GravityAdResponse[];
+      // Normalize Gravity ads to ContextAd shape (same shape as ZeroClick ads)
+      // so allAds has a consistent type for the client
+      const taggedGravityAds = gravityAds.map(ad => ({
+        adText: ad.adText,
+        title: ad.title,
+        clickUrl: ad.clickUrl,
+        impUrl: ad.impUrl,
+        brandName: ad.brandName,
+        url: ad.url,
+        favicon: ad.favicon,
+        cta: ad.cta,
+        provider: "gravity" as const,
+      }));
 
-        if (ads && ads.length > 0) {
-          // Log detailed info about each ad to debug duplicate issue
-          const adSummary = ads.map((ad, i) => ({
+      // Note: tracking is deferred to Phase 3 — one event per /api/context call
+
+      // =========================================================================
+      // Phase 2: ZeroClick Fallback (if remaining slots)
+      // =========================================================================
+      const remainingSlots = MAX_AD_SLOTS - gravityAds.length;
+      let zeroClickAds: Array<ReturnType<typeof normalizeZeroClickOffer>> = [];
+
+      // ZeroClick requires a valid client IP for server-side requests (returns 400 otherwise)
+      // Guard against empty string too — some proxies may set headers to ""
+      const hasValidIp = clientIp && clientIp !== "unknown" && clientIp !== "";
+
+      if (remainingSlots > 0 && hasValidIp) {
+        logger.info({ remainingSlots, gravityCount: gravityAds.length }, "Calling ZeroClick fallback");
+
+        const { offers, durationMs } = await fetchZeroClickOffers({
+          query: title,
+          limit: remainingSlots,
+          ipAddress: clientIp,
+          userAgent: device?.ua,
+          userSessionId: sessionId,
+          userId: userId || user?.id,
+          userLocale: device?.locale,
+          groupingId: getHostname(url),
+        });
+
+        if (offers.length > 0) {
+          // Cap to remaining slots — ZeroClick may return more than requested limit
+          zeroClickAds = offers.slice(0, remainingSlots).map(normalizeZeroClickOffer);
+
+          const adSummary = zeroClickAds.map((ad, i) => ({
             index: i,
             brandName: ad.brandName,
             title: ad.title?.slice(0, 50),
-            impUrl: ad.impUrl?.slice(-20), // Last 20 chars to see if they're unique
+            zeroClickId: ad.zeroClickId,
           }));
           logger.info({
             url,
-            adCount: ads.length,
-            uniqueBrands: [...new Set(ads.map(a => a.brandName))].length,
-            uniqueImpUrls: [...new Set(ads.map(a => a.impUrl))].length,
+            adCount: zeroClickAds.length,
+            uniqueBrands: [...new Set(zeroClickAds.map(a => a.brandName))].length,
+            durationMs,
             ads: adSummary,
-          }, "Ad(s) received from Gravity - detailed");
-          // Track ONE "filled" event per successful request (not per ad returned)
-          // This ensures filled count matches actual ad requests, not ads returned
-          const primaryAd = ads[0];
-          track("filled", {
-            gravityStatus: 200,
-            brandName: primaryAd.brandName,
-            adTitle: primaryAd.title,
-            adText: primaryAd.adText,
-            clickUrl: primaryAd.clickUrl,
-            impUrl: primaryAd.impUrl,
-            cta: primaryAd.cta,
-            favicon: primaryAd.favicon,
-            userId,
-            adCount: ads.length, // Track how many ads were returned for analytics
-          });
-          return {
-            status: "filled" as const,
-            ad: primaryAd,
-            ads,
-          };
-        }
+          }, "Ad(s) received from ZeroClick");
 
-        // Empty array from Gravity
-        logger.info({ url }, "Empty ad array from Gravity");
-        track("no_fill", { gravityStatus: 200, errorMessage: "Empty ad array", userId });
+          // "filled" tracked once in Phase 3 to avoid double-counting with Gravity
+        } else {
+          logger.info({ url, durationMs }, "No matching ad from ZeroClick");
+          // Note: tracking is deferred to Phase 3 — one event per /api/context call
+        }
+      } else if (remainingSlots > 0 && !hasValidIp) {
+        logger.info({ remainingSlots, clientIp }, "Skipping ZeroClick — no valid client IP");
+      }
+
+      // =========================================================================
+      // Phase 3: Combine, track once, and return
+      // =========================================================================
+      const allAds = [...taggedGravityAds, ...zeroClickAds];
+
+      if (allAds.length > 0) {
+        // Single "filled" event per /api/context call — no double-counting
+        // adProvider reflects which provider supplied the primary (first) ad
+        const primaryAd = allAds[0];
+        const gravityCount = taggedGravityAds.length;
+        const zeroClickCount = zeroClickAds.length;
+
+        track("filled", {
+          gravityStatus,
+          brandName: primaryAd.brandName,
+          adTitle: primaryAd.title,
+          adText: primaryAd.adText,
+          clickUrl: primaryAd.clickUrl,
+          impUrl: primaryAd.impUrl,
+          cta: primaryAd.cta,
+          favicon: primaryAd.favicon,
+          userId,
+          adCount: allAds.length,
+          gravityAdCount: gravityCount,
+          zeroClickAdCount: zeroClickCount,
+          adProvider: primaryAd.provider,
+        });
+
+        // Structured log for per-provider ad breakdown
+        const gravityNames = taggedGravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(", ");
+        const zcNames = zeroClickAds.map((a, i) => `[${i}] ${a.brandName}`).join(", ");
+        const parts = [
+          gravityCount > 0 ? `Gravity(${gravityCount}): ${gravityNames}` : null,
+          zeroClickCount > 0 ? `ZeroClick(${zeroClickCount}): ${zcNames}` : null,
+        ].filter(Boolean).join(" | ");
+        logger.info({ url, gravityCount, zeroClickCount, totalAds: allAds.length }, `Received ${allAds.length} ads — ${parts}`);
+
         return {
-          status: "no_fill" as const,
-          debug: { gravityStatus: 200, errorMessage: "Empty ad array" },
-        };
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        const errorMsg = String(fetchError);
-        const isTimeout = errorMsg.includes("abort");
-        logger.warn({ error: errorMsg, isTimeout }, "Gravity fetch error");
-        const status = isTimeout ? "timeout" : "gravity_error";
-        track(status, { errorMessage: errorMsg.slice(0, 200), userId });
-        return {
-          status: status as "timeout" | "gravity_error",
-          debug: { errorMessage: errorMsg.slice(0, 200) },
+          status: "filled" as const,
+          ad: allAds[0],
+          ads: allAds,
         };
       }
+
+      // No ads from either provider — determine the appropriate failure status
+      // Check gravityStatus too: a non-2xx status with empty body (e.g. HTTP 500)
+      // would leave gravityError falsy but still indicates a Gravity failure
+      const failureStatus: AdEventStatus = gravityError?.includes("abort")
+        ? "timeout"
+        : gravityError || (gravityStatus !== 0 && gravityStatus !== 200 && gravityStatus !== 204)
+          ? "gravity_error"
+          : "no_fill";
+
+      track(failureStatus, {
+        gravityStatus,
+        errorMessage: gravityError || "No ads from any provider",
+        userId,
+      });
+
+      return {
+        status: failureStatus as "no_fill" | "timeout" | "gravity_error",
+        debug: { gravityStatus, errorMessage: gravityError || "No ads from any provider" },
+      };
     } catch (error) {
       const errorMsg = String(error);
       logger.error({ error: errorMsg }, "Unexpected error in context route");

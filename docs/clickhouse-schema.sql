@@ -122,6 +122,9 @@ CREATE TABLE IF NOT EXISTS ad_events
     event_id String,
     timestamp DateTime64(3) DEFAULT now64(3),
 
+    -- Event type (request, impression, click, dismiss)
+    event_type LowCardinality(String) DEFAULT 'request',
+
     -- Request context
     url String,
     hostname LowCardinality(String),
@@ -143,9 +146,28 @@ CREATE TABLE IF NOT EXISTS ad_events
     gravity_status_code UInt16 DEFAULT 0,
     error_message String DEFAULT '',
 
+    -- Gravity forwarding status (for impressions)
+    -- 1 = successfully forwarded to Gravity, 0 = failed or not applicable
+    gravity_forwarded UInt8 DEFAULT 0,
+
     -- Ad data (when filled)
     brand_name LowCardinality(String) DEFAULT '',
     ad_title String DEFAULT '',
+    ad_text String DEFAULT '',
+    click_url String DEFAULT '',
+    imp_url String DEFAULT '',
+    cta LowCardinality(String) DEFAULT '',
+    favicon String DEFAULT '',
+    ad_count UInt8 DEFAULT 0,               -- Number of ads returned in this request
+
+    -- Per-provider slot counts
+    gravity_ad_count UInt8 DEFAULT 0,        -- Number of ads filled by Gravity
+    zeroclick_ad_count UInt8 DEFAULT 0,      -- Number of ads filled by ZeroClick
+
+    -- Provider (gravity or zeroclick)
+    ad_provider LowCardinality(String) DEFAULT 'gravity',
+    -- ZeroClick offer ID (for impression reconciliation)
+    zeroclick_id String DEFAULT '',
 
     -- Performance
     duration_ms UInt32 DEFAULT 0,
@@ -155,7 +177,7 @@ CREATE TABLE IF NOT EXISTS ad_events
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
-ORDER BY (hostname, status, timestamp, event_id)
+ORDER BY (hostname, event_type, status, timestamp, event_id)
 TTL toDateTime(timestamp) + INTERVAL 90 DAY  -- Keep ad data longer for analysis
 SETTINGS index_granularity = 8192;
 
