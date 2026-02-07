@@ -232,8 +232,9 @@ export const Response = memo(
     ...props
   }: ResponseProps) => {
     // Enable CJK plugin when the language is Chinese, Japanese, or Korean
+    // Normalize to base language code to handle BCP-47 tags like zh-CN, ja-JP
     const plugins = useMemo(
-      () => (lang && CJK_LANGUAGES.has(lang) ? cjkPlugins : basePlugins),
+      () => (lang && CJK_LANGUAGES.has(lang.split('-')[0]) ? cjkPlugins : basePlugins),
       [lang]
     );
 
