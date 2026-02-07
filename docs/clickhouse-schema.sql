@@ -160,6 +160,10 @@ CREATE TABLE IF NOT EXISTS ad_events
     favicon String DEFAULT '',
     ad_count UInt8 DEFAULT 0,               -- Number of ads returned in this request
 
+    -- Per-provider slot counts
+    gravity_ad_count UInt8 DEFAULT 0,        -- Number of ads filled by Gravity
+    zeroclick_ad_count UInt8 DEFAULT 0,      -- Number of ads filled by ZeroClick
+
     -- Provider (gravity or zeroclick)
     ad_provider LowCardinality(String) DEFAULT 'gravity',
     -- ZeroClick offer ID (for impression reconciliation)
