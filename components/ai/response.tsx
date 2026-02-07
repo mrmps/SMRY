@@ -23,8 +23,8 @@ import {
   Streamdown,
   defaultRehypePlugins,
   type StreamdownProps,
-  type BundledTheme,
 } from 'streamdown';
+import { code } from '@streamdown/code';
 import { harden } from 'rehype-harden';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
@@ -36,9 +36,6 @@ export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   /** Language code for the content */
   lang?: string;
 };
-
-// Shiki themes for light and dark mode
-const shikiThemes: [BundledTheme, BundledTheme] = ['github-light', 'github-dark'];
 
 // Security configuration for AI-generated content
 const hardenConfig = {
@@ -186,7 +183,7 @@ const components: StreamdownProps['components'] = {
   code: ({ node, className, ...props }) => {
     const inline = node?.position?.start.line === node?.position?.end.line;
     if (!inline) {
-      // Block code is handled by Shiki via shikiTheme prop
+      // Block code is handled by @streamdown/code plugin
       return <code className={className} {...props} />;
     }
     return (
@@ -225,7 +222,8 @@ export const Response = memo(
           isAnimating={isAnimating}
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
-          shikiTheme={shikiThemes}
+          plugins={{ code }}
+          caret={isAnimating ? 'block' : undefined}
           rehypePlugins={[
             defaultRehypePlugins.raw,
             [harden, hardenConfig],

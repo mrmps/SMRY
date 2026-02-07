@@ -200,7 +200,7 @@ export function useArticleChat({
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: getApiUrl("/api/chat"),
+        api: "/api/chat", // Always use Route Handler for streaming (not rewrite proxy)
         fetch: customFetch,
         prepareSendMessagesRequest: ({ messages }) => {
           return {
@@ -221,7 +221,7 @@ export function useArticleChat({
     id: chatId,
     messages: initialMessages,
     transport,
-    experimental_throttle: 100, // Throttle updates to 100ms for smoother streaming with less jitter
+    experimental_throttle: 50, // Throttle updates to 50ms for smooth token-level streaming
     onError: (error: Error) => {
       console.error("Chat error:", error);
     },

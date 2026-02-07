@@ -11,7 +11,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
-import { getApiUrl } from "@/lib/api/config";
 import { useAuth } from "@clerk/nextjs";
 import {
   PromptInput,
@@ -89,7 +88,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   const transport = React.useMemo(
     () =>
       new DefaultChatTransport({
-        api: getApiUrl("/api/chat"),
+        api: "/api/chat", // Always use Route Handler for streaming (not rewrite proxy)
         fetch: customFetch,
         prepareSendMessagesRequest: ({ messages }) => ({
           body: {
