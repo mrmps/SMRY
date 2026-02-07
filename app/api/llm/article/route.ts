@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL = "https://smry.ai";
 
-/** Elysia backend URL — same env var and fallback as next.config.mjs rewrites */
-const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:3001";
+/**
+ * Elysia backend URL.
+ * - API_URL: used by next.config.mjs rewrites (same-container localhost)
+ * - NEXT_PUBLIC_API_URL: public API URL, needed here because route handlers may
+ *   run on edge workers where localhost:3001 isn't reachable
+ * - localhost fallback: local dev only
+ */
+const API_URL =
+  process.env.API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3001";
 
 export async function GET(request: NextRequest) {
   // The article URL comes from searchParams when called directly, or from the
@@ -18,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const apiUrl = `${INTERNAL_API_URL}/api/article/auto?url=${encodeURIComponent(articleUrl)}`;
+    const apiUrl = `${API_URL}/api/article/auto?url=${encodeURIComponent(articleUrl)}`;
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
