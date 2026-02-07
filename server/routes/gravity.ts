@@ -441,7 +441,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         });
       } else {
         const status: AdEventStatus = gravityError.includes("abort") ? "timeout"
-          : gravityError ? "gravity_error"
+          : gravityError || (gravityStatus !== 0 && gravityStatus !== 200 && gravityStatus !== 204) ? "gravity_error"
           : "no_fill";
         track(status, {
           gravityStatus,
