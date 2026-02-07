@@ -11,6 +11,8 @@
  * - Offers: POST /api/v2/offers (server-side, requires x-zc-api-key)
  * - Impressions: POST /api/v2/impressions (client-side only, no auth)
  *   Body: { ids: [offer.id, ...] } — must be called from the browser
+ * - Impressions: No auth needed, returns 204, must be from browser for accurate
+ *   IP/User-Agent capture. Server-side calls are rate-limited and lose accuracy.
  */
 
 import { createLogger } from "@/lib/logger";
@@ -60,6 +62,14 @@ export interface ZeroClickFetchOptions {
   ipAddress: string;
   /** Client user agent string */
   userAgent?: string;
+  /** Session ID for session-level analytics tracking */
+  userSessionId?: string;
+  /** User ID for user-level deduplication and tracking */
+  userId?: string;
+  /** Locale code (e.g. "en-US") for language/region targeting */
+  userLocale?: string;
+  /** Grouping ID for analytics segmentation (e.g. hostname) */
+  groupingId?: string;
 }
 
 /** Result from a ZeroClick fetch, including timing info */
@@ -94,6 +104,11 @@ export async function fetchOffers(
         limit: opts.limit,
         ipAddress: opts.ipAddress,
         userAgent: opts.userAgent,
+        // Optional params for better targeting + analytics accuracy
+        ...(opts.userSessionId && { userSessionId: opts.userSessionId }),
+        ...(opts.userId && { userId: opts.userId }),
+        ...(opts.userLocale && { userLocale: opts.userLocale }),
+        ...(opts.groupingId && { groupingId: opts.groupingId }),
       }),
       signal: controller.signal,
     });

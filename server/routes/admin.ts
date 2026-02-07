@@ -404,6 +404,8 @@ interface AdProviderFillContribution {
   gravity_fills: number;
   zeroclick_fills: number;
   total_fills: number;
+  gravity_fill_rate: number;
+  zeroclick_fill_rate: number;
   zeroclick_contribution_pct: number;
 }
 
@@ -1253,27 +1255,46 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         // Provider-Specific Analytics (Gravity vs ZeroClick)
         // =============================================================================
 
-        // 38. Provider Breakdown - requests, fills, impressions, clicks by provider
+        // 38. Provider Breakdown - uses per-provider slot counts for accurate fill rates
+        // gravity_ad_count / zeroclick_ad_count are set on request events; impressions/clicks use ad_provider
         queryClickhouse<AdProviderBreakdown>(`
-          SELECT
-            if(ad_provider = '', 'gravity', ad_provider) AS ad_provider,
-            countIf(event_type = 'request') AS requests,
-            countIf(event_type = 'request' AND status = 'filled') AS filled,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            countIf(event_type = 'dismiss') AS dismissals,
-            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
-              countIf(event_type = 'request' AND status = 'filled') /
-              countIf(event_type = 'request' AND status != 'premium_user') * 100, 0), 2) AS fill_rate,
-            round(if(countIf(event_type = 'impression') > 0,
-              countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 0), 2) AS ctr
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-          GROUP BY ad_provider
-          ORDER BY requests DESC
+          SELECT * FROM (
+            SELECT
+              'gravity' AS ad_provider,
+              countIf(event_type = 'request' AND status != 'premium_user') AS requests,
+              sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') AS filled,
+              countIf(event_type = 'impression' AND ad_provider IN ('gravity', '')) AS impressions,
+              countIf(event_type = 'click' AND ad_provider IN ('gravity', '')) AS clicks,
+              countIf(event_type = 'dismiss' AND ad_provider IN ('gravity', '')) AS dismissals,
+              round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
+                sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') /
+                (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS fill_rate,
+              round(if(countIf(event_type = 'impression' AND ad_provider IN ('gravity', '')) > 0,
+                countIf(event_type = 'click' AND ad_provider IN ('gravity', '')) /
+                countIf(event_type = 'impression' AND ad_provider IN ('gravity', '')) * 100, 0), 2) AS ctr
+            FROM ad_events
+            WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            UNION ALL
+            SELECT
+              'zeroclick' AS ad_provider,
+              countIf(event_type = 'request' AND status != 'premium_user') AS requests,
+              sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') AS filled,
+              countIf(event_type = 'impression' AND ad_provider = 'zeroclick') AS impressions,
+              countIf(event_type = 'click' AND ad_provider = 'zeroclick') AS clicks,
+              countIf(event_type = 'dismiss' AND ad_provider = 'zeroclick') AS dismissals,
+              round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
+                sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') /
+                (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS fill_rate,
+              round(if(countIf(event_type = 'impression' AND ad_provider = 'zeroclick') > 0,
+                countIf(event_type = 'click' AND ad_provider = 'zeroclick') /
+                countIf(event_type = 'impression' AND ad_provider = 'zeroclick') * 100, 0), 2) AS ctr
+            FROM ad_events
+            WHERE timestamp > now() - INTERVAL ${hours} HOUR
+          )
+          ORDER BY filled DESC
         `).catch(() => [] as AdProviderBreakdown[]),
 
-        // 39. Provider Fill Contribution - how many slots each provider fills over time
+        // 39. Provider Fill Contribution - uses gravity_ad_count/zeroclick_ad_count for accurate slot-level tracking
         queryClickhouse<AdProviderFillContribution>(`
           SELECT
             ${minutes <= 60
@@ -1284,14 +1305,21 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
                   ? `formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS time_bucket`
                   : `formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') AS time_bucket`
             },
-            countIf(event_type = 'request' AND status = 'filled' AND (ad_provider = 'gravity' OR ad_provider = '')) AS gravity_fills,
-            countIf(event_type = 'request' AND status = 'filled' AND ad_provider = 'zeroclick') AS zeroclick_fills,
-            countIf(event_type = 'request' AND status = 'filled') AS total_fills,
-            round(if(countIf(event_type = 'request' AND status = 'filled') > 0,
-              countIf(event_type = 'request' AND status = 'filled' AND ad_provider = 'zeroclick') /
-              countIf(event_type = 'request' AND status = 'filled') * 100, 0), 2) AS zeroclick_contribution_pct
+            sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') AS gravity_fills,
+            sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') AS zeroclick_fills,
+            sumIf(ad_count, event_type = 'request' AND status = 'filled') AS total_fills,
+            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
+              sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') /
+              (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS gravity_fill_rate,
+            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
+              sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') /
+              (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS zeroclick_fill_rate,
+            round(if(sumIf(ad_count, event_type = 'request' AND status = 'filled') > 0,
+              sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') /
+              sumIf(ad_count, event_type = 'request' AND status = 'filled') * 100, 0), 2) AS zeroclick_contribution_pct
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
+            AND event_type = 'request'
             ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
           GROUP BY time_bucket
           ORDER BY time_bucket

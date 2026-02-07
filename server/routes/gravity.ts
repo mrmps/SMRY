@@ -249,6 +249,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       userId?: string | null;
       isPremium?: boolean;
       adCount?: number;
+      gravityAdCount?: number;
+      zeroClickAdCount?: number;
       adProvider?: AdProvider;
     } = {}) => {
       trackAdEvent({
@@ -274,6 +276,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         cta: extra.cta ?? "",
         favicon: extra.favicon ?? "",
         ad_count: extra.adCount ?? 0,
+        gravity_ad_count: extra.gravityAdCount ?? 0,
+        zeroclick_ad_count: extra.zeroClickAdCount ?? 0,
         ad_provider: extra.adProvider ?? "gravity",
         duration_ms: Date.now() - startTime,
       });
@@ -453,6 +457,10 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           limit: remainingSlots,
           ipAddress: clientIp,
           userAgent: device?.ua,
+          userSessionId: sessionId,
+          userId: userId || user?.id,
+          userLocale: device?.locale,
+          groupingId: getHostname(url),
         });
 
         if (offers.length > 0) {
@@ -491,6 +499,9 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         // Single "filled" event per /api/context call — no double-counting
         // adProvider reflects which provider supplied the primary (first) ad
         const primaryAd = allAds[0];
+        const gravityCount = taggedGravityAds.length;
+        const zeroClickCount = zeroClickAds.length;
+
         track("filled", {
           gravityStatus,
           brandName: primaryAd.brandName,
@@ -502,8 +513,19 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           favicon: primaryAd.favicon,
           userId,
           adCount: allAds.length,
+          gravityAdCount: gravityCount,
+          zeroClickAdCount: zeroClickCount,
           adProvider: primaryAd.provider,
         });
+
+        // Structured log for per-provider ad breakdown
+        const gravityNames = taggedGravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(", ");
+        const zcNames = zeroClickAds.map((a, i) => `[${i}] ${a.brandName}`).join(", ");
+        const parts = [
+          gravityCount > 0 ? `Gravity(${gravityCount}): ${gravityNames}` : null,
+          zeroClickCount > 0 ? `ZeroClick(${zeroClickCount}): ${zcNames}` : null,
+        ].filter(Boolean).join(" | ");
+        logger.info({ url, gravityCount, zeroClickCount, totalAds: allAds.length }, `Received ${allAds.length} ads — ${parts}`);
 
         return {
           status: "filled" as const,

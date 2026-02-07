@@ -146,6 +146,40 @@ export interface UseGravityAdResult {
 // Ad refresh interval in milliseconds (45 seconds)
 const AD_REFRESH_INTERVAL_MS = 45_000;
 
+// =============================================================================
+// ZeroClick Impression Batching
+// =============================================================================
+// ZeroClick's /api/v2/impressions accepts { ids: [...] } — batch IDs to reduce
+// HTTP requests when multiple ZeroClick ads become visible simultaneously.
+// Buffer collects IDs for 100ms then flushes in one call.
+let zcImpressionBuffer: string[] = [];
+let zcFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushZeroClickImpressions(): void {
+  if (zcImpressionBuffer.length === 0) return;
+  const ids = [...zcImpressionBuffer];
+  zcImpressionBuffer = [];
+  zcFlushTimer = null;
+
+  // Must be called from client devices per ZeroClick docs
+  // Cannot use sendBeacon — it always includes cookies, and ZeroClick returns
+  // Access-Control-Allow-Origin: * which is incompatible with credentialed requests.
+  fetch("https://zeroclick.dev/api/v2/impressions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+    credentials: "omit",
+    keepalive: true,
+  }).catch(() => {});
+}
+
+function queueZeroClickImpression(zeroClickId: string): void {
+  zcImpressionBuffer.push(zeroClickId);
+  if (!zcFlushTimer) {
+    zcFlushTimer = setTimeout(flushZeroClickImpressions, 100);
+  }
+}
+
 // SSR-safe store subscriptions for immediate client-side values
 const emptySubscribe = () => () => {};
 
@@ -329,18 +363,9 @@ export function useGravityAd({
     }
 
     // ZeroClick impressions MUST be tracked client-side from the browser (per ZeroClick docs)
-    // NOTE: Cannot use sendBeacon here — it always includes cookies, and ZeroClick returns
-    // Access-Control-Allow-Origin: * which is incompatible with credentialed requests.
-    // Using fetch with credentials: "omit" avoids the CORS conflict.
-    // keepalive: true ensures the request survives page unloads (Chrome 66+, Firefox 101+, Safari 13+).
+    // IDs are batched (100ms window) to reduce HTTP requests when multiple ads render at once
     if (type === "impression" && ad.provider === "zeroclick" && ad.zeroClickId) {
-      fetch("https://zeroclick.dev/api/v2/impressions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [ad.zeroClickId] }),
-        credentials: "omit",
-        keepalive: true,
-      }).catch(() => {});
+      queueZeroClickImpression(ad.zeroClickId);
     }
   }, [sessionId, url, deviceInfo]);
 

@@ -156,6 +156,9 @@ export interface AdEvent {
   cta: string;
   favicon: string;
   ad_count: number; // Number of ads returned in this request
+  // Per-provider slot counts (how many ads each provider filled)
+  gravity_ad_count: number;
+  zeroclick_ad_count: number;
   // Provider (gravity or zeroclick)
   ad_provider: AdProvider;
   // ZeroClick offer ID (for impression reconciliation)
@@ -218,6 +221,9 @@ async function ensureAdSchema(): Promise<void> {
             cta LowCardinality(String) DEFAULT '',
             favicon String DEFAULT '',
             ad_count UInt8 DEFAULT 0,
+            -- Per-provider slot counts
+            gravity_ad_count UInt8 DEFAULT 0,
+            zeroclick_ad_count UInt8 DEFAULT 0,
             ad_provider LowCardinality(String) DEFAULT 'gravity',
             -- ZeroClick offer ID (for impression reconciliation)
             zeroclick_id String DEFAULT '',
@@ -268,6 +274,13 @@ async function ensureAdSchema(): Promise<void> {
       // ZeroClick offer ID for impression reconciliation
       await clickhouse.command({
         query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS zeroclick_id String DEFAULT ''`,
+      });
+      // Per-provider slot counts
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS gravity_ad_count UInt8 DEFAULT 0`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS zeroclick_ad_count UInt8 DEFAULT 0`,
       });
     } catch {
       // Ignore errors - columns may already exist
@@ -407,6 +420,8 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     cta: (event.cta || "").slice(0, 100),
     favicon: (event.favicon || "").slice(0, 500),
     ad_count: event.ad_count || 0,
+    gravity_ad_count: event.gravity_ad_count || 0,
+    zeroclick_ad_count: event.zeroclick_ad_count || 0,
     ad_provider: event.ad_provider || "gravity",
     zeroclick_id: event.zeroclick_id || "",
     duration_ms: event.duration_ms || 0,
