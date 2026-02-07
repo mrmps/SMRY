@@ -537,7 +537,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       // No ads from either provider — determine the appropriate failure status
       // Check gravityStatus too: a non-2xx status with empty body (e.g. HTTP 500)
       // would leave gravityError falsy but still indicates a Gravity failure
-      const failureStatus: AdEventStatus = gravityError.includes("abort")
+      const failureStatus: AdEventStatus = gravityError?.includes("abort")
         ? "timeout"
         : gravityError || (gravityStatus !== 0 && gravityStatus !== 200 && gravityStatus !== 204)
           ? "gravity_error"
