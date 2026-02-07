@@ -43,21 +43,21 @@ export async function POST(req: Request) {
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
-      // Forward usage headers from Elysia
-      ...(response.headers.get("X-Usage-Remaining") && {
+      // Forward usage headers from Elysia (use !== null, not truthy — "0" is falsy)
+      ...(response.headers.get("X-Usage-Remaining") !== null && {
         "X-Usage-Remaining": response.headers.get("X-Usage-Remaining")!,
       }),
-      ...(response.headers.get("X-Usage-Limit") && {
+      ...(response.headers.get("X-Usage-Limit") !== null && {
         "X-Usage-Limit": response.headers.get("X-Usage-Limit")!,
       }),
-      ...(response.headers.get("X-Is-Premium") && {
+      ...(response.headers.get("X-Is-Premium") !== null && {
         "X-Is-Premium": response.headers.get("X-Is-Premium")!,
       }),
-      ...(response.headers.get("X-Model") && {
+      ...(response.headers.get("X-Model") !== null && {
         "X-Model": response.headers.get("X-Model")!,
       }),
       // Preserve AI SDK stream header
-      ...(response.headers.get("x-vercel-ai-ui-message-stream") && {
+      ...(response.headers.get("x-vercel-ai-ui-message-stream") !== null && {
         "x-vercel-ai-ui-message-stream": response.headers.get("x-vercel-ai-ui-message-stream")!,
       }),
     },
