@@ -441,7 +441,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           : "no_fill";
         track(status, {
           gravityStatus,
-          errorMessage: gravityError || "Empty ad array",
+          errorMessage: gravityError || (gravityStatus === 204 ? "" : "Empty ad array"),
           userId,
           adProvider: "gravity",
         });
