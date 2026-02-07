@@ -329,15 +329,23 @@ export function useGravityAd({
     }
 
     // ZeroClick impressions MUST be tracked client-side from the browser (per ZeroClick docs)
-    // Uses fetch with credentials: "omit" — no auth needed, avoids CORS issues
+    // Use sendBeacon for reliability during page unloads (matches /api/px pattern above)
     if (type === "impression" && ad.provider === "zeroclick" && ad.zeroClickId) {
-      fetch("https://zeroclick.dev/api/v2/impressions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [ad.zeroClickId] }),
-        credentials: "omit",
-        keepalive: true,
-      }).catch(() => {});
+      const zcPayload = JSON.stringify({ ids: [ad.zeroClickId] });
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "https://zeroclick.dev/api/v2/impressions",
+          new Blob([zcPayload], { type: "application/json" })
+        );
+      } else {
+        fetch("https://zeroclick.dev/api/v2/impressions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: zcPayload,
+          credentials: "omit",
+          keepalive: true,
+        }).catch(() => {});
+      }
     }
   }, [sessionId, url, deviceInfo]);
 

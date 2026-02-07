@@ -525,7 +525,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       });
 
       return {
-        status: "no_fill" as const,
+        status: failureStatus as "no_fill" | "timeout" | "gravity_error",
         debug: { gravityStatus, errorMessage: gravityError || "No ads from any provider" },
       };
     } catch (error) {
