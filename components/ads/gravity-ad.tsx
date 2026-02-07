@@ -82,7 +82,7 @@ function AdFavicon({
   const ddgUrl = fallbackUrl ? (() => {
     try {
       const domain = new URL(fallbackUrl).hostname;
-      return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+      return `/api/favicon?domain=${domain}`;
     } catch {
       return null;
     }
