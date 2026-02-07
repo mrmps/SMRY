@@ -7,7 +7,8 @@
  * - text/markdown or text/plain is present without text/html
  *
  * Returns false for wildcard-only headers or when text/html has
- * higher or equal quality to any markdown/plain types.
+ * higher quality. When qualities are equal, position in the header
+ * is used as a tiebreaker (earlier type wins).
  */
 export function prefersMarkdown(accept: string): boolean {
   if (!accept) return false;
@@ -39,13 +40,26 @@ export function prefersMarkdown(accept: string): boolean {
 /**
  * Extract quality value for a MIME type from an Accept header.
  * Returns -1 if the type is not present, otherwise returns the quality (0-1, default 1.0).
+ *
+ * Splits the header into comma-separated segments and matches each segment
+ * by exact MIME type prefix to avoid substring false positives.
+ * Handles media-type parameters (e.g., charset) before the q parameter.
  */
 function getQuality(accept: string, mimeType: string): number {
-  const index = accept.indexOf(mimeType);
-  if (index === -1) return -1;
-
-  // Look for ;q= after the MIME type
-  const afterType = accept.slice(index + mimeType.length);
-  const qMatch = afterType.match(/^\s*;\s*q\s*=\s*([01](?:\.\d{1,3})?)/);
-  return qMatch ? parseFloat(qMatch[1]) : 1.0;
+  const segments = accept.split(",");
+  for (const segment of segments) {
+    const trimmed = segment.trim();
+    if (!trimmed.startsWith(mimeType)) continue;
+    // Ensure exact type match (next char must be ';', ' ', or end of string)
+    const next = trimmed[mimeType.length];
+    if (next !== undefined && next !== ";" && next !== " ") continue;
+    // Extract quality from parameters
+    const params = trimmed.slice(mimeType.length).split(";");
+    for (const param of params) {
+      const qMatch = param.trim().match(/^q\s*=\s*([01](?:\.\d{1,3})?)$/);
+      if (qMatch) return parseFloat(qMatch[1]);
+    }
+    return 1.0; // type present, no explicit q → default 1.0
+  }
+  return -1;
 }

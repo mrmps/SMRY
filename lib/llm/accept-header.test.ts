@@ -163,6 +163,24 @@ describe("prefersMarkdown", () => {
     });
   });
 
+  describe("RFC 7231 edge cases", () => {
+    it("handles charset parameter before q value", () => {
+      // text/plain; charset=utf-8; q=0.5 should parse q=0.5, not default 1.0
+      expect(
+        prefersMarkdown("text/plain; charset=utf-8; q=0.5, text/html;q=0.9")
+      ).toBe(false);
+    });
+
+    it("does not substring-match text/plain-format as text/plain", () => {
+      // text/plain-format is NOT text/plain
+      expect(prefersMarkdown("text/plain-format, text/html")).toBe(false);
+    });
+
+    it("does not substring-match text/markdown-extra as text/markdown", () => {
+      expect(prefersMarkdown("text/markdown-extra, text/html")).toBe(false);
+    });
+  });
+
   describe("edge cases", () => {
     it("handles leading/trailing whitespace", () => {
       expect(prefersMarkdown("  text/markdown  ,  text/html  ")).toBe(true);
