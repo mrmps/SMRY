@@ -180,6 +180,21 @@ function queueZeroClickImpression(zeroClickId: string): void {
   }
 }
 
+// Flush buffered impressions when the page is about to unload.
+// "visibilitychange" to "hidden" is the last event reliably fired on
+// navigation, tab close, and app switch (especially on mobile).
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      if (zcFlushTimer) {
+        clearTimeout(zcFlushTimer);
+        zcFlushTimer = null;
+      }
+      flushZeroClickImpressions();
+    }
+  });
+}
+
 // SSR-safe store subscriptions for immediate client-side values
 const emptySubscribe = () => () => {};
 
