@@ -114,7 +114,7 @@ export async function fetchOffers(
     const data = await response.json();
     const offers: ZeroClickOffer[] = Array.isArray(data) ? data : [];
     if (!Array.isArray(data)) {
-      logger.warn({ responseKeys: Object.keys(data), durationMs }, "ZeroClick returned unexpected response shape");
+      logger.warn({ responseKeys: data != null ? Object.keys(data) : [], durationMs }, "ZeroClick returned unexpected response shape");
     }
     logger.info({ offerCount: offers.length, durationMs }, "ZeroClick offers received");
     return { offers, durationMs };
