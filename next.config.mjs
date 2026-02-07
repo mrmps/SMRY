@@ -58,6 +58,7 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ["shiki"],
   serverExternalPackages: ["pino", "pino-pretty", "thread-stream", "undici", "node-fetch"],
 
   // Redirect auth routes to pricing page (sign-in modal is there)
