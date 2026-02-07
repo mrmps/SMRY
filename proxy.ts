@@ -8,6 +8,8 @@ import {
   LLM_DISCOVERY_HEADERS,
   getMarkdownRewritePath,
   buildMarkdownRewriteUrl,
+  getArticleMarkdownUrl,
+  buildArticleMarkdownRewriteUrl,
 } from '@/lib/llm/middleware';
 
 const intlMiddleware = createIntlMiddleware(routing);
@@ -30,8 +32,9 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
     return withLlmHeaders(NextResponse.next());
   }
 
-  // Content negotiation: serve Markdown when agents prefer it
   const accept = request.headers.get('accept') || '';
+
+  // Content negotiation: serve Markdown for static pages when agents prefer it
   const markdownPath = getMarkdownRewritePath(pathname, accept);
   if (markdownPath !== null) {
     const rewriteUrl = new URL(buildMarkdownRewriteUrl(markdownPath, origin));
@@ -40,6 +43,24 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
 
   // Build redirect URL for URL slugs (e.g., /nytimes.com → /proxy?url=...)
   const redirectUrl = buildProxyRedirectUrl(pathname, search, origin);
+
+  // Content negotiation: serve Markdown for article pages when agents prefer it
+  const articleUrl = getArticleMarkdownUrl(
+    pathname,
+    accept,
+    request.nextUrl.searchParams.get('url'),
+    redirectUrl,
+  );
+  if (articleUrl !== null) {
+    const rewriteUrl = new URL(buildArticleMarkdownRewriteUrl(articleUrl, origin));
+    // Pass article URL via request header because the route handler sees the
+    // original request's searchParams, not the rewrite target's.
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-llm-article-url', articleUrl);
+    return withLlmHeaders(NextResponse.rewrite(rewriteUrl, {
+      request: { headers: requestHeaders },
+    }));
+  }
 
   if (redirectUrl) {
     return withLlmHeaders(NextResponse.rewrite(redirectUrl));
