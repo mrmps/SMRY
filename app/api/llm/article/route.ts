@@ -2,15 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL = "https://smry.ai";
 
-/**
- * Elysia backend URL. Uses the same env var as next.config.mjs rewrites
- * so this route can call the backend directly without looping through Next.js.
- */
-const INTERNAL_API_URL = (
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:3001"
-).replace(/\/+$/, "");
+/** Elysia backend URL — same env var and fallback as next.config.mjs rewrites */
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL || "http://localhost:3001";
 
 export async function GET(request: NextRequest) {
   // The article URL comes from searchParams when called directly, or from the
