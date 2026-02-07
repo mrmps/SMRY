@@ -120,6 +120,8 @@ export type AdEventStatus = "filled" | "no_fill" | "premium_user" | "gravity_err
 // Event type for tracking funnel: request -> impression -> click/dismiss
 export type AdEventType = "request" | "impression" | "click" | "dismiss";
 
+export type AdProvider = "gravity" | "zeroclick";
+
 export interface AdEvent {
   event_id: string;
   timestamp: string;
@@ -154,6 +156,8 @@ export interface AdEvent {
   cta: string;
   favicon: string;
   ad_count: number; // Number of ads returned in this request
+  // Provider (gravity or zeroclick)
+  ad_provider: AdProvider;
   // Performance
   duration_ms: number;
   // Environment
@@ -212,6 +216,8 @@ async function ensureAdSchema(): Promise<void> {
             cta LowCardinality(String) DEFAULT '',
             favicon String DEFAULT '',
             ad_count UInt8 DEFAULT 0,
+            -- Provider (gravity or zeroclick)
+            ad_provider LowCardinality(String) DEFAULT 'gravity',
             -- Performance
             duration_ms UInt32 DEFAULT 0,
             -- Environment
@@ -251,6 +257,10 @@ async function ensureAdSchema(): Promise<void> {
       // Track whether impression was successfully forwarded to Gravity (for billing)
       await clickhouse.command({
         query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS gravity_forwarded UInt8 DEFAULT 0`,
+      });
+      // Track which ad provider served the ad (gravity or zeroclick)
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS ad_provider LowCardinality(String) DEFAULT 'gravity'`,
       });
     } catch {
       // Ignore errors - columns may already exist
@@ -390,6 +400,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     cta: (event.cta || "").slice(0, 100),
     favicon: (event.favicon || "").slice(0, 500),
     ad_count: event.ad_count || 0,
+    ad_provider: event.ad_provider || "gravity",
     duration_ms: event.duration_ms || 0,
     env: event.env || env.NODE_ENV,
   };

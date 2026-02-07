@@ -308,9 +308,11 @@ export function useGravityAd({
       deviceType: deviceInfo?.deviceType,
       os: deviceInfo?.os,
       browser: deviceInfo?.browser,
+      provider: ad.provider,
+      zeroClickId: ad.zeroClickId,
     });
 
-    // /api/px handles both Gravity forwarding (for impressions) and ClickHouse logging
+    // /api/px handles Gravity forwarding (for impressions) and ClickHouse logging
     const trackUrl = getApiUrl("/api/px");
 
     // Use sendBeacon for reliable non-blocking tracking
@@ -323,6 +325,18 @@ export function useGravityAd({
         headers: { "Content-Type": "application/json" },
         body: payload,
         keepalive: true, // Ensure request completes even if page unloads
+      }).catch(() => {});
+    }
+
+    // ZeroClick impressions MUST be tracked client-side from the browser (per ZeroClick docs)
+    // Uses fetch with credentials: "omit" — no auth needed, avoids CORS issues
+    if (type === "impression" && ad.provider === "zeroclick" && ad.zeroClickId) {
+      fetch("https://zeroclick.dev/api/v2/impressions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [ad.zeroClickId] }),
+        credentials: "omit",
+        keepalive: true,
       }).catch(() => {});
     }
   }, [sessionId, url, deviceInfo]);
