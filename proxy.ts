@@ -18,6 +18,7 @@ const intlMiddleware = createIntlMiddleware(routing);
 function withLlmHeaders(response: NextResponse): NextResponse {
   response.headers.set('Link', LLM_DISCOVERY_HEADERS['Link']);
   response.headers.set('X-Llms-Txt', LLM_DISCOVERY_HEADERS['X-Llms-Txt']);
+  response.headers.append('Vary', 'Accept');
   return response;
 }
 

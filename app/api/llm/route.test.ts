@@ -13,9 +13,9 @@ function simulateGET(page: string, accept?: string) {
   }
 
   const contentType =
-    accept && accept.includes("text/plain")
-      ? "text/plain; charset=utf-8"
-      : "text/markdown; charset=utf-8";
+    accept && accept.includes("text/markdown")
+      ? "text/markdown; charset=utf-8"
+      : "text/plain; charset=utf-8";
 
   return {
     status: 200,
@@ -73,9 +73,9 @@ describe("GET /api/llm", () => {
       expect(res.headers["Content-Type"]).toContain("text/plain");
     });
 
-    it("defaults to text/markdown when no Accept header", () => {
+    it("defaults to text/plain when no Accept header", () => {
       const res = simulateGET("/");
-      expect(res.headers["Content-Type"]).toContain("text/markdown");
+      expect(res.headers["Content-Type"]).toContain("text/plain");
     });
   });
 

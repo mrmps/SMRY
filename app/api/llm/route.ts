@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
   }
 
   const accept = request.headers.get("accept") || "";
-  const contentType = accept.includes("text/plain")
-    ? "text/plain; charset=utf-8"
-    : "text/markdown; charset=utf-8";
+  const contentType = accept.includes("text/markdown")
+    ? "text/markdown; charset=utf-8"
+    : "text/plain; charset=utf-8";
 
   return new NextResponse(markdown, {
     headers: {

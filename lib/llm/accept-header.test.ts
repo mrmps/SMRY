@@ -15,7 +15,7 @@ describe("prefersMarkdown", () => {
       expect(prefersMarkdown("text/plain, text/html")).toBe(true);
     });
 
-    it("detects text/markdown with quality values", () => {
+    it("detects text/markdown with higher quality value", () => {
       expect(
         prefersMarkdown("text/markdown;q=1.0, text/html;q=0.9")
       ).toBe(true);
@@ -30,13 +30,59 @@ describe("prefersMarkdown", () => {
     });
   });
 
+  describe("RFC 7231 quality value parsing", () => {
+    it("text/html;q=0.1, text/markdown;q=1.0 → prefers markdown", () => {
+      expect(
+        prefersMarkdown("text/html;q=0.1, text/markdown;q=1.0")
+      ).toBe(true);
+    });
+
+    it("text/html;q=0.5, text/plain;q=0.9 → prefers plain", () => {
+      expect(
+        prefersMarkdown("text/html;q=0.5, text/plain;q=0.9")
+      ).toBe(true);
+    });
+
+    it("text/markdown;q=0.5, text/html;q=0.9 → prefers html", () => {
+      expect(
+        prefersMarkdown("text/markdown;q=0.5, text/html;q=0.9")
+      ).toBe(false);
+    });
+
+    it("text/plain;q=0.1, text/html;q=0.5 → prefers html", () => {
+      expect(
+        prefersMarkdown("text/plain;q=0.1, text/html;q=0.5")
+      ).toBe(false);
+    });
+
+    it("equal quality uses position as tiebreaker — markdown first", () => {
+      expect(
+        prefersMarkdown("text/markdown;q=0.9, text/html;q=0.9")
+      ).toBe(true);
+    });
+
+    it("equal quality uses position as tiebreaker — html first", () => {
+      expect(
+        prefersMarkdown("text/html;q=0.9, text/markdown;q=0.9")
+      ).toBe(false);
+    });
+
+    it("default quality (no q=) is 1.0", () => {
+      // text/markdown has default q=1.0, text/html has q=0.5
+      expect(prefersMarkdown("text/markdown, text/html;q=0.5")).toBe(true);
+    });
+
+    it("handles q=0 (explicitly rejected)", () => {
+      expect(prefersMarkdown("text/markdown;q=0, text/html")).toBe(false);
+    });
+  });
+
   describe("real-world agent Accept headers", () => {
     it("Claude Code: text/markdown, */*", () => {
       expect(prefersMarkdown("text/markdown, */*")).toBe(true);
     });
 
-    it("curl default (no specific Accept) — treated as text/plain not sent", () => {
-      // curl sends */* by default, not text/plain
+    it("curl default (*/*) — no markdown preference", () => {
       expect(prefersMarkdown("*/*")).toBe(false);
     });
 
@@ -132,12 +178,6 @@ describe("prefersMarkdown", () => {
 
     it("text/plain with wildcard but no text/html", () => {
       expect(prefersMarkdown("text/plain, */*")).toBe(true);
-    });
-
-    it("does not false-positive on text/markdown-something", () => {
-      // text/markdown-something contains "text/markdown" as substring
-      // but our indexOf check would still match — this is acceptable
-      // because no real MIME type starts with text/markdown-
     });
 
     it("handles multiple commas / malformed", () => {
