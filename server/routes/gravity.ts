@@ -433,19 +433,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         provider: "gravity" as const,
       }));
 
-      // Track Gravity failures immediately (diagnostic — helps monitor Gravity health)
-      // "filled" is tracked once in Phase 3 to avoid double-counting with ZeroClick
-      if (gravityAds.length === 0) {
-        const status: AdEventStatus = gravityError.includes("abort") ? "timeout"
-          : gravityError || (gravityStatus !== 0 && gravityStatus !== 200 && gravityStatus !== 204) ? "gravity_error"
-          : "no_fill";
-        track(status, {
-          gravityStatus,
-          errorMessage: gravityError || (gravityStatus === 204 ? "" : "Empty ad array"),
-          userId,
-          adProvider: "gravity",
-        });
-      }
+      // Note: tracking is deferred to Phase 3 — one event per /api/context call
 
       // =========================================================================
       // Phase 2: ZeroClick Fallback (if remaining slots)
@@ -487,11 +475,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           // "filled" tracked once in Phase 3 to avoid double-counting with Gravity
         } else {
           logger.info({ url, durationMs }, "No matching ad from ZeroClick");
-          track("no_fill", {
-            errorMessage: "ZeroClick returned no offers",
-            userId,
-            adProvider: "zeroclick",
-          });
+          // Note: tracking is deferred to Phase 3 — one event per /api/context call
         }
       } else if (remainingSlots > 0 && !hasValidIp) {
         logger.info({ remainingSlots, clientIp }, "Skipping ZeroClick — no valid client IP");
@@ -527,7 +511,19 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         };
       }
 
-      // No ads from either provider
+      // No ads from either provider — determine the appropriate failure status
+      const failureStatus: AdEventStatus = gravityError.includes("abort")
+        ? "timeout"
+        : gravityError
+          ? "gravity_error"
+          : "no_fill";
+
+      track(failureStatus, {
+        gravityStatus,
+        errorMessage: gravityError || "No ads from any provider",
+        userId,
+      });
+
       return {
         status: "no_fill" as const,
         debug: { gravityStatus, errorMessage: gravityError || "No ads from any provider" },
