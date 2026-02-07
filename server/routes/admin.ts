@@ -1328,17 +1328,16 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         // 40. ZeroClick Health - specific health metrics for the ZeroClick provider
         queryClickhouse<AdZeroClickHealth>(`
           SELECT
-            countIf(event_type = 'request') AS total_requests,
-            countIf(event_type = 'request' AND status = 'filled') AS filled_count,
-            countIf(event_type = 'request' AND status = 'no_fill') AS no_fill_count,
-            round(if(countIf(event_type = 'request') > 0,
-              countIf(event_type = 'request' AND status = 'filled') /
-              countIf(event_type = 'request') * 100, 0), 2) AS fill_rate,
-            round(avgIf(duration_ms, event_type = 'request')) AS avg_duration_ms,
-            uniqIf(brand_name, brand_name != '' AND event_type = 'request' AND status = 'filled') AS unique_brands
+            countIf(event_type = 'request' AND zeroclick_ad_count > 0) AS total_requests,
+            countIf(event_type = 'request' AND status = 'filled' AND zeroclick_ad_count > 0) AS filled_count,
+            countIf(event_type = 'request' AND status = 'no_fill' AND ad_provider = 'zeroclick') AS no_fill_count,
+            round(if(countIf(event_type = 'request' AND zeroclick_ad_count > 0) > 0,
+              countIf(event_type = 'request' AND status = 'filled' AND zeroclick_ad_count > 0) /
+              countIf(event_type = 'request' AND zeroclick_ad_count > 0) * 100, 0), 2) AS fill_rate,
+            round(avgIf(duration_ms, event_type = 'request' AND zeroclick_ad_count > 0)) AS avg_duration_ms,
+            uniqIf(brand_name, brand_name != '' AND event_type = 'request' AND status = 'filled' AND ad_provider = 'zeroclick') AS unique_brands
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND ad_provider = 'zeroclick'
         `).catch(() => [] as AdZeroClickHealth[]),
       ]);
 
