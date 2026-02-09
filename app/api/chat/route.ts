@@ -29,11 +29,19 @@ export async function POST(req: Request) {
     headers.set("x-forwarded-for", forwarded);
   }
 
-  const response = await fetch(`${API_URL}/api/chat`, {
-    method: "POST",
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/chat`, {
+      method: "POST",
+      headers,
+      body,
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Chat service is temporarily unavailable" }),
+      { status: 502, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
   // Return the streaming response directly — no buffering
   return new Response(response.body, {

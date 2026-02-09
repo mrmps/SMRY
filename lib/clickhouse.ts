@@ -308,7 +308,7 @@ async function ensureAdSchema(): Promise<void> {
     console.log("[clickhouse] Ad events schema migration complete");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       console.error("[clickhouse] Ad schema migration failed:", message);
@@ -337,7 +337,7 @@ async function flushAdEvents(): Promise<void> {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       console.error("[clickhouse] Ad events flush failed:", message);
@@ -552,7 +552,7 @@ async function ensureSchema(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Check for connection errors and disable to prevent spam
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       // Log other errors but don't disable - might be transient
@@ -586,7 +586,7 @@ async function flushEvents(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Check for connection errors and disable to prevent spam
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       // Log other errors but don't disable - might be transient
@@ -702,7 +702,7 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Check for connection errors and disable to prevent spam
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else if (message.includes("Query slot timeout")) {
       // Log slot timeouts but don't disable - indicates too many concurrent queries
