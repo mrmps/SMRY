@@ -325,18 +325,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const chatAd = gravityAds[3] ?? null;           // Chat header ad - only if we have a 4th ad
   const microAd = gravityAds[4] ?? null;          // Below chat input - only if we have a 5th ad
 
-  // Debug: Log how many unique ads we received, grouped by provider
+  // Debug: Log how many unique ads we received
   if (typeof window !== 'undefined' && gravityAds.length > 0) {
-    const gravity = gravityAds.filter(a => a.provider !== 'zeroclick');
-    const zeroclick = gravityAds.filter(a => a.provider === 'zeroclick');
-    const parts: string[] = [];
-    if (gravity.length > 0) {
-      parts.push(`Gravity(${gravity.length}): ${gravity.map((a, i) => `[${i}] ${a.brandName}`).join(', ')}`);
-    }
-    if (zeroclick.length > 0) {
-      parts.push(`ZeroClick(${zeroclick.length}): ${zeroclick.map((a, i) => `[${i}] ${a.brandName}`).join(', ')}`);
-    }
-    console.log(`[Ads] Received ${gravityAds.length} ads — ${parts.join(' | ')}`);
+    console.log(`[Ads] Received ${gravityAds.length} ads from Gravity:`,
+      gravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(', '));
   }
 
   // Handle article load: save to history

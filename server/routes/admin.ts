@@ -249,7 +249,6 @@ interface AdFunnelTimeSeries {
   dismissals: number;
   gravity_forwarded: number;
   gravity_failed: number;
-  zeroclick_impressions: number;
 }
 
 interface AdDismissRateByDevice {
@@ -386,39 +385,6 @@ interface AdFilledImpressionGap {
   impression_rate: number;
 }
 
-// Provider breakdown - Gravity vs ZeroClick
-interface AdProviderBreakdown {
-  ad_provider: string;
-  requests: number;
-  filled: number;
-  impressions: number;
-  clicks: number;
-  dismissals: number;
-  fill_rate: number;
-  ctr: number;
-}
-
-// Provider fill contribution per request
-interface AdProviderFillContribution {
-  time_bucket: string;
-  gravity_fills: number;
-  zeroclick_fills: number;
-  total_fills: number;
-  gravity_fill_rate: number;
-  zeroclick_fill_rate: number;
-  zeroclick_contribution_pct: number;
-}
-
-// ZeroClick health metrics
-interface AdZeroClickHealth {
-  total_requests: number;
-  filled_count: number;
-  no_fill_count: number;
-  fill_rate: number;
-  avg_duration_ms: number;
-  unique_brands: number;
-}
-
 export const adminRoutes = new Elysia({ prefix: "/api" }).get(
   "/admin",
   async ({ query, set, headers }) => {
@@ -538,10 +504,6 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adCTRByHourDevice,
         adFilledImpressionGap,
         adFunnelTimeSeries,
-        // Provider-specific analytics
-        adProviderBreakdown,
-        adProviderFillContribution,
-        adZeroClickHealth,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
         queryClickhouse<HostnameStats>(`
@@ -1242,103 +1204,13 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             countIf(event_type = 'click') AS clicks,
             countIf(event_type = 'dismiss') AS dismissals,
             countIf(event_type = 'impression' AND gravity_forwarded = 1) AS gravity_forwarded,
-            countIf(event_type = 'impression' AND gravity_forwarded = 0 AND (ad_provider = 'gravity' OR ad_provider = '')) AS gravity_failed,
-            countIf(event_type = 'impression' AND ad_provider = 'zeroclick') AS zeroclick_impressions
+            countIf(event_type = 'impression' AND gravity_forwarded = 0) AS gravity_failed
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
             ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
           GROUP BY time_bucket
           ORDER BY time_bucket
         `).catch(() => [] as AdFunnelTimeSeries[]),
-
-        // =============================================================================
-        // Provider-Specific Analytics (Gravity vs ZeroClick)
-        // =============================================================================
-
-        // 38. Provider Breakdown - uses per-provider slot counts for accurate fill rates
-        // gravity_ad_count / zeroclick_ad_count are set on request events; impressions/clicks use ad_provider
-        queryClickhouse<AdProviderBreakdown>(`
-          SELECT * FROM (
-            SELECT
-              'gravity' AS ad_provider,
-              countIf(event_type = 'request' AND status != 'premium_user') AS requests,
-              sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') AS filled,
-              countIf(event_type = 'impression' AND ad_provider IN ('gravity', '')) AS impressions,
-              countIf(event_type = 'click' AND ad_provider IN ('gravity', '')) AS clicks,
-              countIf(event_type = 'dismiss' AND ad_provider IN ('gravity', '')) AS dismissals,
-              round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
-                sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') /
-                (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS fill_rate,
-              round(if(countIf(event_type = 'impression' AND ad_provider IN ('gravity', '')) > 0,
-                countIf(event_type = 'click' AND ad_provider IN ('gravity', '')) /
-                countIf(event_type = 'impression' AND ad_provider IN ('gravity', '')) * 100, 0), 2) AS ctr
-            FROM ad_events
-            WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            UNION ALL
-            SELECT
-              'zeroclick' AS ad_provider,
-              countIf(event_type = 'request' AND status != 'premium_user') AS requests,
-              sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') AS filled,
-              countIf(event_type = 'impression' AND ad_provider = 'zeroclick') AS impressions,
-              countIf(event_type = 'click' AND ad_provider = 'zeroclick') AS clicks,
-              countIf(event_type = 'dismiss' AND ad_provider = 'zeroclick') AS dismissals,
-              round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
-                sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') /
-                (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS fill_rate,
-              round(if(countIf(event_type = 'impression' AND ad_provider = 'zeroclick') > 0,
-                countIf(event_type = 'click' AND ad_provider = 'zeroclick') /
-                countIf(event_type = 'impression' AND ad_provider = 'zeroclick') * 100, 0), 2) AS ctr
-            FROM ad_events
-            WHERE timestamp > now() - INTERVAL ${hours} HOUR
-          )
-          ORDER BY filled DESC
-        `).catch(() => [] as AdProviderBreakdown[]),
-
-        // 39. Provider Fill Contribution - uses gravity_ad_count/zeroclick_ad_count for accurate slot-level tracking
-        queryClickhouse<AdProviderFillContribution>(`
-          SELECT
-            ${minutes <= 60
-              ? `formatDateTime(toStartOfFiveMinutes(timestamp), '%Y-%m-%d %H:%i') AS time_bucket`
-              : minutes <= 360
-                ? `formatDateTime(toStartOfFifteenMinutes(timestamp), '%Y-%m-%d %H:%i') AS time_bucket`
-                : minutes <= 1440
-                  ? `formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS time_bucket`
-                  : `formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') AS time_bucket`
-            },
-            sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') AS gravity_fills,
-            sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') AS zeroclick_fills,
-            sumIf(ad_count, event_type = 'request' AND status = 'filled') AS total_fills,
-            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
-              sumIf(gravity_ad_count, event_type = 'request' AND status = 'filled') /
-              (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS gravity_fill_rate,
-            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
-              sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') /
-              (countIf(event_type = 'request' AND status != 'premium_user') * 5) * 100, 0), 2) AS zeroclick_fill_rate,
-            round(if(sumIf(ad_count, event_type = 'request' AND status = 'filled') > 0,
-              sumIf(zeroclick_ad_count, event_type = 'request' AND status = 'filled') /
-              sumIf(ad_count, event_type = 'request' AND status = 'filled') * 100, 0), 2) AS zeroclick_contribution_pct
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
-            AND event_type = 'request'
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
-          GROUP BY time_bucket
-          ORDER BY time_bucket
-        `).catch(() => [] as AdProviderFillContribution[]),
-
-        // 40. ZeroClick Health - specific health metrics for the ZeroClick provider
-        queryClickhouse<AdZeroClickHealth>(`
-          SELECT
-            countIf(event_type = 'request' AND zeroclick_ad_count > 0) AS total_requests,
-            countIf(event_type = 'request' AND status = 'filled' AND zeroclick_ad_count > 0) AS filled_count,
-            countIf(event_type = 'request' AND status = 'no_fill' AND ad_provider = 'zeroclick') AS no_fill_count,
-            round(if(countIf(event_type = 'request' AND zeroclick_ad_count > 0) > 0,
-              countIf(event_type = 'request' AND status = 'filled' AND zeroclick_ad_count > 0) /
-              countIf(event_type = 'request' AND zeroclick_ad_count > 0) * 100, 0), 2) AS fill_rate,
-            round(avgIf(duration_ms, event_type = 'request' AND zeroclick_ad_count > 0)) AS avg_duration_ms,
-            uniqIf(brand_name, brand_name != '' AND event_type = 'request' AND status = 'filled' AND ad_provider = 'zeroclick') AS unique_brands
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-        `).catch(() => [] as AdZeroClickHealth[]),
       ]);
 
       // Get buffer stats for monitoring
@@ -1423,17 +1295,6 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adFilledImpressionGap,
         // Real-time funnel with minute granularity
         adFunnelTimeSeries,
-        // Provider-specific analytics
-        adProviderBreakdown,
-        adProviderFillContribution,
-        adZeroClickHealth: adZeroClickHealth[0] || {
-          total_requests: 0,
-          filled_count: 0,
-          no_fill_count: 0,
-          fill_rate: 0,
-          avg_duration_ms: 0,
-          unique_brands: 0,
-        },
       };
     } catch (error) {
       console.error("[analytics] Query error:", error);
