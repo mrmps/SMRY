@@ -19,6 +19,16 @@ const FROM_NAME = "Michael from Smry";
 const FORWARD_REPLIES_TO = "miryaboy@gmail.com";
 const OWNER_EMAIL = "miryaboy@gmail.com";
 
+/** Escape HTML special characters to prevent XSS in email templates */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 interface SendWelcomeEmailParams {
   to: string;
   firstName?: string;
@@ -475,6 +485,409 @@ Smry Notifications
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[emails] Error sending signup notification:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send email when free trial is ending soon
+ * Psychology: Loss aversion (what they'll lose), endowment effect (they already "own" it)
+ */
+export async function sendTrialEndingSoonEmail({
+  to,
+  firstName,
+}: {
+  to: string;
+  firstName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const greeting = firstName ? `Hey ${firstName}` : "Hey";
+  const safeGreeting = firstName ? `Hey ${escapeHtml(firstName)}` : "Hey";
+
+  const text = `${greeting},
+
+Quick heads up - your Smry free trial is ending soon.
+
+After that, you'll lose access to:
+- Unlimited article reading
+- AI chat with any article
+- Full archive of your reading history
+
+If Smry has been useful to you, subscribing takes about 30 seconds:
+https://smry.ai/pricing
+
+And if it hasn't been useful - I'd genuinely love to know why. Just reply to this email.
+
+- Michael
+
+---
+smry.ai · Read any article, anywhere`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb; line-height: 1.6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="padding: 40px 40px 20px 40px;">
+              <div style="font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 8px;">smry</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 40px 40px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">${safeGreeting},</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">Quick heads up - your Smry free trial is <strong>ending soon</strong>.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 12px 0;">After that, you'll lose access to:</p>
+              <ul style="font-size: 16px; color: #374151; margin: 0 0 20px 0; padding-left: 20px;">
+                <li style="margin-bottom: 6px;">Unlimited article reading</li>
+                <li style="margin-bottom: 6px;">AI chat with any article</li>
+                <li style="margin-bottom: 6px;">Full archive of your reading history</li>
+              </ul>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="https://smry.ai/pricing" style="display: inline-block; padding: 12px 28px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 500;">Keep My Access</a>
+              </div>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">And if Smry hasn't been useful - I'd genuinely love to know why. Just reply to this email.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0;">- Michael</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
+              <p style="font-size: 14px; color: #6b7280; margin: 0;">
+                <a href="https://smry.ai" style="color: #6b7280; text-decoration: none;">smry.ai</a> &middot; Read any article, anywhere
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  try {
+    const result = await inbound.emails.send({
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to,
+      subject: "Your Smry trial is ending soon",
+      html,
+      text,
+    });
+    console.log(`[emails] Trial ending soon email sent to ${to} (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending trial ending email:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send personal founder email when subscription is canceled, asking what we can do better
+ * Psychology: Pratfall effect (admit imperfection), reciprocity (ask genuinely)
+ */
+export async function sendCancellationFeedbackEmail({
+  to,
+  firstName,
+}: {
+  to: string;
+  firstName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const greeting = firstName ? `Hey ${firstName}` : "Hey";
+  const safeGreeting = firstName ? `Hey ${escapeHtml(firstName)}` : "Hey";
+
+  const text = `${greeting},
+
+It's Michael from Smry. I noticed your subscription ended, and I wanted to reach out personally.
+
+I'm not going to pretend Smry is perfect - we're still figuring a lot of things out. But I do care about making it better, and the best way I know how is to ask directly.
+
+Would you mind sharing what made you decide not to continue? Even a one-line reply would be incredibly helpful.
+
+Some things I'm curious about:
+- Was there a feature you expected that was missing?
+- Did something not work the way you wanted?
+- Was the price not worth it for how you use it?
+- Or did you just not need it anymore?
+
+No hard feelings either way. I just want to build something genuinely useful.
+
+Thanks for giving Smry a try.
+
+- Michael
+michael@smry.ai
+
+---
+smry.ai · Read any article, anywhere`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb; line-height: 1.6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="padding: 40px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">${safeGreeting},</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">It's Michael from Smry. I noticed your subscription ended, and I wanted to reach out personally.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">I'm not going to pretend Smry is perfect - we're still figuring a lot of things out. But I do care about making it better, and the best way I know how is to ask directly.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;"><strong>Would you mind sharing what made you decide not to continue?</strong> Even a one-line reply would be incredibly helpful.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 8px 0;">Some things I'm curious about:</p>
+              <ul style="font-size: 16px; color: #6b7280; margin: 0 0 20px 0; padding-left: 20px;">
+                <li style="margin-bottom: 6px;">Was there a feature you expected that was missing?</li>
+                <li style="margin-bottom: 6px;">Did something not work the way you wanted?</li>
+                <li style="margin-bottom: 6px;">Was the price not worth it for how you use it?</li>
+                <li style="margin-bottom: 6px;">Or did you just not need it anymore?</li>
+              </ul>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">No hard feelings either way. I just want to build something genuinely useful.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 4px 0;">Thanks for giving Smry a try.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 4px 0;">- Michael</p>
+              <p style="font-size: 14px; color: #6b7280; margin: 0;">michael@smry.ai</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  try {
+    const result = await inbound.emails.send({
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to,
+      subject: "Quick question from Michael at Smry",
+      html,
+      text,
+    });
+    console.log(`[emails] Cancellation feedback email sent to ${to} (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending cancellation feedback email:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send email when subscription has fully ended (after billing period)
+ * Psychology: Loss aversion (remind what they're missing), easy re-entry
+ */
+export async function sendSubscriptionEndedEmail({
+  to,
+  firstName,
+}: {
+  to: string;
+  firstName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const greeting = firstName ? `Hey ${firstName}` : "Hey";
+  const safeGreeting = firstName ? `Hey ${escapeHtml(firstName)}` : "Hey";
+
+  const text = `${greeting},
+
+Just wanted to let you know your Smry subscription has now ended.
+
+Your account is still here if you ever want to come back - all it takes is picking a plan: https://smry.ai/pricing
+
+In the meantime, I hope you found Smry useful while you were here. If there's anything I can do to improve the experience, I'm always listening.
+
+- Michael
+
+---
+smry.ai · Read any article, anywhere`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb; line-height: 1.6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="padding: 40px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">${safeGreeting},</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">Just wanted to let you know your Smry subscription has now ended.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">Your account is still here if you ever want to come back - all it takes is picking a plan.</p>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="https://smry.ai/pricing" style="display: inline-block; padding: 12px 28px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 500;">Resubscribe</a>
+              </div>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">In the meantime, I hope you found Smry useful while you were here. If there's anything I can do to improve, I'm always listening.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0;">- Michael</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  try {
+    const result = await inbound.emails.send({
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to,
+      subject: "Your Smry subscription has ended",
+      html,
+      text,
+    });
+    console.log(`[emails] Subscription ended email sent to ${to} (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending subscription ended email:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send email when checkout was started but not completed
+ * Psychology: Zeigarnik effect (unfinished task), friction reduction (direct link back)
+ */
+export async function sendAbandonedCheckoutEmail({
+  to,
+  firstName,
+}: {
+  to: string;
+  firstName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const greeting = firstName ? `Hey ${firstName}` : "Hey";
+  const safeGreeting = firstName ? `Hey ${escapeHtml(firstName)}` : "Hey";
+
+  const text = `${greeting},
+
+Looks like you started signing up for Smry but didn't finish. Totally understand - sometimes things come up.
+
+If you ran into any issues during checkout, just reply and I'll help sort it out.
+
+Otherwise, you can pick up right where you left off: https://smry.ai/pricing
+
+- Michael
+
+---
+smry.ai · Read any article, anywhere`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb; line-height: 1.6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="padding: 40px;">
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">${safeGreeting},</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">Looks like you started signing up for Smry but didn't finish. Totally understand - sometimes things come up.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">If you ran into any issues during checkout, just reply and I'll help sort it out.</p>
+              <p style="font-size: 16px; color: #374151; margin: 0 0 4px 0;">Otherwise, you can pick up right where you left off:</p>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="https://smry.ai/pricing" style="display: inline-block; padding: 12px 28px; background-color: #111827; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 500;">Complete Signup</a>
+              </div>
+              <p style="font-size: 16px; color: #374151; margin: 0;">- Michael</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+  try {
+    const result = await inbound.emails.send({
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      to,
+      subject: "Finish setting up Smry?",
+      html,
+      text,
+    });
+    console.log(`[emails] Abandoned checkout email sent to ${to} (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending abandoned checkout email:", message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Send notification to owner about subscription lifecycle events
+ */
+export async function sendSubscriptionEventNotification({
+  eventType,
+  customerEmail,
+  customerName,
+}: {
+  eventType: string;
+  customerEmail: string;
+  customerName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const displayName = customerName || "Unknown";
+  const timestamp = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const eventLabels: Record<string, { emoji: string; label: string }> = {
+    "subscriptionItem.freeTrialEnding": { emoji: "⏰", label: "Trial Ending Soon" },
+    "subscriptionItem.canceled": { emoji: "❌", label: "Subscription Canceled" },
+    "subscriptionItem.ended": { emoji: "👋", label: "Subscription Ended" },
+    "subscriptionItem.incomplete": { emoji: "🛒", label: "Abandoned Checkout" },
+  };
+
+  const { emoji, label } = eventLabels[eventType] || { emoji: "📋", label: eventType };
+  const safeDisplayName = escapeHtml(displayName);
+  const safeEmail = escapeHtml(customerEmail);
+
+  try {
+    const result = await inbound.emails.send({
+      from: `Smry Notifications <notifications@smry.ai>`,
+      to: OWNER_EMAIL,
+      subject: `${emoji} ${label}: ${displayName}`,
+      text: `${label}\n\nCustomer: ${displayName}\nEmail: ${customerEmail}\nEvent: ${eventType}\nTime: ${timestamp}\n\n---\nSmry Notifications`,
+      html: `
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; background: #f5f5f5;">
+  <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="margin: 0 0 16px 0;">${emoji} ${label}</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr><td style="padding: 8px 0; color: #6b7280; width: 80px;">Customer</td><td style="padding: 8px 0; font-weight: 500;">${safeDisplayName}</td></tr>
+      <tr><td style="padding: 8px 0; color: #6b7280;">Email</td><td style="padding: 8px 0;"><a href="mailto:${safeEmail}" style="color: #3b82f6;">${safeEmail}</a></td></tr>
+      <tr><td style="padding: 8px 0; color: #6b7280;">Event</td><td style="padding: 8px 0;">${eventType}</td></tr>
+      <tr><td style="padding: 8px 0; color: #6b7280;">Time</td><td style="padding: 8px 0;">${timestamp}</td></tr>
+    </table>
+  </div>
+</body>
+</html>`.trim(),
+    });
+
+    console.log(`[emails] Subscription event notification sent (id: ${result.id})`);
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[emails] Error sending subscription event notification:", message);
     return { success: false, error: message };
   }
 }

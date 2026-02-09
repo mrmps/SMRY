@@ -2,7 +2,12 @@
  * Webhook Routes
  *
  * Handles webhook events from:
- * - Clerk: checkout.session.completed → Send welcome email to new paid subscribers
+ * - Clerk billing: checkout.session.completed, subscription.created → Welcome email
+ * - Clerk lifecycle: subscriptionItem.freeTrialEnding → Trial ending soon email
+ *                    subscriptionItem.canceled → Founder feedback request email
+ *                    subscriptionItem.ended → Subscription ended email
+ *                    subscriptionItem.incomplete → Abandoned checkout email
+ * - Clerk auth: user.created → Signup notification to owner
  * - inbound.new: Incoming emails → Forward replies to Gmail
  */
 
@@ -15,6 +20,11 @@ import {
   sendCheckoutNotification,
   sendSignupNotification,
   sendBuyClickNotification,
+  sendTrialEndingSoonEmail,
+  sendCancellationFeedbackEmail,
+  sendSubscriptionEndedEmail,
+  sendAbandonedCheckoutEmail,
+  sendSubscriptionEventNotification,
 } from "../../lib/emails";
 import { env } from "../env";
 
@@ -29,7 +39,27 @@ interface ClerkBillingEvent {
     user_id: string;
     plan_id?: string;
     status?: string;
-    // Additional fields may be present
+    [key: string]: unknown;
+  };
+}
+
+interface ClerkSubscriptionItemEvent {
+  type:
+    | "subscriptionItem.freeTrialEnding"
+    | "subscriptionItem.canceled"
+    | "subscriptionItem.ended"
+    | "subscriptionItem.incomplete";
+  data: {
+    id: string;
+    // Clerk Backend API uses camelCase (payerId), webhook payloads use snake_case (payer_id)
+    // We check both to be safe
+    payer_id?: string;
+    payerId?: string;
+    status?: string;
+    plan_id?: string;
+    planId?: string;
+    plan_period?: string;
+    is_free_trial?: boolean;
     [key: string]: unknown;
   };
 }
@@ -48,7 +78,11 @@ interface ClerkUserCreatedEvent {
   };
 }
 
-type ClerkWebhookEvent = ClerkBillingEvent | ClerkUserCreatedEvent | { type: string; data: Record<string, unknown> };
+type ClerkWebhookEvent =
+  | ClerkBillingEvent
+  | ClerkSubscriptionItemEvent
+  | ClerkUserCreatedEvent
+  | { type: string; data: Record<string, unknown> };
 
 /**
  * Verify Clerk webhook signature using svix
@@ -159,6 +193,83 @@ async function handleBillingEvent(event: ClerkBillingEvent): Promise<void> {
   }
 }
 
+/**
+ * Handle subscription item lifecycle events (trial ending, canceled, ended, incomplete)
+ * These trigger user-facing emails + owner notifications
+ */
+async function handleSubscriptionItemEvent(event: ClerkSubscriptionItemEvent): Promise<void> {
+  const { data, type } = event;
+  // Clerk webhook payloads use snake_case (payer_id), Backend API uses camelCase (payerId)
+  const userId = data.payer_id || data.payerId;
+
+  if (!userId) {
+    console.error(`[webhooks] No payer_id/payerId in ${type} event`);
+    console.log("[webhooks] Event data:", JSON.stringify(data, null, 2));
+    return;
+  }
+
+  console.log(`[webhooks] Processing ${type} for user ${userId}`);
+
+  const userDetails = await getUserDetails(userId);
+  if (!userDetails) {
+    return;
+  }
+
+  console.log(`[webhooks] Subscription event ${type} for: ${userDetails.email}`);
+
+  // Send user-facing email based on event type
+  let emailResult: { success: boolean; error?: string };
+
+  switch (type) {
+    case "subscriptionItem.freeTrialEnding":
+      emailResult = await sendTrialEndingSoonEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    case "subscriptionItem.canceled":
+      emailResult = await sendCancellationFeedbackEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    case "subscriptionItem.ended":
+      emailResult = await sendSubscriptionEndedEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    case "subscriptionItem.incomplete":
+      emailResult = await sendAbandonedCheckoutEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    default:
+      console.log(`[webhooks] No email template for ${type}`);
+      return;
+  }
+
+  if (!emailResult.success) {
+    console.error(`[webhooks] Failed to send ${type} email to ${userDetails.email}:`, emailResult.error);
+  }
+
+  // Also notify owner about the event
+  const notifyResult = await sendSubscriptionEventNotification({
+    eventType: type,
+    customerEmail: userDetails.email,
+    customerName: userDetails.firstName,
+  });
+
+  if (!notifyResult.success) {
+    console.error(`[webhooks] Failed to send ${type} notification:`, notifyResult.error);
+  }
+}
+
 // inbound.new webhook payload types
 interface InboundEmailWebhook {
   id: string;
@@ -201,6 +312,13 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
         case "checkout.session.completed":
         case "subscription.created":
           await handleBillingEvent(event as ClerkBillingEvent);
+          break;
+
+        case "subscriptionItem.freeTrialEnding":
+        case "subscriptionItem.canceled":
+        case "subscriptionItem.ended":
+        case "subscriptionItem.incomplete":
+          await handleSubscriptionItemEvent(event as ClerkSubscriptionItemEvent);
           break;
 
         case "user.created": {
