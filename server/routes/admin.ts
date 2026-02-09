@@ -247,8 +247,8 @@ interface AdFunnelTimeSeries {
   impressions: number;
   clicks: number;
   dismissals: number;
-  gravity_forwarded: number;
-  gravity_failed: number;
+  fwd_success: number;
+  fwd_failed: number;
 }
 
 interface AdDismissRateByDevice {
@@ -1203,8 +1203,8 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             countIf(event_type = 'impression') AS impressions,
             countIf(event_type = 'click') AS clicks,
             countIf(event_type = 'dismiss') AS dismissals,
-            countIf(event_type = 'impression' AND gravity_forwarded = 1) AS gravity_forwarded,
-            countIf(event_type = 'impression' AND gravity_forwarded = 0) AS gravity_failed
+            countIf(event_type = 'impression' AND gravity_forwarded = 1) AS fwd_success,
+            countIf(event_type = 'impression' AND gravity_forwarded = 0) AS fwd_failed
           FROM ad_events
           WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
             ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
