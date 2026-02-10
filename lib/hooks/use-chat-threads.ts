@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { getApiUrl } from "@/lib/api/config";
 
 const THREADS_KEY = "smry-chat-threads";
 const STORAGE_EVENT_NAME = "chat-threads-update";
+const DEBOUNCE_MS = 1000;
 
 export interface ChatThread {
   id: string;
@@ -29,15 +33,116 @@ function generateId(): string {
 }
 
 /**
- * Hook to manage chat threads in localStorage
+ * Hook to manage chat threads with localStorage + server sync for premium users
  */
-export function useChatThreads() {
+export function useChatThreads(isPremium = false) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
-  // Read initial value from localStorage (using setTimeout to avoid sync setState in effect)
+  const { getToken, isSignedIn } = useAuth();
+  const hasSyncedRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- Server sync (premium only) ---
+
+  const { data: serverThreads, isFetched: serverFetchComplete } = useQuery({
+    queryKey: ["chat-threads"],
+    queryFn: async (): Promise<ChatThread[]> => {
+      const token = await getToken();
+      if (!token) return [];
+
+      const response = await fetch(getApiUrl("/api/chat-threads"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      return data.threads || [];
+    },
+    enabled: !!isSignedIn && isPremium,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (threadsToSave: ChatThread[]) => {
+      const token = await getToken();
+      if (!token) return false;
+
+      const response = await fetch(getApiUrl("/api/chat-threads"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ threads: threadsToSave }),
+      });
+
+      return response.ok;
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      const token = await getToken();
+      if (!token) return false;
+
+      const response = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return response.ok;
+    },
+  });
+
+  // Sync server threads to local state on first fetch
+  // Wrapped in setTimeout to avoid synchronous setState in effect (lint rule)
   useEffect(() => {
+    if (!isSignedIn || !isPremium || !serverFetchComplete || hasSyncedRef.current) return;
+
+    hasSyncedRef.current = true;
+
+    const timer = setTimeout(() => {
+      if (serverThreads && serverThreads.length > 0) {
+        setThreads(serverThreads);
+        try {
+          window.localStorage.setItem(THREADS_KEY, JSON.stringify(serverThreads));
+        } catch {
+          // ignore
+        }
+      }
+      setIsLoaded(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [serverThreads, serverFetchComplete, isSignedIn, isPremium]);
+
+  // Reset sync flag when premium status changes
+  useEffect(() => {
+    hasSyncedRef.current = false;
+  }, [isSignedIn, isPremium]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Read initial value from localStorage (premium only, before server sync)
+  useEffect(() => {
+    if (!isPremium) {
+      const t = setTimeout(() => {
+        setThreads([]);
+        setIsLoaded(true);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+
     const timer = setTimeout(() => {
       try {
         const item = window.localStorage.getItem(THREADS_KEY);
@@ -59,10 +164,13 @@ export function useChatThreads() {
       } catch (error) {
         console.warn("Error reading threads from localStorage:", error);
       }
-      setIsLoaded(true);
+      // Only mark loaded if server sync isn't going to override
+      if (!isSignedIn || !isPremium) {
+        setIsLoaded(true);
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isPremium, isSignedIn]);
 
   // Listen for changes from other tabs
   useEffect(() => {
@@ -93,6 +201,9 @@ export function useChatThreads() {
   }, []);
 
   const saveThreads = useCallback((newThreads: ChatThread[]) => {
+    if (!isPremium) return;
+
+    // Always save to localStorage immediately
     try {
       window.localStorage.setItem(THREADS_KEY, JSON.stringify(newThreads));
       const event = new CustomEvent<StorageEventDetail>(STORAGE_EVENT_NAME, {
@@ -102,7 +213,17 @@ export function useChatThreads() {
     } catch (error) {
       console.warn("Error saving threads to localStorage:", error);
     }
-  }, []);
+
+    // Debounced save to server for premium users
+    if (isSignedIn && isPremium) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        saveMutation.mutate(newThreads);
+      }, DEBOUNCE_MS);
+    }
+  }, [isPremium, isSignedIn, saveMutation]);
 
   const createThread = useCallback(
     (title?: string): ChatThread => {
@@ -151,11 +272,16 @@ export function useChatThreads() {
         return updated;
       });
 
+      // Also delete on server for premium users
+      if (isSignedIn && isPremium) {
+        deleteMutation.mutate(id);
+      }
+
       if (activeThreadId === id) {
         setActiveThreadId(null);
       }
     },
-    [saveThreads, activeThreadId]
+    [saveThreads, activeThreadId, isSignedIn, isPremium, deleteMutation]
   );
 
   const togglePin = useCallback(

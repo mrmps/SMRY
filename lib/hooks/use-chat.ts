@@ -19,9 +19,6 @@ function generateChatId(content: string): string {
   return `chat-${Math.abs(hash).toString(36)}`;
 }
 
-// Storage key for chat messages (localStorage fallback)
-const CHAT_STORAGE_PREFIX = "article-chat-";
-
 // Query key factory for chat history
 const chatHistoryKeys = {
   all: ['chat-history'] as const,
@@ -39,6 +36,7 @@ export interface UseArticleChatOptions {
   articleContent: string;
   articleTitle?: string;
   language?: string;
+  isPremium?: boolean;
   onUsageUpdate?: (usage: UsageData) => void;
 }
 
@@ -46,6 +44,7 @@ export function useArticleChat({
   articleContent,
   articleTitle,
   language = "en",
+  isPremium = false,
   onUsageUpdate,
 }: UseArticleChatOptions) {
   const { getToken, isSignedIn } = useAuth();
@@ -61,7 +60,6 @@ export function useArticleChat({
   // Generate chat ID based on article content for persistence
   const chatId = useMemo(() => generateChatId(articleContent), [articleContent]);
   const articleHash = chatId.replace("chat-", ""); // Just the hash part
-  const storageKey = `${CHAT_STORAGE_PREFIX}${chatId}`;
 
   // React Query: Fetch chat history from server (for signed-in users)
   const {
@@ -83,7 +81,7 @@ export function useArticleChat({
       const data = await response.json();
       return data.messages || [];
     },
-    enabled: !!isSignedIn, // Only fetch for signed-in users
+    enabled: !!isSignedIn && isPremium, // Only fetch for premium signed-in users
     staleTime: 0, // Always refetch on mount for fresh data
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   });
@@ -130,26 +128,18 @@ export function useArticleChat({
     },
   });
 
-  // Load initial messages - only use localStorage for anonymous users
-  // For signed-in users, React Query handles the server data
+  // Load initial messages - only for premium users
   const initialMessages = useMemo(() => {
-    // For signed-in users, use server messages from React Query cache
+    // Non-premium users get no persistence
+    if (!isPremium) return [];
+
+    // For premium signed-in users, use server messages from React Query cache
     if (isSignedIn) {
       return serverMessages ?? [];
     }
 
-    // For anonymous users, use localStorage
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        return JSON.parse(stored) as UIMessage[];
-      }
-    } catch {
-      // Ignore parse errors
-    }
     return [];
-  }, [storageKey, serverMessages, isSignedIn]);
+  }, [serverMessages, isSignedIn, isPremium]);
 
   const customFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -252,11 +242,9 @@ export function useArticleChat({
     hasSyncedRef.current = false;
   }, [articleHash, isSignedIn]);
 
-  // Persist messages when they change
-  // - Signed-in users: save to server via mutation
-  // - Anonymous users: save to localStorage
+  // Persist messages when they change (premium only)
   useEffect(() => {
-    if (chat.messages.length === 0) return;
+    if (!isPremium || chat.messages.length === 0) return;
 
     // Avoid duplicate saves
     const messagesJson = JSON.stringify(chat.messages);
@@ -266,15 +254,8 @@ export function useArticleChat({
     if (isSignedIn) {
       // Save to server via React Query mutation
       saveMutation.mutate(chat.messages);
-    } else {
-      // Save to localStorage for anonymous users
-      try {
-        localStorage.setItem(storageKey, messagesJson);
-      } catch {
-        // Ignore storage errors
-      }
     }
-  }, [chat.messages, isSignedIn, storageKey, saveMutation]);
+  }, [chat.messages, isSignedIn, isPremium, saveMutation]);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -316,20 +297,15 @@ export function useArticleChat({
     lastSavedRef.current = "";
     hasSyncedRef.current = true; // Prevent re-population
 
-    if (isSignedIn) {
+    if (isPremium && isSignedIn) {
       // Delete from server via React Query mutation
       deleteMutation.mutate();
     }
-    // Always clear localStorage too
-    try {
-      localStorage.removeItem(storageKey);
-    } catch {
-      // Ignore storage errors
-    }
-  }, [chat, storageKey, isSignedIn, deleteMutation]);
+  }, [chat, isPremium, isSignedIn, deleteMutation]);
 
   return {
     messages: chat.messages,
+    setMessages: chat.setMessages,
     input,
     setInput,
     handleInputChange,

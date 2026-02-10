@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useAuth } from "@clerk/nextjs";
@@ -34,7 +34,7 @@ import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { ArticleContent } from "@/components/article/content";
-import { ArticleChat } from "@/components/features/article-chat";
+import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
@@ -62,6 +62,7 @@ import {
   parseAsString,
 } from "nuqs";
 import { Source } from "@/types/api";
+import { isTextUIPart, type UIMessage } from "ai";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -347,7 +348,15 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Left sidebar (chat history) state
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyPanelRef = useRef<ImperativePanelHandle>(null);
-  const { createThread, setActiveThreadId } = useChatThreads();
+  const articleChatRef = useRef<ArticleChatHandle>(null);
+  const {
+    threads,
+    activeThread: _activeThread,
+    activeThreadId: currentThreadId,
+    createThread,
+    updateThread,
+    setActiveThreadId,
+  } = useChatThreads(isPremium);
 
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
@@ -459,15 +468,53 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Handle new chat from history sidebar
   const handleNewChat = React.useCallback(() => {
     createThread();
-    // Close history sidebar after creating new chat
+    // Clear current chat messages for the new thread
+    articleChatRef.current?.clearMessages();
     setHistoryOpen(false);
   }, [createThread]);
 
   // Handle thread selection from history sidebar
   const handleSelectThread = React.useCallback((threadId: string) => {
     setActiveThreadId(threadId);
-    // Optionally close history sidebar on selection
-  }, [setActiveThreadId]);
+    // Load the selected thread's messages into the chat
+    const thread = threads.find((t) => t.id === threadId);
+    if (thread && thread.messages.length > 0) {
+      // Convert thread messages to UIMessage format
+      const uiMessages: UIMessage[] = thread.messages.map((msg, i) => ({
+        id: `${threadId}-${i}`,
+        role: msg.role,
+        parts: [{ type: "text" as const, text: msg.content }],
+      }));
+      articleChatRef.current?.setMessages(uiMessages);
+    } else {
+      articleChatRef.current?.clearMessages();
+    }
+  }, [setActiveThreadId, threads]);
+
+  // Sync chat messages back to the active thread (premium only)
+  const handleMessagesChange = useCallback((messages: UIMessage[]) => {
+    if (!isPremium) return;
+    // Convert UIMessage to simple format for thread storage
+    const threadMessages = messages.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.parts
+        .filter((part) => isTextUIPart(part))
+        .map((part) => part.text)
+        .join(""),
+    }));
+    // Auto-title from first user message
+    const firstUserMsg = threadMessages.find((m) => m.role === "user");
+    const title = firstUserMsg
+      ? firstUserMsg.content.slice(0, 50) + (firstUserMsg.content.length > 50 ? "..." : "")
+      : "New Chat";
+
+    if (currentThreadId) {
+      updateThread(currentThreadId, { messages: threadMessages, title });
+    } else {
+      // Auto-create thread on first message
+      createThread(title);
+    }
+  }, [isPremium, currentThreadId, updateThread, createThread]);
 
   // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
   useEffect(() => {
@@ -726,7 +773,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     onOpenChange={setHistoryOpen}
                     onNewChat={handleNewChat}
                     onSelectThread={handleSelectThread}
-                    activeThreadId={null}
+                    activeThreadId={currentThreadId}
+                    isPremium={isPremium}
                   />
                 </ResizablePanel>
 
@@ -799,11 +847,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 >
                   <div className="h-full border-l border-border/40">
                     <ArticleChat
+                      ref={articleChatRef}
                       articleContent={articleTextContent || ""}
                       articleTitle={articleTitle}
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
+                      isPremium={isPremium}
+                      onMessagesChange={isPremium ? handleMessagesChange : undefined}
                       ad={!isPremium ? chatAd : null}
                       onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onAdClick={chatAd ? () => fireClick(chatAd) : undefined}

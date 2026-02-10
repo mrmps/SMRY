@@ -65,6 +65,7 @@ function getMessageText(message: UIMessage): string {
 
 export interface ArticleChatHandle {
   clearMessages: () => void;
+  setMessages: (messages: import("ai").UIMessage[]) => void;
   hasMessages: boolean;
 }
 
@@ -78,6 +79,8 @@ interface ArticleChatProps {
   language?: string;
   onLanguageChange?: (language: string) => void;
   onHasMessagesChange?: (hasMessages: boolean) => void;
+  isPremium?: boolean;
+  onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
   // Header ad (compact variant)
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
@@ -101,10 +104,12 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   language: languageProp,
   onLanguageChange,
   onHasMessagesChange,
+  isPremium: isPremiumProp = false,
+  onMessagesChange,
   ad,
   onAdVisible,
   onAdClick,
-  onAdDismiss,
+  onAdDismiss: _onAdDismiss,
   microAd,
   onMicroAdVisible,
   onMicroAdClick,
@@ -130,6 +135,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
   const {
     messages,
+    setMessages,
     input,
     setInput,
     handleSubmit,
@@ -142,6 +148,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     articleContent,
     articleTitle,
     language: preferredLanguage,
+    isPremium: isPremiumProp,
     onUsageUpdate: setUsageData,
   });
 
@@ -201,16 +208,24 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     [handleSlashKeyDown, isSlashMenuOpen, input]
   );
 
-  // Expose clearMessages and hasMessages to parent via ref
+  // Expose clearMessages, setMessages, and hasMessages to parent via ref
   useImperativeHandle(ref, () => ({
     clearMessages,
+    setMessages,
     hasMessages: messages.length > 0,
-  }), [clearMessages, messages.length]);
+  }), [clearMessages, setMessages, messages.length]);
 
   // Notify parent when hasMessages changes
   useEffect(() => {
     onHasMessagesChange?.(messages.length > 0);
   }, [messages.length, onHasMessagesChange]);
+
+  // Notify parent when messages change (for thread syncing)
+  useEffect(() => {
+    if (messages.length > 0) {
+      onMessagesChange?.(messages);
+    }
+  }, [messages, onMessagesChange]);
 
   // Get the last message text for scroll dependency
   const lastMessageText = messages.length > 0

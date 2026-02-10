@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Search, Pin, X, LogIn, PanelLeftClose } from "lucide-react";
+import { Search, Pin, X, LogIn, PanelLeftClose, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChatThreads, type ChatThread } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
@@ -21,6 +21,7 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onSelectThread: (threadId: string) => void;
   activeThreadId?: string | null;
+  isPremium?: boolean;
 }
 
 function ThreadItem({
@@ -190,16 +191,17 @@ function ThreadGroup({
 }
 
 export function ChatSidebar({
-  isOpen,
+  isOpen: _isOpen,
   onOpenChange,
   onNewChat,
   onSelectThread,
   activeThreadId,
+  isPremium = false,
 }: ChatSidebarProps) {
   const { isSignedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const { groupedThreads, deleteThread, togglePin, renameThread } =
-    useChatThreads();
+    useChatThreads(isPremium);
 
   const groups = groupedThreads();
 
@@ -243,52 +245,77 @@ export function ChatSidebar({
           </button>
         </div>
 
-        {/* New Chat button */}
-        <button
-          onClick={onNewChat}
-          className="w-full flex items-center justify-center h-9 rounded-lg text-sm font-semibold bg-primary/10 text-primary border border-primary/20 transition-colors hover:bg-primary/20"
-        >
-          New Chat
-        </button>
+        {isPremium && (
+          <>
+            {/* New Chat button */}
+            <button
+              onClick={onNewChat}
+              className="w-full flex items-center justify-center h-9 rounded-lg text-sm font-semibold bg-primary/10 text-primary border border-primary/20 transition-colors hover:bg-primary/20"
+            >
+              New Chat
+            </button>
 
-        {/* Search */}
-        <div className="flex items-center gap-3 px-3 py-2 border-b border-border/40">
-          <Search className="size-4 text-muted-foreground/50 shrink-0" />
-          <input
-            type="search"
-            role="searchbox"
-            aria-label="Search threads"
-            placeholder="Search your threads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Thread list */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 scrollbar-hide">
-        {filteredGroups.length > 0 ? (
-          filteredGroups.map((group) => (
-            <ThreadGroup
-              key={group.label}
-              label={group.label}
-              threads={group.threads}
-              activeThreadId={activeThreadId}
-              onSelect={onSelectThread}
-              onDelete={deleteThread}
-              onTogglePin={togglePin}
-              onRename={renameThread}
-            />
-          ))
-        ) : (
-          <div className="px-4 py-8 text-center">
-            <p className="text-sm text-muted-foreground/50">
-              {searchQuery ? "No matching threads" : "No chat history yet"}
-            </p>
-          </div>
+            {/* Search */}
+            <div className="flex items-center gap-3 px-3 py-2 border-b border-border/40">
+              <Search className="size-4 text-muted-foreground/50 shrink-0" />
+              <input
+                type="search"
+                role="searchbox"
+                aria-label="Search threads"
+                placeholder="Search your threads..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+              />
+            </div>
+          </>
         )}
       </div>
+
+      {/* Thread list (premium only) */}
+      {isPremium ? (
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 scrollbar-hide">
+          {filteredGroups.length > 0 ? (
+            filteredGroups.map((group) => (
+              <ThreadGroup
+                key={group.label}
+                label={group.label}
+                threads={group.threads}
+                activeThreadId={activeThreadId}
+                onSelect={onSelectThread}
+                onDelete={deleteThread}
+                onTogglePin={togglePin}
+                onRename={renameThread}
+              />
+            ))
+          ) : (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-muted-foreground/50">
+                {searchQuery ? "No matching threads" : "No chat history yet"}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Upgrade prompt for free users */
+        <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
+          <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-primary/10">
+            <Crown className="size-5 text-primary" />
+          </div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">
+            Chat History
+          </h3>
+          <p className="text-xs text-muted-foreground/70 mb-4 max-w-[200px]">
+            Upgrade to save your conversations and access them across devices.
+          </p>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Upgrade to Pro
+          </Link>
+        </div>
+      )}
 
       {/* Footer - Login prompt for unauthenticated users */}
       {!isSignedIn && (
