@@ -40,6 +40,7 @@
     "@elysiajs/cron": "^1.4.1",
     "@elysiajs/node": "^1.4.3",
     "@heroicons/react": "^2.1.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@mozilla/readability": "^0.4.4",
     "@next/third-parties": "^16.1.1",
     "@openrouter/ai-sdk-provider": "^2.1.1",

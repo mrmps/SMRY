@@ -14,6 +14,12 @@ import { env } from "../env";
 import { extractClientIp } from "../../lib/request-context";
 import { createLogger } from "../../lib/logger";
 import { trackAdEvent, type AdEventStatus } from "../../lib/clickhouse";
+import {
+  fetchZeroClickOffers,
+  mapZeroClickOfferToAd,
+  broadcastArticleSignal,
+} from "../../lib/zeroclick";
+import type { ContextAd } from "../../types/api";
 
 const logger = createLogger("api:gravity");
 
@@ -22,6 +28,9 @@ const GRAVITY_TIMEOUT_MS = 6000;
 
 // Use test ads in development
 const USE_TEST_ADS = env.NODE_ENV === "development";
+
+// DEV ONLY: Skip Gravity to test ZeroClick fallback path
+const SKIP_GRAVITY = env.NODE_ENV === "development" && false;
 
 interface GravityMessage {
   role: "user" | "assistant";
@@ -141,13 +150,17 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   .post(
     "/px",
     async ({ body, set }) => {
-      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser } = body;
+      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser, adProvider } = body;
 
-      // For impressions with impUrl, forward to Gravity first
-      // This is THE critical tracking point - we need to know if Gravity got paid
+      // Determine provider from explicit field or infer from impUrl prefix
+      const provider = adProvider || (impUrl?.startsWith("zeroclick://") ? "zeroclick" : "gravity");
+
+      // For impressions with impUrl, forward to the appropriate provider
+      // ZeroClick impressions are tracked client-side (required by ZeroClick docs for accurate IP/UA)
+      // so we only forward Gravity impressions server-side
       let gravityResult: { forwarded: boolean; statusCode: number; error?: string } | null = null;
 
-      if (type === "impression" && impUrl) {
+      if (type === "impression" && impUrl && provider !== "zeroclick") {
         gravityResult = await forwardImpressionToGravity(impUrl);
       }
 
@@ -210,6 +223,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         deviceType: t.Optional(t.String()),
         os: t.Optional(t.String()),
         browser: t.Optional(t.String()),
+        adProvider: t.Optional(t.String()),
       }),
     }
   )
@@ -335,6 +349,46 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         user: gravityUser,
       };
 
+      // DEV: Skip Gravity entirely to test ZeroClick fallback
+      if (SKIP_GRAVITY) {
+        logger.info({ url }, "SKIP_GRAVITY enabled — skipping Gravity, going straight to ZeroClick");
+        broadcastArticleSignal({
+          url, title, content: articleContent || "",
+          sessionId,
+          userId: userId || user?.id,
+          locale: device?.locale,
+          ip: clientIp,
+          userAgent: device?.ua,
+        }).catch(() => {});
+        const zcOffers = await fetchZeroClickOffers({
+          query: `${title} ${articleContent || ""}`.slice(0, 500),
+          limit: 5,
+          ipAddress: clientIp,
+          userAgent: device?.ua,
+          sessionId,
+          userId: userId || user?.id,
+          origin: url,
+        });
+        const zcAds: ContextAd[] = zcOffers.map(mapZeroClickOfferToAd);
+        if (zcAds.length > 0) {
+          const primaryAd = zcAds[0];
+          track("filled", {
+            brandName: primaryAd.brandName,
+            adTitle: primaryAd.title,
+            adText: primaryAd.adText,
+            clickUrl: primaryAd.clickUrl,
+            impUrl: primaryAd.impUrl,
+            cta: primaryAd.cta,
+            favicon: primaryAd.favicon,
+            userId,
+            adCount: zcAds.length,
+          });
+          return { status: "filled" as const, ad: primaryAd, ads: zcAds };
+        }
+        track("no_fill", { userId });
+        return { status: "no_fill" as const, debug: { errorMessage: "ZeroClick returned no offers" } };
+      }
+
       // Log the request being sent to Gravity
       logger.info({
         url,
@@ -363,49 +417,82 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         clearTimeout(timeoutId);
 
-        // No matching ad from Gravity
+        // Parse Gravity response into ads array
+        let gravityAds: ContextAd[] = [];
+
         if (response.status === 204) {
           logger.info({ url, status: 204 }, "No matching ad from Gravity");
-          track("no_fill", { gravityStatus: 204, userId });
-          return {
-            status: "no_fill" as const,
-            debug: { gravityStatus: 204 },
-          };
-        }
-
-        // Gravity API error
-        if (!response.ok) {
+        } else if (!response.ok) {
           const errorBody = await response.text().catch(() => "");
           logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
           track("gravity_error", { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200), userId });
-          return {
-            status: "gravity_error" as const,
-            debug: { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200) },
-          };
+        } else {
+          const rawAds = (await response.json()) as GravityAdResponse[];
+          if (rawAds && rawAds.length > 0) {
+            const adSummary = rawAds.map((ad, i) => ({
+              index: i,
+              brandName: ad.brandName,
+              title: ad.title?.slice(0, 50),
+              impUrl: ad.impUrl?.slice(-20),
+            }));
+            logger.info({
+              url,
+              adCount: rawAds.length,
+              uniqueBrands: [...new Set(rawAds.map(a => a.brandName))].length,
+              uniqueImpUrls: [...new Set(rawAds.map(a => a.impUrl))].length,
+              ads: adSummary,
+            }, "Ad(s) received from Gravity");
+            // Tag Gravity ads with provider
+            gravityAds = rawAds.map((ad) => ({
+              ...ad,
+              ad_provider: "gravity" as const,
+            }));
+          } else {
+            logger.info({ url }, "Empty ad array from Gravity");
+          }
         }
 
-        const ads = (await response.json()) as GravityAdResponse[];
+        // --- ZeroClick Waterfall ---
+        // If Gravity returned fewer than 5 ads, try ZeroClick for remaining slots
+        const TARGET_AD_COUNT = 5;
+        let allAds: ContextAd[] = [...gravityAds];
 
-        if (ads && ads.length > 0) {
-          // Log detailed info about each ad to debug duplicate issue
-          const adSummary = ads.map((ad, i) => ({
-            index: i,
-            brandName: ad.brandName,
-            title: ad.title?.slice(0, 50),
-            impUrl: ad.impUrl?.slice(-20), // Last 20 chars to see if they're unique
-          }));
-          logger.info({
-            url,
-            adCount: ads.length,
-            uniqueBrands: [...new Set(ads.map(a => a.brandName))].length,
-            uniqueImpUrls: [...new Set(ads.map(a => a.impUrl))].length,
-            ads: adSummary,
-          }, "Ad(s) received from Gravity - detailed");
-          // Track ONE "filled" event per successful request (not per ad returned)
-          // This ensures filled count matches actual ad requests, not ads returned
-          const primaryAd = ads[0];
+        if (gravityAds.length < TARGET_AD_COUNT) {
+          const remaining = TARGET_AD_COUNT - gravityAds.length;
+          logger.info({ url, gravityCount: gravityAds.length, remaining }, "Trying ZeroClick for remaining slots");
+
+          // Fire signal in background (don't await — best-effort)
+          broadcastArticleSignal({
+            url, title, content: articleContent || "",
+            sessionId,
+            userId: userId || user?.id,
+            locale: device?.locale,
+            ip: clientIp,
+            userAgent: device?.ua,
+          }).catch(() => {});
+
+          const zcOffers = await fetchZeroClickOffers({
+            query: `${title} ${articleContent || ""}`.slice(0, 500),
+            limit: remaining,
+            ipAddress: clientIp,
+            userAgent: device?.ua,
+            sessionId,
+            userId: userId || user?.id,
+            origin: url,
+          });
+
+          if (zcOffers.length > 0) {
+            const zcAds = zcOffers.map(mapZeroClickOfferToAd);
+            allAds = [...gravityAds, ...zcAds];
+            logger.info({ url, gravityCount: gravityAds.length, zcCount: zcAds.length, totalCount: allAds.length }, "Waterfall merged ads");
+          }
+        }
+
+        // Return combined results
+        if (allAds.length > 0) {
+          const primaryAd = allAds[0];
           track("filled", {
-            gravityStatus: 200,
+            gravityStatus: response.ok ? 200 : response.status,
             brandName: primaryAd.brandName,
             adTitle: primaryAd.title,
             adText: primaryAd.adText,
@@ -414,27 +501,74 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             cta: primaryAd.cta,
             favicon: primaryAd.favicon,
             userId,
-            adCount: ads.length, // Track how many ads were returned for analytics
+            adCount: allAds.length,
           });
           return {
             status: "filled" as const,
             ad: primaryAd,
-            ads,
+            ads: allAds,
           };
         }
 
-        // Empty array from Gravity
-        logger.info({ url }, "Empty ad array from Gravity");
-        track("no_fill", { gravityStatus: 200, errorMessage: "Empty ad array", userId });
+        // Nothing from either provider
+        track("no_fill", { gravityStatus: response.status, userId });
         return {
           status: "no_fill" as const,
-          debug: { gravityStatus: 200, errorMessage: "Empty ad array" },
+          debug: { gravityStatus: response.status },
         };
       } catch (fetchError) {
         clearTimeout(timeoutId);
         const errorMsg = String(fetchError);
         const isTimeout = errorMsg.includes("abort");
         logger.warn({ error: errorMsg, isTimeout }, "Gravity fetch error");
+
+        // Gravity failed entirely — try ZeroClick as full fallback
+        let zcAds: ContextAd[] = [];
+        try {
+          broadcastArticleSignal({
+            url, title, content: articleContent || "",
+            sessionId,
+            userId: userId || user?.id,
+            locale: device?.locale,
+            ip: clientIp,
+            userAgent: device?.ua,
+          }).catch(() => {});
+          const zcOffers = await fetchZeroClickOffers({
+            query: `${title} ${articleContent || ""}`.slice(0, 500),
+            limit: 5,
+            ipAddress: clientIp,
+            userAgent: device?.ua,
+            sessionId,
+            userId: userId || user?.id,
+            origin: url,
+          });
+          zcAds = zcOffers.map(mapZeroClickOfferToAd);
+        } catch (zcError) {
+          logger.warn({ error: String(zcError) }, "ZeroClick fallback also failed");
+        }
+
+        if (zcAds.length > 0) {
+          const primaryAd = zcAds[0];
+          logger.info({ url, zcCount: zcAds.length }, "ZeroClick fallback filled after Gravity failure");
+          track("filled", {
+            errorMessage: `gravity_failed: ${errorMsg.slice(0, 100)}`,
+            brandName: primaryAd.brandName,
+            adTitle: primaryAd.title,
+            adText: primaryAd.adText,
+            clickUrl: primaryAd.clickUrl,
+            impUrl: primaryAd.impUrl,
+            cta: primaryAd.cta,
+            favicon: primaryAd.favicon,
+            userId,
+            adCount: zcAds.length,
+          });
+          return {
+            status: "filled" as const,
+            ad: primaryAd,
+            ads: zcAds,
+          };
+        }
+
         const status = isTimeout ? "timeout" : "gravity_error";
         track(status, { errorMessage: errorMsg.slice(0, 200), userId });
         return {

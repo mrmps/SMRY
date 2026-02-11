@@ -205,7 +205,7 @@ export const ContextRequestSchema = z.object({
 });
 export type ContextRequest = z.infer<typeof ContextRequestSchema>;
 
-// Ad data from Gravity
+// Ad data from Gravity / ZeroClick
 export const ContextAdSchema = z.object({
   adText: z.string(),
   title: z.string(),
@@ -215,6 +215,7 @@ export const ContextAdSchema = z.object({
   url: z.string().optional(),
   favicon: z.string().optional(),
   cta: z.string().optional(),
+  ad_provider: z.enum(["gravity", "zeroclick"]).default("gravity"),
 });
 export type ContextAd = z.infer<typeof ContextAdSchema>;
 

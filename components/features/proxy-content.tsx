@@ -325,10 +325,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const chatAd = gravityAds[3] ?? null;           // Chat header ad - only if we have a 4th ad
   const microAd = gravityAds[4] ?? null;          // Below chat input - only if we have a 5th ad
 
-  // Debug: Log how many unique ads we received
+  // Debug: Log how many unique ads we received and from which provider
   if (typeof window !== 'undefined' && gravityAds.length > 0) {
-    console.log(`[Ads] Received ${gravityAds.length} ads from Gravity:`,
-      gravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(', '));
+    const providers = [...new Set(gravityAds.map(a => a.ad_provider || 'gravity'))];
+    console.log(`[Ads] Received ${gravityAds.length} ads (${providers.join(' + ')}):`,
+      gravityAds.map((a, i) => `[${i}] ${a.brandName} (${a.ad_provider || 'gravity'})`).join(', '));
   }
 
   // Handle article load: save to history

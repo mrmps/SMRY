@@ -308,9 +308,10 @@ export function useGravityAd({
       deviceType: deviceInfo?.deviceType,
       os: deviceInfo?.os,
       browser: deviceInfo?.browser,
+      adProvider: ad.ad_provider,
     });
 
-    // /api/px handles both Gravity forwarding (for impressions) and ClickHouse logging
+    // /api/px handles Gravity forwarding (for impressions) and ClickHouse logging
     const trackUrl = getApiUrl("/api/px");
 
     // Use sendBeacon for reliable non-blocking tracking
@@ -331,11 +332,21 @@ export function useGravityAd({
     const ad = targetAd ?? query.data?.[0];
     if (!ad) return;
 
-    // Single unified call to /api/px which:
-    // 1. Forwards impression to Gravity (for billing)
-    // 2. Logs to ClickHouse WITH the Gravity result
-    // This ensures ClickHouse accurately reflects if we got paid
+    // Send to /api/px for Gravity forwarding + ClickHouse logging
     sendTrackingEvent("impression", ad);
+
+    // For ZeroClick ads, also track via ZeroClick's manual impression API
+    // (POST https://mcp.zeroclick.ai/api/v1/offers/t)
+    if (ad.ad_provider === "zeroclick" && ad.impUrl) {
+      const match = ad.impUrl.match(/^zeroclick:\/\/offer\/(.+)$/);
+      if (match) {
+        fetch("https://mcp.zeroclick.ai/api/v1/offers/t", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ aiOfferIds: [match[1]] }),
+        }).catch(() => {});
+      }
+    }
   }, [query.data, sendTrackingEvent]);
 
   const fireClick = useCallback((targetAd?: ContextAd) => {
