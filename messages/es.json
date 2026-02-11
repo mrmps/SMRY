@@ -8,10 +8,10 @@
     "twitterDescription": "Pega cualquier enlace de artículo con muro de pago y obtén el texto completo más un resumen de IA. Gratis, sin cuenta, sin extensión."
   },
   "home": {
-    "tagline": "Lee cualquier artículo en la web — con resúmenes de IA.",
+    "tagline": "Lee cualquier artículo, salta cualquier paywall. Más de 300K lectores confían en nosotros.",
     "tryIt": "Pruébalo",
-    "trustedBy": "Más de 260K lectores mensuales",
-    "placeholder": "Pega la URL del artículo...",
+    "trustedBy": "Más de 300K lectores mensuales",
+    "placeholder": "Pega la URL de cualquier artículo con paywall...",
     "by": "por",
     "support": "Apoyar",
     "prepend": "También puedes usar smry añadiendo",
@@ -38,17 +38,20 @@
     "statusRemoved": "Eliminado",
     "readyToRead": "Listo para leer",
     "summaryLabel": "Resumen",
-    "valuePropTitle": "Lee cualquier artículo en la web",
-    "valuePropDescription": "Pega un enlace y obtendremos el texto completo, eliminaremos el desorden y lo resumiremos con IA.",
+    "valuePropTitle": "Míralo en acción",
+    "valuePropDescription": "Mira cómo SMRY salta un paywall real, limpia el desorden y resume en menos de 5 segundos.",
     "tryPaywalledArticle": "Prueba con un artículo con paywall",
-    "learnMore": "Más información",
-    "scrollToLearnMore": "Desplázate para más información",
-    "featureSourcesTitle": "Tres fuentes compiten, la más rápida gana",
-    "featureSourcesDescription": "Consultamos con acceso directo rápido, un proxy de respaldo y Wayback Machine simultáneamente. El primero con el artículo gana.",
-    "featureCleanTitle": "Todo el contenido, sin el desorden",
-    "featureCleanDescription": "Paywalls, popups, banners de cookies, anuncios—todo eliminado. Solo el texto e imágenes del artículo, listo para leer.",
-    "featureSummaryTitle": "TL;DR en tu idioma",
-    "featureSummaryDescription": "Resúmenes con IA en 8 idiomas. Obtén los puntos clave sin leer el artículo completo."
+    "learnMore": "Mira cómo funciona",
+    "scrollToLearnMore": "Desplázate para ver cómo funciona",
+    "featureSourcesTitle": "Funciona cuando otras herramientas fallan",
+    "featureSourcesDescription": "Consultamos 3 fuentes simultáneamente. Si una está bloqueada, otra lo consigue.",
+    "featureCleanTitle": "Lectura limpia, sin distracciones",
+    "featureCleanDescription": "Sin popups, sin banners de cookies, sin anuncios. Solo el artículo.",
+    "featureSummaryTitle": "Resúmenes de IA en segundos",
+    "featureSummaryDescription": "Los puntos clave en tu idioma. Sin necesidad de desplazarte.",
+    "trustNoSignup": "Sin registro",
+    "trustWorksWith": "Funciona en 1.000+ sitios",
+    "trustFree": "Gratis"
   },
   "banner": {
     "heading": "Salta estos muros de pago:"
@@ -110,7 +113,7 @@
     "theMath": "Las cuentas",
     "smryPremium": "SMRY Premium",
     "allOfAbove": "Todo lo anterior",
-    "readWithoutLimits": "Lee sin límites.",
+    "readWithoutLimits": "Cada artículo. Cada publicación. Un precio.",
     "fullAccessFrom": "Acceso completo a 1000+ publicaciones desde solo",
     "perDay": "por día",
     "yearly": "Anual",
@@ -216,7 +219,7 @@
     "smryProLabel": "smry Pro",
     "smryProSubtext": "Todo lo anterior + 1.000 más",
     "savingsCallout": "Son <highlight>${savings}/mes</highlight> de vuelta en tu bolsillo",
-    "joinReaders": "Únete a 260.000+ lectores en todo el mundo",
+    "joinReaders": "Únete a 300.000+ lectores en todo el mundo",
     "statMonthlySavings": "Ahorro mensual promedio",
     "statArticlesRead": "Artículos leídos",
     "statSuccessRate": "Tasa de éxito",
@@ -397,11 +400,11 @@
     "entry8_change1_detail": "Mejor manejo de paywalls suaves que usan JavaScript para ocultar contenido después de cargar la página."
   },
   "promo": {
-    "benefit": "Sin anuncios, todo más rápido",
-    "cta": "Prueba Premium por $0.00",
+    "benefit": "Artículos ilimitados · Resúmenes de IA · Sin anuncios",
+    "cta": "Tus primeros 7 días son gratis. No necesitas tarjeta.",
     "dismiss": "Cerrar",
-    "sourceBenefit": "Sin anuncios · Ve qué fuentes funcionaron",
-    "upgrade": "Mejorar"
+    "sourceBenefit": "Leer sin anuncios ahorra ~4 min por artículo",
+    "upgrade": "Sin anuncios"
   },
   "ads": {
     "advertise": "Anunciar",
@@ -439,7 +442,7 @@
       },
       "whatsIncluded": "Qué incluye",
       "benefits": {
-        "reach": "Alcanza 260K+ lectores comprometidos al mes",
+        "reach": "Alcanza 300K+ lectores comprometidos al mes",
         "placement": "Ubicación premium en sidebar y banner móvil",
         "rotation": "Rotación justa de 10 segundos con otros patrocinadores",
         "analytics": "Informes de rendimiento mensuales",

@@ -142,6 +142,9 @@ export interface AdEvent {
   status: AdEventStatus;
   gravity_status_code: number;
   error_message: string;
+  // Gravity forwarding status (for impressions)
+  // 1 = successfully forwarded to Gravity, 0 = failed or not applicable
+  gravity_forwarded: number;
   // Ad data (when filled)
   brand_name: string;
   ad_title: string;
@@ -150,6 +153,7 @@ export interface AdEvent {
   imp_url: string;
   cta: string;
   favicon: string;
+  ad_count: number; // Number of ads returned in this request
   // Performance
   duration_ms: number;
   // Environment
@@ -196,6 +200,9 @@ async function ensureAdSchema(): Promise<void> {
             status LowCardinality(String),
             gravity_status_code UInt16 DEFAULT 0,
             error_message String DEFAULT '',
+            -- Gravity forwarding status (for impressions)
+            -- 1 = successfully forwarded to Gravity, 0 = failed or not applicable
+            gravity_forwarded UInt8 DEFAULT 0,
             -- Ad data (when filled)
             brand_name LowCardinality(String) DEFAULT '',
             ad_title String DEFAULT '',
@@ -204,6 +211,7 @@ async function ensureAdSchema(): Promise<void> {
             imp_url String DEFAULT '',
             cta LowCardinality(String) DEFAULT '',
             favicon String DEFAULT '',
+            ad_count UInt8 DEFAULT 0,
             -- Performance
             duration_ms UInt32 DEFAULT 0,
             -- Environment
@@ -236,6 +244,13 @@ async function ensureAdSchema(): Promise<void> {
       });
       await clickhouse.command({
         query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS favicon String DEFAULT ''`,
+      });
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS ad_count UInt8 DEFAULT 0`,
+      });
+      // Track whether impression was successfully forwarded to Gravity (for billing)
+      await clickhouse.command({
+        query: `ALTER TABLE ad_events ADD COLUMN IF NOT EXISTS gravity_forwarded UInt8 DEFAULT 0`,
       });
     } catch {
       // Ignore errors - columns may already exist
@@ -293,7 +308,7 @@ async function ensureAdSchema(): Promise<void> {
     console.log("[clickhouse] Ad events schema migration complete");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       console.error("[clickhouse] Ad schema migration failed:", message);
@@ -322,7 +337,7 @@ async function flushAdEvents(): Promise<void> {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       console.error("[clickhouse] Ad events flush failed:", message);
@@ -366,6 +381,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     status: event.status || "error",
     gravity_status_code: event.gravity_status_code || 0,
     error_message: (event.error_message || "").slice(0, 500),
+    gravity_forwarded: event.gravity_forwarded || 0,
     brand_name: event.brand_name || "",
     ad_title: (event.ad_title || "").slice(0, 500),
     ad_text: (event.ad_text || "").slice(0, 1000),
@@ -373,6 +389,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
     imp_url: (event.imp_url || "").slice(0, 2000),
     cta: (event.cta || "").slice(0, 100),
     favicon: (event.favicon || "").slice(0, 500),
+    ad_count: event.ad_count || 0,
     duration_ms: event.duration_ms || 0,
     env: event.env || env.NODE_ENV,
   };
@@ -535,7 +552,7 @@ async function ensureSchema(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Check for connection errors and disable to prevent spam
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       // Log other errors but don't disable - might be transient
@@ -569,7 +586,7 @@ async function flushEvents(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Check for connection errors and disable to prevent spam
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else {
       // Log other errors but don't disable - might be transient
@@ -685,7 +702,7 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Check for connection errors and disable to prevent spam
-    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Authentication failed")) {
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
     } else if (message.includes("Query slot timeout")) {
       // Log slot timeouts but don't disable - indicates too many concurrent queries

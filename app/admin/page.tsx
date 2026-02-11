@@ -17,6 +17,8 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
+  PieChart,
+  Pie,
 } from "recharts";
 import { getApiUrl } from "@/lib/api/config";
 
@@ -336,6 +338,34 @@ interface DashboardData {
     gap_count: number;
     impression_rate: number;
   }>;
+  // Provider-specific analytics (Gravity vs ZeroClick)
+  adProviderBreakdown: Array<{
+    ad_provider: string;
+    requests: number;
+    filled: number;
+    impressions: number;
+    clicks: number;
+    dismissals: number;
+    fill_rate: number;
+    ctr: number;
+  }>;
+  adProviderFillContribution: Array<{
+    time_bucket: string;
+    gravity_fills: number;
+    zeroclick_fills: number;
+    total_fills: number;
+    gravity_fill_rate: number;
+    zeroclick_fill_rate: number;
+    zeroclick_contribution_pct: number;
+  }>;
+  adZeroClickHealth: {
+    total_requests: number;
+    filled_count: number;
+    no_fill_count: number;
+    fill_rate: number;
+    avg_duration_ms: number;
+    unique_brands: number;
+  };
 }
 
 type TabType = "overview" | "requests" | "live" | "errors" | "ads";
@@ -2039,9 +2069,11 @@ function AdAnalyticsTab({
   };
 
   // Calculate impression rate for alerting
+  // Expected: >50% (ads are deduplicated, so 1 filled = 1+ unique ads shown)
+  // Lower rates may indicate: ads below fold, quick page exits, or tracking issues
   const impressionRate = filledCount > 0 ? (impressionsCount / filledCount) * 100 : 0;
-  const hasImpressionIssue = filledCount > 100 && impressionRate < 50;
-  const hasCriticalImpressionIssue = filledCount > 100 && impressionRate < 30;
+  const hasImpressionIssue = filledCount > 100 && impressionRate < 40;
+  const hasCriticalImpressionIssue = filledCount > 100 && impressionRate < 25;
 
   return (
     <div className="space-y-6">
@@ -2053,7 +2085,7 @@ function AdAnalyticsTab({
             <h3 className="font-bold text-red-400 text-lg">Critical: Impression Tracking Issue Detected</h3>
             <p className="text-red-300/80 text-sm mt-1">
               Only <span className="font-bold">{impressionRate.toFixed(1)}%</span> of filled ads are being tracked as impressions.
-              This indicates a potential bug in the ad tracking code. Expected rate: 60-80%.
+              This may indicate a tracking bug. Expected rate: &gt;50%.
             </p>
             <div className="mt-2 text-xs text-red-400/60">
               Filled: {filledCount.toLocaleString()} → Impressions: {impressionsCount.toLocaleString()} (Gap: {(filledCount - impressionsCount).toLocaleString()})
@@ -2069,8 +2101,8 @@ function AdAnalyticsTab({
           <div>
             <h3 className="font-bold text-amber-400">Warning: Low Impression Rate</h3>
             <p className="text-amber-300/80 text-sm mt-1">
-              Impression rate at <span className="font-bold">{impressionRate.toFixed(1)}%</span> is below expected 60-80%.
-              Monitor for potential tracking issues.
+              Impression rate at <span className="font-bold">{impressionRate.toFixed(1)}%</span> is below expected &gt;50%.
+              May be due to ads below fold, quick exits, or tracking issues.
             </p>
           </div>
         </div>
@@ -2256,7 +2288,7 @@ function AdAnalyticsTab({
             {/* Impression Rate Alert - Critical for detecting tracking bugs */}
             {filledCount > 0 && (() => {
               const impressionRate = (impressionsCount / filledCount) * 100;
-              if (impressionRate < 30) {
+              if (impressionRate < 25) {
                 return (
                   <AdInsightCard
                     type="warning"
@@ -2265,16 +2297,16 @@ function AdAnalyticsTab({
                   />
                 );
               }
-              if (impressionRate < 50) {
+              if (impressionRate < 40) {
                 return (
                   <AdInsightCard
                     type="warning"
                     title="Low Impression Rate"
-                    message={`${impressionRate.toFixed(1)}% impression rate. Expected 60-80%. May indicate tracking issue.`}
+                    message={`${impressionRate.toFixed(1)}% impression rate. Expected >50%. May be due to ads below fold or quick exits.`}
                   />
                 );
               }
-              if (impressionRate >= 60) {
+              if (impressionRate >= 50) {
                 return (
                   <AdInsightCard
                     type="success"
@@ -2288,6 +2320,287 @@ function AdAnalyticsTab({
           </div>
         </div>
       </div>
+
+      {/* ============================================================= */}
+      {/* Provider Analytics: Gravity vs ZeroClick                       */}
+      {/* ============================================================= */}
+      {(data.adProviderBreakdown?.length > 0 || data.adZeroClickHealth?.total_requests > 0) && (
+        <>
+          {/* Provider Breakdown Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Gravity vs ZeroClick comparison cards */}
+            {(data.adProviderBreakdown || []).map((provider, i) => {
+              const isGravity = provider.ad_provider === "gravity";
+              const providerColor = isGravity ? "#3b82f6" : "#8b5cf6";
+              const providerBg = isGravity ? "bg-blue-950/30 border-blue-800/30" : "bg-violet-950/30 border-violet-800/30";
+              const providerText = isGravity ? "text-blue-400" : "text-violet-400";
+              return (
+                <div key={i} className={`rounded-xl border p-5 ${providerBg}`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: providerColor }} />
+                    <h3 className={`font-semibold text-lg capitalize ${providerText}`}>
+                      {provider.ad_provider || "gravity"}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-xs text-zinc-500">Filled Slots</div>
+                      <div className="text-xl font-bold text-zinc-100">{provider.filled.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-zinc-500">Impressions</div>
+                      <div className="text-xl font-bold text-zinc-100">{provider.impressions.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-zinc-500">Clicks</div>
+                      <div className="text-zinc-300">{provider.clicks.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-zinc-500">CTR</div>
+                      <div className={`font-medium ${provider.ctr >= 1 ? "text-emerald-400" : provider.ctr >= 0.5 ? "text-amber-400" : "text-zinc-400"}`}>
+                        {provider.ctr.toFixed(2)}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-zinc-500">Fill Rate</div>
+                      <div className="text-zinc-300">{provider.fill_rate.toFixed(1)}%</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-zinc-500">Dismissals</div>
+                      <div className="text-zinc-400">{provider.dismissals.toLocaleString()}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* ZeroClick Health Card */}
+            {data.adZeroClickHealth && data.adZeroClickHealth.total_requests > 0 && (
+              <div className="rounded-xl border bg-zinc-900/80 border-zinc-800 p-5">
+                <h3 className="font-semibold text-zinc-100 mb-1">ZeroClick Health</h3>
+                <p className="text-xs text-zinc-500 mb-4">Fallback provider status</p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-400">Requests w/ ZC ads</span>
+                    <span className="text-zinc-200 font-medium">{data.adZeroClickHealth.total_requests.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-400">Fill Rate</span>
+                    <span className={`font-medium ${data.adZeroClickHealth.fill_rate > 50 ? "text-emerald-400" : data.adZeroClickHealth.fill_rate > 20 ? "text-amber-400" : "text-red-400"}`}>
+                      {data.adZeroClickHealth.fill_rate.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-400">Avg Latency</span>
+                    <span className={`font-medium ${data.adZeroClickHealth.avg_duration_ms < 500 ? "text-emerald-400" : data.adZeroClickHealth.avg_duration_ms < 1500 ? "text-amber-400" : "text-red-400"}`}>
+                      {data.adZeroClickHealth.avg_duration_ms}ms
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-400">Unique Brands</span>
+                    <span className="text-zinc-200 font-medium">{data.adZeroClickHealth.unique_brands}</span>
+                  </div>
+                  {/* Fill rate bar */}
+                  <div className="pt-1">
+                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(data.adZeroClickHealth.fill_rate, 100)}%`,
+                          backgroundColor: data.adZeroClickHealth.fill_rate > 50 ? "#10b981" : data.adZeroClickHealth.fill_rate > 20 ? "#f59e0b" : "#ef4444",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Provider Fill Contribution Over Time */}
+          {data.adProviderFillContribution && data.adProviderFillContribution.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Stacked area chart: Gravity vs ZeroClick fills */}
+              <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+                <h3 className="font-semibold text-zinc-100 mb-1">Provider Fill Contribution</h3>
+                <p className="text-xs text-zinc-500 mb-4">Gravity vs ZeroClick ad slots filled over time</p>
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={data.adProviderFillContribution}>
+                    <defs>
+                      <linearGradient id="gradGravity" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+                      </linearGradient>
+                      <linearGradient id="gradZeroClick" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                    <XAxis
+                      dataKey="time_bucket"
+                      tickFormatter={(v) => v.split(" ")[1]?.slice(0, 5) || v}
+                      stroke="#71717a"
+                      fontSize={11}
+                    />
+                    <YAxis stroke="#71717a" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#18181b",
+                        border: "1px solid #3f3f46",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "#a1a1aa" }}
+                    />
+                    <Legend />
+                    <Area type="monotone" dataKey="gravity_fills" name="Gravity" stroke="#3b82f6" fill="url(#gradGravity)" strokeWidth={2} stackId="fills" />
+                    <Area type="monotone" dataKey="zeroclick_fills" name="ZeroClick" stroke="#8b5cf6" fill="url(#gradZeroClick)" strokeWidth={2} stackId="fills" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* ZeroClick contribution % over time */}
+              <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+                <h3 className="font-semibold text-zinc-100 mb-1">ZeroClick Contribution %</h3>
+                <p className="text-xs text-zinc-500 mb-4">Percentage of total fills from ZeroClick fallback</p>
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={data.adProviderFillContribution}>
+                    <defs>
+                      <linearGradient id="gradZCPct" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                    <XAxis
+                      dataKey="time_bucket"
+                      tickFormatter={(v) => v.split(" ")[1]?.slice(0, 5) || v}
+                      stroke="#71717a"
+                      fontSize={11}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => `${v}%`}
+                      stroke="#71717a"
+                      fontSize={11}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#18181b",
+                        border: "1px solid #3f3f46",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "#a1a1aa" }}
+                      formatter={(value) => [`${Number(value ?? 0).toFixed(1)}%`, "ZeroClick %"]}
+                    />
+                    <Area type="monotone" dataKey="zeroclick_contribution_pct" name="ZeroClick %" stroke="#8b5cf6" fill="url(#gradZCPct)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Provider Breakdown Donut + Table */}
+          {data.adProviderBreakdown && data.adProviderBreakdown.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Impression split donut */}
+              <div className="bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 p-5">
+                <h3 className="font-semibold text-zinc-100 mb-1">Impression Split</h3>
+                <p className="text-xs text-zinc-500 mb-4">Share of impressions by provider</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={data.adProviderBreakdown.map(p => ({
+                        name: p.ad_provider || "gravity",
+                        value: p.impressions,
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={3}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {data.adProviderBreakdown.map((p, i) => (
+                        <Cell
+                          key={i}
+                          fill={p.ad_provider === "zeroclick" ? "#8b5cf6" : "#3b82f6"}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#18181b",
+                        border: "1px solid #3f3f46",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value) => [Number(value ?? 0).toLocaleString(), "Impressions"]}
+                    />
+                    <Legend
+                      formatter={(value) => <span className="text-zinc-300 text-sm capitalize">{value}</span>}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Provider comparison table */}
+              <div className="lg:col-span-2 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 overflow-hidden">
+                <div className="p-5 border-b border-zinc-800">
+                  <h3 className="font-semibold text-zinc-100">Provider Comparison</h3>
+                  <p className="text-xs text-zinc-500 mt-1">Side-by-side metrics for each ad provider</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-700 bg-zinc-800/50">
+                        <th className="text-left py-3 px-4 text-zinc-400 font-medium">Provider</th>
+                        <th className="text-right py-3 px-4 text-zinc-400 font-medium">Filled Slots</th>
+                        <th className="text-right py-3 px-4 text-zinc-400 font-medium">Impressions</th>
+                        <th className="text-right py-3 px-4 text-zinc-400 font-medium">Clicks</th>
+                        <th className="text-right py-3 px-4 text-zinc-400 font-medium">CTR</th>
+                        <th className="text-right py-3 px-4 text-zinc-400 font-medium">Fill Rate</th>
+                        <th className="text-right py-3 px-4 text-zinc-400 font-medium">Dismissals</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.adProviderBreakdown.map((provider, i) => {
+                        const isGravity = provider.ad_provider === "gravity";
+                        return (
+                          <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: isGravity ? "#3b82f6" : "#8b5cf6" }} />
+                                <span className={`font-medium capitalize ${isGravity ? "text-blue-400" : "text-violet-400"}`}>
+                                  {provider.ad_provider || "gravity"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right text-zinc-300">{provider.filled.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right text-zinc-300">{provider.impressions.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right text-zinc-300">{provider.clicks.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                provider.ctr >= 2 ? "bg-emerald-950/50 text-emerald-400" :
+                                provider.ctr >= 1 ? "bg-amber-950/50 text-amber-400" :
+                                "bg-zinc-800 text-zinc-400"
+                              }`}>
+                                {provider.ctr.toFixed(2)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right text-zinc-300">{provider.fill_rate.toFixed(1)}%</td>
+                            <td className="py-3 px-4 text-right text-zinc-400">{provider.dismissals.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Time-based Performance Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

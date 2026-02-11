@@ -1,9 +1,11 @@
 /**
- * Gravity Context Routes - POST /api/context, POST /api/px
+ * Gravity Routes - POST /api/context, POST /api/px
  *
- * Fetches contextual content from Gravity AI for free users.
- * Passes device/user info for better targeting.
- * Endpoint names are neutral to avoid content blockers.
+ * /api/context - Fetches contextual ads from Gravity AI for free users.
+ * /api/px - Unified tracking for impressions, clicks, dismissals.
+ *           For impressions, wraps Gravity forwarding + ClickHouse logging atomically.
+ *
+ * Endpoint names are neutral to avoid content blockers (no "ad" or "track" in names).
  */
 
 import { Elysia, t } from "elysia";
@@ -55,7 +57,6 @@ interface GravityRequest {
   messages: GravityMessage[];
   sessionId: string;
   placements: GravityPlacement[];
-  numAds?: number;
   testAd?: boolean;
   relevancy?: number;
   device?: GravityDevice;
@@ -73,53 +74,142 @@ export interface GravityAdResponse {
   cta?: string;
 }
 
+// Timeout for Gravity impression forwarding (keep short to not block)
+const GRAVITY_IMPRESSION_TIMEOUT_MS = 3000;
+
+/**
+ * Forward impression to Gravity and return the result
+ * This is the critical path for monetization - if this fails, we don't get paid
+ */
+async function forwardImpressionToGravity(impUrl: string): Promise<{
+  forwarded: boolean;
+  statusCode: number;
+  error?: string;
+}> {
+  // Validate URL is from Gravity
+  try {
+    const parsedUrl = new URL(impUrl);
+    if (!parsedUrl.hostname.endsWith("trygravity.ai")) {
+      return { forwarded: false, statusCode: 0, error: "Invalid impression URL domain" };
+    }
+  } catch {
+    return { forwarded: false, statusCode: 0, error: "Invalid URL format" };
+  }
+
+  // Forward the impression to Gravity with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GRAVITY_IMPRESSION_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(impUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "13ft-impression-proxy/1.0",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    // Consume body to release connection resources
+    await response.text().catch(() => {});
+
+    logger.info({ impUrl: impUrl.slice(-50), status: response.status }, "Impression forwarded to Gravity");
+    return { forwarded: true, statusCode: response.status };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    const errorMsg = String(error);
+    const isTimeout = errorMsg.includes("abort");
+    logger.warn({ impUrl: impUrl.slice(-50), error: errorMsg, isTimeout }, "Failed to forward impression to Gravity");
+    return {
+      forwarded: false,
+      statusCode: 0,
+      error: isTimeout ? "timeout" : errorMsg.slice(0, 100)
+    };
+  }
+}
+
 export const gravityRoutes = new Elysia({ prefix: "/api" })
+  /**
+   * Unified tracking endpoint for impressions, clicks, and dismissals.
+   *
+   * CRITICAL: For impressions, this endpoint WRAPS the Gravity impression pixel call.
+   * This ensures ClickHouse accurately reflects whether Gravity received the impression.
+   * Without this, we'd log impressions locally without knowing if we got paid.
+   *
+   * Named "/px" to avoid ad blocker detection (no "ad" or "track" in the name).
+   */
   .post(
     "/px",
-    async ({ query, set }) => {
-      const url = query.url;
+    async ({ body, set }) => {
+      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser } = body;
 
-      if (!url) {
-        set.status = 400;
-        return { error: "Missing url parameter" };
+      // For impressions with impUrl, forward to Gravity first
+      // This is THE critical tracking point - we need to know if Gravity got paid
+      let gravityResult: { forwarded: boolean; statusCode: number; error?: string } | null = null;
+
+      if (type === "impression" && impUrl) {
+        gravityResult = await forwardImpressionToGravity(impUrl);
       }
 
-      // Validate URL is from Gravity
+      // Now track to ClickHouse WITH the Gravity result
       try {
-        const parsedUrl = new URL(url);
-        if (!parsedUrl.hostname.endsWith("trygravity.ai")) {
-          set.status = 400;
-          return { error: "Invalid impression URL" };
-        }
-      } catch {
-        set.status = 400;
-        return { error: "Invalid URL format" };
-      }
-
-      // Forward the impression request to Gravity
-      try {
-        logger.info({ impUrl: url }, "Forwarding impression to Gravity");
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "User-Agent": "13ft-impression-proxy/1.0",
-          },
+        trackAdEvent({
+          event_type: type,
+          session_id: sessionId,
+          hostname,
+          brand_name: brandName,
+          ad_title: adTitle,
+          ad_text: adText,
+          click_url: clickUrl,
+          imp_url: impUrl,
+          cta,
+          favicon,
+          device_type: deviceType,
+          os,
+          browser,
+          status: "filled", // Client-side events only fire for filled ads
+          // Include Gravity forwarding result for impressions
+          // gravity_forwarded = 1 means Gravity received it (we got paid)
+          gravity_forwarded: gravityResult?.forwarded ? 1 : 0,
+          gravity_status_code: gravityResult?.statusCode ?? 0,
+          error_message: gravityResult?.error ?? "",
         });
-        // Consume body to release connection resources
-        await response.text().catch(() => {});
-        logger.info({ impUrl: url, status: response.status }, "Impression forwarded successfully");
+
+        logger.debug({
+          type,
+          hostname,
+          brandName,
+          gravityForwarded: gravityResult?.forwarded,
+          gravityStatus: gravityResult?.statusCode,
+        }, "Event tracked");
       } catch (error) {
-        logger.warn({ impUrl: url, error: String(error) }, "Failed to forward impression");
-        // Silently fail - impression tracking is best-effort
+        // Log but don't fail the request - tracking is best-effort
+        logger.warn({ error: String(error), type }, "Failed to track event");
       }
 
-      // Return 204 No Content - the client doesn't need a response
+      // Return 204 No Content - client doesn't need a response body
       set.status = 204;
       return;
     },
     {
-      query: t.Object({
-        url: t.String(),
+      body: t.Object({
+        type: t.Union([
+          t.Literal("impression"),
+          t.Literal("click"),
+          t.Literal("dismiss"),
+        ]),
+        sessionId: t.String(),
+        hostname: t.String(),
+        brandName: t.Optional(t.String()),
+        adTitle: t.Optional(t.String()),
+        adText: t.Optional(t.String()),
+        clickUrl: t.Optional(t.String()),
+        impUrl: t.Optional(t.String()),
+        cta: t.Optional(t.String()),
+        favicon: t.Optional(t.String()),
+        deviceType: t.Optional(t.String()),
+        os: t.Optional(t.String()),
+        browser: t.Optional(t.String()),
       }),
     }
   )
@@ -147,6 +237,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       favicon?: string;
       userId?: string | null;
       isPremium?: boolean;
+      adCount?: number;
     } = {}) => {
       trackAdEvent({
         event_type: "request", // Server-side events are always "request" type
@@ -170,6 +261,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         imp_url: extra.impUrl ?? "",
         cta: extra.cta ?? "",
         favicon: extra.favicon ?? "",
+        ad_count: extra.adCount ?? 0,
         duration_ms: Date.now() - startTime,
       });
     };
@@ -223,16 +315,19 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         email: user?.email,
       } : undefined;
 
+      // Request ads from Gravity
+      // Note: Gravity may return duplicate ads if inventory is limited
+      // We deduplicate on our side before showing to users
+      // Number of ads returned = placements array length (per Gravity docs)
       const gravityRequest: GravityRequest = {
         messages,
         sessionId,
-        numAds: 5, // Request 5 ads: sidebar, inline, footer, chat, micro
         placements: [
           { placement: "right_response", placement_id: "smry-sidebar-right" },
           { placement: "inline_response", placement_id: "smry-article-inline" },
           { placement: "below_response", placement_id: "smry-footer-bottom" },
           { placement: "above_response", placement_id: "smry-chat-header" },
-          { placement: "below_response", placement_id: "smry-input-micro" },
+          { placement: "left_response", placement_id: "smry-input-micro" },
         ],
         ...(USE_TEST_ADS && { testAd: true }),
         relevancy: 0,
@@ -292,24 +387,38 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         const ads = (await response.json()) as GravityAdResponse[];
 
         if (ads && ads.length > 0) {
-          logger.info({ url, brandName: ads[0].brandName, adCount: ads.length }, "Ad(s) received from Gravity");
-          // Track each ad
-          for (const ad of ads) {
-            track("filled", {
-              gravityStatus: 200,
-              brandName: ad.brandName,
-              adTitle: ad.title,
-              adText: ad.adText,
-              clickUrl: ad.clickUrl,
-              impUrl: ad.impUrl,
-              cta: ad.cta,
-              favicon: ad.favicon,
-              userId,
-            });
-          }
+          // Log detailed info about each ad to debug duplicate issue
+          const adSummary = ads.map((ad, i) => ({
+            index: i,
+            brandName: ad.brandName,
+            title: ad.title?.slice(0, 50),
+            impUrl: ad.impUrl?.slice(-20), // Last 20 chars to see if they're unique
+          }));
+          logger.info({
+            url,
+            adCount: ads.length,
+            uniqueBrands: [...new Set(ads.map(a => a.brandName))].length,
+            uniqueImpUrls: [...new Set(ads.map(a => a.impUrl))].length,
+            ads: adSummary,
+          }, "Ad(s) received from Gravity - detailed");
+          // Track ONE "filled" event per successful request (not per ad returned)
+          // This ensures filled count matches actual ad requests, not ads returned
+          const primaryAd = ads[0];
+          track("filled", {
+            gravityStatus: 200,
+            brandName: primaryAd.brandName,
+            adTitle: primaryAd.title,
+            adText: primaryAd.adText,
+            clickUrl: primaryAd.clickUrl,
+            impUrl: primaryAd.impUrl,
+            cta: primaryAd.cta,
+            favicon: primaryAd.favicon,
+            userId,
+            adCount: ads.length, // Track how many ads were returned for analytics
+          });
           return {
             status: "filled" as const,
-            ad: ads[0],
+            ad: primaryAd,
             ads,
           };
         }

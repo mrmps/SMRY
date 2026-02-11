@@ -245,8 +245,7 @@ export function Banner() {
   );
 }
 const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
-  // Use DuckDuckGo's icon service - more reliable than Google's favicon service
-  const logoUrl = `https://icons.duckduckgo.com/ip3/${url}.ico`;
+  const logoUrl = `/api/favicon?domain=${url}`;
 
   return (
     <div className="flex flex-col items-center space-y-2">

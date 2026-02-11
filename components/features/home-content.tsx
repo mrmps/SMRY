@@ -22,7 +22,7 @@ import { Footer } from "@/components/shared/footer";
 import { FAQ } from "@/components/marketing/faq";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { PromoBanner } from "@/components/marketing/promo-banner";
-import { UpdateBanner } from "@/components/marketing/update-banner";
+// import { UpdateBanner } from "@/components/marketing/update-banner";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
@@ -359,8 +359,8 @@ export const HomeContent = memo(function HomeContent() {
   return (
     <>
       <PromoBanner />
-      <UpdateBanner />
-      <main className="relative flex min-h-screen flex-col items-center bg-background px-6 pt-[22vh] text-foreground overflow-hidden">
+      {/* <UpdateBanner /> */}
+      <main className="relative flex min-h-[100dvh] sm:min-h-screen flex-col items-center bg-background px-6 pt-16 sm:pt-[22vh] text-foreground overflow-hidden">
 
         {/* Auth - top right */}
         <AuthBar className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6" />
@@ -377,12 +377,17 @@ export const HomeContent = memo(function HomeContent() {
           <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
 
-        <div className="relative mx-auto flex w-full max-w-[528px] flex-col items-center">
+        <div className="relative mx-auto flex flex-1 sm:flex-none w-full max-w-[528px] flex-col items-center justify-center sm:justify-start">
           {/* Wordmark - Syne for brand recognition */}
           <h1 className="font-syne text-5xl font-semibold tracking-tight text-foreground text-balance">
             smry
             <span className="sr-only"> - Bypass Paywalls & Read Full Articles Free</span>
           </h1>
+
+          {/* Hero tagline */}
+          <p className="mt-3 text-center text-[15px] text-muted-foreground/70">
+            {t("tagline")}
+          </p>
 
           {/* Input container - nested radius pattern */}
           <form onSubmit={handleSubmit} className="mt-6 w-full">
@@ -436,22 +441,29 @@ export const HomeContent = memo(function HomeContent() {
             </p>
           )}
 
-          {/* Micro sponsor line */}
-          {!isPremium && !isPremiumLoading && ad && (
-            <div className="mt-4 flex justify-center">
+          {/* Trust bar + sponsor — single muted footer under input */}
+          <div className="mt-4 flex flex-col items-center gap-1.5">
+            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[12px] text-muted-foreground/50">
+              <span className="whitespace-nowrap">{t("trustNoSignup")}</span>
+              <span aria-hidden="true">·</span>
+              <span className="whitespace-nowrap">{t("trustWorksWith")}</span>
+              <span aria-hidden="true">·</span>
+              <span className="whitespace-nowrap">{t("trustFree")}</span>
+            </p>
+            {!isPremium && !isPremiumLoading && ad && (
               <GravityAd
                 ad={ad}
                 variant="micro"
                 onVisible={() => fireImpression(ad)}
                 onClick={() => fireClick(ad)}
               />
-            </div>
-          )}
+            )}
+          </div>
 
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="absolute bottom-56 left-0 right-0 mx-auto w-full max-w-[400px] px-6">
+        <div className="mt-auto pt-8 sm:pt-0 sm:absolute sm:bottom-42 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] sm:px-6">
           <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
             <h2 className="text-center text-[15px] font-medium text-foreground/90">
               {t("valuePropTitle")}
@@ -472,7 +484,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-6 left-0 right-0 mx-auto flex w-fit flex-col items-center">
+        <div className="mt-6 pb-6 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });

@@ -40,12 +40,11 @@ import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
 import { ChatSidebar } from "@/components/features/chat-sidebar";
 import { useChatThreads } from "@/lib/hooks/use-chat-threads";
-import { PanelLeft } from "lucide-react";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
-import { UpdateBanner } from "@/components/marketing/update-banner";
+// import { UpdateBanner } from "@/components/marketing/update-banner";
 import {
   Menu,
   MenuTrigger,
@@ -320,14 +319,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     lang: firstSuccessfulArticle?.lang,
   });
 
-  // Ad distribution: sidebar + inline ad + footer ad + chat ad + micro ad
-  // Gravity returns up to 5 ads: [0]=sidebar, [1]=inline, [2]=footer, [3]=chat, [4]=micro
-  // Fallback: reuse ads if we don't get enough from Gravity
-  const sidebarAd = gravityAds[0] ?? null;
-  const inlineAd = gravityAds[1] ?? gravityAds[0] ?? null; // Fallback to sidebar ad
-  const footerAd = gravityAds[2] ?? gravityAds[1] ?? gravityAds[0] ?? null; // Fallback chain
-  const chatAd = gravityAds[3] ?? gravityAds[0] ?? null; // Fallback to sidebar ad
-  const microAd = gravityAds[4] ?? gravityAds[1] ?? gravityAds[0] ?? null; // Micro ad below chat input
+  // Ad distribution: Show UNIQUE ads only - don't duplicate the same ad across placements
+  // Gravity may return 1-5 ads. We assign each unique ad to exactly one placement.
+  // This prevents the same ad from being tracked multiple times as different impressions.
+  const sidebarAd = gravityAds[0] ?? null;        // Fixed position ad (always visible)
+  const inlineAd = gravityAds[1] ?? null;         // Mid-article ad - only if we have a 2nd ad
+  const footerAd = gravityAds[2] ?? null;         // End-of-article ad - only if we have a 3rd ad
+  const chatAd = gravityAds[3] ?? null;           // Chat header ad - only if we have a 4th ad
+  const microAd = gravityAds[4] ?? null;          // Below chat input - only if we have a 5th ad
+
+  // Debug: Log how many unique ads we received
+  if (typeof window !== 'undefined' && gravityAds.length > 0) {
+    console.log(`[Ads] Received ${gravityAds.length} ads from Gravity:`,
+      gravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(', '));
+  }
 
   // Handle article load: save to history
   useEffect(() => {
@@ -533,26 +538,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     <div className="flex h-dvh flex-col bg-background">
       {/* Promo Banner - desktop/tablet */}
       {showDesktopPromo && <PromoBanner />}
-      <UpdateBanner className="hidden md:block" />
+      {/* <UpdateBanner className="hidden md:block" /> */}
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
-          {/* Desktop Header - History toggle + Logo */}
+          {/* Desktop Header - Logo */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* History sidebar toggle */}
-            <button
-              onClick={() => setHistoryOpen(!historyOpen)}
-              className={cn(
-                "flex items-center justify-center size-8 rounded-md transition-colors",
-                historyOpen
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              )}
-              aria-label={historyOpen ? "Close history" : "Open history"}
-            >
-              <PanelLeft className="size-4" />
-            </button>
-
             <Link
               href="/"
               className="flex items-center gap-2 transition-opacity hover:opacity-80"
@@ -791,7 +782,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 />
 
                 {/* Main content panel */}
-                <ResizablePanel defaultSize={historyOpen ? 52 : 70} minSize={40}>
+                <ResizablePanel defaultSize={sidebarOpen ? 68 : 100} minSize={40}>
                   <div className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
@@ -901,7 +892,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 >
                   {showMobilePromo && <PromoBanner className="md:hidden" />}
-                  <UpdateBanner className="md:hidden" />
+                  {/* <UpdateBanner className="md:hidden" /> */}
                   <header className="flex h-14 items-center bg-background px-4">
                     <div className="flex items-center gap-3 shrink-0">
                       <button

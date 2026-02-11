@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * GravityAd - High-performance contextual ad display component
+ * GravityAd - Contextual ad display component
  *
- * Performance optimizations:
- * - Single IntersectionObserver per component (ref-based, not recreated)
- * - Impression tracking via ref to avoid re-renders
- * - CSS-based favicon fallback (no state updates)
- * - Memoized component with proper comparison
+ * Design principles (after 15 rounds of review):
+ * 1. Compact & respectful - minimal intrusion
+ * 2. Title + description hierarchy when space allows
+ * 3. Always-visible CTA with smart fallback
+ * 4. Dismiss on most variants (sidebar is non-dismissable on desktop)
+ * 5. Great at every breakpoint
  */
 
-import { memo, useCallback, useEffect, useRef } from "react";
-import Image from "next/image";
+import { useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
@@ -25,38 +25,23 @@ interface GravityAdProps {
   variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat";
 }
 
-// Extract domain from URL for favicon lookup
-function getDomain(url: string): string | null {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return null;
-  }
-}
-
-// Dismiss button component
-const DismissButton = memo(function DismissButton({
+// Dismiss button - consistent across all variants
+function DismissButton({
   onDismiss,
   className,
 }: {
   onDismiss?: () => void;
   className?: string;
 }) {
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onDismiss?.();
-    },
-    [onDismiss]
-  );
-
   if (!onDismiss) return null;
-
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDismiss();
+      }}
       className={cn(
         "shrink-0 flex items-center justify-center rounded-full transition-all",
         "size-6 text-muted-foreground/30 hover:text-muted-foreground/60 hover:bg-muted/60",
@@ -68,109 +53,216 @@ const DismissButton = memo(function DismissButton({
       <X className="size-3" />
     </button>
   );
-});
+}
 
-// Favicon with CSS fallback (no state needed)
-const AdFavicon = memo(function AdFavicon({
-  favicon,
-  clickUrl,
+/**
+ * AdFavicon - Simple favicon with cascading fallbacks
+ *
+ * Tries in order:
+ * 1. Gravity-provided favicon (src prop)
+ * 2. DuckDuckGo favicon lookup (from fallbackUrl domain)
+ * 3. Letter icon (first letter of brandName)
+ */
+function AdFavicon({
+  src,
+  fallbackUrl,
   brandName,
   size = 32,
+  className,
 }: {
-  favicon?: string;
-  clickUrl: string;
+  src?: string;
+  fallbackUrl?: string;
   brandName: string;
   size?: number;
+  className?: string;
 }) {
-  const domain = getDomain(clickUrl);
-  const ddgFavicon = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
-  const initial = brandName.charAt(0).toUpperCase();
-  const imgSrc = favicon || ddgFavicon;
+  const [stage, setStage] = useState(0); // 0=primary, 1=ddg, 2=letter
+
+  // Build DuckDuckGo fallback URL from domain
+  const ddgUrl = fallbackUrl ? (() => {
+    try {
+      const domain = new URL(fallbackUrl).hostname;
+      return `/api/favicon?domain=${domain}`;
+    } catch {
+      return null;
+    }
+  })() : null;
+
+  // Determine current src based on stage
+  const currentSrc = stage === 0 && src ? src
+    : stage <= 1 && ddgUrl ? ddgUrl
+    : null;
+
+  // Reset stage when src changes (new ad)
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when src prop changes
+    setStage(0);
+  }, [src]);
+
+  // Letter fallback
+  if (!currentSrc) {
+    return (
+      <div className={cn("size-full rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center", className)}>
+        <span className="text-primary font-bold text-xs">
+          {brandName.charAt(0).toUpperCase()}
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="relative rounded-lg overflow-hidden bg-linear-to-br from-primary/20 to-primary/10 ring-1 ring-border/20 flex items-center justify-center shrink-0"
-      style={{ width: size, height: size }}
-    >
-      {/* Fallback letter always rendered behind */}
-      <span className="text-primary font-bold text-xs">{initial}</span>
-
-      {/* Primary favicon - only render if we have a valid src */}
-      {imgSrc && (
-        <Image
-          src={imgSrc}
-          alt=""
-          width={size}
-          height={size}
-          className="absolute inset-0 size-full object-cover bg-white"
-          onError={(e) => {
-            // On error, hide the image to show fallback letter
-            e.currentTarget.style.display = "none";
-          }}
-          unoptimized
-        />
-      )}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={currentSrc}
+      alt=""
+      width={size}
+      height={size}
+      className={cn("size-full object-cover", className)}
+      onError={() => setStage(s => s + 1)}
+    />
   );
-});
+}
 
-// Main component
-function GravityAdComponent({
-  ad,
-  onVisible,
-  onDismiss,
-  onClick,
-  className,
-  variant = "default",
-}: GravityAdProps) {
+export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
-  const hasTrackedRef = useRef(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  // Store latest callback in ref to avoid stale closure issues
-  const onVisibleRef = useRef(onVisible);
+  const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
 
-  // Keep the ref updated with latest callback
-  useEffect(() => {
-    onVisibleRef.current = onVisible;
-  }, [onVisible]);
+  // Reset on ad change
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad changes
+    setHasTrackedImpression(false);
+  }, [ad.impUrl]);
 
-  // Single effect for intersection observer - stable dependencies
-  useEffect(() => {
+  // Impression tracking - useLayoutEffect ensures ref is available after DOM mount
+  useLayoutEffect(() => {
+    if (hasTrackedImpression) return;
+
     const element = adRef.current;
     if (!element) return;
 
-    // Reset tracking and create fresh observer when ad changes
-    hasTrackedRef.current = false;
-
-    // Clean up any existing observer
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    observerRef.current = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !hasTrackedRef.current) {
-          hasTrackedRef.current = true;
-          // Always call the latest callback via ref
-          onVisibleRef.current();
-          observerRef.current?.disconnect();
+        if (entries[0]?.isIntersecting) {
+          setHasTrackedImpression(true);
+          onVisible();
         }
       },
       { threshold: 0.5 }
     );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [hasTrackedImpression, onVisible, ad.impUrl]);
 
-    observerRef.current.observe(element);
-
-    return () => {
-      observerRef.current?.disconnect();
-    };
-  }, [ad.clickUrl]); // Only recreate when ad changes
-
-  // Derived content
+  // Derived content - prioritize VALUE (adText) over brand repetition
   const valueProp = ad.adText || ad.title;
   const ctaText = ad.cta || "Learn more";
 
-  // MICRO VARIANT - ultra compact text ad
+  // ============================================
+  // MOBILE VARIANT - Clean, minimal, no button
+  // ============================================
+  if (variant === "mobile") {
+    return (
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
+        className={cn(
+          "flex items-center gap-3 bg-card border-t border-border/30",
+          "px-3 py-2.5",
+          "sm:px-4",
+          "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
+          "group",
+          className
+        )}
+      >
+        <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={32} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+            {valueProp}
+          </p>
+          <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+            {ad.brandName} · Ad
+          </p>
+        </div>
+        <DismissButton onDismiss={onDismiss} />
+      </a>
+    );
+  }
+
+  // ============================================
+  // COMPACT VARIANT - Minimal inline
+  // ============================================
+  if (variant === "compact") {
+    return (
+      <div className={cn("flex items-center gap-2", className)}>
+        <a
+          ref={adRef}
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          onClick={onClick}
+          className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
+        >
+          <div className="size-7 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={28} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
+              {valueProp}
+            </p>
+            <p className="text-[10px] text-muted-foreground/50">
+              {ad.brandName} · Ad
+            </p>
+          </div>
+        </a>
+        <span className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
+          {ctaText} →
+        </span>
+        <DismissButton onDismiss={onDismiss} />
+      </div>
+    );
+  }
+
+  // ============================================
+  // SIDEBAR VARIANT - Native content feel
+  // ============================================
+  if (variant === "sidebar") {
+    return (
+      <div className={cn("flex items-start gap-2.5 group", className)}>
+        <a
+          ref={adRef}
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          onClick={onClick}
+          className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
+        >
+          <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={32} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+              {valueProp}
+            </p>
+            <p className="text-[10px] text-muted-foreground/50 mt-1">
+              {ad.brandName} · Sponsored
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+              {ctaText} →
+            </span>
+          </div>
+        </a>
+      </div>
+    );
+  }
+
+  // ============================================
+  // MICRO VARIANT - Single-line text ad, nearly invisible
+  // ============================================
   if (variant === "micro") {
     return (
       <a
@@ -180,20 +272,22 @@ function GravityAdComponent({
         rel="sponsored noopener"
         onClick={onClick}
         className={cn(
-          "group block text-center text-[10px] leading-tight text-muted-foreground/60 transition-colors hover:text-muted-foreground",
+          "group text-center text-[11px] text-muted-foreground/70 transition-colors hover:text-muted-foreground",
           className
         )}
       >
-        <span className="text-muted-foreground/40">Ad</span>
-        <span className="text-muted-foreground/30"> · </span>
-        <span className="group-hover:underline underline-offset-2 decoration-muted-foreground/30">
+        <span className="text-muted-foreground/50">Ad</span>
+        <span className="text-muted-foreground/40"> · </span>
+        <span className="group-hover:underline underline-offset-2 decoration-muted-foreground/40">
           {ad.brandName} — {valueProp}
         </span>
       </a>
     );
   }
 
-  // INLINE-CHAT VARIANT - elegant sponsored suggestion
+  // ============================================
+  // INLINE-CHAT VARIANT - Elegant sponsored suggestion
+  // ============================================
   if (variant === "inline-chat") {
     return (
       <a
@@ -222,97 +316,9 @@ function GravityAdComponent({
     );
   }
 
-  // MOBILE VARIANT
-  if (variant === "mobile") {
-    return (
-      <a
-        ref={adRef}
-        href={ad.clickUrl}
-        target="_blank"
-        rel="sponsored noopener"
-        onClick={onClick}
-        className={cn(
-          "flex items-center gap-3 bg-card border-t border-border/30",
-          "px-3 py-2.5 sm:px-4",
-          "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
-          "group",
-          className
-        )}
-      >
-        <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} />
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-            {valueProp}
-          </p>
-          <p className="text-[11px] text-muted-foreground/50 mt-0.5">
-            {ad.brandName} · Ad
-          </p>
-        </div>
-        <DismissButton onDismiss={onDismiss} />
-      </a>
-    );
-  }
-
-  // COMPACT VARIANT
-  if (variant === "compact") {
-    return (
-      <div className={cn("flex items-center gap-2", className)}>
-        <a
-          ref={adRef}
-          href={ad.clickUrl}
-          target="_blank"
-          rel="sponsored noopener"
-          onClick={onClick}
-          className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
-        >
-          <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} size={28} />
-          <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
-              {valueProp}
-            </p>
-            <p className="text-[10px] text-muted-foreground/50">
-              {ad.brandName} · Ad
-            </p>
-          </div>
-        </a>
-        <span className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
-          {ctaText} →
-        </span>
-        <DismissButton onDismiss={onDismiss} />
-      </div>
-    );
-  }
-
-  // SIDEBAR VARIANT
-  if (variant === "sidebar") {
-    return (
-      <div className={cn("flex items-start gap-2.5 group", className)}>
-        <a
-          ref={adRef}
-          href={ad.clickUrl}
-          target="_blank"
-          rel="sponsored noopener"
-          onClick={onClick}
-          className="flex-1 flex items-start gap-2.5 min-w-0 rounded-lg p-2 -m-2 hover:bg-muted/40 transition-colors"
-        >
-          <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
-              {valueProp}
-            </p>
-            <p className="text-[10px] text-muted-foreground/50 mt-1">
-              {ad.brandName} · Sponsored
-            </p>
-            <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-              {ctaText} →
-            </span>
-          </div>
-        </a>
-      </div>
-    );
-  }
-
-  // INLINE VARIANT
+  // ============================================
+  // INLINE VARIANT - End-of-article horizontal strip
+  // ============================================
   if (variant === "inline") {
     return (
       <div className={cn("border-t border-border/40 pt-6 pb-2 overflow-hidden", className)}>
@@ -324,7 +330,9 @@ function GravityAdComponent({
           onClick={onClick}
           className="flex items-center gap-2 sm:gap-3 group rounded-lg p-2 -m-2 hover:bg-muted/30 transition-colors"
         >
-          <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} size={36} />
+          <div className="size-8 sm:size-9 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={36} />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
@@ -342,7 +350,9 @@ function GravityAdComponent({
     );
   }
 
-  // DEFAULT VARIANT
+  // ============================================
+  // DEFAULT VARIANT - Desktop card (vertical layout)
+  // ============================================
   return (
     <div
       className={cn(
@@ -351,14 +361,19 @@ function GravityAdComponent({
         className
       )}
     >
+      {/* Header: logo + brand + dismiss */}
       <div className="flex items-center gap-2.5 mb-2">
-        <AdFavicon favicon={ad.favicon} clickUrl={ad.clickUrl} brandName={ad.brandName} />
+        <div className="size-8 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+          <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={32} />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-foreground truncate">{ad.brandName}</p>
           <p className="text-[10px] text-muted-foreground/50">Sponsored</p>
         </div>
         <DismissButton onDismiss={onDismiss} />
       </div>
+
+      {/* Value prop - full width, can breathe */}
       <a
         ref={adRef}
         href={ad.clickUrl}
@@ -377,15 +392,3 @@ function GravityAdComponent({
     </div>
   );
 }
-
-// Memoized export with proper comparison
-export const GravityAd = memo(GravityAdComponent, (prev, next) => {
-  return (
-    prev.ad.clickUrl === next.ad.clickUrl &&
-    prev.variant === next.variant &&
-    prev.className === next.className &&
-    prev.onVisible === next.onVisible &&
-    prev.onDismiss === next.onDismiss &&
-    prev.onClick === next.onClick
-  );
-});

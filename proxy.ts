@@ -4,26 +4,71 @@ import type { NextRequest } from "next/server";
 import { buildProxyRedirectUrl } from "@/lib/proxy-redirect";
 import createIntlMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
+import {
+  LLM_DISCOVERY_HEADERS,
+  getMarkdownRewritePath,
+  buildMarkdownRewriteUrl,
+  getArticleMarkdownUrl,
+  buildArticleMarkdownRewriteUrl,
+} from '@/lib/llm/middleware';
 
 const intlMiddleware = createIntlMiddleware(routing);
+
+/**
+ * Append LLM discovery headers to a response.
+ */
+function withLlmHeaders(response: NextResponse): NextResponse {
+  response.headers.set('Link', LLM_DISCOVERY_HEADERS['Link']);
+  response.headers.set('X-Llms-Txt', LLM_DISCOVERY_HEADERS['X-Llms-Txt']);
+  response.headers.append('Vary', 'Accept');
+  return response;
+}
 
 export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const { pathname, search, origin } = request.nextUrl;
 
   // Skip i18n for API routes, admin routes, and auth routes - just let them through
   if (pathname.startsWith('/api') || pathname.startsWith('/admin') || pathname.startsWith('/auth')) {
-    return NextResponse.next();
+    return withLlmHeaders(NextResponse.next());
+  }
+
+  const accept = request.headers.get('accept') || '';
+
+  // Content negotiation: serve Markdown for static pages when agents prefer it
+  const markdownPath = getMarkdownRewritePath(pathname, accept);
+  if (markdownPath !== null) {
+    const rewriteUrl = new URL(buildMarkdownRewriteUrl(markdownPath, origin));
+    return withLlmHeaders(NextResponse.rewrite(rewriteUrl));
   }
 
   // Build redirect URL for URL slugs (e.g., /nytimes.com → /proxy?url=...)
   const redirectUrl = buildProxyRedirectUrl(pathname, search, origin);
 
+  // Content negotiation: serve Markdown for article pages when agents prefer it
+  const articleUrl = getArticleMarkdownUrl(
+    pathname,
+    accept,
+    request.nextUrl.searchParams.get('url'),
+    redirectUrl,
+  );
+  if (articleUrl !== null) {
+    const rewriteUrl = new URL(buildArticleMarkdownRewriteUrl(articleUrl, origin));
+    // Pass article URL via request header because the route handler sees the
+    // original request's searchParams, not the rewrite target's.
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-llm-article-url', articleUrl);
+    return withLlmHeaders(NextResponse.rewrite(rewriteUrl, {
+      request: { headers: requestHeaders },
+    }));
+  }
+
   if (redirectUrl) {
-    return NextResponse.rewrite(redirectUrl);
+    return withLlmHeaders(NextResponse.rewrite(redirectUrl));
   }
 
   // Run i18n middleware for locale handling
-  return intlMiddleware(request);
+  const response = intlMiddleware(request);
+  return withLlmHeaders(response as NextResponse);
 });
 
 export default proxy;
@@ -40,6 +85,9 @@ export default proxy;
  * - /favicon.ico → excluded (root-level static file)
  * - /nytimes.com/article.html → matched (has slashes, goes to middleware)
  * - /example.com → matched (.com isn't a static extension)
+ *
+ * Note: Root-level .txt files (llms.txt, llms-full.txt) are excluded,
+ * so they are served directly from public/ without middleware.
  */
 export const config = {
   matcher: [

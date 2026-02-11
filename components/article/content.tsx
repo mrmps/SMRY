@@ -398,7 +398,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
               <div className="size-5 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`https://icons.duckduckgo.com/ip3/${new URL(url).hostname}.ico`}
+                  src={`/api/favicon?domain=${new URL(url).hostname}`}
                   alt=""
                   className="size-5 rounded-sm"
                   onError={(e) => {

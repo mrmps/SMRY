@@ -11,7 +11,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
-import { getApiUrl } from "@/lib/api/config";
 import { useAuth } from "@clerk/nextjs";
 import {
   PromptInput,
@@ -32,6 +31,11 @@ function getMessageText(message: UIMessage): string {
     .filter((part) => isTextUIPart(part))
     .map((part) => part.text)
     .join("");
+}
+
+// Bouncing dots loader (CSS in globals.css)
+function ChatLoader() {
+  return <div className="chat-loader text-muted-foreground/60" />;
 }
 
 interface ChatPageContentProps {
@@ -84,7 +88,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   const transport = React.useMemo(
     () =>
       new DefaultChatTransport({
-        api: getApiUrl("/api/chat"),
+        api: "/api/chat", // Always use Route Handler for streaming (not rewrite proxy)
         fetch: customFetch,
         prepareSendMessagesRequest: ({ messages }) => ({
           body: {
@@ -355,6 +359,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                       </div>
                     );
                   })}
+                  {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+                  {isLoading && messages.length > 0 && (
+                    messages[messages.length - 1]?.role === "user" ||
+                    (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
+                  ) && (
+                    <div className="flex justify-start px-2">
+                      <ChatLoader />
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}

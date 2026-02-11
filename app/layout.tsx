@@ -20,6 +20,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale } from 'next-intl/server';
 import { JsonLd, organizationSchema, websiteSchema } from "@/components/seo/json-ld";
 
+// Root metadata - OG images are handled by file-based convention (opengraph-image.tsx)
+// in each route segment for proper caching and to avoid robots.txt blocking issues
 export const metadata: Metadata = {
   metadataBase: new URL("https://smry.ai"),
   title: "Read Anything, Summarize Everything | Smry",
@@ -35,21 +37,13 @@ export const metadata: Metadata = {
     url: "https://smry.ai",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
-    images: [
-      {
-        url: "https://smry.ai/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "smry - Read Anything, Summarize Everything",
-      },
-    ],
+    // Images handled by opengraph-image.tsx files in route segments for proper caching and reliability
   },
   twitter: {
     card: "summary_large_image",
     title: "Read Anything, Summarize Everything | Smry",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
-    images: ["https://smry.ai/opengraph-image"],
   },
 };
 

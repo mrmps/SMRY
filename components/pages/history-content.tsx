@@ -165,14 +165,6 @@ function groupByDomain(
   return sorted;
 }
 
-function getFaviconUrl(domain: string): string {
-  return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-}
-
-function getGoogleFaviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-}
-
 function FaviconImage({
   domain,
   className,
@@ -180,24 +172,16 @@ function FaviconImage({
   domain: string;
   className?: string;
 }) {
-  const [errorCount, setErrorCount] = useState(0);
-
-  const src = useMemo(() => {
-    if (errorCount === 0) return getFaviconUrl(domain);
-    if (errorCount === 1) return getGoogleFaviconUrl(domain);
-    return null;
-  }, [domain, errorCount]);
-
-  if (!src) return null;
-
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={`/api/favicon?domain=${domain}`}
       alt=""
       className={className}
       loading="lazy"
-      onError={() => setErrorCount((c) => c + 1)}
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
     />
   );
 }

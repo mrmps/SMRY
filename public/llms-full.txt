@@ -1,0 +1,148 @@
+# SMRY — Complete Documentation
+
+> SMRY (smry.ai) is a free paywall bypass and article reader trusted by 300,000+ readers monthly.
+
+## What is SMRY?
+
+SMRY lets you paste any paywalled article link and get the full text plus an AI summary. No account required, no browser extension needed. It works with 1,000+ publications and is completely free to use.
+
+## How It Works
+
+SMRY fetches articles from 3 sources simultaneously to maximize success:
+
+1. **Direct Access (smry-fast)** — Fetches the original URL directly with browser-like headers
+2. **Premium Proxy (smry-slow)** — Uses intelligent article extraction via Diffbot API
+3. **Wayback Machine** — Retrieves archived versions from archive.org
+
+The first source to return complete content (500+ characters) wins. Other sources continue caching in the background. This parallel approach achieves a 76% success rate on major publications.
+
+## Features
+
+### Paywall Bypass
+- Works with 1,000+ publications
+- 3 parallel sources for maximum success rate
+- Handles most soft paywalls (content hidden by JavaScript overlays)
+
+### Clean Reading Experience
+- Removes paywalls, popups, cookie banners, and sidebar ads
+- Distraction-free article view
+- Reading time estimation
+- Support for RTL languages
+
+### AI Summaries
+- Get key points in seconds
+- Available in 8 languages: English, German, Spanish, French, Portuguese, Dutch, Chinese, Japanese
+- Premium users get access to Claude, Gemini, and GPT models
+
+### Chat with Articles
+- Ask AI questions about any article
+- Conversational interface with streaming responses
+- Chat history syncs across devices
+
+### Reading History
+- Track everything you've read
+- Full-text search across past articles
+- Pro users get unlimited history
+
+## How to Use SMRY
+
+### Option 1: Prepend URL
+Prepend `smry.ai/` to any article URL:
+
+    smry.ai/nytimes.com/2025/01/some-article
+    smry.ai/https://wsj.com/article
+
+### Option 2: Paste URL
+Visit https://smry.ai and paste any article URL into the input field.
+
+### Option 3: Bookmarklet
+Drag the bookmarklet from the homepage to your bookmarks bar. Click it on any page to open in SMRY.
+
+## Supported Publications
+
+Major publications include (1,000+ total):
+- New York Times, Wall Street Journal, Bloomberg, The Atlantic
+- Washington Post, Medium, The Guardian, Financial Times
+- Forbes, The Economist, Reuters, CNN, BBC, Wired
+- The New Yorker, Vanity Fair, Harvard Business Review
+- TechCrunch, Ars Technica, The Verge, and many more
+
+## Understanding Paywalls
+
+### Soft Paywalls (SMRY works)
+Content is loaded in the page but hidden by JavaScript overlays, popups, or CSS. Most major news sites use soft paywalls. The content is accessible to search engine crawlers for SEO purposes, which means tools like SMRY can also access it.
+
+### Hard Paywalls (Cannot be bypassed)
+Content is never sent to the client without authentication. No external tool can bypass these. Examples include Patreon, OnlyFans, and sites that verify subscription server-side before sending any content.
+
+## Pricing
+
+### Free Plan
+- 20 articles per day
+- Limited AI summaries per day
+- Basic reading history
+- Ad-supported
+- No signup required
+
+### Pro Plan (~$3-5/month)
+- Unlimited articles
+- Unlimited AI summaries with premium models
+- Unlimited reading history with full-text search
+- Ad-free reading
+- Bypass detection indicator
+- Priority support
+- 7-day free trial, cancel anytime
+- 30-day money-back guarantee
+
+### Value Comparison
+Individual subscriptions cost $100+/month (NYT $17 + WSJ $20 + Bloomberg $35 + more). SMRY Pro gives access to 1,000+ publications for ~$3/month, saving readers $89+/month on average.
+
+## Statistics
+
+- 300,000+ monthly active readers
+- 2.4M articles read per month
+- 76% success rate on major sites
+- 4.9/5 star user rating
+
+## FAQ
+
+### How does paywall bypass work?
+There are two types of paywalls: hard and soft. Hard paywalls don't expose content until you subscribe. Most sites use soft paywalls, where content is accessible but blocked by popups or only exposed to certain user agents. SMRY tries multiple methods in parallel: direct fetching, a proxy, and Wayback Machine archives.
+
+### How do I know if content can be bypassed?
+If a site shows content to search engines for SEO, it likely uses a soft paywall that can be bypassed. If some content is visible but part is obstructed, it's often a soft paywall. If no content is visible at all, it's likely a hard paywall.
+
+### What sources does SMRY use?
+SMRY tries 3 sources in parallel: direct fetching (smry-fast), a premium proxy (smry-slow), and Wayback Machine archives. The first successful result is returned immediately.
+
+### Is SMRY open source?
+Yes. Source code is available at https://github.com/mrmps/SMRY
+
+### What languages are supported for summaries?
+8 languages: English, German, Spanish, French, Portuguese, Dutch, Chinese, and Japanese.
+
+### Is there a rate limit?
+Free tier: 20 articles/day, 6 per minute per IP. Pro: unlimited.
+
+### Is this legal?
+Yes. SMRY accesses publicly available content through legal methods. It does not store or redistribute copyrighted content.
+
+### Does this work with all websites?
+SMRY works with most sites using soft paywalls. Hard paywalls (Patreon, OnlyFans, login-gated content) cannot be bypassed by any tool.
+
+## Links
+
+- Homepage: https://smry.ai
+- Pricing: https://smry.ai/pricing
+- Guide: https://smry.ai/guide
+- Hard Paywalls: https://smry.ai/hard-paywalls
+- Changelog: https://smry.ai/changelog
+- GitHub: https://github.com/mrmps/SMRY
+- Twitter: https://twitter.com/michael_chomsky
+
+## Content Negotiation
+
+This site supports content negotiation. To receive Markdown instead of HTML, send requests with the `Accept: text/markdown` header:
+
+    curl -H "Accept: text/markdown" https://smry.ai/
+    curl -H "Accept: text/markdown" https://smry.ai/pricing
