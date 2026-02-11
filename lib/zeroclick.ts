@@ -93,8 +93,11 @@ async function createSignalClient(userContext?: {
     return null;
   }
 
-  // If we have a connected client and no user context changes, reuse it
-  if (signalClient && signalClientReady && !userContext) {
+  // Check if user context has any actual values (not just an empty object)
+  const hasUserContext = userContext && Object.values(userContext).some(Boolean);
+
+  // Reuse cached client when no per-user headers are needed
+  if (signalClient && signalClientReady && !hasUserContext) {
     return signalClient;
   }
 
@@ -119,8 +122,8 @@ async function createSignalClient(userContext?: {
     );
     await client.connect(transport);
 
-    // Cache for reuse when no user context
-    if (!userContext) {
+    // Cache for reuse when no per-user headers
+    if (!hasUserContext) {
       signalClient = client;
       signalClientReady = true;
     }

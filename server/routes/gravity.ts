@@ -152,8 +152,11 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
     async ({ body, set }) => {
       const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser, adProvider } = body;
 
-      // Determine provider from explicit field or infer from impUrl prefix
-      const provider = adProvider || (impUrl?.startsWith("zeroclick://") ? "zeroclick" : "gravity");
+      // Derive provider from impUrl prefix only — never trust client-sent adProvider
+      // for forwarding decisions (prevents spoofing to skip Gravity billing)
+      const isZeroClick = impUrl?.startsWith("zeroclick://") ?? false;
+      // adProvider from client is used only for ClickHouse logging, not forwarding logic
+      const provider = isZeroClick ? "zeroclick" : "gravity";
 
       // For impressions with impUrl, forward to the appropriate provider
       // ZeroClick impressions are tracked client-side (required by ZeroClick docs for accurate IP/UA)
