@@ -223,7 +223,6 @@ export const Response = memo(
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
           plugins={{ code }}
-          caret={isAnimating ? 'block' : undefined}
           rehypePlugins={[
             defaultRehypePlugins.raw,
             [harden, hardenConfig],

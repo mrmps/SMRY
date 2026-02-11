@@ -361,6 +361,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     createThread,
     updateThread,
     setActiveThreadId,
+    deleteThread,
+    togglePin,
+    renameThread,
+    groupedThreads,
   } = useChatThreads(isPremium);
 
   const handleViewModeChange = React.useCallback(
@@ -449,7 +453,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     if (sidebarOpen === isExpanded) return;
 
     if (sidebarOpen) {
-      panel.expand(32);
+      panel.expand(25);
     } else {
       panel.collapse();
     }
@@ -516,17 +520,30 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     if (currentThreadId) {
       updateThread(currentThreadId, { messages: threadMessages, title });
     } else {
-      // Auto-create thread on first message
-      createThread(title);
+      // Auto-create thread on first message with article metadata
+      let articleDomain: string | undefined;
+      try {
+        articleDomain = new URL(url).hostname.replace("www.", "");
+      } catch {}
+      createThread(title, {
+        articleUrl: url,
+        articleTitle: articleTitle,
+        articleDomain,
+      });
     }
-  }, [isPremium, currentThreadId, updateThread, createThread]);
+  }, [isPremium, currentThreadId, updateThread, createThread, url, articleTitle]);
 
   // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
+  // Keyboard shortcut: Cmd+Shift+H (Mac) or Ctrl+Shift+H (Windows/Linux) to toggle history sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "i") {
         e.preventDefault();
         handleSidebarChange(!sidebarOpen);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        setHistoryOpen((prev) => !prev);
       }
     };
 
@@ -607,6 +624,21 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1.5">
+              {/* History sidebar toggle */}
+              <button
+                onClick={() => setHistoryOpen((prev) => !prev)}
+                className={cn(
+                  "h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5",
+                  historyOpen
+                    ? "bg-accent text-foreground border-border"
+                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
+                )}
+                title="Chat history (⌘⇧H)"
+              >
+                <HistoryIcon className="size-4" />
+                History
+              </button>
+
               {/* Ask AI button - toggles sidebar */}
               <button
                 onClick={() => handleSidebarChange(!sidebarOpen)}
@@ -766,6 +798,11 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     onSelectThread={handleSelectThread}
                     activeThreadId={currentThreadId}
                     isPremium={isPremium}
+                    threads={threads}
+                    onDeleteThread={deleteThread}
+                    onTogglePin={togglePin}
+                    onRenameThread={renameThread}
+                    groupedThreads={groupedThreads}
                   />
                 </ResizablePanel>
 
@@ -782,7 +819,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 />
 
                 {/* Main content panel */}
-                <ResizablePanel defaultSize={sidebarOpen ? 68 : 100} minSize={40}>
+                <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
                   <div className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
@@ -819,13 +856,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 />
 
-                {/* Summary sidebar panel - resizable between 25-50% for flexibility.
-                    Default width of ~35% provides comfortable chat experience. */}
+                {/* Summary sidebar panel */}
                 <ResizablePanel
                   ref={summaryPanelRef}
-                  defaultSize={sidebarOpen ? 32 : 0}
-                  minSize={25}
-                  maxSize={45}
+                  defaultSize={sidebarOpen ? 25 : 0}
+                  minSize={20}
+                  maxSize={35}
                   collapsible
                   collapsedSize={0}
                   className="bg-card"
@@ -846,6 +882,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       variant="sidebar"
                       isPremium={isPremium}
                       onMessagesChange={isPremium ? handleMessagesChange : undefined}
+                      activeThreadTitle={_activeThread?.title}
                       ad={!isPremium ? chatAd : null}
                       onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onAdClick={chatAd ? () => fireClick(chatAd) : undefined}
@@ -975,6 +1012,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onChatAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                 onChatAdClick={chatAd ? () => fireClick(chatAd) : undefined}
                 onChatAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
+                isPremium={isPremium}
+                threads={threads}
+                activeThreadId={currentThreadId}
+                onSelectThread={handleSelectThread}
+                onNewChat={handleNewChat}
+                onDeleteThread={deleteThread}
+                groupedThreads={groupedThreads}
+                onMessagesChange={isPremium ? handleMessagesChange : undefined}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}

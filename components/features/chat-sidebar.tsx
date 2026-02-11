@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Search, Pin, X, LogIn, PanelLeftClose, Crown } from "lucide-react";
+import { Search, Pin, X, LogIn, PanelLeftClose, MessageSquare, Sparkles, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useChatThreads, type ChatThread } from "@/lib/hooks/use-chat-threads";
+import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth, SignInButton } from "@clerk/nextjs";
@@ -22,6 +22,11 @@ interface ChatSidebarProps {
   onSelectThread: (threadId: string) => void;
   activeThreadId?: string | null;
   isPremium?: boolean;
+  threads?: ChatThread[];
+  onDeleteThread?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
+  onRenameThread?: (id: string, title: string) => void;
+  groupedThreads?: () => { label: string; threads: ChatThread[] }[];
 }
 
 function ThreadItem({
@@ -59,6 +64,11 @@ function ThreadItem({
     setIsEditing(false);
   };
 
+  const displayTitle = thread.articleTitle || thread.title;
+  const preview = thread.messages.length > 0
+    ? thread.messages[0].content.slice(0, 80)
+    : "";
+
   return (
     <div className="group relative px-2">
       <button
@@ -68,9 +78,11 @@ function ThreadItem({
           setIsEditing(true);
         }}
         className={cn(
-          "flex items-center w-full rounded-lg overflow-hidden",
+          "flex w-full rounded-lg overflow-hidden",
           "py-2 px-2 text-left transition-colors",
-          isActive ? "bg-accent" : "hover:bg-accent/50"
+          isActive
+            ? "bg-accent border-l-2 border-l-primary"
+            : "hover:bg-accent/50"
         )}
       >
         <div className="flex-1 min-w-0 relative">
@@ -93,12 +105,35 @@ function ThreadItem({
               aria-label="Thread title"
             />
           ) : (
-            <span
-              className="block truncate text-sm text-foreground/80"
-              title={thread.title}
-            >
-              {thread.title}
-            </span>
+            <>
+              {/* Row 1: Title + relative time */}
+              <div className="flex items-center gap-1">
+                {thread.isPinned && (
+                  <Pin className="size-2.5 text-primary shrink-0" />
+                )}
+                <span
+                  className="flex-1 truncate text-sm text-foreground/80"
+                  title={displayTitle}
+                >
+                  {displayTitle}
+                </span>
+                <span className="text-[10px] text-muted-foreground/50 shrink-0 tabular-nums">
+                  {formatRelativeTime(thread.updatedAt)}
+                </span>
+              </div>
+              {/* Row 2: First message preview */}
+              {preview && (
+                <p className="truncate text-xs text-muted-foreground/50 mt-0.5">
+                  {preview}
+                </p>
+              )}
+              {/* Row 3: Domain */}
+              {thread.articleDomain && (
+                <p className="truncate text-[10px] text-muted-foreground/30 mt-0.5">
+                  {thread.articleDomain}
+                </p>
+              )}
+            </>
           )}
         </div>
       </button>
@@ -107,7 +142,7 @@ function ThreadItem({
       {!isEditing && (
         <div
           className={cn(
-            "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5",
+            "absolute right-2 top-3 flex items-center gap-0.5",
             "opacity-0 group-hover:opacity-100 transition-opacity z-10"
           )}
         >
@@ -190,6 +225,56 @@ function ThreadGroup({
   );
 }
 
+/** Upgrade prompt shown to free users in desktop sidebar */
+function PremiumGate() {
+  const features = [
+    { icon: Smartphone, text: "Synced across all devices" },
+    { icon: MessageSquare, text: "Resume any conversation" },
+    { icon: Sparkles, text: "Unlimited AI chats" },
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col px-3 pt-4 pb-3">
+      {/* Card container */}
+      <div className="rounded-xl border border-border/60 bg-accent/30 p-4">
+        {/* Heading */}
+        <h3
+          className="text-[13px] font-semibold text-foreground mb-1"
+          style={{ textWrap: "balance" }}
+        >
+          Don&apos;t lose this conversation
+        </h3>
+        <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
+          Your chats vanish when you leave. Keep them forever with Pro.
+        </p>
+
+        {/* Features */}
+        <div className="space-y-2.5 mb-4">
+          {features.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-2">
+              <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Icon className="size-2.5 text-primary" />
+              </div>
+              <span className="text-[11px] text-foreground/80">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <Link
+          href="/pricing"
+          className="flex items-center justify-center w-full h-9 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Start free trial
+        </Link>
+        <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+          7 days free · Cancel anytime
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ChatSidebar({
   isOpen: _isOpen,
   onOpenChange,
@@ -197,13 +282,15 @@ export function ChatSidebar({
   onSelectThread,
   activeThreadId,
   isPremium = false,
+  onDeleteThread,
+  onTogglePin,
+  onRenameThread,
+  groupedThreads,
 }: ChatSidebarProps) {
   const { isSignedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const { groupedThreads, deleteThread, togglePin, renameThread } =
-    useChatThreads(isPremium);
 
-  const groups = groupedThreads();
+  const groups = groupedThreads?.() ?? [];
 
   // Filter threads by search query
   const filteredGroups = searchQuery.trim()
@@ -211,7 +298,9 @@ export function ChatSidebar({
         .map((group) => ({
           ...group,
           threads: group.threads.filter((t) =>
-            t.title.toLowerCase().includes(searchQuery.toLowerCase())
+            t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.articleTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.articleDomain?.toLowerCase().includes(searchQuery.toLowerCase())
           ),
         }))
         .filter((g) => g.threads.length > 0)
@@ -283,9 +372,9 @@ export function ChatSidebar({
                 threads={group.threads}
                 activeThreadId={activeThreadId}
                 onSelect={onSelectThread}
-                onDelete={deleteThread}
-                onTogglePin={togglePin}
-                onRename={renameThread}
+                onDelete={onDeleteThread ?? (() => {})}
+                onTogglePin={onTogglePin ?? (() => {})}
+                onRename={onRenameThread ?? (() => {})}
               />
             ))
           ) : (
@@ -297,24 +386,7 @@ export function ChatSidebar({
           )}
         </div>
       ) : (
-        /* Upgrade prompt for free users */
-        <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
-          <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-primary/10">
-            <Crown className="size-5 text-primary" />
-          </div>
-          <h3 className="text-sm font-semibold text-foreground mb-1">
-            Chat History
-          </h3>
-          <p className="text-xs text-muted-foreground/70 mb-4 max-w-[200px]">
-            Upgrade to save your conversations and access them across devices.
-          </p>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Upgrade to Pro
-          </Link>
-        </div>
+        <PremiumGate />
       )}
 
       {/* Footer - Login prompt for unauthenticated users */}

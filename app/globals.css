@@ -813,11 +813,11 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
  * Refined animations for AI chat interactions
  * ============================================================================= */
 
-/* Message fade in animation */
+/* Message fade in animation - subtle like Perplexity */
 @keyframes chat-message-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -826,7 +826,7 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
 }
 
 .chat-message-animate {
-  animation: chat-message-in 0.25s ease-out;
+  animation: chat-message-in 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 /* Send button pulse on first message */

@@ -15,10 +15,41 @@ export interface ChatThread {
   createdAt: string;
   updatedAt: string;
   isPinned: boolean;
+  articleUrl?: string;
+  articleTitle?: string;
+  articleDomain?: string;
   messages: Array<{
     role: "user" | "assistant";
     content: string;
   }>;
+}
+
+export interface ChatThreadMetadata {
+  articleUrl?: string;
+  articleTitle?: string;
+  articleDomain?: string;
+}
+
+/**
+ * Format a date as a relative time string (e.g. "now", "5m", "2h", "3d")
+ */
+export function formatRelativeTime(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+  const diffWeek = Math.floor(diffDay / 7);
+  const diffMonth = Math.floor(diffDay / 30);
+
+  if (diffSec < 60) return "now";
+  if (diffMin < 60) return `${diffMin}m`;
+  if (diffHr < 24) return `${diffHr}h`;
+  if (diffDay < 7) return `${diffDay}d`;
+  if (diffWeek < 4) return `${diffWeek}w`;
+  return `${diffMonth}mo`;
 }
 
 interface StorageEventDetail {
@@ -226,7 +257,7 @@ export function useChatThreads(isPremium = false) {
   }, [isPremium, isSignedIn, saveMutation]);
 
   const createThread = useCallback(
-    (title?: string): ChatThread => {
+    (title?: string, metadata?: ChatThreadMetadata): ChatThread => {
       const now = new Date().toISOString();
       const newThread: ChatThread = {
         id: generateId(),
@@ -234,6 +265,9 @@ export function useChatThreads(isPremium = false) {
         createdAt: now,
         updatedAt: now,
         isPinned: false,
+        articleUrl: metadata?.articleUrl,
+        articleTitle: metadata?.articleTitle,
+        articleDomain: metadata?.articleDomain,
         messages: [],
       };
 

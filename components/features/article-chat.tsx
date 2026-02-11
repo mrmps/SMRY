@@ -92,6 +92,10 @@ interface ArticleChatProps {
   onMicroAdClick?: () => void;
   // Ref for input container (used for mobile keyboard scrolling)
   inputContainerRef?: React.RefObject<HTMLDivElement | null>;
+  // Thread indicator - shows which history thread is loaded
+  activeThreadTitle?: string;
+  // Mobile keyboard state - used to adapt layout when keyboard is open
+  isKeyboardOpen?: boolean;
 }
 
 export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
@@ -114,6 +118,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onMicroAdVisible,
   onMicroAdClick,
   inputContainerRef,
+  activeThreadTitle,
+  isKeyboardOpen = false,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -364,16 +370,24 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           )}
         >
         {messages.length === 0 ? (
-          <div className="flex min-h-[200px] h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
-            <div className="flex-1 flex flex-col items-center justify-center text-center mb-6">
-              <div className="relative mb-3">
-                <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
-                <Logo size="lg" className="text-primary/70 relative" />
+          <div className={cn(
+            "flex h-full flex-col px-3 sm:px-4",
+            isKeyboardOpen && isMobile ? "py-2" : "py-4 sm:py-6",
+            !(isMobile && variant === "sidebar") && "min-h-[200px]"
+          )}>
+            {/* Logo/branding - hidden when keyboard is open on mobile to maximize space */}
+            {!(isKeyboardOpen && isMobile) && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center mb-3 sm:mb-6">
+                <div className="relative mb-3">
+                  <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
+                  <Logo size="lg" className="text-primary/70 relative" />
+                </div>
+                <p className="text-[13px] text-muted-foreground/60">
+                  Ask anything about this article
+                </p>
               </div>
-              <p className="text-[13px] text-muted-foreground/60">
-                Ask anything about this article
-              </p>
-            </div>
+            )}
+            {isKeyboardOpen && isMobile && <div className="flex-1" />}
             <ChatSuggestions
               suggestions={DEFAULT_SUGGESTIONS}
               onSuggestionClick={handleSuggestionClick}
@@ -510,10 +524,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
       {/* Input area - Cursor-style clean design */}
       <div className="shrink-0" ref={inputContainerRef}>
-        <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
+        <div className={cn("px-3 pt-1 sm:px-4", isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")}>
           {/* Cursor-style input container with subtle border */}
           <div
-            className="relative rounded-[10px] border border-border/60 bg-background overflow-hidden"
+            className="relative rounded-2xl border border-border/60 bg-background overflow-hidden shadow-sm"
           >
             {/* Slash Commands Menu - inside the container */}
             {isSlashMenuOpen && !isLoading && (
@@ -539,16 +553,42 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
                 disabled={isLimitReached}
                 className="rounded-none border-0 shadow-none bg-transparent"
+                maxHeight={isMobile ? 120 : 240}
                 textareaRef={textareaRef}
               >
                 <PromptInputTextarea
                   placeholder={isLimitReached ? "Daily limit reached" : "Ask anything..."}
-                  className="text-[14px] min-h-[40px]"
+                  className="text-base sm:text-[14px] min-h-[40px]"
                   onKeyDown={handleTextareaKeyDown}
                 />
                 <PromptInputActions className="justify-between px-2 pb-2">
-                  {/* Left side - could add mode/model selector here later */}
-                  <div className="flex items-center gap-1" />
+                  {/* Left side - usage counter on mobile */}
+                  <div className="flex items-center gap-1 text-[10px] font-mono tracking-tight text-muted-foreground/50">
+                    {isMobile && !isPremium && showUsageCounter && usageData && (
+                      <>
+                        <span className={cn(usageData.remaining === 0 ? "text-destructive/60" : "")}>
+                          {usageData.limit - usageData.remaining}/{usageData.limit}
+                        </span>
+                        <Link
+                          href="/pricing"
+                          className={cn(
+                            "font-sans text-[9px] font-medium transition-colors",
+                            usageData.remaining === 0
+                              ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
+                              : "text-primary/70 hover:text-primary hover:underline"
+                          )}
+                        >
+                          Upgrade
+                        </Link>
+                      </>
+                    )}
+                    {isMobile && isPremium && usageData?.model && (
+                      <span className="flex items-center gap-1">
+                        <Zap className="size-2" />
+                        {usageData.model}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Right side - submit button */}
                   <div className="flex items-center">
@@ -601,8 +641,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
       </div>
 
-      {/* Footer - controls + usage counter (always show for sidebar) */}
-      {(variant === "sidebar" || isPremium || showUsageCounter) && (
+      {/* Footer - controls + usage counter (hidden on mobile to save space) */}
+      {!isMobile && (variant === "sidebar" || isPremium || showUsageCounter) && (
         <div
           className={cn(
             "px-3 py-1.5 shrink-0",
@@ -611,6 +651,15 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               : "border-t border-border/50",
           )}
         >
+          {/* Thread indicator - show which history thread is loaded */}
+          {activeThreadTitle && variant === "sidebar" && (
+            <div className="flex items-center gap-1 mb-1">
+              <span className="text-[10px] text-muted-foreground/40 truncate max-w-[200px]" title={activeThreadTitle}>
+                {activeThreadTitle}
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-tight text-muted-foreground/50">
             {/* Controls for sidebar variant */}
             {variant === "sidebar" && (
@@ -676,6 +725,16 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   Upgrade
                 </Link>
               </>
+            )}
+
+            {/* Free user hint - saved history upsell */}
+            {!isPremium && !showUsageCounter && messages.length > 0 && variant === "sidebar" && (
+              <Link
+                href="/pricing"
+                className="ml-auto font-sans text-[9px] text-muted-foreground/40 hover:text-primary/70 transition-colors"
+              >
+                Pro users get saved history
+              </Link>
             )}
           </div>
         </div>

@@ -3,12 +3,16 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { X, Trash } from "lucide-react";
+import { X, Trash, History, Plus, Pin, MessageSquare, Sparkles, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
-import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
+import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
+import Link from "next/link";
+import type { UIMessage } from "ai";
+
+type DrawerView = "chat" | "history";
 
 interface MobileChatDrawerProps {
   open: boolean;
@@ -20,6 +24,197 @@ interface MobileChatDrawerProps {
   onChatAdVisible?: () => void;
   onChatAdClick?: () => void;
   onChatAdDismiss?: () => void;
+  // Thread/history props
+  isPremium?: boolean;
+  threads?: ChatThread[];
+  activeThreadId?: string | null;
+  onSelectThread?: (threadId: string) => void;
+  onNewChat?: () => void;
+  onDeleteThread?: (threadId: string) => void;
+  groupedThreads?: () => { label: string; threads: ChatThread[] }[];
+  onMessagesChange?: (messages: UIMessage[]) => void;
+}
+
+/** Single thread item for mobile history view */
+function MobileThreadItem({
+  thread,
+  isActive,
+  onSelect,
+  onDelete,
+  onTogglePin,
+}: {
+  thread: ChatThread;
+  isActive: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+  onTogglePin?: () => void;
+}) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showActions, setShowActions] = useState(false);
+
+  const handleTouchStart = useCallback(() => {
+    longPressTimer.current = setTimeout(() => {
+      try { navigator.vibrate?.(10); } catch {}
+      setShowActions(true);
+    }, 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+  }, []);
+
+  const displayTitle = thread.articleTitle || thread.title;
+  const preview = thread.messages.length > 0
+    ? thread.messages[0].content.slice(0, 80)
+    : "";
+
+  return (
+    <>
+      <button
+        onClick={onSelect}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onContextMenu={(e) => e.preventDefault()}
+        className={cn(
+          "flex w-full rounded-xl px-3 py-2.5 text-left transition-colors",
+          isActive ? "bg-accent" : "active:bg-accent/50"
+        )}
+      >
+        <div className="flex-1 min-w-0">
+          {/* Row 1: title + time */}
+          <div className="flex items-center gap-1">
+            {thread.isPinned && (
+              <Pin className="size-2.5 text-primary shrink-0" />
+            )}
+            <span className="flex-1 truncate text-[14px] font-medium text-foreground">
+              {displayTitle}
+            </span>
+            <span className="text-[11px] text-muted-foreground/50 shrink-0 tabular-nums">
+              {formatRelativeTime(thread.updatedAt)}
+            </span>
+          </div>
+          {/* Row 2: preview */}
+          {preview && (
+            <p className="truncate text-[12px] text-muted-foreground/60 mt-0.5">
+              {preview}
+            </p>
+          )}
+          {/* Row 3: domain */}
+          {thread.articleDomain && (
+            <p className="truncate text-[11px] text-muted-foreground/30 mt-0.5">
+              {thread.articleDomain}
+            </p>
+          )}
+        </div>
+      </button>
+
+      {/* Long-press action sheet overlay */}
+      {showActions && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center"
+          onClick={() => setShowActions(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-background rounded-t-2xl pb-[env(safe-area-inset-bottom,8px)] animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
+            </div>
+            <div className="px-4 py-2">
+              <p className="text-sm font-medium text-foreground truncate">{displayTitle}</p>
+            </div>
+            <div className="px-2 pb-2 space-y-0.5">
+              {onTogglePin && (
+                <button
+                  onClick={() => { onTogglePin(); setShowActions(false); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <Pin className="size-4" />
+                  {thread.isPinned ? "Unpin" : "Pin"}
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => { onDelete(); setShowActions(false); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash className="size-4" />
+                  Delete
+                </button>
+              )}
+              <button
+                onClick={() => setShowActions(false)}
+                className="flex items-center justify-center w-full px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors mt-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Premium gate shown in history view for free users */
+function MobilePremiumGate() {
+  const features = [
+    { icon: Smartphone, text: "Synced across all your devices" },
+    { icon: MessageSquare, text: "Resume any conversation later" },
+    { icon: Sparkles, text: "Unlimited AI conversations" },
+  ];
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center px-5">
+      {/* Card container */}
+      <div className="w-full max-w-sm rounded-2xl border border-border/60 bg-accent/30 p-6 text-center">
+        {/* Heading */}
+        <h3
+          className="text-base font-semibold text-foreground mb-1.5"
+          style={{ textWrap: "balance" }}
+        >
+          Don&apos;t lose this conversation
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-[260px] mx-auto">
+          Your chats vanish when you leave. Keep them forever with Pro.
+        </p>
+
+        {/* Feature list */}
+        <div className="space-y-3 mb-6 text-left max-w-[260px] mx-auto">
+          {features.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Icon className="size-3 text-primary" />
+              </div>
+              <span className="text-[13px] text-foreground/80">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <Link
+          href="/pricing"
+          className="flex items-center justify-center w-full h-11 rounded-xl text-sm font-semibold bg-primary text-primary-foreground active:bg-primary/90 transition-colors shadow-sm"
+        >
+          Start free trial
+        </Link>
+        <p className="text-[11px] text-muted-foreground/60 mt-2.5">
+          7 days free · Cancel anytime
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function MobileChatDrawer({
@@ -30,14 +225,23 @@ export function MobileChatDrawer({
   chatAd,
   onChatAdVisible,
   onChatAdClick,
-  onChatAdDismiss,
+  onChatAdDismiss: _onChatAdDismiss,
+  isPremium = false,
+  threads: _threads = [],
+  activeThreadId,
+  onSelectThread,
+  onNewChat,
+  onDeleteThread,
+  groupedThreads,
+  onMessagesChange,
 }: MobileChatDrawerProps) {
   const chatRef = useRef<ArticleChatHandle>(null);
   const drawerContentRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
-  const { isOpen: isKeyboardOpen, viewportHeight } = useMobileKeyboard();
+  const { isOpen: isKeyboardOpen, viewportHeight, offsetTop } = useMobileKeyboard();
   const wasKeyboardOpenRef = useRef(false);
+  const [activeView, setActiveView] = useState<DrawerView>("chat");
 
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
     "chat-language",
@@ -50,7 +254,19 @@ export function MobileChatDrawer({
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
+    // Reset to chat view on close
+    setTimeout(() => setActiveView("chat"), 300);
   }, [onOpenChange]);
+
+  const handleSelectThread = useCallback((threadId: string) => {
+    onSelectThread?.(threadId);
+    setActiveView("chat");
+  }, [onSelectThread]);
+
+  const handleNewChat = useCallback(() => {
+    onNewChat?.();
+    setActiveView("chat");
+  }, [onNewChat]);
 
   useEffect(() => {
     if (isKeyboardOpen && inputContainerRef.current && drawerContentRef.current) {
@@ -62,7 +278,7 @@ export function MobileChatDrawer({
             inline: "nearest",
           });
         }
-      }, 200);
+      }, 350);
       return () => clearTimeout(timer);
     }
   }, [isKeyboardOpen]);
@@ -77,7 +293,7 @@ export function MobileChatDrawer({
         if (messagesContainer) {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
-        const messagesEnd = messagesContainer?.querySelector('[data-messages-end]') || 
+        const messagesEnd = messagesContainer?.querySelector('[data-messages-end]') ||
                             messagesContainer?.lastElementChild;
         if (messagesEnd) {
           messagesEnd.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -87,15 +303,13 @@ export function MobileChatDrawer({
     }
   }, [isKeyboardOpen, hasMessages]);
 
-  const getDrawerHeight = () => {
-    if (isKeyboardOpen && viewportHeight > 0) {
-      const minHeight = typeof window !== "undefined" ? window.innerHeight * 0.5 : 400;
-      return `${Math.max(viewportHeight, minHeight)}px`;
-    }
-    return "85vh";
-  };
+  // When keyboard is open, position drawer to fill the visual viewport exactly.
+  // On iOS, the layout viewport doesn't resize with keyboard — the keyboard overlays content.
+  // Using `top: offsetTop` aligns the drawer with the visible area above the keyboard.
+  // On Android, the viewport resizes so offsetTop=0 and this still works.
+  const keyboardActive = isKeyboardOpen && viewportHeight > 0;
 
-  const drawerHeight = getDrawerHeight();
+  const groups = groupedThreads?.() ?? [];
 
   return (
     <DrawerPrimitive.Root
@@ -103,6 +317,7 @@ export function MobileChatDrawer({
       onOpenChange={onOpenChange}
       shouldScaleBackground={false}
       modal={true}
+      repositionInputs={false}
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
@@ -113,90 +328,170 @@ export function MobileChatDrawer({
         <DrawerPrimitive.Content
           ref={drawerContentRef}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50",
+            "fixed inset-x-0 z-50",
+            !keyboardActive && "bottom-0",
             "rounded-t-[20px]",
             "bg-background",
             "flex flex-col",
             "outline-none",
             "shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.12)]",
             "dark:shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.35)]",
-            "transition-all duration-200 ease-out",
-            "pb-[env(safe-area-inset-bottom,0px)]"
+            !keyboardActive && "pb-[env(safe-area-inset-bottom,0px)]"
           )}
-          style={{
-            height: drawerHeight,
-            maxHeight: drawerHeight,
-            minHeight: isKeyboardOpen ? "50vh" : undefined,
-          }}
+          style={
+            keyboardActive
+              ? { top: `${offsetTop}px`, height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }
+              : { height: "85vh", maxHeight: "85vh" }
+          }
         >
-          {/* Drag handle area - subtle */}
-          <div className="flex justify-center pt-3 pb-1 shrink-0">
+          {/* Drag handle area - collapses when keyboard is open to save space */}
+          <div className={cn("flex justify-center shrink-0", isKeyboardOpen ? "pt-1.5 pb-0.5" : "pt-3 pb-1")}>
             <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
           </div>
 
-          {/* Header - Cursor-style clean minimal design */}
-          <div className="flex items-center justify-between px-4 py-2 shrink-0 bg-muted/20 border-b border-border/30">
-            {/* Left: Title */}
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-foreground">
-                Chat
-              </span>
-            </div>
-
-            {/* Right: Controls */}
-            <div className="flex items-center gap-1">
-              {/* Clear messages - only show when there are messages */}
-              {hasMessages && (
+          {/* Header with tabs + actions */}
+          <div className="shrink-0 bg-muted/20 border-b border-border/30">
+            <div className="flex items-center justify-between px-3 py-1.5">
+              {/* Tab switcher */}
+              <div className="flex items-center bg-muted/60 rounded-lg p-0.5">
                 <button
                   type="button"
-                  onClick={handleClearMessages}
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                  aria-label="Clear chat"
+                  onClick={() => setActiveView("chat")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                    activeView === "chat"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <Trash className="size-3" />
+                  Chat
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setActiveView("history")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                    activeView === "history"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <History className="size-3" />
+                  History
+                </button>
+              </div>
 
-              {/* Close button */}
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                aria-label="Close chat"
-              >
-                <X className="size-4" />
-              </button>
+              {/* Right actions */}
+              <div className="flex items-center gap-1">
+                {activeView === "chat" && hasMessages && (
+                  <button
+                    type="button"
+                    onClick={handleClearMessages}
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    aria-label="Clear chat"
+                  >
+                    <Trash className="size-3" />
+                  </button>
+                )}
+                {activeView === "history" && isPremium && (
+                  <button
+                    type="button"
+                    onClick={handleNewChat}
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    aria-label="New chat"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Ad inside drawer - subtle placement */}
-          {chatAd && (
-            <div className="px-4 py-2 shrink-0 bg-muted/10 border-b border-border/20">
-              <GravityAd
-                ad={chatAd}
-                variant="compact"
-                onVisible={onChatAdVisible ?? (() => {})}
-                onClick={onChatAdClick}
-                onDismiss={onChatAdDismiss}
-              />
+          {/* View container with slide transitions */}
+          <div className="flex-1 min-h-0 overflow-hidden relative">
+            {/* Chat view */}
+            <div
+              className={cn(
+                "absolute inset-0 transition-transform duration-250 ease-out",
+                activeView === "chat" ? "translate-x-0" : "-translate-x-full"
+              )}
+            >
+              <div className="h-full mx-auto max-w-lg">
+                <ArticleChat
+                  ref={chatRef}
+                  articleContent={articleContent}
+                  articleTitle={articleTitle}
+                  isOpen={true}
+                  onOpenChange={onOpenChange}
+                  variant="sidebar"
+                  hideHeader
+                  language={preferredLanguage}
+                  onLanguageChange={setPreferredLanguage}
+                  onHasMessagesChange={setHasMessages}
+                  inputContainerRef={inputContainerRef}
+                  onMessagesChange={onMessagesChange}
+                  isKeyboardOpen={isKeyboardOpen}
+                  ad={chatAd}
+                  onAdVisible={onChatAdVisible}
+                  onAdClick={onChatAdClick}
+                />
+              </div>
             </div>
-          )}
 
-          {/* Chat content */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <ArticleChat
-              ref={chatRef}
-              articleContent={articleContent}
-              articleTitle={articleTitle}
-              isOpen={true}
-              onOpenChange={onOpenChange}
-              variant="sidebar"
-              hideHeader
-              language={preferredLanguage}
-              onLanguageChange={setPreferredLanguage}
-              onHasMessagesChange={setHasMessages}
-              inputContainerRef={inputContainerRef}
-            />
+            {/* History view */}
+            <div
+              className={cn(
+                "absolute inset-0 transition-transform duration-250 ease-out",
+                activeView === "history" ? "translate-x-0" : "translate-x-full"
+              )}
+            >
+              {isPremium ? (
+                <div className="h-full overflow-y-auto">
+                  {groups.length > 0 ? (
+                    <div className="px-2 py-2">
+                      {groups.map((group) => (
+                        <div key={group.label} className="mb-2">
+                          <div className="px-3 py-2">
+                            <span className="text-xs font-medium text-primary/70">{group.label}</span>
+                          </div>
+                          <div className="space-y-0.5">
+                            {group.threads.map((thread) => (
+                              <MobileThreadItem
+                                key={thread.id}
+                                thread={thread}
+                                isActive={activeThreadId === thread.id}
+                                onSelect={() => handleSelectThread(thread.id)}
+                                onDelete={onDeleteThread ? () => onDeleteThread(thread.id) : undefined}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                      <History className="size-8 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground/60">
+                        No chat history yet
+                      </p>
+                      <p className="text-xs text-muted-foreground/40 mt-1">
+                        Start a conversation to see it here
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <MobilePremiumGate />
+              )}
+            </div>
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
