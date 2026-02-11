@@ -160,8 +160,10 @@ export async function broadcastArticleSignal(article: {
   ip?: string;
   userAgent?: string;
 }): Promise<void> {
+  const isPerUser = !!(article.userId || article.sessionId);
+  let client: Client | null = null;
   try {
-    const client = await createSignalClient({
+    client = await createSignalClient({
       userId: article.userId,
       sessionId: article.sessionId,
       locale: article.locale,
@@ -191,14 +193,22 @@ export async function broadcastArticleSignal(article: {
     logger.info({ url: article.url, result: JSON.stringify(result).slice(0, 200) }, "Article signal broadcasted");
 
     // Close per-user clients to avoid resource leaks
-    if (article.userId || article.sessionId) {
+    if (isPerUser) {
       await client.close().catch(() => {});
     }
   } catch (error) {
     logger.warn({ error: String(error) }, "Failed to broadcast article signal");
-    signalClient = null;
-    signalClientReady = false;
-    signalLastFailure = Date.now();
+    // Only reset global state if this was the shared (non-per-user) client.
+    // Per-user failures should NOT trigger a 60s cooldown for all users.
+    if (!isPerUser) {
+      signalClient = null;
+      signalClientReady = false;
+      signalLastFailure = Date.now();
+    }
+    // Close per-user client on error to avoid resource leaks
+    if (isPerUser && client) {
+      await client.close().catch(() => {});
+    }
   }
 }
 

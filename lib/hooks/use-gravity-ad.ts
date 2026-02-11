@@ -338,7 +338,7 @@ export function useGravityAd({
     // For ZeroClick ads, also track via ZeroClick's manual impression API
     // (POST https://mcp.zeroclick.ai/api/v1/offers/t)
     if (ad.ad_provider === "zeroclick" && ad.impUrl) {
-      const match = ad.impUrl.match(/^zeroclick:\/\/offer\/(.+)$/);
+      const match = ad.impUrl.match(/^zeroclick:\/\/offer\/([a-zA-Z0-9_-]+)$/);
       if (match) {
         fetch("https://mcp.zeroclick.ai/api/v1/offers/t", {
           method: "POST",
