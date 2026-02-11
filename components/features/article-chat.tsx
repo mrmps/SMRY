@@ -81,6 +81,7 @@ interface ArticleChatProps {
   onHasMessagesChange?: (hasMessages: boolean) => void;
   isPremium?: boolean;
   onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
+  initialMessages?: import("ai").UIMessage[];
   // Header ad (compact variant)
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
@@ -110,6 +111,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onHasMessagesChange,
   isPremium: isPremiumProp = false,
   onMessagesChange,
+  initialMessages: initialMessagesProp,
   ad,
   onAdVisible,
   onAdClick,
@@ -122,8 +124,12 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   isKeyboardOpen = false,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  // Track whether user has manually scrolled away from the bottom
+  const isUserScrolledUpRef = useRef(false);
+  const rafIdRef = useRef<number>(0);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const isPremium = usageData?.isPremium ?? false;
@@ -156,6 +162,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     language: preferredLanguage,
     isPremium: isPremiumProp,
     onUsageUpdate: setUsageData,
+    initialMessages: initialMessagesProp,
   });
 
   const [justSubmitted, setJustSubmitted] = useState(false);
@@ -226,29 +233,76 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     onHasMessagesChange?.(messages.length > 0);
   }, [messages.length, onHasMessagesChange]);
 
+  // Ref for callback to avoid effect re-firing when callback reference changes
+  const onMessagesChangeRef = useRef(onMessagesChange);
+  useEffect(() => {
+    onMessagesChangeRef.current = onMessagesChange;
+  }, [onMessagesChange]);
+
   // Notify parent when messages change (for thread syncing)
   useEffect(() => {
     if (messages.length > 0) {
-      onMessagesChange?.(messages);
+      onMessagesChangeRef.current?.(messages);
     }
-  }, [messages, onMessagesChange]);
+  }, [messages]);
 
-  // Get the last message text for scroll dependency
-  const lastMessageText = messages.length > 0
-    ? getMessageText(messages[messages.length - 1])
-    : "";
+  // Scroll helper: instantly snap to bottom (no animation = no jitter)
+  const scrollToBottom = useCallback((smooth = false) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (smooth) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
 
-  // Auto-scroll to bottom when messages change or during streaming
+  // Track user scroll: if they scroll up, pause auto-scroll
   useEffect(() => {
-    const delay = justSubmitted ? 450 : 150;
-    const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      if (justSubmitted) {
-        setJustSubmitted(false);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // Consider "at bottom" if within 80px of the end
+      isUserScrolledUpRef.current = scrollHeight - scrollTop - clientHeight > 80;
+    };
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // During streaming: use rAF to stick to bottom without competing animations
+  useEffect(() => {
+    if (!isLoading || isUserScrolledUpRef.current) return;
+    const tick = () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
       }
-    }, delay);
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+    rafIdRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafIdRef.current);
+  }, [isLoading]);
+
+  // When user sends a message: smooth-scroll after a short delay (keyboard close on mobile)
+  useEffect(() => {
+    if (!justSubmitted) return;
+    const timer = setTimeout(() => {
+      isUserScrolledUpRef.current = false;
+      scrollToBottom(true);
+      setJustSubmitted(false);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [messages, lastMessageText, isLoading, justSubmitted]);
+  }, [justSubmitted, scrollToBottom]);
+
+  // When new messages arrive (non-streaming), scroll to bottom once
+  const prevMessageCountRef = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current && !isUserScrolledUpRef.current) {
+      scrollToBottom(true);
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages.length, scrollToBottom]);
 
   // Auto-focus textarea when chat opens
   useEffect(() => {
@@ -364,6 +418,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {/* Messages - Mobile-first conversation container */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         <div
+          ref={scrollContainerRef}
           className={cn(
             "h-full overflow-y-auto",
             variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",

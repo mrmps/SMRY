@@ -64,6 +64,7 @@
     "embla-carousel-react": "^8.6.0",
     "geist": "^1.2.2",
     "harden-react-markdown": "^1.1.7",
+    "idb": "^8.0.3",
     "inboundemail": "^0.20.0",
     "katex": "^0.16.25",
     "linkedom": "^0.18.12",

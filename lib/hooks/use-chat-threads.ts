@@ -4,10 +4,27 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api/config";
+import {
+  getAllThreads as idbGetAll,
+  putThread as idbPutThread,
+  putThreads as idbPutThreads,
+  deleteThread as idbDeleteThread,
+  clearAllThreads as idbClearAll,
+  searchThreads as idbSearchThreads,
+  migrateFromLocalStorage,
+} from "@/lib/storage/thread-db";
 
-const THREADS_KEY = "smry-chat-threads";
-const STORAGE_EVENT_NAME = "chat-threads-update";
+export { normalizeThreadMessages } from "@/lib/storage/thread-db";
+
 const DEBOUNCE_MS = 1000;
+const BROADCAST_CHANNEL = "smry-threads";
+const DEFAULT_PAGE_SIZE = 20;
+
+export interface ThreadMessage {
+  id: string;
+  role: "user" | "assistant";
+  parts: Array<{ type: "text"; text: string }>;
+}
 
 export interface ChatThread {
   id: string;
@@ -18,10 +35,7 @@ export interface ChatThread {
   articleUrl?: string;
   articleTitle?: string;
   articleDomain?: string;
-  messages: Array<{
-    role: "user" | "assistant";
-    content: string;
-  }>;
+  messages: ThreadMessage[];
 }
 
 export interface ChatThreadMetadata {
@@ -52,209 +66,325 @@ export function formatRelativeTime(date: string | Date): string {
   return `${diffMonth}mo`;
 }
 
-interface StorageEventDetail {
-  key: string;
-  value: ChatThread[];
-}
-
 let idCounter = 0;
 function generateId(): string {
   idCounter++;
   return `${Date.now()}-${idCounter}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
+// --- Server API helpers ---
+
+interface ThreadListResponse {
+  threads: any[];
+  nextCursor: string | null;
+}
+
+async function fetchThreadList(
+  token: string,
+  limit: number,
+  cursor?: string | null
+): Promise<ThreadListResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+
+  const res = await fetch(getApiUrl(`/api/chat-threads?${params}`), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return { threads: [], nextCursor: null };
+  return res.json();
+}
+
+async function createThreadOnServer(
+  token: string,
+  thread: ChatThread
+): Promise<boolean> {
+  const res = await fetch(getApiUrl("/api/chat-threads"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ thread }),
+  });
+  return res.ok;
+}
+
+async function patchThreadOnServer(
+  token: string,
+  threadId: string,
+  thread: ChatThread
+): Promise<boolean> {
+  const res = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ thread }),
+  });
+  return res.ok;
+}
+
+async function deleteThreadOnServer(
+  token: string,
+  threadId: string
+): Promise<boolean> {
+  const res = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.ok;
+}
+
 /**
- * Hook to manage chat threads with localStorage + server sync for premium users
+ * Hook to manage chat threads with IndexedDB (offline-first) + server sync for premium users.
  */
-export function useChatThreads(isPremium = false) {
+export function useChatThreads(isPremium = false, articleUrl?: string) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
+  // Pagination state
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const { getToken, isSignedIn } = useAuth();
   const hasSyncedRef = useRef(false);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const threadsRef = useRef(threads);
+  threadsRef.current = threads;
 
-  // --- Server sync (premium only) ---
+  // Debounce tracking per thread
+  const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingPatches = useRef<Set<string>>(new Set());
 
-  const { data: serverThreads, isFetched: serverFetchComplete } = useQuery({
+  // BroadcastChannel for cross-tab sync
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    try {
+      channelRef.current = new BroadcastChannel(BROADCAST_CHANNEL);
+      channelRef.current.onmessage = async () => {
+        // Another tab updated threads — refresh from IDB
+        const fresh = await idbGetAll();
+        setThreads(fresh);
+      };
+    } catch {
+      // BroadcastChannel not supported (e.g., some older browsers)
+    }
+    return () => {
+      channelRef.current?.close();
+    };
+  }, []);
+
+  const notifyOtherTabs = useCallback(() => {
+    try {
+      channelRef.current?.postMessage("updated");
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  // --- Initialization: IDB → state, then background server sync ---
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      // Step 1: Migrate from localStorage (one-time)
+      await migrateFromLocalStorage();
+
+      // Step 2: Load from IDB → instant UI
+      const local = await idbGetAll();
+      if (!cancelled) {
+        if (isPremium) {
+          setThreads(local);
+        } else {
+          setThreads([]);
+        }
+        setIsLoaded(true);
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPremium]);
+
+  // --- Server sync (premium only): fetch first page, merge into IDB ---
+
+  const { data: serverData, isFetched: serverFetchComplete } = useQuery({
     queryKey: ["chat-threads"],
-    queryFn: async (): Promise<ChatThread[]> => {
+    queryFn: async (): Promise<ThreadListResponse> => {
       const token = await getToken();
-      if (!token) return [];
-
-      const response = await fetch(getApiUrl("/api/chat-threads"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) return [];
-
-      const data = await response.json();
-      return data.threads || [];
+      if (!token) return { threads: [], nextCursor: null };
+      return fetchThreadList(token, DEFAULT_PAGE_SIZE);
     },
     enabled: !!isSignedIn && isPremium,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async (threadsToSave: ChatThread[]) => {
+  // Merge server response into IDB + state
+  useEffect(() => {
+    if (!isSignedIn || !isPremium || !serverFetchComplete || hasSyncedRef.current) return;
+    if (!serverData) return;
+
+    hasSyncedRef.current = true;
+
+    const timer = setTimeout(async () => {
+      const serverThreads = serverData.threads || [];
+      setCursor(serverData.nextCursor);
+      setHasMore(!!serverData.nextCursor);
+
+      if (serverThreads.length > 0) {
+        // Merge: server wins on updatedAt conflicts
+        const localThreads = await idbGetAll();
+        const localMap = new Map(localThreads.map((t) => [t.id, t]));
+
+        // Upsert server threads (metadata only — fetch full on demand)
+        // Server list response has no messages, so keep local messages if available
+        const merged: ChatThread[] = [];
+        const serverIds = new Set<string>();
+
+        for (const st of serverThreads) {
+          serverIds.add(st.id);
+          const local = localMap.get(st.id);
+          if (local) {
+            // Server has newer or equal data — merge metadata, keep local messages
+            const serverTime = new Date(st.updatedAt).getTime();
+            const localTime = new Date(local.updatedAt).getTime();
+            if (serverTime >= localTime) {
+              merged.push({ ...local, ...st, messages: local.messages });
+            } else {
+              merged.push(local);
+            }
+            localMap.delete(st.id);
+          } else {
+            // New from server — no messages in list view, will fetch on demand
+            merged.push({ ...st, messages: st.messages || [] });
+          }
+        }
+
+        // Add remaining local threads that aren't on the server's first page
+        for (const [, local] of localMap) {
+          merged.push(local);
+        }
+
+        // Sort by updatedAt descending
+        merged.sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+
+        await idbPutThreads(merged);
+        setThreads(merged);
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [serverData, serverFetchComplete, isSignedIn, isPremium]);
+
+  // Reset sync flag when premium/auth changes
+  useEffect(() => {
+    hasSyncedRef.current = false;
+  }, [isSignedIn, isPremium]);
+
+  // --- Per-thread PATCH mutation (debounced) ---
+
+  const patchMutation = useMutation({
+    mutationFn: async ({ threadId, thread }: { threadId: string; thread: ChatThread }) => {
       const token = await getToken();
       if (!token) return false;
-
-      const response = await fetch(getApiUrl("/api/chat-threads"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ threads: threadsToSave }),
-      });
-
-      return response.ok;
+      return patchThreadOnServer(token, threadId, thread);
     },
   });
+
+  const patchMutateRef = useRef(patchMutation.mutate);
+  patchMutateRef.current = patchMutation.mutate;
+
+  const createMutation = useMutation({
+    mutationFn: async (thread: ChatThread) => {
+      const token = await getToken();
+      if (!token) return false;
+      return createThreadOnServer(token, thread);
+    },
+  });
+
+  const createMutateRef = useRef(createMutation.mutate);
+  createMutateRef.current = createMutation.mutate;
 
   const deleteMutation = useMutation({
     mutationFn: async (threadId: string) => {
       const token = await getToken();
       if (!token) return false;
-
-      const response = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      return response.ok;
+      return deleteThreadOnServer(token, threadId);
     },
   });
 
-  // Sync server threads to local state on first fetch
-  // Wrapped in setTimeout to avoid synchronous setState in effect (lint rule)
-  useEffect(() => {
-    if (!isSignedIn || !isPremium || !serverFetchComplete || hasSyncedRef.current) return;
+  const deleteMutateRef = useRef(deleteMutation.mutate);
+  deleteMutateRef.current = deleteMutation.mutate;
 
-    hasSyncedRef.current = true;
+  // Debounced PATCH for a specific thread
+  const debouncedPatch = useCallback(
+    (threadId: string, thread: ChatThread) => {
+      if (!isSignedIn || !isPremium) return;
 
-    const timer = setTimeout(() => {
-      if (serverThreads && serverThreads.length > 0) {
-        setThreads(serverThreads);
-        try {
-          window.localStorage.setItem(THREADS_KEY, JSON.stringify(serverThreads));
-        } catch {
-          // ignore
-        }
+      const existing = debounceTimers.current.get(threadId);
+      if (existing) clearTimeout(existing);
+
+      pendingPatches.current.add(threadId);
+
+      debounceTimers.current.set(
+        threadId,
+        setTimeout(() => {
+          debounceTimers.current.delete(threadId);
+          pendingPatches.current.delete(threadId);
+          patchMutateRef.current({ threadId, thread });
+        }, DEBOUNCE_MS)
+      );
+    },
+    [isSignedIn, isPremium]
+  );
+
+  // Flush all pending patches immediately
+  const flushToServer = useCallback(() => {
+    if (!isSignedIn || !isPremium) return;
+
+    for (const [threadId, timer] of debounceTimers.current) {
+      clearTimeout(timer);
+      debounceTimers.current.delete(threadId);
+      pendingPatches.current.delete(threadId);
+      const thread = threadsRef.current.find((t) => t.id === threadId);
+      if (thread) {
+        patchMutateRef.current({ threadId, thread });
       }
-      setIsLoaded(true);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [serverThreads, serverFetchComplete, isSignedIn, isPremium]);
-
-  // Reset sync flag when premium status changes
-  useEffect(() => {
-    hasSyncedRef.current = false;
+    }
   }, [isSignedIn, isPremium]);
 
-  // Cleanup debounce timer on unmount
+  // Safety net: flush on beforeunload and visibilitychange
   useEffect(() => {
+    if (!isSignedIn || !isPremium) return;
+
+    const handleBeforeUnload = () => flushToServer();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushToServer();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isSignedIn, isPremium, flushToServer]);
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    const timers = debounceTimers.current;
+    return () => {
+      for (const timer of timers.values()) {
+        clearTimeout(timer);
       }
     };
   }, []);
 
-  // Read initial value from localStorage (premium only, before server sync)
-  useEffect(() => {
-    if (!isPremium) {
-      const t = setTimeout(() => {
-        setThreads([]);
-        setIsLoaded(true);
-      }, 0);
-      return () => clearTimeout(t);
-    }
-
-    const timer = setTimeout(() => {
-      try {
-        const item = window.localStorage.getItem(THREADS_KEY);
-        if (item) {
-          const parsed = JSON.parse(item) as ChatThread[];
-          // Deduplicate by ID (keep first occurrence)
-          const seen = new Set<string>();
-          const deduped = parsed.filter((thread) => {
-            if (seen.has(thread.id)) return false;
-            seen.add(thread.id);
-            return true;
-          });
-          // Save deduped list if there were duplicates
-          if (deduped.length !== parsed.length) {
-            window.localStorage.setItem(THREADS_KEY, JSON.stringify(deduped));
-          }
-          setThreads(deduped);
-        }
-      } catch (error) {
-        console.warn("Error reading threads from localStorage:", error);
-      }
-      // Only mark loaded if server sync isn't going to override
-      if (!isSignedIn || !isPremium) {
-        setIsLoaded(true);
-      }
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [isPremium, isSignedIn]);
-
-  // Listen for changes from other tabs
-  useEffect(() => {
-    const handleStorageChange = (event: Event) => {
-      const customEvent = event as CustomEvent<StorageEventDetail>;
-      if (customEvent.detail.key === THREADS_KEY) {
-        setThreads(customEvent.detail.value);
-      }
-    };
-
-    window.addEventListener(STORAGE_EVENT_NAME, handleStorageChange);
-
-    const handleNativeStorage = (event: StorageEvent) => {
-      if (event.key === THREADS_KEY && event.newValue) {
-        try {
-          setThreads(JSON.parse(event.newValue));
-        } catch (error) {
-          console.warn("Error parsing threads from storage event:", error);
-        }
-      }
-    };
-    window.addEventListener("storage", handleNativeStorage);
-
-    return () => {
-      window.removeEventListener(STORAGE_EVENT_NAME, handleStorageChange);
-      window.removeEventListener("storage", handleNativeStorage);
-    };
-  }, []);
-
-  const saveThreads = useCallback((newThreads: ChatThread[]) => {
-    if (!isPremium) return;
-
-    // Always save to localStorage immediately
-    try {
-      window.localStorage.setItem(THREADS_KEY, JSON.stringify(newThreads));
-      const event = new CustomEvent<StorageEventDetail>(STORAGE_EVENT_NAME, {
-        detail: { key: THREADS_KEY, value: newThreads },
-      });
-      window.dispatchEvent(event);
-    } catch (error) {
-      console.warn("Error saving threads to localStorage:", error);
-    }
-
-    // Debounced save to server for premium users
-    if (isSignedIn && isPremium) {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      debounceTimerRef.current = setTimeout(() => {
-        saveMutation.mutate(newThreads);
-      }, DEBOUNCE_MS);
-    }
-  }, [isPremium, isSignedIn, saveMutation]);
+  // --- Thread operations ---
 
   const createThread = useCallback(
     (title?: string, metadata?: ChatThreadMetadata): ChatThread => {
@@ -271,69 +401,93 @@ export function useChatThreads(isPremium = false) {
         messages: [],
       };
 
-      setThreads((prev) => {
-        const updated = [newThread, ...prev];
-        saveThreads(updated);
-        return updated;
-      });
-
+      const updated = [newThread, ...threadsRef.current];
+      setThreads(updated);
       setActiveThreadId(newThread.id);
+
+      // Write to IDB
+      idbPutThread(newThread);
+      notifyOtherTabs();
+
+      // Immediate server create (not debounced)
+      if (isSignedIn && isPremium) {
+        createMutateRef.current(newThread);
+      }
+
       return newThread;
     },
-    [saveThreads]
+    [isSignedIn, isPremium, notifyOtherTabs]
   );
 
   const updateThread = useCallback(
     (id: string, updates: Partial<Omit<ChatThread, "id" | "createdAt">>) => {
-      setThreads((prev) => {
-        const updated = prev.map((thread) =>
-          thread.id === id
-            ? { ...thread, ...updates, updatedAt: new Date().toISOString() }
-            : thread
-        );
-        saveThreads(updated);
-        return updated;
-      });
+      const updated = threadsRef.current.map((thread) =>
+        thread.id === id
+          ? { ...thread, ...updates, updatedAt: new Date().toISOString() }
+          : thread
+      );
+      setThreads(updated);
+
+      // Write to IDB
+      const updatedThread = updated.find((t) => t.id === id);
+      if (updatedThread) {
+        idbPutThread(updatedThread);
+        notifyOtherTabs();
+        // Debounced PATCH to server
+        debouncedPatch(id, updatedThread);
+      }
     },
-    [saveThreads]
+    [debouncedPatch, notifyOtherTabs]
   );
 
   const deleteThread = useCallback(
     (id: string) => {
-      setThreads((prev) => {
-        const updated = prev.filter((thread) => thread.id !== id);
-        saveThreads(updated);
-        return updated;
-      });
+      const updated = threadsRef.current.filter((thread) => thread.id !== id);
+      setThreads(updated);
 
-      // Also delete on server for premium users
+      // Remove from IDB
+      idbDeleteThread(id);
+      notifyOtherTabs();
+
+      // Cancel any pending debounced patch for this thread
+      const timer = debounceTimers.current.get(id);
+      if (timer) {
+        clearTimeout(timer);
+        debounceTimers.current.delete(id);
+        pendingPatches.current.delete(id);
+      }
+
+      // Immediate server delete
       if (isSignedIn && isPremium) {
-        deleteMutation.mutate(id);
+        deleteMutateRef.current(id);
       }
 
       if (activeThreadId === id) {
         setActiveThreadId(null);
       }
     },
-    [saveThreads, activeThreadId, isSignedIn, isPremium, deleteMutation]
+    [activeThreadId, isSignedIn, isPremium, notifyOtherTabs]
   );
 
   const togglePin = useCallback(
     (id: string) => {
-      setThreads((prev) => {
-        const updated = prev.map((thread) =>
-          thread.id === id ? { ...thread, isPinned: !thread.isPinned } : thread
-        );
-        // Sort: pinned first, then by updatedAt
-        updated.sort((a, b) => {
-          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        });
-        saveThreads(updated);
-        return updated;
+      const updated = threadsRef.current.map((thread) =>
+        thread.id === id ? { ...thread, isPinned: !thread.isPinned } : thread
+      );
+      updated.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       });
+      setThreads(updated);
+
+      const toggledThread = updated.find((t) => t.id === id);
+      if (toggledThread) {
+        idbPutThread(toggledThread);
+        notifyOtherTabs();
+        debouncedPatch(id, toggledThread);
+      }
     },
-    [saveThreads]
+    [debouncedPatch, notifyOtherTabs]
   );
 
   const renameThread = useCallback(
@@ -346,10 +500,56 @@ export function useChatThreads(isPremium = false) {
   const clearAllThreads = useCallback(() => {
     setThreads([]);
     setActiveThreadId(null);
-    saveThreads([]);
-  }, [saveThreads]);
+    idbClearAll();
+    notifyOtherTabs();
+  }, [notifyOtherTabs]);
 
-  // Group threads by date
+  // --- Pagination: loadMore ---
+
+  const loadMore = useCallback(async () => {
+    if (!isSignedIn || !isPremium || !cursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const data = await fetchThreadList(token, DEFAULT_PAGE_SIZE, cursor);
+      const newThreads = data.threads || [];
+      setCursor(data.nextCursor);
+      setHasMore(!!data.nextCursor);
+
+      if (newThreads.length > 0) {
+        // Merge with existing — avoid duplicates
+        const existingIds = new Set(threadsRef.current.map((t) => t.id));
+        const fresh = newThreads
+          .filter((t: any) => !existingIds.has(t.id))
+          .map((t: any) => ({ ...t, messages: t.messages || [] }));
+
+        if (fresh.length > 0) {
+          const merged = [...threadsRef.current, ...fresh];
+          setThreads(merged);
+          await idbPutThreads(fresh);
+        }
+      }
+    } catch (error) {
+      console.warn("[use-chat-threads] loadMore failed:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isSignedIn, isPremium, cursor, isLoadingMore, getToken]);
+
+  // --- Search: delegates to IDB ---
+
+  const searchThreadsFn = useCallback(
+    async (query: string): Promise<ChatThread[]> => {
+      return idbSearchThreads(query);
+    },
+    []
+  );
+
+  // --- Group threads by date ---
+
   const groupedThreads = useCallback(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -366,7 +566,14 @@ export function useChatThreads(isPremium = false) {
       { label: "Older", threads: [] },
     ];
 
-    threads.forEach((thread) => {
+    const seen = new Set<string>();
+    const dedupedThreads = threads.filter((thread) => {
+      if (seen.has(thread.id)) return false;
+      seen.add(thread.id);
+      return true;
+    });
+
+    dedupedThreads.forEach((thread) => {
       if (thread.isPinned) {
         groups[0].threads.push(thread);
         return;
@@ -389,6 +596,20 @@ export function useChatThreads(isPremium = false) {
     return groups.filter((g) => g.threads.length > 0);
   }, [threads]);
 
+  // Auto-load thread matching articleUrl
+  useEffect(() => {
+    if (!articleUrl || !isLoaded || activeThreadId) return;
+    const match = threads.find((t) => t.articleUrl === articleUrl);
+    if (match) {
+      setActiveThreadId(match.id);
+    }
+  }, [articleUrl, isLoaded, activeThreadId, threads]);
+
+  const findThreadByArticleUrl = useCallback(
+    (url: string) => threads.find((t) => t.articleUrl === url) || null,
+    [threads]
+  );
+
   const activeThread = threads.find((t) => t.id === activeThreadId) || null;
 
   return {
@@ -404,5 +625,13 @@ export function useChatThreads(isPremium = false) {
     togglePin,
     renameThread,
     clearAllThreads,
+    flushToServer,
+    findThreadByArticleUrl,
+    // New: pagination
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    // New: search
+    searchThreads: searchThreadsFn,
   };
 }

@@ -3,12 +3,12 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { X, Trash, History, Plus, Pin, MessageSquare, Sparkles, Smartphone } from "lucide-react";
+import { X, Trash, History, Plus, Pin, Trash2, MessageSquare, Sparkles, Smartphone, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
-import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
+import { type ChatThread } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import type { UIMessage } from "ai";
 
@@ -26,6 +26,7 @@ interface MobileChatDrawerProps {
   onChatAdDismiss?: () => void;
   // Thread/history props
   isPremium?: boolean;
+  initialMessages?: UIMessage[];
   threads?: ChatThread[];
   activeThreadId?: string | null;
   onSelectThread?: (threadId: string) => void;
@@ -33,6 +34,12 @@ interface MobileChatDrawerProps {
   onDeleteThread?: (threadId: string) => void;
   groupedThreads?: () => { label: string; threads: ChatThread[] }[];
   onMessagesChange?: (messages: UIMessage[]) => void;
+  // Pagination
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  // Search
+  searchThreads?: (query: string) => Promise<ChatThread[]>;
 }
 
 /** Single thread item for mobile history view */
@@ -72,10 +79,7 @@ function MobileThreadItem({
     };
   }, []);
 
-  const displayTitle = thread.articleTitle || thread.title;
-  const preview = thread.messages.length > 0
-    ? thread.messages[0].content.slice(0, 80)
-    : "";
+  const displayTitle = thread.title || thread.articleTitle || "New Chat";
 
   return (
     <>
@@ -86,35 +90,23 @@ function MobileThreadItem({
         onTouchCancel={handleTouchEnd}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          "flex w-full rounded-xl px-3 py-2.5 text-left transition-colors",
-          isActive ? "bg-accent" : "active:bg-accent/50"
+          "flex w-full rounded-lg px-3 py-2.5 text-left transition-colors",
+          isActive ? "bg-accent/70" : "active:bg-accent/50"
         )}
+        style={{ touchAction: "manipulation" }}
       >
         <div className="flex-1 min-w-0">
-          {/* Row 1: title + time */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {thread.isPinned && (
-              <Pin className="size-2.5 text-primary shrink-0" />
+              <Pin className="size-2.5 text-primary shrink-0" aria-hidden="true" />
             )}
-            <span className="flex-1 truncate text-[14px] font-medium text-foreground">
+            <span className={cn(
+              "flex-1 truncate text-[14px]",
+              isActive ? "text-foreground font-medium" : "text-foreground/80"
+            )}>
               {displayTitle}
             </span>
-            <span className="text-[11px] text-muted-foreground/50 shrink-0 tabular-nums">
-              {formatRelativeTime(thread.updatedAt)}
-            </span>
           </div>
-          {/* Row 2: preview */}
-          {preview && (
-            <p className="truncate text-[12px] text-muted-foreground/60 mt-0.5">
-              {preview}
-            </p>
-          )}
-          {/* Row 3: domain */}
-          {thread.articleDomain && (
-            <p className="truncate text-[11px] text-muted-foreground/30 mt-0.5">
-              {thread.articleDomain}
-            </p>
-          )}
         </div>
       </button>
 
@@ -123,9 +115,13 @@ function MobileThreadItem({
         <div
           className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center"
           onClick={() => setShowActions(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Thread actions"
         >
           <div
             className="w-full max-w-sm bg-background rounded-t-2xl pb-[env(safe-area-inset-bottom,8px)] animate-in slide-in-from-bottom duration-200"
+            style={{ overscrollBehavior: "contain" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1">
@@ -139,8 +135,9 @@ function MobileThreadItem({
                 <button
                   onClick={() => { onTogglePin(); setShowActions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm text-foreground hover:bg-muted/50 transition-colors"
+                  style={{ touchAction: "manipulation" }}
                 >
-                  <Pin className="size-4" />
+                  <Pin className="size-4" aria-hidden="true" />
                   {thread.isPinned ? "Unpin" : "Pin"}
                 </button>
               )}
@@ -148,14 +145,16 @@ function MobileThreadItem({
                 <button
                   onClick={() => { onDelete(); setShowActions(false); }}
                   className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                  style={{ touchAction: "manipulation" }}
                 >
-                  <Trash className="size-4" />
+                  <Trash2 className="size-4" aria-hidden="true" />
                   Delete
                 </button>
               )}
               <button
                 onClick={() => setShowActions(false)}
                 className="flex items-center justify-center w-full px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors mt-1"
+                style={{ touchAction: "manipulation" }}
               >
                 Cancel
               </button>
@@ -177,9 +176,7 @@ function MobilePremiumGate() {
 
   return (
     <div className="h-full flex flex-col items-center justify-center px-5">
-      {/* Card container */}
       <div className="w-full max-w-sm rounded-2xl border border-border/60 bg-accent/30 p-6 text-center">
-        {/* Heading */}
         <h3
           className="text-base font-semibold text-foreground mb-1.5"
           style={{ textWrap: "balance" }}
@@ -190,19 +187,17 @@ function MobilePremiumGate() {
           Your chats vanish when you leave. Keep them forever with Pro.
         </p>
 
-        {/* Feature list */}
         <div className="space-y-3 mb-6 text-left max-w-[260px] mx-auto">
           {features.map(({ icon: Icon, text }) => (
             <div key={text} className="flex items-center gap-3">
               <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                <Icon className="size-3 text-primary" />
+                <Icon className="size-3 text-primary" aria-hidden="true" />
               </div>
               <span className="text-[13px] text-foreground/80">{text}</span>
             </div>
           ))}
         </div>
 
-        {/* CTA */}
         <Link
           href="/pricing"
           className="flex items-center justify-center w-full h-11 rounded-xl text-sm font-semibold bg-primary text-primary-foreground active:bg-primary/90 transition-colors shadow-sm"
@@ -210,7 +205,7 @@ function MobilePremiumGate() {
           Start free trial
         </Link>
         <p className="text-[11px] text-muted-foreground/60 mt-2.5">
-          7 days free · Cancel anytime
+          7 days free &middot; Cancel anytime
         </p>
       </div>
     </div>
@@ -227,13 +222,18 @@ export function MobileChatDrawer({
   onChatAdClick,
   onChatAdDismiss: _onChatAdDismiss,
   isPremium = false,
-  threads: _threads = [],
+  initialMessages: initialMessagesProp,
+  threads = [],
   activeThreadId,
   onSelectThread,
   onNewChat,
   onDeleteThread,
   groupedThreads,
   onMessagesChange,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+  searchThreads,
 }: MobileChatDrawerProps) {
   const chatRef = useRef<ArticleChatHandle>(null);
   const drawerContentRef = useRef<HTMLDivElement>(null);
@@ -242,6 +242,11 @@ export function MobileChatDrawer({
   const { isOpen: isKeyboardOpen, viewportHeight, offsetTop } = useMobileKeyboard();
   const wasKeyboardOpenRef = useRef(false);
   const [activeView, setActiveView] = useState<DrawerView>("chat");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Async search state
+  const [searchResults, setSearchResults] = useState<ChatThread[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
     "chat-language",
@@ -260,11 +265,19 @@ export function MobileChatDrawer({
 
   const handleSelectThread = useCallback((threadId: string) => {
     onSelectThread?.(threadId);
+    // Thread messages are already UIMessage-compatible (ThreadMessage format)
+    const thread = threads.find((t) => t.id === threadId);
+    if (thread && thread.messages.length > 0) {
+      chatRef.current?.setMessages(thread.messages as UIMessage[]);
+    } else {
+      chatRef.current?.clearMessages();
+    }
     setActiveView("chat");
-  }, [onSelectThread]);
+  }, [onSelectThread, threads]);
 
   const handleNewChat = useCallback(() => {
     onNewChat?.();
+    chatRef.current?.clearMessages();
     setActiveView("chat");
   }, [onNewChat]);
 
@@ -303,13 +316,64 @@ export function MobileChatDrawer({
     }
   }, [isKeyboardOpen, hasMessages]);
 
-  // When keyboard is open, position drawer to fill the visual viewport exactly.
-  // On iOS, the layout viewport doesn't resize with keyboard — the keyboard overlays content.
-  // Using `top: offsetTop` aligns the drawer with the visible area above the keyboard.
-  // On Android, the viewport resizes so offsetTop=0 and this still works.
   const keyboardActive = isKeyboardOpen && viewportHeight > 0;
 
   const groups = groupedThreads?.() ?? [];
+
+  // Debounced async search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    if (!searchThreads) {
+      // Fallback to synchronous filtering
+      const lower = searchQuery.toLowerCase();
+      const filtered = groups
+        .flatMap((g) => g.threads)
+        .filter(
+          (t) =>
+            t.title.toLowerCase().includes(lower) ||
+            t.articleTitle?.toLowerCase().includes(lower) ||
+            t.articleDomain?.toLowerCase().includes(lower)
+        );
+      setSearchResults(filtered);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchThreads(searchQuery);
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchThreads]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore) onLoadMore?.();
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, onLoadMore]);
+
+  const isSearchActive = searchQuery.trim().length > 0;
 
   return (
     <DrawerPrimitive.Root
@@ -344,7 +408,7 @@ export function MobileChatDrawer({
               : { height: "85vh", maxHeight: "85vh" }
           }
         >
-          {/* Drag handle area - collapses when keyboard is open to save space */}
+          {/* Drag handle area */}
           <div className={cn("flex justify-center shrink-0", isKeyboardOpen ? "pt-1.5 pb-0.5" : "pt-3 pb-1")}>
             <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
           </div>
@@ -363,6 +427,7 @@ export function MobileChatDrawer({
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
+                  style={{ touchAction: "manipulation" }}
                 >
                   Chat
                 </button>
@@ -375,8 +440,9 @@ export function MobileChatDrawer({
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
+                  style={{ touchAction: "manipulation" }}
                 >
-                  <History className="size-3" />
+                  <History className="size-3" aria-hidden="true" />
                   History
                 </button>
               </div>
@@ -389,8 +455,9 @@ export function MobileChatDrawer({
                     onClick={handleClearMessages}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                     aria-label="Clear chat"
+                    style={{ touchAction: "manipulation" }}
                   >
-                    <Trash className="size-3" />
+                    <Trash className="size-3" aria-hidden="true" />
                   </button>
                 )}
                 {activeView === "history" && isPremium && (
@@ -399,8 +466,9 @@ export function MobileChatDrawer({
                     onClick={handleNewChat}
                     className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                     aria-label="New chat"
+                    style={{ touchAction: "manipulation" }}
                   >
-                    <Plus className="size-4" />
+                    <Plus className="size-4" aria-hidden="true" />
                   </button>
                 )}
                 <button
@@ -408,8 +476,9 @@ export function MobileChatDrawer({
                   onClick={handleClose}
                   className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                   aria-label="Close"
+                  style={{ touchAction: "manipulation" }}
                 >
-                  <X className="size-4" />
+                  <X className="size-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -436,6 +505,7 @@ export function MobileChatDrawer({
                   language={preferredLanguage}
                   onLanguageChange={setPreferredLanguage}
                   onHasMessagesChange={setHasMessages}
+                  initialMessages={initialMessagesProp}
                   inputContainerRef={inputContainerRef}
                   onMessagesChange={onMessagesChange}
                   isKeyboardOpen={isKeyboardOpen}
@@ -454,39 +524,92 @@ export function MobileChatDrawer({
               )}
             >
               {isPremium ? (
-                <div className="h-full overflow-y-auto">
-                  {groups.length > 0 ? (
-                    <div className="px-2 py-2">
-                      {groups.map((group) => (
-                        <div key={group.label} className="mb-2">
-                          <div className="px-3 py-2">
-                            <span className="text-xs font-medium text-primary/70">{group.label}</span>
-                          </div>
-                          <div className="space-y-0.5">
-                            {group.threads.map((thread) => (
-                              <MobileThreadItem
-                                key={thread.id}
-                                thread={thread}
-                                isActive={activeThreadId === thread.id}
-                                onSelect={() => handleSelectThread(thread.id)}
-                                onDelete={onDeleteThread ? () => onDeleteThread(thread.id) : undefined}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div className="h-full flex flex-col" style={{ overscrollBehavior: "contain" }}>
+                  {/* Search */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
+                    <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                    <input
+                      type="search"
+                      name="mobile-thread-search"
+                      aria-label="Search threads"
+                      placeholder="Search messages..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/40 focus-visible:outline-none"
+                    />
+                    {isSearching && (
+                      <Loader2 className="size-3.5 animate-spin text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                  {isSearchActive ? (
+                    // Search results (flat list)
+                    searchResults && searchResults.length > 0 ? (
+                      <div className="px-2 py-2 space-y-px">
+                        {searchResults.map((thread) => (
+                          <MobileThreadItem
+                            key={thread.id}
+                            thread={thread}
+                            isActive={activeThreadId === thread.id}
+                            onSelect={() => handleSelectThread(thread.id)}
+                            onDelete={onDeleteThread ? () => onDeleteThread(thread.id) : undefined}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                        <p className="text-sm text-muted-foreground/60">
+                          {isSearching ? "Searching..." : "No matching threads"}
+                        </p>
+                      </div>
+                    )
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-                      <History className="size-8 text-muted-foreground/30 mb-3" />
-                      <p className="text-sm text-muted-foreground/60">
-                        No chat history yet
-                      </p>
-                      <p className="text-xs text-muted-foreground/40 mt-1">
-                        Start a conversation to see it here
-                      </p>
-                    </div>
+                    // Normal grouped view
+                    <>
+                      {groups.length > 0 ? (
+                        <div className="px-2 py-2">
+                          {groups.map((group) => (
+                            <div key={group.label} className="mb-1">
+                              <div className="px-3 pt-3 pb-1">
+                                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">{group.label}</span>
+                              </div>
+                              <div className="space-y-px">
+                                {group.threads.map((thread) => (
+                                  <MobileThreadItem
+                                    key={thread.id}
+                                    thread={thread}
+                                    isActive={activeThreadId === thread.id}
+                                    onSelect={() => handleSelectThread(thread.id)}
+                                    onDelete={onDeleteThread ? () => onDeleteThread(thread.id) : undefined}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                          <History className="size-8 text-muted-foreground/30 mb-3" aria-hidden="true" />
+                          <p className="text-sm text-muted-foreground/60">
+                            No chat history yet
+                          </p>
+                          <p className="text-xs text-muted-foreground/40 mt-1">
+                            Start a conversation to see it here
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Infinite scroll sentinel */}
+                      {hasMore && (
+                        <div ref={sentinelRef} className="h-8 flex items-center justify-center">
+                          {isLoadingMore && (
+                            <Loader2 className="size-4 animate-spin text-muted-foreground/40" aria-hidden="true" />
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
+                  </div>
                 </div>
               ) : (
                 <MobilePremiumGate />

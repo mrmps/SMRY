@@ -53,6 +53,14 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     setActiveThreadId,
     createThread,
     updateThread,
+    deleteThread,
+    togglePin,
+    renameThread,
+    groupedThreads,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    searchThreads,
   } = useChatThreads();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -103,14 +111,10 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   // Get active thread for initial messages
   const activeThread = threads.find((t) => t.id === activeThreadId);
 
-  // Convert stored messages to UIMessage format
+  // Thread messages are already UIMessage-compatible (ThreadMessage format)
   const getInitialMessages = useCallback((): UIMessage[] => {
     if (!activeThread) return [];
-    return activeThread.messages.map((m, i) => ({
-      id: `${activeThread.id}-${i}`,
-      role: m.role as "user" | "assistant",
-      parts: [{ type: "text" as const, text: m.content }],
-    }));
+    return activeThread.messages as UIMessage[];
   }, [activeThread]);
 
   const {
@@ -126,21 +130,24 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     experimental_throttle: 50,
   });
 
-  // Sync messages back when they change
+  // Sync messages back when they change (save as ThreadMessage[] directly)
   useEffect(() => {
     if (activeThreadId && messages.length > 0) {
-      const simplifiedMessages = messages.map((m) => ({
+      const threadMessages = messages.map((m) => ({
+        id: m.id,
         role: m.role as "user" | "assistant",
-        content: getMessageText(m),
+        parts: m.parts
+          .filter((p) => isTextUIPart(p))
+          .map((p) => ({ type: "text" as const, text: (p as { text: string }).text })),
       }));
 
       // Generate title from first user message if needed
-      const firstUserMessage = messages.find((m) => m.role === "user");
+      const firstUserMessage = threadMessages.find((m) => m.role === "user");
       const currentThread = threads.find((t) => t.id === activeThreadId);
 
       if (currentThread) {
         const updates: Parameters<typeof updateThread>[1] = {
-          messages: simplifiedMessages,
+          messages: threadMessages,
         };
 
         // Auto-generate title from first message if still default
@@ -148,7 +155,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
           currentThread.title === "New Chat" &&
           firstUserMessage
         ) {
-          const text = getMessageText(firstUserMessage);
+          const text = firstUserMessage.parts[0]?.text || "";
           if (text) {
             updates.title = text.slice(0, 50) + (text.length > 50 ? "..." : "");
           }
@@ -175,18 +182,13 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     router.push(`/chat/${newThread.id}`);
   }, [createThread, setMessages, router]);
 
-  // Handle thread selection
+  // Handle thread selection — thread messages are already UIMessage-compatible
   const handleSelectThread = useCallback(
     (id: string) => {
       setActiveThreadId(id);
       const thread = threads.find((t) => t.id === id);
       if (thread) {
-        const msgs: UIMessage[] = thread.messages.map((m, i) => ({
-          id: `${id}-${i}`,
-          role: m.role as "user" | "assistant",
-          parts: [{ type: "text" as const, text: m.content }],
-        }));
-        setMessages(msgs);
+        setMessages(thread.messages as UIMessage[]);
       }
       setInput("");
       router.push(`/chat/${id}`);
@@ -251,6 +253,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         onNewChat={handleNewChat}
         onSelectThread={handleSelectThread}
         activeThreadId={activeThreadId}
+        threads={threads}
+        onDeleteThread={deleteThread}
+        onTogglePin={togglePin}
+        onRenameThread={renameThread}
+        groupedThreads={groupedThreads}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMore}
+        searchThreads={searchThreads}
       >
         <div className="flex flex-col h-full">
           {/* Header */}

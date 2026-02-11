@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useAuth } from "@clerk/nextjs";
@@ -39,7 +39,7 @@ import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
 import { ChatSidebar } from "@/components/features/chat-sidebar";
-import { useChatThreads } from "@/lib/hooks/use-chat-threads";
+import { useChatThreads, type ThreadMessage } from "@/lib/hooks/use-chat-threads";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -354,6 +354,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyPanelRef = useRef<ImperativePanelHandle>(null);
   const articleChatRef = useRef<ArticleChatHandle>(null);
+  const creatingThreadRef = useRef(false);
   const {
     threads,
     activeThread: _activeThread,
@@ -365,7 +366,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     togglePin,
     renameThread,
     groupedThreads,
-  } = useChatThreads(isPremium);
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    searchThreads,
+  } = useChatThreads(isPremium, url);
+
+  // Compute initialMessages from active thread (ThreadMessage is UIMessage-compatible)
+  const threadInitialMessages: UIMessage[] = useMemo(() => {
+    if (!_activeThread?.messages.length) return [];
+    return _activeThread.messages as UIMessage[];
+  }, [_activeThread]);
 
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
@@ -485,42 +496,50 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Handle thread selection from history sidebar
   const handleSelectThread = React.useCallback((threadId: string) => {
     setActiveThreadId(threadId);
-    // Load the selected thread's messages into the chat
+    // Thread messages are already UIMessage-compatible (ThreadMessage format)
     const thread = threads.find((t) => t.id === threadId);
     if (thread && thread.messages.length > 0) {
-      // Convert thread messages to UIMessage format
-      const uiMessages: UIMessage[] = thread.messages.map((msg, i) => ({
-        id: `${threadId}-${i}`,
-        role: msg.role,
-        parts: [{ type: "text" as const, text: msg.content }],
-      }));
-      articleChatRef.current?.setMessages(uiMessages);
+      articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
     } else {
       articleChatRef.current?.clearMessages();
     }
-  }, [setActiveThreadId, threads]);
+    // Ensure the chat sidebar is open on desktop so the user sees the loaded thread
+    if (!sidebarOpen) {
+      handleSidebarChange(true);
+    }
+  }, [setActiveThreadId, threads, sidebarOpen, handleSidebarChange]);
+
+  // Use ref for currentThreadId so the callback always reads the latest value
+  // without needing it as a dependency (which would cause recreations and re-fires)
+  const currentThreadIdRef = useRef(currentThreadId);
+  useEffect(() => {
+    currentThreadIdRef.current = currentThreadId;
+    // Reset the guard so a new thread can be created after switching/deleting
+    creatingThreadRef.current = false;
+  }, [currentThreadId]);
 
   // Sync chat messages back to the active thread (premium only)
   const handleMessagesChange = useCallback((messages: UIMessage[]) => {
     if (!isPremium) return;
-    // Convert UIMessage to simple format for thread storage
-    const threadMessages = messages.map((msg) => ({
+    // Save as ThreadMessage[] directly (no lossy {role,content} conversion)
+    const threadMessages: ThreadMessage[] = messages.map((msg) => ({
+      id: msg.id,
       role: msg.role as "user" | "assistant",
-      content: msg.parts
-        .filter((part) => isTextUIPart(part))
-        .map((part) => part.text)
-        .join(""),
+      parts: msg.parts.filter((p) => isTextUIPart(p)).map((p) => ({ type: "text" as const, text: (p as { text: string }).text })),
     }));
     // Auto-title from first user message
     const firstUserMsg = threadMessages.find((m) => m.role === "user");
-    const title = firstUserMsg
-      ? firstUserMsg.content.slice(0, 50) + (firstUserMsg.content.length > 50 ? "..." : "")
+    const firstUserText = firstUserMsg?.parts[0]?.text || "";
+    const title = firstUserText
+      ? firstUserText.slice(0, 50) + (firstUserText.length > 50 ? "..." : "")
       : "New Chat";
 
-    if (currentThreadId) {
-      updateThread(currentThreadId, { messages: threadMessages, title });
-    } else {
-      // Auto-create thread on first message with article metadata
+    const threadId = currentThreadIdRef.current;
+    if (threadId) {
+      updateThread(threadId, { messages: threadMessages, title });
+    } else if (!creatingThreadRef.current) {
+      // Guard against duplicate creates during rapid message updates
+      creatingThreadRef.current = true;
       let articleDomain: string | undefined;
       try {
         articleDomain = new URL(url).hostname.replace("www.", "");
@@ -531,7 +550,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         articleDomain,
       });
     }
-  }, [isPremium, currentThreadId, updateThread, createThread, url, articleTitle]);
+  }, [isPremium, updateThread, createThread, url, articleTitle]);
 
   // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
   // Keyboard shortcut: Cmd+Shift+H (Mac) or Ctrl+Shift+H (Windows/Linux) to toggle history sidebar
@@ -803,6 +822,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     onTogglePin={togglePin}
                     onRenameThread={renameThread}
                     groupedThreads={groupedThreads}
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={loadMore}
+                    searchThreads={searchThreads}
                   />
                 </ResizablePanel>
 
@@ -881,6 +904,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
                       isPremium={isPremium}
+                      initialMessages={threadInitialMessages}
                       onMessagesChange={isPremium ? handleMessagesChange : undefined}
                       activeThreadTitle={_activeThread?.title}
                       ad={!isPremium ? chatAd : null}
@@ -1013,6 +1037,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onChatAdClick={chatAd ? () => fireClick(chatAd) : undefined}
                 onChatAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
                 isPremium={isPremium}
+                initialMessages={threadInitialMessages}
                 threads={threads}
                 activeThreadId={currentThreadId}
                 onSelectThread={handleSelectThread}
@@ -1020,6 +1045,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onDeleteThread={deleteThread}
                 groupedThreads={groupedThreads}
                 onMessagesChange={isPremium ? handleMessagesChange : undefined}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                searchThreads={searchThreads}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
