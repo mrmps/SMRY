@@ -88,17 +88,26 @@ async function createSignalClient(userContext?: {
   ip?: string;
   userAgent?: string;
 }): Promise<Client | null> {
-  // Cooldown: don't spam reconnection attempts
-  if (Date.now() - signalLastFailure < SIGNAL_RETRY_COOLDOWN_MS) {
-    return null;
-  }
+  // Per-user context = fields that require unique headers per request.
+  // sessionId is excluded because it's always present and doesn't need
+  // a dedicated client — only userId/locale/ip/userAgent matter.
+  const hasUserContext = !!(
+    userContext?.userId ||
+    userContext?.locale ||
+    userContext?.ip ||
+    userContext?.userAgent
+  );
 
-  // Check if user context has any actual values (not just an empty object)
-  const hasUserContext = userContext && Object.values(userContext).some(Boolean);
-
-  // Reuse cached client when no per-user headers are needed
-  if (signalClient && signalClientReady && !hasUserContext) {
-    return signalClient;
+  // Cooldown only applies to the shared client — per-user clients are
+  // ephemeral and shouldn't be blocked by shared client failures.
+  if (!hasUserContext) {
+    if (Date.now() - signalLastFailure < SIGNAL_RETRY_COOLDOWN_MS) {
+      return null;
+    }
+    // Reuse cached shared client if available
+    if (signalClient && signalClientReady) {
+      return signalClient;
+    }
   }
 
   try {
@@ -132,9 +141,12 @@ async function createSignalClient(userContext?: {
     return client;
   } catch (error) {
     logger.warn({ error: String(error) }, "Failed to connect MCP signal client — will retry in 60s");
-    signalClient = null;
-    signalClientReady = false;
-    signalLastFailure = Date.now();
+    // Only set cooldown for shared client failures
+    if (!hasUserContext) {
+      signalClient = null;
+      signalClientReady = false;
+      signalLastFailure = Date.now();
+    }
     return null;
   }
 }
@@ -160,7 +172,8 @@ export async function broadcastArticleSignal(article: {
   ip?: string;
   userAgent?: string;
 }): Promise<void> {
-  const isPerUser = !!(article.userId || article.sessionId);
+  // Match createSignalClient's logic — sessionId excluded (always present)
+  const isPerUser = !!(article.userId || article.locale || article.ip || article.userAgent);
   let client: Client | null = null;
   try {
     client = await createSignalClient({
