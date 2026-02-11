@@ -31,6 +31,9 @@ export const env = createEnv({
     // Gravity Ads
     GRAVITY_API_KEY: z.string().min(1),
 
+    // ZeroClick Ads (fallback provider)
+    ZEROCLICK_API_KEY: z.string().min(1),
+
     // Email (inbound.new)
     INBOUND_API_KEY: z.string().min(1),
     INBOUND_WEBHOOK_TOKEN: z.string().optional(),
