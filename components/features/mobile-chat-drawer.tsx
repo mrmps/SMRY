@@ -151,7 +151,7 @@ function MobilePremiumGate() {
   );
 }
 
-const MOBILE_KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "This Week", "This Month", "Older"]);
+const MOBILE_KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"]);
 
 export function MobileChatDrawer({
   open,

@@ -210,7 +210,7 @@ function ThreadItem({
   );
 }
 
-const KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "This Week", "This Month", "Older"]);
+const KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"]);
 
 function ThreadGroup({
   label,
