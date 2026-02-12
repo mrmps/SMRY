@@ -705,24 +705,9 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     []
   );
 
-  // --- Group threads by date ---
+  // --- Group threads by date (standalone) or by article (article page) ---
 
   const groupedThreads = useCallback(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const groups: { label: string; threads: ChatThread[] }[] = [
-      { label: "Pinned", threads: [] },
-      { label: "Today", threads: [] },
-      { label: "Yesterday", threads: [] },
-      { label: "Last 7 Days", threads: [] },
-      { label: "Last 30 Days", threads: [] },
-      { label: "Older", threads: [] },
-    ];
-
     const seen = new Set<string>();
     const dedupedThreads = threads.filter((thread) => {
       if (seen.has(thread.id)) return false;
@@ -730,12 +715,76 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
       return true;
     });
 
-    dedupedThreads.forEach((thread) => {
-      if (thread.isPinned) {
-        groups[0].threads.push(thread);
-        return;
+    // Pinned threads always come first
+    const pinned = dedupedThreads.filter((t) => t.isPinned);
+    const unpinned = dedupedThreads.filter((t) => !t.isPinned);
+
+    // Article page: group by article
+    if (articleUrl) {
+      const thisArticle: ChatThread[] = [];
+      const otherByArticle = new Map<string, ChatThread[]>();
+
+      for (const thread of unpinned) {
+        if (thread.articleUrl === articleUrl) {
+          thisArticle.push(thread);
+        } else {
+          const key = thread.articleUrl || "__no_article__";
+          const group = otherByArticle.get(key);
+          if (group) {
+            group.push(thread);
+          } else {
+            otherByArticle.set(key, [thread]);
+          }
+        }
       }
 
+      // Sort each group by recency
+      thisArticle.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+      const groups: { label: string; threads: ChatThread[] }[] = [];
+
+      if (pinned.length > 0) {
+        groups.push({ label: "Pinned", threads: pinned });
+      }
+      if (thisArticle.length > 0) {
+        groups.push({ label: "This Article", threads: thisArticle });
+      }
+
+      // Sort other article groups by most recent thread in each group
+      const otherGroups = Array.from(otherByArticle.entries())
+        .map(([url, groupThreads]) => {
+          groupThreads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          // Label: use articleTitle from the most recent thread, fall back to articleDomain
+          const representative = groupThreads[0];
+          const label = representative.articleTitle || representative.articleDomain || "Other";
+          return { label, threads: groupThreads, mostRecent: new Date(groupThreads[0].updatedAt).getTime() };
+        })
+        .sort((a, b) => b.mostRecent - a.mostRecent);
+
+      for (const g of otherGroups) {
+        groups.push({ label: g.label, threads: g.threads });
+      }
+
+      return groups;
+    }
+
+    // Standalone /chat page: date-based grouping
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const groups: { label: string; threads: ChatThread[] }[] = [
+      { label: "Pinned", threads: pinned },
+      { label: "Today", threads: [] },
+      { label: "Yesterday", threads: [] },
+      { label: "Last 7 Days", threads: [] },
+      { label: "Last 30 Days", threads: [] },
+      { label: "Older", threads: [] },
+    ];
+
+    unpinned.forEach((thread) => {
       const date = new Date(thread.updatedAt);
       if (date >= today) {
         groups[1].threads.push(thread);
@@ -751,7 +800,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     });
 
     return groups.filter((g) => g.threads.length > 0);
-  }, [threads]);
+  }, [threads, articleUrl]);
 
   // --- Fetch full thread with messages (for cross-device where IDB is empty) ---
 

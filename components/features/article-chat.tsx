@@ -805,7 +805,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             )}
 
             {/* Free user hint - saved history upsell */}
-            {!isPremium && !showUsageCounter && messages.length > 0 && variant === "sidebar" && (
+            {!isPremiumProp && !showUsageCounter && messages.length > 0 && variant === "sidebar" && (
               <Link
                 href="/pricing"
                 className="ml-auto font-sans text-[9px] text-muted-foreground/40 hover:text-primary/70 transition-colors"

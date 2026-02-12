@@ -228,7 +228,7 @@ function ThreadGroup({
   return (
     <div className="mb-0.5">
       <div className="px-3 pt-3 pb-1">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">{label}</span>
+        <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50">{label}</span>
       </div>
       <div className="px-1.5 space-y-px">
         {threads.map((thread) => (

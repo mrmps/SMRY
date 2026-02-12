@@ -467,7 +467,7 @@ export function MobileChatDrawer({
                           {groups.map((group) => (
                             <div key={group.label} className="mb-1">
                               <div className="px-4 pt-3 pb-1">
-                                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">{group.label}</span>
+                                <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50">{group.label}</span>
                               </div>
                               <div className="px-4 space-y-1">
                                 {group.threads.map((thread) => (
