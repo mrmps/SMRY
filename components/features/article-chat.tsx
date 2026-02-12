@@ -420,7 +420,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         <div
           ref={scrollContainerRef}
           className={cn(
-            "h-full overflow-y-auto",
+            "h-full overflow-y-auto scrollbar-hide",
             variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",
           )}
         >

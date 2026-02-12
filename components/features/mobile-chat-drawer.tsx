@@ -40,129 +40,64 @@ interface MobileChatDrawerProps {
   onLoadMore?: () => void;
   // Search
   searchThreads?: (query: string) => Promise<ChatThread[]>;
+  // Fetch full thread with messages (cross-device)
+  getThreadWithMessages?: (threadId: string) => Promise<ChatThread | null>;
 }
 
-/** Single thread item for mobile history view */
+/** Single thread item for mobile history view — tap to select, trash icon to delete */
 function MobileThreadItem({
   thread,
   isActive,
   onSelect,
   onDelete,
-  onTogglePin,
 }: {
   thread: ChatThread;
   isActive: boolean;
   onSelect: () => void;
   onDelete?: () => void;
-  onTogglePin?: () => void;
 }) {
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showActions, setShowActions] = useState(false);
-
-  const handleTouchStart = useCallback(() => {
-    longPressTimer.current = setTimeout(() => {
-      try { navigator.vibrate?.(10); } catch {}
-      setShowActions(true);
-    }, 500);
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    };
-  }, []);
-
   const displayTitle = thread.title || thread.articleTitle || "New Chat";
 
   return (
-    <>
+    <div
+      className={cn(
+        "group flex items-center rounded-lg px-3 py-2.5 text-left select-none",
+        isActive ? "bg-accent/70" : "bg-background active:bg-accent/50"
+      )}
+    >
       <button
+        type="button"
         onClick={onSelect}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        onContextMenu={(e) => e.preventDefault()}
-        className={cn(
-          "flex w-full rounded-lg px-3 py-2.5 text-left transition-colors",
-          isActive ? "bg-accent/70" : "active:bg-accent/50"
-        )}
+        className="flex-1 min-w-0 text-left"
         style={{ touchAction: "manipulation" }}
       >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            {thread.isPinned && (
-              <Pin className="size-2.5 text-primary shrink-0" aria-hidden="true" />
-            )}
-            <span className={cn(
-              "flex-1 truncate text-[14px]",
-              isActive ? "text-foreground font-medium" : "text-foreground/80"
-            )}>
-              {displayTitle}
-            </span>
-          </div>
+        <div className="flex items-center gap-1.5">
+          {thread.isPinned && (
+            <Pin className="size-2.5 text-primary shrink-0" aria-hidden="true" />
+          )}
+          <span className={cn(
+            "flex-1 truncate text-[14px]",
+            isActive ? "text-foreground font-medium" : "text-foreground/80"
+          )}>
+            {displayTitle}
+          </span>
         </div>
       </button>
-
-      {/* Long-press action sheet overlay */}
-      {showActions && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center"
-          onClick={() => setShowActions(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Thread actions"
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="shrink-0 flex size-7 items-center justify-center rounded-md text-muted-foreground/30 active:text-destructive active:bg-destructive/10 transition-colors ml-1"
+          aria-label={`Delete ${displayTitle}`}
+          style={{ touchAction: "manipulation" }}
         >
-          <div
-            className="w-full max-w-sm bg-background rounded-t-2xl pb-[env(safe-area-inset-bottom,8px)] animate-in slide-in-from-bottom duration-200"
-            style={{ overscrollBehavior: "contain" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
-            </div>
-            <div className="px-4 py-2">
-              <p className="text-sm font-medium text-foreground truncate">{displayTitle}</p>
-            </div>
-            <div className="px-2 pb-2 space-y-0.5">
-              {onTogglePin && (
-                <button
-                  onClick={() => { onTogglePin(); setShowActions(false); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm text-foreground hover:bg-muted/50 transition-colors"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  <Pin className="size-4" aria-hidden="true" />
-                  {thread.isPinned ? "Unpin" : "Pin"}
-                </button>
-              )}
-              {onDelete && (
-                <button
-                  onClick={() => { onDelete(); setShowActions(false); }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                  Delete
-                </button>
-              )}
-              <button
-                onClick={() => setShowActions(false)}
-                className="flex items-center justify-center w-full px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors mt-1"
-                style={{ touchAction: "manipulation" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+          <Trash2 className="size-3.5" aria-hidden="true" />
+        </button>
       )}
-    </>
+    </div>
   );
 }
 
@@ -234,6 +169,7 @@ export function MobileChatDrawer({
   isLoadingMore,
   onLoadMore,
   searchThreads,
+  getThreadWithMessages,
 }: MobileChatDrawerProps) {
   const chatRef = useRef<ArticleChatHandle>(null);
   const drawerContentRef = useRef<HTMLDivElement>(null);
@@ -263,23 +199,41 @@ export function MobileChatDrawer({
     setTimeout(() => setActiveView("chat"), 300);
   }, [onOpenChange]);
 
-  const handleSelectThread = useCallback((threadId: string) => {
+  const handleSelectThread = useCallback(async (threadId: string) => {
     onSelectThread?.(threadId);
-    // Thread messages are already UIMessage-compatible (ThreadMessage format)
-    const thread = threads.find((t) => t.id === threadId);
-    if (thread && thread.messages.length > 0) {
-      chatRef.current?.setMessages(thread.messages as UIMessage[]);
-    } else {
-      chatRef.current?.clearMessages();
-    }
     setActiveView("chat");
-  }, [onSelectThread, threads]);
+
+    // Try local messages first, then fetch from server if empty (cross-device)
+    if (getThreadWithMessages) {
+      const thread = await getThreadWithMessages(threadId);
+      if (thread && thread.messages.length > 0) {
+        chatRef.current?.setMessages(thread.messages as UIMessage[]);
+      } else {
+        chatRef.current?.clearMessages();
+      }
+    } else {
+      const thread = threads.find((t) => t.id === threadId);
+      if (thread && thread.messages.length > 0) {
+        chatRef.current?.setMessages(thread.messages as UIMessage[]);
+      } else {
+        chatRef.current?.clearMessages();
+      }
+    }
+  }, [onSelectThread, threads, getThreadWithMessages]);
 
   const handleNewChat = useCallback(() => {
     onNewChat?.();
     chatRef.current?.clearMessages();
     setActiveView("chat");
   }, [onNewChat]);
+
+  const handleDeleteThread = useCallback((threadId: string) => {
+    onDeleteThread?.(threadId);
+    // Always switch to a fresh chat after delete — user expects a clean slate
+    onNewChat?.();
+    chatRef.current?.clearMessages();
+    setActiveView("chat");
+  }, [onDeleteThread, onNewChat]);
 
   useEffect(() => {
     if (isKeyboardOpen && inputContainerRef.current && drawerContentRef.current) {
@@ -484,15 +438,10 @@ export function MobileChatDrawer({
             </div>
           </div>
 
-          {/* View container with slide transitions */}
-          <div className="flex-1 min-h-0 overflow-hidden relative">
+          {/* View container — both views stay mounted so refs work; hidden via display:none */}
+          <div className="flex-1 min-h-0 overflow-hidden">
             {/* Chat view */}
-            <div
-              className={cn(
-                "absolute inset-0 transition-transform duration-250 ease-out",
-                activeView === "chat" ? "translate-x-0" : "-translate-x-full"
-              )}
-            >
+            <div className={cn("h-full", activeView !== "chat" && "hidden")}>
               <div className="h-full mx-auto max-w-lg">
                 <ArticleChat
                   ref={chatRef}
@@ -517,12 +466,7 @@ export function MobileChatDrawer({
             </div>
 
             {/* History view */}
-            <div
-              className={cn(
-                "absolute inset-0 transition-transform duration-250 ease-out",
-                activeView === "history" ? "translate-x-0" : "translate-x-full"
-              )}
-            >
+            <div className={cn("h-full", activeView !== "history" && "hidden")}>
               {isPremium ? (
                 <div className="h-full flex flex-col" style={{ overscrollBehavior: "contain" }}>
                   {/* Search */}
@@ -541,18 +485,18 @@ export function MobileChatDrawer({
                       <Loader2 className="size-3.5 animate-spin text-muted-foreground/50 shrink-0" aria-hidden="true" />
                     )}
                   </div>
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto scrollbar-hide">
                   {isSearchActive ? (
                     // Search results (flat list)
                     searchResults && searchResults.length > 0 ? (
-                      <div className="px-2 py-2 space-y-px">
+                      <div className="px-4 py-2 space-y-1">
                         {searchResults.map((thread) => (
                           <MobileThreadItem
                             key={thread.id}
                             thread={thread}
                             isActive={activeThreadId === thread.id}
                             onSelect={() => handleSelectThread(thread.id)}
-                            onDelete={onDeleteThread ? () => onDeleteThread(thread.id) : undefined}
+                            onDelete={onDeleteThread ? () => handleDeleteThread(thread.id) : undefined}
                           />
                         ))}
                       </div>
@@ -567,20 +511,20 @@ export function MobileChatDrawer({
                     // Normal grouped view
                     <>
                       {groups.length > 0 ? (
-                        <div className="px-2 py-2">
+                        <div className="py-2">
                           {groups.map((group) => (
                             <div key={group.label} className="mb-1">
-                              <div className="px-3 pt-3 pb-1">
+                              <div className="px-4 pt-3 pb-1">
                                 <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/50">{group.label}</span>
                               </div>
-                              <div className="space-y-px">
+                              <div className="px-4 space-y-1">
                                 {group.threads.map((thread) => (
                                   <MobileThreadItem
                                     key={thread.id}
                                     thread={thread}
                                     isActive={activeThreadId === thread.id}
                                     onSelect={() => handleSelectThread(thread.id)}
-                                    onDelete={onDeleteThread ? () => onDeleteThread(thread.id) : undefined}
+                                    onDelete={onDeleteThread ? () => handleDeleteThread(thread.id) : undefined}
                                   />
                                 ))}
                               </div>

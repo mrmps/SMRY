@@ -79,6 +79,22 @@ interface ThreadListResponse {
   nextCursor: string | null;
 }
 
+async function fetchFullThread(
+  token: string,
+  threadId: string
+): Promise<ChatThread | null> {
+  try {
+    const res = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.thread ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchThreadList(
   token: string,
   limit: number,
@@ -97,37 +113,37 @@ async function fetchThreadList(
 async function createThreadOnServer(
   token: string,
   thread: ChatThread
-): Promise<boolean> {
+): Promise<void> {
   const res = await fetch(getApiUrl("/api/chat-threads"), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ thread }),
   });
-  return res.ok;
+  if (!res.ok) throw new Error(`Create thread failed: ${res.status}`);
 }
 
 async function patchThreadOnServer(
   token: string,
   threadId: string,
   thread: ChatThread
-): Promise<boolean> {
+): Promise<void> {
   const res = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
     method: "PATCH",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ thread }),
   });
-  return res.ok;
+  if (!res.ok) throw new Error(`Patch thread failed: ${res.status}`);
 }
 
 async function deleteThreadOnServer(
   token: string,
   threadId: string
-): Promise<boolean> {
+): Promise<void> {
   const res = await fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
-  return res.ok;
+  if (!res.ok) throw new Error(`Delete thread failed: ${res.status}`);
 }
 
 /**
@@ -144,9 +160,14 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const { getToken, isSignedIn } = useAuth();
-  const hasSyncedRef = useRef(false);
+  const lastServerDataRef = useRef<ThreadListResponse | null>(null);
   const threadsRef = useRef(threads);
   threadsRef.current = threads;
+  const activeThreadIdRef = useRef<string | null>(null);
+  activeThreadIdRef.current = activeThreadId;
+
+  // Cached auth token for synchronous flush on page unload
+  const cachedTokenRef = useRef<string | null>(null);
 
   // Debounce tracking per thread
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -170,6 +191,19 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
       channelRef.current?.close();
     };
   }, []);
+
+  // Keep auth token cached for synchronous beforeunload flush
+  useEffect(() => {
+    if (!isSignedIn) {
+      cachedTokenRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    getToken().then((token) => {
+      if (!cancelled) cachedTokenRef.current = token;
+    });
+    return () => { cancelled = true; };
+  }, [isSignedIn, getToken]);
 
   const notifyOtherTabs = useCallback(() => {
     try {
@@ -218,81 +252,179 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     enabled: !!isSignedIn && isPremium,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
   });
 
   // Merge server response into IDB + state
+  // Guard: React Query structural sharing returns same reference when data is unchanged,
+  // so this effect only runs when the server actually returns different data.
   useEffect(() => {
-    if (!isSignedIn || !isPremium || !serverFetchComplete || hasSyncedRef.current) return;
-    if (!serverData) return;
+    if (!isSignedIn || !isPremium || !serverFetchComplete || !serverData) return;
+    // Same object reference = same data, skip (structural sharing)
+    if (lastServerDataRef.current === serverData) return;
+    lastServerDataRef.current = serverData;
 
-    hasSyncedRef.current = true;
+    let cancelled = false;
 
     const timer = setTimeout(async () => {
       const serverThreads = serverData.threads || [];
       setCursor(serverData.nextCursor);
       setHasMore(!!serverData.nextCursor);
 
-      if (serverThreads.length > 0) {
-        // Merge: server wins on updatedAt conflicts
-        const localThreads = await idbGetAll();
-        const localMap = new Map(localThreads.map((t) => [t.id, t]));
-
-        // Upsert server threads (metadata only — fetch full on demand)
-        // Server list response has no messages, so keep local messages if available
-        const merged: ChatThread[] = [];
-        const serverIds = new Set<string>();
-
-        for (const st of serverThreads) {
-          serverIds.add(st.id);
-          const local = localMap.get(st.id);
-          if (local) {
-            // Server has newer or equal data — merge metadata, keep local messages
-            const serverTime = new Date(st.updatedAt).getTime();
-            const localTime = new Date(local.updatedAt).getTime();
-            if (serverTime >= localTime) {
-              merged.push({ ...local, ...st, messages: local.messages });
-            } else {
-              merged.push(local);
-            }
-            localMap.delete(st.id);
-          } else {
-            // New from server — no messages in list view, will fetch on demand
-            merged.push({ ...st, messages: st.messages || [] });
-          }
+      // If server is empty and returned all pages, all threads were deleted remotely
+      if (serverThreads.length === 0 && !serverData.nextCursor) {
+        if (threadsRef.current.length > 0) {
+          await idbClearAll();
+          if (!cancelled) setThreads([]);
         }
+        return;
+      }
+      if (serverThreads.length === 0) return;
 
-        // Add remaining local threads that aren't on the server's first page
+      // Server returned all threads (no more pages) — we can detect remote deletions
+      const serverIsComplete = !serverData.nextCursor;
+      const serverIdSet = new Set(serverThreads.map((t: any) => t.id));
+
+      // Fast path: compare server with in-memory state to avoid unnecessary IDB I/O
+      const inMemory = threadsRef.current;
+      const inMemoryMap = new Map(inMemory.map((t) => [t.id, t]));
+      let hasChanges = false;
+      for (const st of serverThreads) {
+        const local = inMemoryMap.get(st.id);
+        if (!local || new Date(st.updatedAt).getTime() > new Date(local.updatedAt).getTime()) {
+          hasChanges = true;
+          break;
+        }
+      }
+      // Check if server has threads we don't have locally
+      if (!hasChanges) {
+        for (const st of serverThreads) {
+          if (!inMemoryMap.has(st.id)) { hasChanges = true; break; }
+        }
+      }
+      // Check if local has threads the server doesn't (possible remote deletion)
+      if (!hasChanges && serverIsComplete) {
+        for (const local of inMemory) {
+          if (!serverIdSet.has(local.id)) { hasChanges = true; break; }
+        }
+      }
+      if (!hasChanges) return; // Nothing new — skip IDB entirely
+
+      if (cancelled) return;
+
+      const localThreads = await idbGetAll();
+      if (cancelled) return;
+      const localMap = new Map(localThreads.map((t) => [t.id, t]));
+
+      const merged: ChatThread[] = [];
+      const needsFetch: string[] = [];
+
+      for (const st of serverThreads) {
+        const local = localMap.get(st.id);
+        if (local) {
+          const serverTime = new Date(st.updatedAt).getTime();
+          const localTime = new Date(local.updatedAt).getTime();
+          if (serverTime > localTime) {
+            // Server is newer — merge metadata, keep local messages temporarily, queue full fetch
+            merged.push({ ...local, ...st, messages: local.messages });
+            needsFetch.push(st.id);
+          } else {
+            merged.push(local);
+          }
+          localMap.delete(st.id);
+        } else {
+          merged.push({ ...st, messages: st.messages || [] });
+          needsFetch.push(st.id);
+        }
+      }
+
+      // Keep local-only threads ONLY if server has more pages (thread might be on a later page).
+      // If server returned everything (no nextCursor), local-only threads were deleted remotely — drop them.
+      if (!serverIsComplete) {
         for (const [, local] of localMap) {
           merged.push(local);
         }
+      } else {
+        // Clean up deleted threads from IDB
+        for (const [id] of localMap) {
+          idbDeleteThread(id);
+        }
+      }
 
-        // Sort by updatedAt descending
-        merged.sort(
-          (a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
+      merged.sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
 
-        await idbPutThreads(merged);
-        setThreads(merged);
+      if (cancelled) return;
+      await idbPutThreads(merged);
+      if (cancelled) return;
+      setThreads(merged);
+
+      // Background-fetch full threads for new + stale threads
+      if (needsFetch.length > 0) {
+        const token = await getToken();
+        if (!token || cancelled) return;
+
+        for (let i = 0; i < needsFetch.length; i += 5) {
+          if (cancelled) return;
+          const batch = needsFetch.slice(i, i + 5);
+          const results = await Promise.allSettled(
+            batch.map((id) => fetchFullThread(token, id))
+          );
+          if (cancelled) return;
+
+          const filled: ChatThread[] = [];
+          for (const result of results) {
+            if (result.status === "fulfilled" && result.value) {
+              const full = result.value;
+              filled.push({
+                ...full,
+                messages: (full.messages || []).map((msg: any, idx: number) => {
+                  if (msg.parts && Array.isArray(msg.parts)) {
+                    return { id: msg.id || `srv-${idx}`, role: msg.role, parts: msg.parts };
+                  }
+                  return {
+                    id: msg.id || `srv-${idx}`,
+                    role: msg.role,
+                    parts: [{ type: "text" as const, text: msg.content || "" }],
+                  };
+                }),
+              });
+            }
+          }
+
+          if (filled.length > 0 && !cancelled) {
+            await idbPutThreads(filled);
+            if (cancelled) return;
+            const filledMap = new Map(filled.map((t) => [t.id, t]));
+            setThreads((prev) =>
+              prev.map((t) => filledMap.get(t.id) ?? t)
+            );
+          }
+        }
       }
     }, 0);
 
-    return () => clearTimeout(timer);
-  }, [serverData, serverFetchComplete, isSignedIn, isPremium]);
-
-  // Reset sync flag when premium/auth changes
-  useEffect(() => {
-    hasSyncedRef.current = false;
-  }, [isSignedIn, isPremium]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [serverData, serverFetchComplete, isSignedIn, isPremium, getToken]);
 
   // --- Per-thread PATCH mutation (debounced) ---
 
   const patchMutation = useMutation({
     mutationFn: async ({ threadId, thread }: { threadId: string; thread: ChatThread }) => {
       const token = await getToken();
-      if (!token) return false;
+      if (!token) throw new Error("No auth token");
       return patchThreadOnServer(token, threadId, thread);
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
   const patchMutateRef = useRef(patchMutation.mutate);
@@ -301,9 +433,11 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
   const createMutation = useMutation({
     mutationFn: async (thread: ChatThread) => {
       const token = await getToken();
-      if (!token) return false;
+      if (!token) throw new Error("No auth token");
       return createThreadOnServer(token, thread);
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
   const createMutateRef = useRef(createMutation.mutate);
@@ -312,9 +446,11 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
   const deleteMutation = useMutation({
     mutationFn: async (threadId: string) => {
       const token = await getToken();
-      if (!token) return false;
+      if (!token) throw new Error("No auth token");
       return deleteThreadOnServer(token, threadId);
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
   const deleteMutateRef = useRef(deleteMutation.mutate);
@@ -342,9 +478,12 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     [isSignedIn, isPremium]
   );
 
-  // Flush all pending patches immediately
+  // Flush all pending patches immediately using keepalive fetch (survives page unload)
   const flushToServer = useCallback(() => {
     if (!isSignedIn || !isPremium) return;
+
+    const token = cachedTokenRef.current;
+    if (!token) return;
 
     for (const [threadId, timer] of debounceTimers.current) {
       clearTimeout(timer);
@@ -352,12 +491,22 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
       pendingPatches.current.delete(threadId);
       const thread = threadsRef.current.find((t) => t.id === threadId);
       if (thread) {
-        patchMutateRef.current({ threadId, thread });
+        // Use keepalive: true so the browser keeps the request alive after page destruction
+        try {
+          fetch(getApiUrl(`/api/chat-threads/${threadId}`), {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ thread }),
+            keepalive: true,
+          });
+        } catch {
+          // Best-effort on page unload
+        }
       }
     }
   }, [isSignedIn, isPremium]);
 
-  // Safety net: flush on beforeunload and visibilitychange
+  // Flush pending patches on page hide/close (React Query handles refetch on focus via refetchOnWindowFocus)
   useEffect(() => {
     if (!isSignedIn || !isPremium) return;
 
@@ -387,7 +536,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
   // --- Thread operations ---
 
   const createThread = useCallback(
-    (title?: string, metadata?: ChatThreadMetadata): ChatThread => {
+    (title?: string, metadata?: ChatThreadMetadata, initialMessages?: ThreadMessage[]): ChatThread => {
       const now = new Date().toISOString();
       const newThread: ChatThread = {
         id: generateId(),
@@ -398,7 +547,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
         articleUrl: metadata?.articleUrl,
         articleTitle: metadata?.articleTitle,
         articleDomain: metadata?.articleDomain,
-        messages: [],
+        messages: initialMessages || [],
       };
 
       const updated = [newThread, ...threadsRef.current];
@@ -596,14 +745,89 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     return groups.filter((g) => g.threads.length > 0);
   }, [threads]);
 
-  // Auto-load thread matching articleUrl
+  // --- Fetch full thread with messages (for cross-device where IDB is empty) ---
+
+  const getThreadWithMessages = useCallback(
+    async (threadId: string, forceServer = false): Promise<ChatThread | null> => {
+      // Check if we already have messages locally (skip if forceServer)
+      const local = threadsRef.current.find((t) => t.id === threadId);
+      if (!forceServer && local && local.messages.length > 0) {
+        return local;
+      }
+
+      // Fetch full thread from server
+      if (!isSignedIn || !isPremium) return local ?? null;
+
+      try {
+        const token = await getToken();
+        if (!token) return local ?? null;
+
+        const full = await fetchFullThread(token, threadId);
+        if (!full) return local ?? null;
+
+        // Normalize messages
+        const normalized: ChatThread = {
+          ...full,
+          messages: (full.messages || []).map((msg: any, i: number) => {
+            if (msg.parts && Array.isArray(msg.parts)) {
+              return { id: msg.id || `srv-${i}`, role: msg.role, parts: msg.parts };
+            }
+            return {
+              id: msg.id || `srv-${i}`,
+              role: msg.role,
+              parts: [{ type: "text" as const, text: msg.content || "" }],
+            };
+          }),
+        };
+
+        // Update IDB and state with the full thread
+        await idbPutThread(normalized);
+        setThreads((prev) =>
+          prev.map((t) => (t.id === threadId ? normalized : t))
+        );
+
+        return normalized;
+      } catch (error) {
+        console.warn("[use-chat-threads] getThreadWithMessages failed:", error);
+        return local ?? null;
+      }
+    },
+    [isSignedIn, isPremium, getToken]
+  );
+
+  const getThreadWithMessagesRef = useRef(getThreadWithMessages);
+  getThreadWithMessagesRef.current = getThreadWithMessages;
+
+  // Refresh active thread on visibility change (cross-device sync)
+  useEffect(() => {
+    if (!isSignedIn || !isPremium) return;
+
+    const handleActiveThreadRefresh = () => {
+      if (document.visibilityState === "visible") {
+        const activeId = activeThreadIdRef.current;
+        if (activeId) {
+          getThreadWithMessagesRef.current(activeId, true);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleActiveThreadRefresh);
+    return () => {
+      document.removeEventListener("visibilitychange", handleActiveThreadRefresh);
+    };
+  }, [isSignedIn, isPremium]);
+
+  // Auto-load thread matching articleUrl — fetch messages if empty
   useEffect(() => {
     if (!articleUrl || !isLoaded || activeThreadId) return;
     const match = threads.find((t) => t.articleUrl === articleUrl);
     if (match) {
       setActiveThreadId(match.id);
+      if (match.messages.length === 0 && isSignedIn && isPremium) {
+        getThreadWithMessages(match.id);
+      }
     }
-  }, [articleUrl, isLoaded, activeThreadId, threads]);
+  }, [articleUrl, isLoaded, activeThreadId, threads, isSignedIn, isPremium, getThreadWithMessages]);
 
   const findThreadByArticleUrl = useCallback(
     (url: string) => threads.find((t) => t.articleUrl === url) || null,
@@ -633,5 +857,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     isLoadingMore,
     // New: search
     searchThreads: searchThreadsFn,
+    // New: fetch full thread with messages (cross-device)
+    getThreadWithMessages,
   };
 }

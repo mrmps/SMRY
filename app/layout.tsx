@@ -5,6 +5,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Syne } from "next/font/google";
 import "./globals.css";
+import "streamdown/styles.css";
 
 const syne = Syne({
   subsets: ["latin"],

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Sparkles, Smartphone, Plus, Loader2 } from "lucide-react";
+import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Sparkles, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ChatThread } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
@@ -57,7 +57,6 @@ function ThreadItem({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(thread.title);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,15 +76,8 @@ function ThreadItem({
   };
 
   const handleDelete = useCallback(() => {
-    if (confirmDelete) {
-      onDelete();
-      setConfirmDelete(false);
-    } else {
-      setConfirmDelete(true);
-      // Auto-reset after 3s
-      setTimeout(() => setConfirmDelete(false), 3000);
-    }
-  }, [confirmDelete, onDelete]);
+    onDelete();
+  }, [onDelete]);
 
   const displayTitle = thread.title || thread.articleTitle || "New Chat";
 
@@ -171,15 +163,10 @@ function ThreadItem({
                     e.stopPropagation();
                     handleDelete();
                   }}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors cursor-pointer",
-                    confirmDelete
-                      ? "text-destructive bg-destructive/10 hover:bg-destructive/15"
-                      : "text-foreground/80 hover:bg-accent/50"
-                  )}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-foreground/80 hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <Trash2 className="size-3.5" aria-hidden="true" />
-                  {confirmDelete ? "Confirm delete?" : "Delete"}
+                  Delete
                 </PopoverClose>
                 <PopoverClose
                   onClick={(e: React.MouseEvent) => {
@@ -500,9 +487,13 @@ export function ChatSidebar({
                   />
                 ))
               ) : (
-                <div className="px-4 py-8 text-center">
-                  <p className="text-[13px] text-muted-foreground/40">
+                <div className="flex flex-col items-center justify-center h-full px-6 text-center py-8">
+                  <HistoryIcon className="size-8 text-muted-foreground/30 mb-3" aria-hidden="true" />
+                  <p className="text-sm text-muted-foreground/50">
                     No chat history yet
+                  </p>
+                  <p className="text-xs text-muted-foreground/30 mt-1">
+                    Start a conversation to see it here
                   </p>
                 </div>
               )}

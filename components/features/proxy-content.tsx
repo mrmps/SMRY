@@ -370,6 +370,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     hasMore,
     isLoadingMore,
     searchThreads,
+    getThreadWithMessages,
   } = useChatThreads(isPremium, url);
 
   // Compute initialMessages from active thread (ThreadMessage is UIMessage-compatible)
@@ -493,22 +494,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     setHistoryOpen(false);
   }, [createThread]);
 
-  // Handle thread selection from history sidebar
-  const handleSelectThread = React.useCallback((threadId: string) => {
-    setActiveThreadId(threadId);
-    // Thread messages are already UIMessage-compatible (ThreadMessage format)
-    const thread = threads.find((t) => t.id === threadId);
-    if (thread && thread.messages.length > 0) {
-      articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
-    } else {
-      articleChatRef.current?.clearMessages();
-    }
-    // Ensure the chat sidebar is open on desktop so the user sees the loaded thread
-    if (!sidebarOpen) {
-      handleSidebarChange(true);
-    }
-  }, [setActiveThreadId, threads, sidebarOpen, handleSidebarChange]);
-
   // Use ref for currentThreadId so the callback always reads the latest value
   // without needing it as a dependency (which would cause recreations and re-fires)
   const currentThreadIdRef = useRef(currentThreadId);
@@ -518,9 +503,41 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     creatingThreadRef.current = false;
   }, [currentThreadId]);
 
+  // Guard: skip onMessagesChange echo when loading messages from a thread selection
+  const isLoadingThreadRef = useRef(false);
+
+  // Handle thread selection from history sidebar
+  const handleSelectThread = React.useCallback(async (threadId: string) => {
+    // Update ref synchronously BEFORE setting messages to prevent race condition
+    // (otherwise onMessagesChange fires with the old thread ID and overwrites it)
+    isLoadingThreadRef.current = true;
+    currentThreadIdRef.current = threadId;
+    setActiveThreadId(threadId);
+
+    // Try local messages first, then fetch from server if empty (cross-device)
+    const thread = await getThreadWithMessages(threadId);
+    if (thread && thread.messages.length > 0) {
+      articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
+    } else {
+      articleChatRef.current?.clearMessages();
+    }
+
+    // Allow the echo effect to fire and be skipped before re-enabling saves
+    requestAnimationFrame(() => {
+      isLoadingThreadRef.current = false;
+    });
+
+    // Ensure the chat sidebar is open on desktop so the user sees the loaded thread
+    if (!sidebarOpen) {
+      handleSidebarChange(true);
+    }
+  }, [setActiveThreadId, getThreadWithMessages, sidebarOpen, handleSidebarChange]);
+
   // Sync chat messages back to the active thread (premium only)
   const handleMessagesChange = useCallback((messages: UIMessage[]) => {
     if (!isPremium) return;
+    // Skip echo-save when loading messages from thread selection
+    if (isLoadingThreadRef.current) return;
     // Save as ThreadMessage[] directly (no lossy {role,content} conversion)
     const threadMessages: ThreadMessage[] = messages.map((msg) => ({
       id: msg.id,
@@ -544,11 +561,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       try {
         articleDomain = new URL(url).hostname.replace("www.", "");
       } catch {}
-      createThread(title, {
+      const newThread = createThread(title, {
         articleUrl: url,
         articleTitle: articleTitle,
         articleDomain,
-      });
+      }, threadMessages);
+      // Set ref synchronously so the next onMessagesChange (which fires fast during streaming)
+      // can update the thread instead of being silently dropped
+      currentThreadIdRef.current = newThread.id;
     }
   }, [isPremium, updateThread, createThread, url, articleTitle]);
 
@@ -661,7 +681,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Ask AI button - toggles sidebar */}
               <button
                 onClick={() => handleSidebarChange(!sidebarOpen)}
-                className="relative h-9 pl-3 pr-12 text-sm text-muted-foreground bg-muted/50 border border-border rounded-lg hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                className={cn(
+                  "relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer",
+                  sidebarOpen
+                    ? "bg-accent text-foreground border-border"
+                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
+                )}
               >
                 <span className="mt-px">Ask AI</span>
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -1049,6 +1074,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 isLoadingMore={isLoadingMore}
                 onLoadMore={loadMore}
                 searchThreads={searchThreads}
+                getThreadWithMessages={getThreadWithMessages}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
