@@ -555,6 +555,11 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
         messages: initialMessages || [],
       };
 
+      // Free users: return ephemeral thread (not persisted to IDB or server)
+      if (!isPremium) {
+        return newThread;
+      }
+
       const updated = [newThread, ...threadsRef.current];
       setThreads(updated);
       setActiveThreadId(newThread.id);
@@ -564,7 +569,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
       notifyOtherTabs();
 
       // Immediate server create (not debounced)
-      if (isSignedIn && isPremium) {
+      if (isSignedIn) {
         createMutateRef.current(newThread);
       }
 
