@@ -41,7 +41,8 @@ function getClient(): ClickHouseClient | null {
       username: env.CLICKHOUSE_USER,
       password: env.CLICKHOUSE_PASSWORD,
       database: env.CLICKHOUSE_DATABASE,
-      request_timeout: 30_000,
+      // Reduced from 30s — fail faster so queued queries don't cascade
+      request_timeout: 10_000,
       compression: {
         request: true,
         response: true,
@@ -56,13 +57,34 @@ function getClient(): ClickHouseClient | null {
 }
 
 /**
- * Mark ClickHouse as temporarily disabled due to connection failure
+ * Mark ClickHouse as temporarily disabled due to connection failure.
+ * Drains the query queue so waiting queries fail fast instead of
+ * blocking for up to QUERY_SLOT_TIMEOUT_MS.
  */
 function disableClickhouse(reason: string): void {
   if (!clickhouseDisabled) {
     console.warn(`[clickhouse] Disabled due to connection failure: ${reason}. Will retry in ${CONNECTION_RETRY_INTERVAL_MS / 1000}s`);
     clickhouseDisabled = true;
     lastConnectionAttempt = Date.now();
+
+    // Destroy the stale client so the next retry creates a fresh connection
+    if (client) {
+      client.close().catch(() => {});
+      client = null;
+    }
+    // Reset schema flags so they re-run on reconnect
+    schemaMigrated = false;
+    adSchemaMigrated = false;
+
+    // Drain the query queue — reject all waiting queries immediately
+    const queuedCount = queryQueue.length;
+    while (queryQueue.length > 0) {
+      const queued = queryQueue.shift()!;
+      queued.reject(new Error("ClickHouse disabled - connection failure"));
+    }
+    if (queuedCount > 0) {
+      console.warn(`[clickhouse] Drained ${queuedCount} queued queries`);
+    }
   }
 }
 
@@ -418,9 +440,9 @@ const FLUSH_INTERVAL_MS = 5000;
 
 // CONCURRENCY CONTROL: Limit concurrent queries to prevent thread exhaustion
 // ClickHouse has limited threads (typically 28), so we limit concurrent queries
-// Admin dashboard runs 13 queries in parallel, so we need at least ~7 slots
-const MAX_CONCURRENT_QUERIES = 8;
-const QUERY_SLOT_TIMEOUT_MS = 60_000; // 60s timeout waiting for slot
+// Admin dashboard runs ~39 queries in parallel, so we need enough slots
+const MAX_CONCURRENT_QUERIES = 15;
+const QUERY_SLOT_TIMEOUT_MS = 30_000; // 30s timeout waiting for slot
 let activeQueries = 0;
 const queryQueue: Array<{
   resolve: () => void;
@@ -694,6 +716,11 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
     await acquireQuerySlot();
     slotAcquired = true;
 
+    // Re-check: ClickHouse may have been disabled while we waited for a slot
+    if (clickhouseDisabled) {
+      return [];
+    }
+
     const result = await clickhouse.query({
       query,
       format: "JSONEachRow",
@@ -704,9 +731,8 @@ export async function queryClickhouse<T>(query: string): Promise<T[]> {
     // Check for connection errors and disable to prevent spam
     if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("ETIMEDOUT") || message.includes("Timeout") || message.includes("Authentication failed")) {
       disableClickhouse(message);
-    } else if (message.includes("Query slot timeout")) {
-      // Log slot timeouts but don't disable - indicates too many concurrent queries
-      console.warn("[clickhouse] Query slot timeout - too many concurrent queries");
+    } else if (message.includes("Query slot timeout") || message.includes("ClickHouse disabled")) {
+      // Silently return empty — these are expected during outages
     } else {
       console.error("[clickhouse] Query failed:", message);
     }
