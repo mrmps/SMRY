@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Sparkles, Smartphone, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
@@ -106,7 +106,7 @@ function MobilePremiumGate() {
   const features = [
     { icon: Smartphone, text: "Synced across all your devices" },
     { icon: MessageSquare, text: "Resume any conversation later" },
-    { icon: Sparkles, text: "Unlimited AI conversations" },
+    { icon: Zap, text: "Unlimited AI conversations" },
   ];
 
   return (

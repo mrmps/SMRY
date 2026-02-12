@@ -5,7 +5,7 @@ import { ResizableChatLayout } from "@/components/features/chat-sidebar";
 import { useChatThreads } from "@/lib/hooks/use-chat-threads";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { cn } from "@/lib/utils";
-import { ArrowUp, Square, PanelLeft, Sparkles, Trash } from "lucide-react";
+import { ArrowUp, Square, PanelLeft, MessageSquare, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AuthBar } from "@/components/shared/auth-bar";
 import Link from "next/link";
@@ -132,6 +132,12 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     experimental_throttle: 50,
   });
 
+  // Ref for threads so the sync effect can read latest state without depending on it
+  const threadsRef = useRef(threads);
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
   // Sync messages back when they change (save as ThreadMessage[] directly)
   useEffect(() => {
     if (activeThreadId && messages.length > 0) {
@@ -145,7 +151,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
 
       // Generate title from first user message if needed
       const firstUserMessage = threadMessages.find((m) => m.role === "user");
-      const currentThread = threads.find((t) => t.id === activeThreadId);
+      const currentThread = threadsRef.current.find((t) => t.id === activeThreadId);
 
       if (currentThread) {
         const updates: Parameters<typeof updateThread>[1] = {
@@ -166,7 +172,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         updateThread(activeThreadId, updates);
       }
     }
-  }, [messages, activeThreadId, updateThread, threads]);
+  }, [messages, activeThreadId, updateThread]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -322,7 +328,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-center">
                   <div className="p-4 rounded-full bg-primary/10 mb-4">
-                    <Sparkles className="size-8 text-primary" />
+                    <MessageSquare className="size-8 text-primary" />
                   </div>
                   <h2 className="text-xl font-semibold text-foreground mb-2">
                     How can I help you today?

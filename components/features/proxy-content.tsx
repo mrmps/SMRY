@@ -490,11 +490,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   // Handle new chat from history sidebar
   const handleNewChat = React.useCallback(() => {
-    createThread();
+    let articleDomain: string | undefined;
+    try {
+      articleDomain = new URL(url).hostname.replace("www.", "");
+    } catch {}
+    createThread(undefined, {
+      articleUrl: url,
+      articleTitle: articleTitle,
+      articleDomain,
+    });
     // Clear current chat messages for the new thread
     articleChatRef.current?.clearMessages();
     setHistoryOpen(false);
-  }, [createThread]);
+  }, [createThread, url, articleTitle]);
 
   // Use ref for currentThreadId so the callback always reads the latest value
   // without needing it as a dependency (which would cause recreations and re-fires)

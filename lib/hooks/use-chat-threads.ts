@@ -104,7 +104,7 @@ async function fetchThreadList(
   const res = await fetch(getApiUrl(`/api/chat-threads?${params}`), {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) return { threads: [], nextCursor: null };
+  if (!res.ok) throw new Error(`Fetch threads failed: ${res.status}`);
   return res.json();
 }
 
@@ -247,13 +247,14 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     queryKey: ["chat-threads"],
     queryFn: async (): Promise<ThreadListResponse> => {
       const token = await getToken();
-      if (!token) return { threads: [], nextCursor: null };
+      if (!token) throw new Error("No auth token");
       return fetchThreadList(token, DEFAULT_PAGE_SIZE);
     },
     enabled: !!isSignedIn && isPremium,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
-    refetchInterval: 15_000,
+    retry: 2,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: "always",
@@ -752,7 +753,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
 
       // Sort other article groups by most recent thread in each group
       const otherGroups = Array.from(otherByArticle.entries())
-        .map(([url, groupThreads]) => {
+        .map(([_url, groupThreads]) => {
           groupThreads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
           // Label: use articleTitle from the most recent thread, fall back to articleDomain
           const representative = groupThreads[0];

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Sparkles, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
+import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ChatThread } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
@@ -252,7 +252,7 @@ function PremiumGate() {
   const features = [
     { icon: Smartphone, text: "Synced across all devices" },
     { icon: MessageSquare, text: "Resume any conversation" },
-    { icon: Sparkles, text: "Unlimited AI chats" },
+    { icon: Zap, text: "Unlimited AI chats" },
   ];
 
   return (
