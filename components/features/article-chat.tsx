@@ -351,12 +351,14 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     );
   }
 
+  const floatingInput = isMobile && variant === "sidebar";
+
   return (
     <div
       className={cn(
         "overflow-hidden",
         variant === "sidebar"
-          ? "flex h-full w-full flex-col bg-card"
+          ? cn("flex h-full w-full flex-col bg-card", floatingInput && "relative")
           : "rounded-xl border border-border bg-card shadow-sm mb-6",
       )}
     >
@@ -422,6 +424,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           className={cn(
             "h-full overflow-y-auto scrollbar-hide",
             variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",
+            floatingInput && "pb-[88px]",
           )}
         >
         {messages.length === 0 ? (
@@ -573,13 +576,29 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           </div>
         )}
         </div>
-        {/* Fog effect at bottom */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
+        {/* Fog effect at bottom (hidden when input floats — it has its own gradient) */}
+        {!floatingInput && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
+        )}
       </div>
 
-      {/* Input area - Cursor-style clean design */}
-      <div className="shrink-0" ref={inputContainerRef}>
-        <div className={cn("px-3 pt-1 sm:px-4", isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")}>
+      {/* Input area - floating on mobile, static on desktop */}
+      <div
+        className={cn(
+          floatingInput
+            ? "absolute bottom-0 inset-x-0 z-10"
+            : "shrink-0"
+        )}
+        ref={inputContainerRef}
+      >
+        {/* Gradient fade above floating input */}
+        {floatingInput && (
+          <div className="h-8 bg-linear-to-t from-card to-transparent pointer-events-none" />
+        )}
+        <div className={cn(
+          "px-3 pt-1 sm:px-4",
+          floatingInput ? "bg-card pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
+        )}>
           {/* Cursor-style input container with subtle border */}
           <div
             className="relative rounded-2xl border border-border/60 bg-background overflow-hidden shadow-sm"

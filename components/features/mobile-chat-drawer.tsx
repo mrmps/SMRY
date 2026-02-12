@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { X, Trash, History, Plus, Pin, Trash2, MessageSquare, Sparkles, Smartphone, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Sparkles, Smartphone, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
@@ -175,7 +175,7 @@ export function MobileChatDrawer({
   const drawerContentRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
-  const { isOpen: isKeyboardOpen, viewportHeight, offsetTop } = useMobileKeyboard();
+  const { isOpen: isKeyboardOpen } = useMobileKeyboard();
   const wasKeyboardOpenRef = useRef(false);
   const [activeView, setActiveView] = useState<DrawerView>("chat");
   const [searchQuery, setSearchQuery] = useState("");
@@ -229,26 +229,13 @@ export function MobileChatDrawer({
 
   const handleDeleteThread = useCallback((threadId: string) => {
     onDeleteThread?.(threadId);
-    // Always switch to a fresh chat after delete — user expects a clean slate
-    onNewChat?.();
-    chatRef.current?.clearMessages();
-    setActiveView("chat");
-  }, [onDeleteThread, onNewChat]);
-
-  useEffect(() => {
-    if (isKeyboardOpen && inputContainerRef.current && drawerContentRef.current) {
-      const timer = setTimeout(() => {
-        if (inputContainerRef.current) {
-          inputContainerRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "end",
-            inline: "nearest",
-          });
-        }
-      }, 350);
-      return () => clearTimeout(timer);
+    // If deleting the active thread, clear chat UI (hook already sets activeThreadId to null)
+    if (activeThreadId === threadId) {
+      chatRef.current?.clearMessages();
     }
-  }, [isKeyboardOpen]);
+  }, [onDeleteThread, activeThreadId]);
+
+  // Floating input is always visible at the bottom — no need to scrollIntoView
 
   useEffect(() => {
     const wasOpen = wasKeyboardOpenRef.current;
@@ -269,8 +256,6 @@ export function MobileChatDrawer({
       return () => clearTimeout(timer);
     }
   }, [isKeyboardOpen, hasMessages]);
-
-  const keyboardActive = isKeyboardOpen && viewportHeight > 0;
 
   const groups = groupedThreads?.() ?? [];
 
@@ -339,44 +324,42 @@ export function MobileChatDrawer({
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
-          className="fixed inset-0 z-50 bg-black/40"
-          onClick={handleClose}
+          className="fixed inset-0 z-50 bg-background"
         />
 
         <DrawerPrimitive.Content
           ref={drawerContentRef}
           className={cn(
-            "fixed inset-x-0 z-50",
-            !keyboardActive && "bottom-0",
-            "rounded-t-[20px]",
+            "fixed inset-x-0 top-0 z-50",
             "bg-background",
             "flex flex-col",
             "outline-none",
-            "shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.12)]",
-            "dark:shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.35)]",
-            !keyboardActive && "pb-[env(safe-area-inset-bottom,0px)]"
+            !isKeyboardOpen && "pt-[env(safe-area-inset-top,0px)]",
+            !isKeyboardOpen && "pb-[env(safe-area-inset-bottom,0px)]"
           )}
-          style={
-            keyboardActive
-              ? { top: `${offsetTop}px`, height: `${viewportHeight}px`, maxHeight: `${viewportHeight}px` }
-              : { height: "85vh", maxHeight: "85vh" }
-          }
+          style={{ height: "100dvh" }}
         >
-          {/* Drag handle area */}
-          <div className={cn("flex justify-center shrink-0", isKeyboardOpen ? "pt-1.5 pb-0.5" : "pt-3 pb-1")}>
-            <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
-          </div>
+          {/* Fullscreen header — swipe-down here to dismiss */}
+          <div className="shrink-0 border-b border-border/30">
+            <div className="flex items-center justify-between px-2 py-1.5">
+              {/* Left: Back button */}
+              <button
+                type="button"
+                onClick={handleClose}
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                aria-label="Back"
+                style={{ touchAction: "manipulation" }}
+              >
+                <ChevronLeft className="size-5" aria-hidden="true" />
+              </button>
 
-          {/* Header with tabs + actions */}
-          <div className="shrink-0 bg-muted/20 border-b border-border/30">
-            <div className="flex items-center justify-between px-3 py-1.5">
-              {/* Tab switcher */}
+              {/* Center: Tab switcher */}
               <div className="flex items-center bg-muted/60 rounded-lg p-0.5">
                 <button
                   type="button"
                   onClick={() => setActiveView("chat")}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                    "px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all",
                     activeView === "chat"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -389,57 +372,46 @@ export function MobileChatDrawer({
                   type="button"
                   onClick={() => setActiveView("history")}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all",
+                    "px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all",
                     activeView === "history"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   style={{ touchAction: "manipulation" }}
                 >
-                  <History className="size-3" aria-hidden="true" />
                   History
                 </button>
               </div>
 
-              {/* Right actions */}
-              <div className="flex items-center gap-1">
-                {activeView === "chat" && hasMessages && (
+              {/* Right: Context action */}
+              <div className="flex size-9 items-center justify-center">
+                {activeView === "chat" && hasMessages ? (
                   <button
                     type="button"
                     onClick={handleClearMessages}
-                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                     aria-label="Clear chat"
                     style={{ touchAction: "manipulation" }}
                   >
-                    <Trash className="size-3" aria-hidden="true" />
+                    <Trash className="size-4" aria-hidden="true" />
                   </button>
-                )}
-                {activeView === "history" && isPremium && (
+                ) : activeView === "history" && isPremium ? (
                   <button
                     type="button"
                     onClick={handleNewChat}
-                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                     aria-label="New chat"
                     style={{ touchAction: "manipulation" }}
                   >
-                    <Plus className="size-4" aria-hidden="true" />
+                    <Plus className="size-5" aria-hidden="true" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                  aria-label="Close"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </button>
+                ) : null}
               </div>
             </div>
           </div>
 
           {/* View container — both views stay mounted so refs work; hidden via display:none */}
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag>
             {/* Chat view */}
             <div className={cn("h-full", activeView !== "chat" && "hidden")}>
               <div className="h-full mx-auto max-w-lg">

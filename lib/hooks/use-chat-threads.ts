@@ -173,6 +173,9 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingPatches = useRef<Set<string>>(new Set());
 
+  // Track recently deleted thread IDs so server sync doesn't re-add them
+  const recentlyDeletedRef = useRef<Set<string>>(new Set());
+
   // BroadcastChannel for cross-tab sync
   const channelRef = useRef<BroadcastChannel | null>(null);
 
@@ -323,6 +326,9 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
       const needsFetch: string[] = [];
 
       for (const st of serverThreads) {
+        // Skip threads that were just deleted locally (server hasn't confirmed yet)
+        if (recentlyDeletedRef.current.has(st.id)) continue;
+
         const local = localMap.get(st.id);
         if (local) {
           const serverTime = new Date(st.updatedAt).getTime();
@@ -593,6 +599,10 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     (id: string) => {
       const updated = threadsRef.current.filter((thread) => thread.id !== id);
       setThreads(updated);
+
+      // Prevent server sync from re-adding this thread before DELETE completes
+      recentlyDeletedRef.current.add(id);
+      setTimeout(() => recentlyDeletedRef.current.delete(id), 30_000);
 
       // Remove from IDB
       idbDeleteThread(id);
