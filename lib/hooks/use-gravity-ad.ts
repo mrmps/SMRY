@@ -335,15 +335,15 @@ export function useGravityAd({
     // Send to /api/px for Gravity forwarding + ClickHouse logging
     sendTrackingEvent("impression", ad);
 
-    // For ZeroClick ads, also track via ZeroClick's manual impression API
-    // (POST https://mcp.zeroclick.ai/api/v1/offers/t)
+    // For ZeroClick ads, track impressions via ZeroClick v2 API (client-side only)
+    // Docs: https://developer.zeroclick.ai/docs/api-reference/tracking/track-offer-impressions
     if (ad.ad_provider === "zeroclick" && ad.impUrl) {
       const match = ad.impUrl.match(/^zeroclick:\/\/offer\/([a-zA-Z0-9_-]+)$/);
       if (match) {
-        fetch("https://mcp.zeroclick.ai/api/v1/offers/t", {
+        fetch("https://zeroclick.dev/api/v2/impressions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ aiOfferIds: [match[1]] }),
+          body: JSON.stringify({ ids: [match[1]] }),
         }).catch(() => {});
       }
     }

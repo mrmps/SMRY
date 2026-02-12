@@ -318,17 +318,17 @@ export async function fetchZeroClickOffers(context: {
 /**
  * Convert a ZeroClick offer to our unified ContextAd format.
  *
- * clickUrl uses `https://mcp.zeroclick.ai/offers/{id}` — the ZeroClick
- * redirect URL that tracks clicks and sends users to the advertiser.
- * The original advertiser URL is stored in `url` for reference.
+ * clickUrl uses offer.clickUrl directly — the ZeroClick tracking redirect
+ * URL (e.g. https://zero.click/{id}) that tracks clicks and sends users
+ * to the advertiser.
  * impUrl uses `zeroclick://offer/{id}` — synthetic URL used client-side
- * to extract the offer ID for manual impression tracking via the API.
+ * to extract the offer ID for impression tracking via the v2 API.
  */
 export function mapZeroClickOfferToAd(offer: ZeroClickOffer): ContextAd {
   return {
     adText: offer.subtitle || offer.content || "",
     title: offer.title,
-    clickUrl: `https://mcp.zeroclick.ai/offers/${offer.id}`,
+    clickUrl: offer.clickUrl,
     impUrl: `zeroclick://offer/${offer.id}`,
     url: offer.clickUrl,
     brandName: offer.brand?.name || "",
