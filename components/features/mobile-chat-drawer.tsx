@@ -198,13 +198,16 @@ export function MobileChatDrawer({
     setTimeout(() => setActiveView("chat"), 300);
   }, [onOpenChange]);
 
+  const selectRequestRef = useRef(0);
   const handleSelectThread = useCallback(async (threadId: string) => {
+    const requestId = ++selectRequestRef.current;
     onSelectThread?.(threadId);
     setActiveView("chat");
 
     // Try local messages first, then fetch from server if empty (cross-device)
     if (getThreadWithMessages) {
       const thread = await getThreadWithMessages(threadId);
+      if (selectRequestRef.current !== requestId) return; // stale
       if (thread && thread.messages.length > 0) {
         chatRef.current?.setMessages(thread.messages as UIMessage[]);
       } else {

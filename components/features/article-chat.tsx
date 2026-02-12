@@ -243,9 +243,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
   // Notify parent when messages change (for thread syncing)
   useEffect(() => {
-    if (messages.length > 0) {
-      onMessagesChangeRef.current?.(messages);
-    }
+    onMessagesChangeRef.current?.(messages);
   }, [messages]);
 
   // Track user scroll: if they scroll up, pause auto-scroll and show scroll-to-bottom button
@@ -266,19 +264,27 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     return () => container.removeEventListener("scroll", handleScroll);
   }, [floatingInput]);
 
-  // During streaming: use rAF to stick to bottom without competing animations
+  // During streaming: auto-scroll when at bottom, show arrow button when scrolled up
   useEffect(() => {
-    if (!isLoading || isUserScrolledUpRef.current) return;
+    if (!isLoading) return;
+    const threshold = floatingInput ? 150 : 80;
     const tick = () => {
       const container = scrollContainerRef.current;
       if (container) {
-        container.scrollTop = container.scrollHeight;
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+        if (isAtBottom && !isUserScrolledUpRef.current) {
+          container.scrollTop = scrollHeight;
+        } else {
+          // Content is growing below the viewport — show the arrow
+          setShowScrollButton(true);
+        }
       }
       rafIdRef.current = requestAnimationFrame(tick);
     };
     rafIdRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafIdRef.current);
-  }, [isLoading]);
+  }, [isLoading, floatingInput]);
 
   // Auto-focus textarea when chat opens
   useEffect(() => {

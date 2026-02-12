@@ -17,6 +17,9 @@ import { getAuthInfo } from "../middleware/auth";
 // TTL: 30 days
 const TTL = 60 * 60 * 24 * 30;
 const DEFAULT_PAGE_SIZE = 20;
+// Max thread payload size: 512KB (covers ~200 messages comfortably)
+const MAX_THREAD_PAYLOAD_BYTES = 512 * 1024;
+const MAX_MESSAGES_PER_THREAD = 500;
 
 // Key helpers
 function threadKey(userId: string, threadId: string): string {
@@ -159,9 +162,10 @@ export const chatThreadsRoutes = new Elysia({ prefix: "/api" })
           }
         }
 
-        // Determine next cursor
+        // Determine next cursor — use threadIds.length (pre-decompression count)
+        // so that skipped corrupt entries don't prematurely end pagination
         const nextCursor =
-          threads.length === limit && threads.length > 0
+          threadIds.length === limit && threads.length > 0
             ? threads[threads.length - 1].updatedAt
             : null;
 
@@ -236,6 +240,17 @@ export const chatThreadsRoutes = new Elysia({ prefix: "/api" })
         return { error: "Thread must have an id", success: false };
       }
 
+      // Payload size guard
+      const payloadSize = JSON.stringify(thread).length;
+      if (payloadSize > MAX_THREAD_PAYLOAD_BYTES) {
+        set.status = 413;
+        return { error: "Thread payload too large", success: false };
+      }
+      if (Array.isArray(thread.messages) && thread.messages.length > MAX_MESSAGES_PER_THREAD) {
+        set.status = 413;
+        return { error: "Too many messages in thread", success: false };
+      }
+
       try {
         const compressed = await compressAsync(thread);
         const score = new Date(thread.updatedAt || thread.createdAt).getTime() || Date.now();
@@ -280,6 +295,17 @@ export const chatThreadsRoutes = new Elysia({ prefix: "/api" })
       if (thread.id && thread.id !== params.threadId) {
         set.status = 400;
         return { error: "Thread ID mismatch", success: false };
+      }
+
+      // Payload size guard
+      const payloadSize = JSON.stringify(thread).length;
+      if (payloadSize > MAX_THREAD_PAYLOAD_BYTES) {
+        set.status = 413;
+        return { error: "Thread payload too large", success: false };
+      }
+      if (Array.isArray(thread.messages) && thread.messages.length > MAX_MESSAGES_PER_THREAD) {
+        set.status = 413;
+        return { error: "Too many messages in thread", success: false };
       }
 
       try {
