@@ -66,10 +66,8 @@ export function formatRelativeTime(date: string | Date): string {
   return `${diffMonth}mo`;
 }
 
-let idCounter = 0;
 function generateId(): string {
-  idCounter++;
-  return `${Date.now()}-${idCounter}-${Math.random().toString(36).substring(2, 9)}`;
+  return crypto.randomUUID();
 }
 
 // --- Server API helpers ---
@@ -826,18 +824,6 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
       document.removeEventListener("visibilitychange", handleActiveThreadRefresh);
     };
   }, [isSignedIn, isPremium]);
-
-  // Auto-load thread matching articleUrl — fetch messages if empty
-  useEffect(() => {
-    if (!articleUrl || !isLoaded || activeThreadId) return;
-    const match = threads.find((t) => t.articleUrl === articleUrl);
-    if (match) {
-      setActiveThreadId(match.id);
-      if (match.messages.length === 0 && isSignedIn && isPremium) {
-        getThreadWithMessages(match.id);
-      }
-    }
-  }, [articleUrl, isLoaded, activeThreadId, threads, isSignedIn, isPremium, getThreadWithMessages]);
 
   const findThreadByArticleUrl = useCallback(
     (url: string) => threads.find((t) => t.articleUrl === url) || null,

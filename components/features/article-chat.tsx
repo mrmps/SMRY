@@ -411,7 +411,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           <div className={cn(
             "flex h-full flex-col px-3 sm:px-4",
             isKeyboardOpen && isMobile ? "py-2" : "py-4 sm:py-6",
-            !(isMobile && variant === "sidebar") && "min-h-[200px]"
+            !(isMobile && variant === "sidebar") && "min-h-[200px]",
+            floatingInput && "pb-12"
           )}>
             {/* Logo/branding - hidden when keyboard is open on mobile to maximize space */}
             {!(isKeyboardOpen && isMobile) && (

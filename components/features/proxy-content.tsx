@@ -366,11 +366,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     togglePin,
     renameThread,
     groupedThreads,
+    isLoaded: threadsLoaded,
     loadMore,
     hasMore,
     isLoadingMore,
     searchThreads,
     getThreadWithMessages,
+    findThreadByArticleUrl,
   } = useChatThreads(isPremium, url);
 
   // Compute initialMessages from active thread (ThreadMessage is UIMessage-compatible)
@@ -506,6 +508,37 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // Guard: skip onMessagesChange echo when loading messages from a thread selection
   const isLoadingThreadRef = useRef(false);
 
+  // Auto-load the most recent thread for this article URL on page load.
+  // Uses articleChatRef.setMessages() to push messages into the already-mounted chat
+  // (since the initialMessages prop is ignored after mount by useChat's useState).
+  //
+  // Guard: `currentThreadId` is null on fresh load, set once a thread is loaded.
+  // This naturally prevents re-running after auto-load or user actions, and avoids
+  // the timing issue where threads haven't loaded from IDB yet (the effect re-fires
+  // when findThreadByArticleUrl updates with new threads data).
+  useEffect(() => {
+    if (!isPremium || !threadsLoaded || currentThreadId) return;
+
+    const match = findThreadByArticleUrl(url);
+    if (!match) return;
+
+    // Use the same flow as handleSelectThread to properly load messages
+    isLoadingThreadRef.current = true;
+    currentThreadIdRef.current = match.id;
+    setActiveThreadId(match.id);
+
+    // Async: fetch full messages if needed (cross-device), then push to chat
+    (async () => {
+      const thread = await getThreadWithMessages(match.id);
+      if (thread && thread.messages.length > 0) {
+        articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
+      }
+      requestAnimationFrame(() => {
+        isLoadingThreadRef.current = false;
+      });
+    })();
+  }, [isPremium, threadsLoaded, currentThreadId, url, findThreadByArticleUrl, setActiveThreadId, getThreadWithMessages]);
+
   // Handle thread selection from history sidebar
   const handleSelectThread = React.useCallback(async (threadId: string) => {
     // Update ref synchronously BEFORE setting messages to prevent race condition
@@ -538,6 +571,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     if (!isPremium) return;
     // Skip echo-save when loading messages from thread selection
     if (isLoadingThreadRef.current) return;
+    // Don't create/update threads when there are no messages (e.g. on mount or clear)
+    if (messages.length === 0) return;
     // Save as ThreadMessage[] directly (no lossy {role,content} conversion)
     const threadMessages: ThreadMessage[] = messages.map((msg) => ({
       id: msg.id,
