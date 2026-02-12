@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Sparkles, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ChatThread } from "@/lib/hooks/use-chat-threads";
@@ -83,17 +83,14 @@ function ThreadItem({
 
   return (
     <div className="group relative">
-      <button
-        onClick={onSelect}
-        className={cn(
-          "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
-          isActive
-            ? "bg-accent/70"
-            : "hover:bg-accent/30"
-        )}
-      >
-        <div className="flex-1 min-w-0">
-          {isEditing ? (
+      {isEditing ? (
+        <div
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5",
+            isActive ? "bg-accent/70" : "bg-transparent"
+          )}
+        >
+          <div className="flex-1 min-w-0">
             <input
               ref={inputRef}
               type="text"
@@ -108,11 +105,22 @@ function ThreadItem({
                   setIsEditing(false);
                 }
               }}
-              onClick={(e) => e.stopPropagation()}
               className="w-full bg-background rounded px-1.5 py-0.5 text-[13px] text-foreground border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               aria-label="Thread title"
             />
-          ) : (
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={onSelect}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
+            isActive
+              ? "bg-accent/70"
+              : "hover:bg-accent/30"
+          )}
+        >
+          <div className="flex-1 min-w-0">
             <span
               className={cn(
                 "block truncate text-[13px]",
@@ -122,9 +130,9 @@ function ThreadItem({
             >
               {displayTitle}
             </span>
-          )}
-        </div>
-      </button>
+          </div>
+        </button>
+      )}
 
       {/* More menu - visible on hover */}
       {!isEditing && (
@@ -310,7 +318,7 @@ export function ChatSidebar({
   const [searchResults, setSearchResults] = useState<ChatThread[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
-  const groups = groupedThreads?.() ?? [];
+  const groups = useMemo(() => groupedThreads?.() ?? [], [groupedThreads]);
 
   // Auto-focus search input when revealed
   useEffect(() => {
@@ -355,7 +363,7 @@ export function ChatSidebar({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchThreads]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchQuery, searchThreads, groups]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);

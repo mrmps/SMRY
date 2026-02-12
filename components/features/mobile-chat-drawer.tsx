@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Sparkles, Smartphone, Search, Loader2 } from "lucide-react";
@@ -176,7 +176,6 @@ export function MobileChatDrawer({
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
   const { isOpen: isKeyboardOpen } = useMobileKeyboard();
-  const wasKeyboardOpenRef = useRef(false);
   const [activeView, setActiveView] = useState<DrawerView>("chat");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -235,29 +234,7 @@ export function MobileChatDrawer({
     }
   }, [onDeleteThread, activeThreadId]);
 
-  // Floating input is always visible at the bottom — no need to scrollIntoView
-
-  useEffect(() => {
-    const wasOpen = wasKeyboardOpenRef.current;
-    wasKeyboardOpenRef.current = isKeyboardOpen;
-
-    if (wasOpen && !isKeyboardOpen && hasMessages) {
-      const timer = setTimeout(() => {
-        const messagesContainer = drawerContentRef.current?.querySelector('.overflow-y-auto');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        const messagesEnd = messagesContainer?.querySelector('[data-messages-end]') ||
-                            messagesContainer?.lastElementChild;
-        if (messagesEnd) {
-          messagesEnd.scrollIntoView({ behavior: "smooth", block: "end" });
-        }
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isKeyboardOpen, hasMessages]);
-
-  const groups = groupedThreads?.() ?? [];
+  const groups = useMemo(() => groupedThreads?.() ?? [], [groupedThreads]);
 
   // Debounced async search
   useEffect(() => {
@@ -295,7 +272,7 @@ export function MobileChatDrawer({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchThreads]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchQuery, searchThreads, groups]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -334,8 +311,8 @@ export function MobileChatDrawer({
             "bg-background",
             "flex flex-col",
             "outline-none",
-            !isKeyboardOpen && "pt-[env(safe-area-inset-top,0px)]",
-            !isKeyboardOpen && "pb-[env(safe-area-inset-bottom,0px)]"
+            "pt-[env(safe-area-inset-top,0px)]",
+            "pb-[env(safe-area-inset-bottom,0px)]"
           )}
           style={{ height: "100dvh" }}
         >

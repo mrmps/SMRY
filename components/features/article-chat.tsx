@@ -16,6 +16,7 @@ import { Response } from "../ai/response";
 import { isTextUIPart, UIMessage } from "ai";
 import {
   ArrowUp,
+  ArrowDown,
   Square,
   Zap,
   Trash,
@@ -127,8 +128,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const floatingInput = isMobile && variant === "sidebar";
   // Track whether user has manually scrolled away from the bottom
   const isUserScrolledUpRef = useRef(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const rafIdRef = useRef<number>(0);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
@@ -165,7 +168,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     initialMessages: initialMessagesProp,
   });
 
-  const [justSubmitted, setJustSubmitted] = useState(false);
 
   // Copy state for messages
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -211,7 +213,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       
       // Handle Enter key from mobile keyboard
       if (e.key === "Enter" && !e.shiftKey && !isSlashMenuOpen && input.trim()) {
-        setJustSubmitted(true);
+        isUserScrolledUpRef.current = false;
         // Blur textarea to close keyboard on mobile
         setTimeout(() => {
           textareaRef.current?.blur();
@@ -246,29 +248,23 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     }
   }, [messages]);
 
-  // Scroll helper: instantly snap to bottom (no animation = no jitter)
-  const scrollToBottom = useCallback((smooth = false) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    if (smooth) {
-      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-    } else {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, []);
-
-  // Track user scroll: if they scroll up, pause auto-scroll
+  // Track user scroll: if they scroll up, pause auto-scroll and show scroll-to-bottom button
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
-      // Consider "at bottom" if within 80px of the end
-      isUserScrolledUpRef.current = scrollHeight - scrollTop - clientHeight > 80;
+      // Floating input adds ~120px of bottom padding/spacer that sits below the last message.
+      // Use a larger threshold so the user is considered "at bottom" even when they haven't
+      // scrolled past all the padding beneath the content.
+      const threshold = floatingInput ? 150 : 80;
+      const scrolledUp = scrollHeight - scrollTop - clientHeight > threshold;
+      isUserScrolledUpRef.current = scrolledUp;
+      setShowScrollButton(scrolledUp);
     };
     container.addEventListener("scroll", handleScroll, { passive: true });
     return () => container.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [floatingInput]);
 
   // During streaming: use rAF to stick to bottom without competing animations
   useEffect(() => {
@@ -283,26 +279,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     rafIdRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafIdRef.current);
   }, [isLoading]);
-
-  // When user sends a message: smooth-scroll after a short delay (keyboard close on mobile)
-  useEffect(() => {
-    if (!justSubmitted) return;
-    const timer = setTimeout(() => {
-      isUserScrolledUpRef.current = false;
-      scrollToBottom(true);
-      setJustSubmitted(false);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [justSubmitted, scrollToBottom]);
-
-  // When new messages arrive (non-streaming), scroll to bottom once
-  const prevMessageCountRef = useRef(messages.length);
-  useEffect(() => {
-    if (messages.length > prevMessageCountRef.current && !isUserScrolledUpRef.current) {
-      scrollToBottom(true);
-    }
-    prevMessageCountRef.current = messages.length;
-  }, [messages.length, scrollToBottom]);
 
   // Auto-focus textarea when chat opens
   useEffect(() => {
@@ -350,8 +326,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       </div>
     );
   }
-
-  const floatingInput = isMobile && variant === "sidebar";
 
   return (
     <div
@@ -573,6 +547,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
             <div ref={messagesEndRef} data-messages-end />
+            {floatingInput && <div className="h-8" aria-hidden="true" />}
           </div>
         )}
         </div>
@@ -591,8 +566,29 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         )}
         ref={inputContainerRef}
       >
+        {/* Scroll to bottom button */}
+        {showScrollButton && messages.length > 0 && (
+          <div className="flex justify-center pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                const container = scrollContainerRef.current;
+                if (container) {
+                  container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+                }
+                isUserScrolledUpRef.current = false;
+                setShowScrollButton(false);
+              }}
+              className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background shadow-md transition-all hover:bg-muted/50 active:scale-95"
+              style={{ touchAction: "manipulation" }}
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="size-4 text-foreground" />
+            </button>
+          </div>
+        )}
         {/* Gradient fade above floating input */}
-        {floatingInput && (
+        {floatingInput && !showScrollButton && (
           <div className="h-8 bg-linear-to-t from-card to-transparent pointer-events-none" />
         )}
         <div className={cn(

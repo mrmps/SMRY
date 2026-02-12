@@ -3,6 +3,7 @@
 import React, { useEffect, useCallback, useState, useRef, useSyncExternalStore } from "react";
 import { ResizableChatLayout } from "@/components/features/chat-sidebar";
 import { useChatThreads } from "@/lib/hooks/use-chat-threads";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { cn } from "@/lib/utils";
 import { ArrowUp, Square, PanelLeft, Sparkles, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   const router = useRouter();
   const { getToken } = useAuth();
   const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+  const { isPremium } = useIsPremium();
 
   const {
     threads,
@@ -61,7 +63,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     hasMore,
     isLoadingMore,
     searchThreads,
-  } = useChatThreads();
+  } = useChatThreads(isPremium);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState("");

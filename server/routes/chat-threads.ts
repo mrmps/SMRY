@@ -276,6 +276,12 @@ export const chatThreadsRoutes = new Elysia({ prefix: "/api" })
       const userId = authInfo.userId;
       const { thread } = body;
 
+      // Ensure the thread id in the body matches the URL param
+      if (thread.id && thread.id !== params.threadId) {
+        set.status = 400;
+        return { error: "Thread ID mismatch", success: false };
+      }
+
       try {
         const compressed = await compressAsync(thread);
         const score = new Date(thread.updatedAt || thread.createdAt).getTime() || Date.now();

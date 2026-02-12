@@ -28,8 +28,10 @@ export function openThreadDB(): Promise<ThreadDB> {
       blocked() {
         console.warn("[thread-db] Database blocked by older version");
       },
-      blocking() {
-        // Close and reopen to unblock
+      async blocking() {
+        // Close the current connection so the other tab's upgrade can proceed
+        const db = await dbPromise;
+        db?.close();
         dbPromise = null;
       },
     });
@@ -152,9 +154,9 @@ export async function searchThreads(
 
       // Check message text
       let matched = false;
-      for (const msg of thread.messages) {
-        for (const part of msg.parts) {
-          if (part.type === "text" && part.text.toLowerCase().includes(lower)) {
+      for (const msg of thread.messages ?? []) {
+        for (const part of msg.parts ?? []) {
+          if (part.type === "text" && part.text?.toLowerCase().includes(lower)) {
             matched = true;
             break;
           }
