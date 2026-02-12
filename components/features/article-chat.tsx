@@ -121,7 +121,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onMicroAdVisible,
   onMicroAdClick,
   inputContainerRef,
-  activeThreadTitle,
+  activeThreadTitle: _activeThreadTitle,
   isKeyboardOpen = false,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -722,21 +722,12 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {!isMobile && (variant === "sidebar" || isPremium || showUsageCounter) && (
         <div
           className={cn(
-            "px-3 py-1.5 shrink-0",
+            "px-3 py-2 shrink-0",
             variant === "sidebar"
               ? "bg-muted/15 border-t border-border/20"
               : "border-t border-border/50",
           )}
         >
-          {/* Thread indicator - show which history thread is loaded */}
-          {activeThreadTitle && variant === "sidebar" && (
-            <div className="flex items-center gap-1 mb-1">
-              <span className="text-[10px] text-muted-foreground/40 truncate max-w-[200px]" title={activeThreadTitle}>
-                {activeThreadTitle}
-              </span>
-            </div>
-          )}
-
           <div className="flex items-center gap-2 text-[10px] font-mono tracking-tight text-muted-foreground/50">
             {/* Controls for sidebar variant */}
             {variant === "sidebar" && (
@@ -744,11 +735,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 {messages.length > 0 && (
                   <button
                     onClick={clearMessages}
-                    className="flex size-5 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                    className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
                     aria-label="Clear chat"
                     title="Clear chat"
                   >
-                    <Trash className="size-2.5" />
+                    <Trash className="size-3" />
                   </button>
                 )}
                 <Select
@@ -757,10 +748,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   disabled={isLoading}
                 >
                   <SelectTrigger
-                    className="h-5 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    className="h-6 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1.5 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                     title="Response language"
                   >
-                    <LanguageIcon className="size-2.5" />
+                    <LanguageIcon className="size-3" />
                     <span className="text-[10px] font-sans">
                       {LANGUAGES.find((l) => l.code === preferredLanguage)?.code.toUpperCase() || "EN"}
                     </span>

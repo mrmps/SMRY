@@ -254,7 +254,7 @@ export function useChatThreads(isPremium = false, articleUrl?: string) {
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
     retry: 2,
-    refetchInterval: 5_000,
+    refetchInterval: 20_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: "always",

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type ChatThread } from "@/lib/hooks/use-chat-threads";
+import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import {
@@ -130,6 +130,10 @@ function ThreadItem({
             >
               {displayTitle}
             </span>
+            <span className="block text-[11px] text-muted-foreground/40 tabular-nums truncate">
+              {formatRelativeTime(thread.updatedAt)}
+              {(() => { const c = thread.messages.filter(m => m.role === "user").length; return c > 0 ? ` \u00B7 ${c} message${c !== 1 ? "s" : ""}` : ""; })()}
+            </span>
           </div>
         </button>
       )}
@@ -206,6 +210,8 @@ function ThreadItem({
   );
 }
 
+const KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "This Week", "This Month", "Older"]);
+
 function ThreadGroup({
   label,
   threads,
@@ -225,10 +231,16 @@ function ThreadGroup({
 }) {
   if (threads.length === 0) return null;
 
+  const isArticleGroup = !KNOWN_LABELS.has(label);
+  const articleDomain = isArticleGroup ? threads[0]?.articleDomain : null;
+
   return (
     <div className="mb-0.5">
       <div className="px-3 pt-3 pb-1">
-        <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50">{label}</span>
+        <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? label : undefined}>{label}</span>
+        {articleDomain && (
+          <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+        )}
       </div>
       <div className="px-1.5 space-y-px">
         {threads.map((thread) => (
@@ -319,6 +331,8 @@ export function ChatSidebar({
   const [isSearching, setIsSearching] = useState(false);
 
   const groups = useMemo(() => groupedThreads?.() ?? [], [groupedThreads]);
+  const groupsRef = useRef(groups);
+  useEffect(() => { groupsRef.current = groups; }, [groups]);
 
   // Auto-focus search input when revealed
   useEffect(() => {
@@ -338,7 +352,7 @@ export function ChatSidebar({
     if (!searchThreads) {
       // Fallback to synchronous filtering if no async search provided
       const lower = searchQuery.toLowerCase();
-      const filtered = groups
+      const filtered = groupsRef.current
         .flatMap((g) => g.threads)
         .filter(
           (t) =>
@@ -363,7 +377,7 @@ export function ChatSidebar({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchThreads, groups]);
+  }, [searchQuery, searchThreads]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -474,7 +488,7 @@ export function ChatSidebar({
             ) : (
               <div className="px-4 py-8 text-center">
                 <p className="text-[13px] text-muted-foreground/40">
-                  {isSearching ? "Searching..." : "No matching threads"}
+                  {isSearching ? "Searching\u2026" : "No matching threads"}
                 </p>
               </div>
             )

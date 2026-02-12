@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
-import { type ChatThread } from "@/lib/hooks/use-chat-threads";
+import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import type { UIMessage } from "ai";
 
@@ -82,6 +82,10 @@ function MobileThreadItem({
             {displayTitle}
           </span>
         </div>
+        <span className="block text-[11px] text-muted-foreground/40 tabular-nums truncate mt-0.5">
+          {formatRelativeTime(thread.updatedAt)}
+          {(() => { const c = thread.messages.filter(m => m.role === "user").length; return c > 0 ? ` \u00B7 ${c} message${c !== 1 ? "s" : ""}` : ""; })()}
+        </span>
       </button>
       {onDelete && (
         <button
@@ -146,6 +150,8 @@ function MobilePremiumGate() {
     </div>
   );
 }
+
+const MOBILE_KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "This Week", "This Month", "Older"]);
 
 export function MobileChatDrawer({
   open,
@@ -238,6 +244,8 @@ export function MobileChatDrawer({
   }, [onDeleteThread, activeThreadId]);
 
   const groups = useMemo(() => groupedThreads?.() ?? [], [groupedThreads]);
+  const groupsRef = useRef(groups);
+  useEffect(() => { groupsRef.current = groups; }, [groups]);
 
   // Debounced async search
   useEffect(() => {
@@ -250,7 +258,7 @@ export function MobileChatDrawer({
     if (!searchThreads) {
       // Fallback to synchronous filtering
       const lower = searchQuery.toLowerCase();
-      const filtered = groups
+      const filtered = groupsRef.current
         .flatMap((g) => g.threads)
         .filter(
           (t) =>
@@ -275,7 +283,7 @@ export function MobileChatDrawer({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchThreads, groups]);
+  }, [searchQuery, searchThreads]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -464,10 +472,16 @@ export function MobileChatDrawer({
                     <>
                       {groups.length > 0 ? (
                         <div className="py-2">
-                          {groups.map((group) => (
+                          {groups.map((group) => {
+                            const isArticleGroup = !MOBILE_KNOWN_LABELS.has(group.label);
+                            const articleDomain = isArticleGroup ? group.threads[0]?.articleDomain : null;
+                            return (
                             <div key={group.label} className="mb-1">
                               <div className="px-4 pt-3 pb-1">
-                                <span className="text-[11px] font-medium tracking-wider text-muted-foreground/50">{group.label}</span>
+                                <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? group.label : undefined}>{group.label}</span>
+                                {articleDomain && (
+                                  <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+                                )}
                               </div>
                               <div className="px-4 space-y-1">
                                 {group.threads.map((thread) => (
@@ -481,7 +495,8 @@ export function MobileChatDrawer({
                                 ))}
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
