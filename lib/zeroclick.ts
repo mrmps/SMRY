@@ -71,43 +71,163 @@ export interface ZeroClickOffer {
 // Docs: https://developer.zeroclick.ai/docs/signal-collection/headers
 // =============================================================================
 
-let signalClient: Client | null = null;
-let signalClientReady = false;
-let signalLastFailure = 0;
+// =============================================================================
+// Session-Based Client Pool
+//
+// Per ZeroClick docs: "Create one client per user session"
+// We cache clients by sessionId and reuse them, with TTL-based cleanup.
+// This prevents creating hundreds of MCP connections per minute.
+// =============================================================================
+
+interface CachedClient {
+  client: Client;
+  lastUsed: number;
+  sessionId: string;
+}
+
+const clientCache = new Map<string, CachedClient>();
+const CLIENT_TTL_MS = 5 * 60 * 1000; // 5 minutes — sessions are short-lived
+const CLIENT_CLEANUP_INTERVAL_MS = 60 * 1000; // Cleanup every minute
+const MAX_CACHED_CLIENTS = 100; // Prevent unbounded growth
+const CLIENT_CLOSE_TIMEOUT_MS = 2000; // Max time to wait for client close
 const SIGNAL_RETRY_COOLDOWN_MS = 60_000; // Back off 60s after failure
 
+let lastFailureTime = 0;
+
 /**
- * Build a fresh MCP Signal Client with per-user context headers.
- * Creates a new client each time to support per-user headers as recommended
- * by ZeroClick docs ("One client instance per user session").
+ * Close a client with timeout to prevent hanging.
  */
-async function createSignalClient(userContext?: {
+async function closeClientWithTimeout(client: Client): Promise<void> {
+  try {
+    await Promise.race([
+      client.close(),
+      new Promise<void>((resolve) => setTimeout(resolve, CLIENT_CLOSE_TIMEOUT_MS)),
+    ]);
+  } catch {
+    // Ignore close errors — best effort cleanup
+  }
+}
+
+/**
+ * Cleanup expired clients from the cache.
+ * Called periodically to prevent memory leaks from abandoned sessions.
+ */
+async function cleanupExpiredClients(): Promise<void> {
+  const now = Date.now();
+  const expiredKeys: string[] = [];
+
+  for (const [key, cached] of clientCache) {
+    if (now - cached.lastUsed > CLIENT_TTL_MS) {
+      expiredKeys.push(key);
+    }
+  }
+
+  if (expiredKeys.length > 0) {
+    logger.info({ count: expiredKeys.length }, "Cleaning up expired MCP signal clients");
+    for (const key of expiredKeys) {
+      const cached = clientCache.get(key);
+      if (cached) {
+        clientCache.delete(key);
+        await closeClientWithTimeout(cached.client);
+      }
+    }
+  }
+}
+
+/**
+ * Evict oldest clients if cache is full.
+ */
+async function evictOldestClients(count: number): Promise<void> {
+  const entries = Array.from(clientCache.entries())
+    .sort((a, b) => a[1].lastUsed - b[1].lastUsed)
+    .slice(0, count);
+
+  for (const [key, cached] of entries) {
+    clientCache.delete(key);
+    await closeClientWithTimeout(cached.client);
+  }
+  logger.info({ count }, "Evicted oldest MCP signal clients");
+}
+
+// Start periodic cleanup
+let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+function startCleanupInterval() {
+  if (cleanupInterval) return;
+  cleanupInterval = setInterval(() => {
+    cleanupExpiredClients().catch((err) => {
+      logger.warn({ error: String(err) }, "Error during client cleanup");
+    });
+  }, CLIENT_CLEANUP_INTERVAL_MS);
+  // Don't block process exit
+  if (cleanupInterval.unref) cleanupInterval.unref();
+}
+startCleanupInterval();
+
+/**
+ * Graceful shutdown — close all cached signal clients.
+ */
+export async function shutdownSignalClient(): Promise<void> {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+
+  const clientCount = clientCache.size;
+  if (clientCount > 0) {
+    logger.info({ count: clientCount }, "Closing all MCP signal clients on shutdown");
+    const closePromises = Array.from(clientCache.values()).map((cached) =>
+      closeClientWithTimeout(cached.client)
+    );
+    await Promise.all(closePromises);
+    clientCache.clear();
+  }
+}
+
+// Register shutdown handlers (once only)
+let shutdownHandlersRegistered = false;
+function registerShutdownHandlers() {
+  if (shutdownHandlersRegistered || typeof process === "undefined") return;
+  shutdownHandlersRegistered = true;
+
+  const handleShutdown = () => {
+    shutdownSignalClient().catch(() => {});
+  };
+  process.once("SIGTERM", handleShutdown);
+  process.once("SIGINT", handleShutdown);
+}
+registerShutdownHandlers();
+
+/**
+ * Get or create an MCP Signal Client for the given session.
+ * Per ZeroClick docs: "Create one client per user session"
+ *
+ * Clients are cached by sessionId and reused for subsequent requests.
+ * This drastically reduces connection overhead vs per-request clients.
+ */
+async function getOrCreateSignalClient(userContext: {
+  sessionId: string;
   userId?: string;
-  sessionId?: string;
   locale?: string;
   ip?: string;
   userAgent?: string;
 }): Promise<Client | null> {
-  // Per-user context = fields that require unique headers per request.
-  // sessionId is excluded because it's always present and doesn't need
-  // a dedicated client — only userId/locale/ip/userAgent matter.
-  const hasUserContext = !!(
-    userContext?.userId ||
-    userContext?.locale ||
-    userContext?.ip ||
-    userContext?.userAgent
-  );
+  const cacheKey = userContext.sessionId;
 
-  // Cooldown only applies to the shared client — per-user clients are
-  // ephemeral and shouldn't be blocked by shared client failures.
-  if (!hasUserContext) {
-    if (Date.now() - signalLastFailure < SIGNAL_RETRY_COOLDOWN_MS) {
-      return null;
-    }
-    // Reuse cached shared client if available
-    if (signalClient && signalClientReady) {
-      return signalClient;
-    }
+  // Check cooldown (applies to all clients after repeated failures)
+  if (Date.now() - lastFailureTime < SIGNAL_RETRY_COOLDOWN_MS) {
+    return null;
+  }
+
+  // Check cache first
+  const cached = clientCache.get(cacheKey);
+  if (cached) {
+    cached.lastUsed = Date.now();
+    return cached.client;
+  }
+
+  // Evict oldest clients if cache is full
+  if (clientCache.size >= MAX_CACHED_CLIENTS) {
+    await evictOldestClients(10); // Evict 10 to make room
   }
 
   try {
@@ -116,11 +236,11 @@ async function createSignalClient(userContext?: {
       "x-zc-api-key": env.ZEROCLICK_API_KEY,
       "x-zc-llm-model": "anthropic/claude-sonnet-4.5",
     };
-    if (userContext?.userId) headers["x-zc-user-id"] = userContext.userId;
-    if (userContext?.sessionId) headers["x-zc-user-session-id"] = userContext.sessionId;
-    if (userContext?.locale) headers["x-zc-user-locale"] = userContext.locale;
-    if (userContext?.ip) headers["x-zc-user-ip"] = userContext.ip;
-    if (userContext?.userAgent) headers["x-zc-user-agent"] = userContext.userAgent.slice(0, 1000);
+    if (userContext.userId) headers["x-zc-user-id"] = userContext.userId;
+    if (userContext.sessionId) headers["x-zc-user-session-id"] = userContext.sessionId;
+    if (userContext.locale) headers["x-zc-user-locale"] = userContext.locale;
+    if (userContext.ip) headers["x-zc-user-ip"] = userContext.ip;
+    if (userContext.userAgent) headers["x-zc-user-agent"] = userContext.userAgent.slice(0, 1000);
 
     const client = new Client({ name: "smry", version: "1.0.0" });
     const transport = new StreamableHTTPClientTransport(
@@ -131,22 +251,19 @@ async function createSignalClient(userContext?: {
     );
     await client.connect(transport);
 
-    // Cache for reuse when no per-user headers
-    if (!hasUserContext) {
-      signalClient = client;
-      signalClientReady = true;
-    }
-    signalLastFailure = 0;
-    logger.info("MCP signal client connected");
+    // Cache the client for reuse
+    clientCache.set(cacheKey, {
+      client,
+      lastUsed: Date.now(),
+      sessionId: userContext.sessionId,
+    });
+
+    lastFailureTime = 0;
+    logger.info({ sessionId: cacheKey.slice(-8), cacheSize: clientCache.size }, "MCP signal client connected");
     return client;
   } catch (error) {
     logger.warn({ error: String(error) }, "Failed to connect MCP signal client — will retry in 60s");
-    // Only set cooldown for shared client failures
-    if (!hasUserContext) {
-      signalClient = null;
-      signalClientReady = false;
-      signalLastFailure = Date.now();
-    }
+    lastFailureTime = Date.now();
     return null;
   }
 }
@@ -157,6 +274,7 @@ async function createSignalClient(userContext?: {
  * can build preference profiles for better ad targeting.
  *
  * Fire-and-forget — errors are logged but don't affect the ad flow.
+ * Clients are cached per-session and reused (not closed after each call).
  *
  * Docs:
  *   Tools: https://developer.zeroclick.ai/docs/signal-collection/tools
@@ -172,13 +290,16 @@ export async function broadcastArticleSignal(article: {
   ip?: string;
   userAgent?: string;
 }): Promise<void> {
-  // Match createSignalClient's logic — sessionId excluded (always present)
-  const isPerUser = !!(article.userId || article.locale || article.ip || article.userAgent);
-  let client: Client | null = null;
+  // sessionId is required for client caching
+  if (!article.sessionId) {
+    logger.warn({ url: article.url }, "Missing sessionId for signal broadcast — skipping");
+    return;
+  }
+
   try {
-    client = await createSignalClient({
-      userId: article.userId,
+    const client = await getOrCreateSignalClient({
       sessionId: article.sessionId,
+      userId: article.userId,
       locale: article.locale,
       ip: article.ip,
       userAgent: article.userAgent,
@@ -204,25 +325,21 @@ export async function broadcastArticleSignal(article: {
       },
     });
     logger.info({ url: article.url, result: JSON.stringify(result).slice(0, 200) }, "Article signal broadcasted");
-
-    // Close per-user clients to avoid resource leaks
-    if (isPerUser) {
-      await client.close().catch(() => {});
-    }
   } catch (error) {
-    logger.warn({ error: String(error) }, "Failed to broadcast article signal");
-    // Only reset global state if this was the shared (non-per-user) client.
-    // Per-user failures should NOT trigger a 60s cooldown for all users.
-    if (!isPerUser) {
-      signalClient = null;
-      signalClientReady = false;
-      signalLastFailure = Date.now();
-    }
-    // Close per-user client on error to avoid resource leaks
-    if (isPerUser && client) {
-      await client.close().catch(() => {});
+    const errorMsg = String(error);
+    logger.warn({ error: errorMsg }, "Failed to broadcast article signal");
+
+    // If connection error, remove from cache so next request creates fresh client
+    if (article.sessionId && (errorMsg.includes("ECONNRESET") || errorMsg.includes("socket") || errorMsg.includes("closed"))) {
+      const cached = clientCache.get(article.sessionId);
+      if (cached) {
+        clientCache.delete(article.sessionId);
+        await closeClientWithTimeout(cached.client);
+        logger.info({ sessionId: article.sessionId.slice(-8) }, "Removed failed client from cache");
+      }
     }
   }
+  // No finally close — clients are cached and closed by cleanup interval or shutdown
 }
 
 // =============================================================================
