@@ -69,11 +69,22 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
+import { KeyboardShortcutsDialog } from "@/components/features/keyboard-shortcuts-dialog";
 
 // Helper to detect client-side rendering without setState in effect
 const emptySubscribe = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
+
+// Check if the user is typing in an input/textarea/contentEditable
+function isTypingInInput(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  if (!target) return false;
+  const tagName = target.tagName;
+  if (tagName === "INPUT" || tagName === "TEXTAREA") return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
 
 // History menu item for the More dropdown
 function HistoryMenuItem() {
@@ -351,6 +362,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
 
   // Left sidebar (chat history) state
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -437,7 +449,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         clearTimeout(progressSaveTimerRef.current);
       }
     };
-  }, [url]);
+  }, [url, isDesktop]);
 
   // Save progress on unmount (page navigation)
   useEffect(() => {
@@ -452,7 +464,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       const progress = Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
       saveReadingProgress(url, progress);
     };
-  }, [url]);
+  }, [url, isDesktop]);
 
   // Mobile header hide-on-scroll state
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
@@ -673,23 +685,61 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     }
   }, [isPremium, updateThread, createThread, url, articleTitle]);
 
-  // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
-  // Keyboard shortcut: Cmd+Shift+H (Mac) or Ctrl+Shift+H (Windows/Linux) to toggle history sidebar
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
+      const mod = e.metaKey || e.ctrlKey;
+
+      // ⌘I — Toggle AI chat
+      if (mod && e.key === "i") {
         e.preventDefault();
         handleSidebarChange(!sidebarOpen);
+        return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "h" || e.key === "H")) {
+      // ⌘⇧H — Toggle history sidebar
+      if (mod && e.shiftKey && (e.key === "h" || e.key === "H")) {
         e.preventDefault();
         setHistoryOpen((prev) => !prev);
+        return;
+      }
+      // ⌘⇧N — New chat thread
+      if (mod && e.shiftKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        handleNewChat();
+        return;
+      }
+      // ⌘⇧C — Copy last AI response
+      if (mod && e.shiftKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        articleChatRef.current?.copyLastResponse();
+        return;
+      }
+      // Esc — Stop AI generation (don't preventDefault so dialogs still close)
+      if (e.key === "Escape") {
+        articleChatRef.current?.stopGeneration();
+        return;
+      }
+
+      // Guard: don't fire plain-key shortcuts while typing
+      if (isTypingInInput(e)) return;
+
+      // ? — Toggle shortcuts cheat sheet
+      if (e.key === "?" && !mod) {
+        e.preventDefault();
+        setShortcutsDialogOpen((prev) => !prev);
+        return;
+      }
+      // / — Focus chat input (only when sidebar is open)
+      if (e.key === "/" && !mod && sidebarOpen) {
+        e.preventDefault();
+        articleChatRef.current?.focusInput();
+        return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarOpen, handleSidebarChange]);
+  }, [sidebarOpen, handleSidebarChange, handleNewChat]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -1200,6 +1250,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
           )}
         </main>
       </div>
+      <KeyboardShortcutsDialog
+        open={shortcutsDialogOpen}
+        onOpenChange={setShortcutsDialogOpen}
+      />
     </div>
   );
 }

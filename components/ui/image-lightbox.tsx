@@ -38,11 +38,13 @@ export function ImageLightbox({
     if (!isOpen) return;
     document.body.style.overflow = "hidden";
     // Double rAF: first ensures the closed state paints, second triggers the transition
+    let innerId: number | undefined;
     const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setVisible(true));
+      innerId = requestAnimationFrame(() => setVisible(true));
     });
     return () => {
       cancelAnimationFrame(id);
+      if (innerId !== undefined) cancelAnimationFrame(innerId);
       setVisible(false);
       document.body.style.overflow = "";
     };
