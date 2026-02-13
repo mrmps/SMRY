@@ -61,6 +61,7 @@ import {
   parseAsString,
 } from "nuqs";
 import { Source } from "@/types/api";
+import { saveReadingProgress } from "@/lib/hooks/use-reading-progress";
 import { isTextUIPart, type UIMessage } from "ai";
 import {
   ResizableHandle,
@@ -396,9 +397,65 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     [setQuery]
   );
 
+  // Scroll refs (shared between progress tracking and header hide)
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+
+  // Reading progress tracking (throttled save to localStorage)
+  const progressSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const calculateProgress = (scrollEl: HTMLElement): number => {
+      const scrollTop = scrollEl.scrollTop;
+      const scrollHeight = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (scrollHeight <= 0) return 100;
+      return Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
+    };
+
+    const handleScroll = (scrollEl: HTMLElement) => {
+      if (progressSaveTimerRef.current) return; // throttled
+      progressSaveTimerRef.current = setTimeout(() => {
+        progressSaveTimerRef.current = null;
+        const progress = calculateProgress(scrollEl);
+        saveReadingProgress(url, progress);
+      }, 3000);
+    };
+
+    const desktopEl = desktopScrollRef.current;
+    const mobileEl = mobileScrollRef.current;
+
+    const onDesktopScroll = () => desktopEl && handleScroll(desktopEl);
+    const onMobileScroll = () => mobileEl && handleScroll(mobileEl);
+
+    desktopEl?.addEventListener("scroll", onDesktopScroll, { passive: true });
+    mobileEl?.addEventListener("scroll", onMobileScroll, { passive: true });
+
+    return () => {
+      desktopEl?.removeEventListener("scroll", onDesktopScroll);
+      mobileEl?.removeEventListener("scroll", onMobileScroll);
+      if (progressSaveTimerRef.current) {
+        clearTimeout(progressSaveTimerRef.current);
+      }
+    };
+  }, [url]);
+
+  // Save progress on unmount (page navigation)
+  useEffect(() => {
+    const desktopEl = desktopScrollRef.current;
+    const mobileEl = mobileScrollRef.current;
+    return () => {
+      const scrollEl = desktopEl || mobileEl;
+      if (!scrollEl) return;
+      const scrollTop = scrollEl.scrollTop;
+      const scrollHeight = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (scrollHeight <= 0) return;
+      const progress = Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
+      saveReadingProgress(url, progress);
+    };
+  }, [url]);
+
   // Mobile header hide-on-scroll state
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
-  const mobileScrollRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const scrollDeltaAccum = useRef(0);
   const headerVisibleRef = useRef(true);
@@ -710,12 +767,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* History sidebar toggle */}
               <button
                 onClick={() => setHistoryOpen((prev) => !prev)}
-                className={cn(
-                  "h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5",
-                  historyOpen
-                    ? "bg-accent text-foreground border-border"
-                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-                )}
+                className="h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
                 title="Chat history (⌘⇧H)"
               >
                 <HistoryIcon className="size-4" />
@@ -725,12 +777,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Ask AI button - toggles sidebar */}
               <button
                 onClick={() => handleSidebarChange(!sidebarOpen)}
-                className={cn(
-                  "relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer",
-                  sidebarOpen
-                    ? "bg-accent text-foreground border-border"
-                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-                )}
+                className="relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
               >
                 <span className="mt-px">Ask AI</span>
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -912,7 +959,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
-                  <div className="h-full overflow-y-auto bg-card scrollbar-hide">
+                  <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
                         data={articleQuery.data}

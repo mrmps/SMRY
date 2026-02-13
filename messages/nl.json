@@ -51,7 +51,9 @@
     "featureSummaryDescription": "De kernpunten in jouw taal. Niet meer hoeven scrollen.",
     "trustNoSignup": "Geen registratie nodig",
     "trustWorksWith": "Werkt op 1.000+ sites",
-    "trustFree": "Gratis te gebruiken"
+    "trustFree": "Gratis te gebruiken",
+    "continueReading": "Verder lezen",
+    "continueReadingProgress": "{progress}% gelezen"
   },
   "banner": {
     "heading": "Spring over deze betaalmuren:"

@@ -51,7 +51,9 @@
     "featureSummaryDescription": "Os pontos-chave no seu idioma. Sem precisar rolar.",
     "trustNoSignup": "Sem cadastro",
     "trustWorksWith": "Funciona em 1.000+ sites",
-    "trustFree": "Grátis"
+    "trustFree": "Grátis",
+    "continueReading": "Continuar lendo",
+    "continueReadingProgress": "{progress}% lido"
   },
   "banner": {
     "heading": "Pule estes paywalls:"

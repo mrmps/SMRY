@@ -51,7 +51,9 @@
     "featureSummaryDescription": "Get the key points in your language. Skip the scroll.",
     "trustNoSignup": "No signup required",
     "trustWorksWith": "Works on 1,000+ sites",
-    "trustFree": "Free to use"
+    "trustFree": "Free to use",
+    "continueReading": "Continue reading",
+    "continueReadingProgress": "{progress}% read"
   },
   "banner": {
     "heading": "Hop over these paywalls:"

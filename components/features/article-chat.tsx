@@ -53,9 +53,20 @@ const DEFAULT_SUGGESTIONS: Suggestion[] = [
   { text: "Important facts" },
 ];
 
-// Bouncing dots loader (CSS in globals.css)
+// Thinking shimmer indicator (CSS in globals.css)
 function ChatLoader() {
-  return <div className="chat-loader text-muted-foreground/60" />;
+  return (
+    <div className="thinking-indicator">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+        <rect fill="none" width="256" height="256" />
+        <line fill="none" stroke="currentColor" x1="88" y1="232" x2="168" y2="232" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+        <line fill="none" stroke="currentColor" x1="128" y1="200" x2="128" y2="144" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+        <polyline fill="none" stroke="currentColor" points="96 112 128 144 160 112" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+        <path d="M78.7,167A79.5,79.5,0,0,1,48,104.5C47.8,61.1,82.7,25,126.1,24a80,80,0,0,1,51.3,142.9A24.2,24.2,0,0,0,168,186v6a8,8,0,0,1-8,8H96a8,8,0,0,1-8-8v-6A24.4,24.4,0,0,0,78.7,167Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+      </svg>
+      <span className="thinking-text">Thinking...</span>
+    </div>
+  );
 }
 
 function getMessageText(message: UIMessage): string {
@@ -215,13 +226,15 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       // Handle Enter key from mobile keyboard
       if (e.key === "Enter" && !e.shiftKey && !isSlashMenuOpen && input.trim()) {
         isUserScrolledUpRef.current = false;
-        // Blur textarea to close keyboard on mobile
-        setTimeout(() => {
-          textareaRef.current?.blur();
-        }, 100);
+        if (isMobile) {
+          // Blur textarea to close keyboard on mobile
+          setTimeout(() => {
+            textareaRef.current?.blur();
+          }, 100);
+        }
       }
     },
-    [handleSlashKeyDown, isSlashMenuOpen, input]
+    [handleSlashKeyDown, isSlashMenuOpen, input, isMobile]
   );
 
   // Expose clearMessages, setMessages, and hasMessages to parent via ref
@@ -300,7 +313,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         const { scrollTop, scrollHeight, clientHeight } = container;
         const isAtBottom = scrollHeight - scrollTop - clientHeight <= threshold;
         if (isAtBottom && !isUserScrolledUpRef.current) {
-          container.scrollTop = scrollHeight;
+          container.scrollTop = scrollHeight - clientHeight;
         } else {
           // Content is growing below the viewport — show the arrow
           setShowScrollButton(true);
@@ -483,7 +496,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               const messageText = getMessageText(message);
               const isLastMessage = messageIndex === messages.length - 1;
               const isAssistant = message.role === "assistant";
-              const showActions = isAssistant && messageText && !isLoading;
+              const showActions = isAssistant && messageText && !(isLoading && isLastMessage);
 
               return (
                 <div
@@ -491,6 +504,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   className={cn(
                     "group relative",
                     message.role === "user" ? "mb-4" : "",
+                    isAssistant && !messageText && "!mt-0 h-0 overflow-hidden",
                   )}
                 >
                   {/* User message - Cursor-style with border and semi-transparent bg */}
@@ -523,8 +537,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                       </div>
 
                       {/* Action buttons - Cursor-style subtle actions */}
-                      {showActions && (
-                        <div className="flex items-center gap-0.5 mt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      {isAssistant && messageText && (
+                        <div className={cn(
+                          "flex items-center gap-0.5 mt-2 transition-opacity",
+                          showActions ? "opacity-100 md:opacity-0 md:group-hover:opacity-100" : "opacity-0 pointer-events-none"
+                        )}>
                           <button
                             type="button"
                             onClick={() => handleCopyMessage(message.id, messageText)}
@@ -566,12 +583,12 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 </div>
               );
             })}
-            {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+            {/* Loading indicator - show when waiting for response or empty assistant message */}
             {isLoading && messages.length > 0 && (
               messages[messages.length - 1]?.role === "user" ||
               (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
             ) && (
-              <div className="flex justify-start px-1">
+              <div className="px-2">
                 <ChatLoader />
               </div>
             )}
@@ -730,7 +747,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           type="button"
                           size="icon"
                           disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
-                          onClick={() => handleSubmit()}
+                          onClick={() => {
+                            handleSubmit();
+                            textareaRef.current?.focus();
+                          }}
                           className={cn(
                             "size-7 rounded-full transition-all duration-150",
                             input.trim() && !isLimitReached && !isSlashMenuOpen

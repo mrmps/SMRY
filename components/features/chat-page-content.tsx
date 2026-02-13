@@ -34,9 +34,20 @@ function getMessageText(message: UIMessage): string {
     .join("");
 }
 
-// Bouncing dots loader (CSS in globals.css)
+// Thinking shimmer indicator (CSS in globals.css)
 function ChatLoader() {
-  return <div className="chat-loader text-muted-foreground/60" />;
+  return (
+    <div className="thinking-indicator">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+        <rect fill="none" width="256" height="256" />
+        <line fill="none" stroke="currentColor" x1="88" y1="232" x2="168" y2="232" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+        <line fill="none" stroke="currentColor" x1="128" y1="200" x2="128" y2="144" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+        <polyline fill="none" stroke="currentColor" points="96 112 128 144 160 112" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+        <path d="M78.7,167A79.5,79.5,0,0,1,48,104.5C47.8,61.1,82.7,25,126.1,24a80,80,0,0,1,51.3,142.9A24.2,24.2,0,0,0,168,186v6a8,8,0,0,1-8,8H96a8,8,0,0,1-8-8v-6A24.4,24.4,0,0,0,78.7,167Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+      </svg>
+      <span className="thinking-text">Thinking...</span>
+    </div>
+  );
 }
 
 interface ChatPageContentProps {
@@ -224,6 +235,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         parts: [{ type: "text", text: input.trim() }],
       });
       setInput("");
+      textareaRef.current?.focus();
     },
     [input, activeThreadId, createThread, setActiveThreadId, router, sendMessage]
   );
@@ -348,7 +360,8 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                         key={message.id}
                         className={cn(
                           "group relative",
-                          message.role === "user" ? "mb-4" : ""
+                          message.role === "user" ? "mb-4" : "",
+                          message.role === "assistant" && !messageText && "!mt-0 h-0 overflow-hidden"
                         )}
                       >
                         {message.role === "user" ? (
@@ -378,12 +391,12 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                       </div>
                     );
                   })}
-                  {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+                  {/* Loading indicator - show when waiting for response or empty assistant message */}
                   {isLoading && messages.length > 0 && (
                     messages[messages.length - 1]?.role === "user" ||
                     (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
                   ) && (
-                    <div className="flex justify-start px-2">
+                    <div className="px-2">
                       <ChatLoader />
                     </div>
                   )}
@@ -430,7 +443,10 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                               type="button"
                               size="icon"
                               disabled={!input.trim()}
-                              onClick={() => handleSubmit()}
+                              onClick={() => {
+                                handleSubmit();
+                                textareaRef.current?.focus();
+                              }}
                               className={cn(
                                 "size-7 rounded-full transition-all duration-150",
                                 input.trim()

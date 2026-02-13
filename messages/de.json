@@ -51,7 +51,9 @@
     "featureSummaryDescription": "Die wichtigsten Punkte in Ihrer Sprache. Scrollen überflüssig.",
     "trustNoSignup": "Keine Anmeldung nötig",
     "trustWorksWith": "Funktioniert auf 1.000+ Seiten",
-    "trustFree": "Kostenlos nutzbar"
+    "trustFree": "Kostenlos nutzbar",
+    "continueReading": "Weiterlesen",
+    "continueReadingProgress": "{progress}% gelesen"
   },
   "banner": {
     "heading": "Diese Paywalls überspringen:"

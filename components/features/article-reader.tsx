@@ -725,8 +725,9 @@ export function ArticleReader({
         .prose-article img {
           max-width: 100%;
           height: auto;
-          border-radius: 10px;
+          border-radius: 0.75rem;
           margin: 2.5em 0;
+          cursor: pointer;
         }
 
         .prose-article figure {
