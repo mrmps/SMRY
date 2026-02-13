@@ -16,6 +16,7 @@ import { Response } from "../ai/response";
 import { isTextUIPart, UIMessage } from "ai";
 import {
   ArrowUp,
+  ArrowDown,
   Square,
   Zap,
   Trash,
@@ -65,6 +66,7 @@ function getMessageText(message: UIMessage): string {
 
 export interface ArticleChatHandle {
   clearMessages: () => void;
+  setMessages: (messages: import("ai").UIMessage[]) => void;
   hasMessages: boolean;
 }
 
@@ -78,6 +80,9 @@ interface ArticleChatProps {
   language?: string;
   onLanguageChange?: (language: string) => void;
   onHasMessagesChange?: (hasMessages: boolean) => void;
+  isPremium?: boolean;
+  onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
+  initialMessages?: import("ai").UIMessage[];
   // Header ad (compact variant)
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
@@ -89,6 +94,10 @@ interface ArticleChatProps {
   onMicroAdClick?: () => void;
   // Ref for input container (used for mobile keyboard scrolling)
   inputContainerRef?: React.RefObject<HTMLDivElement | null>;
+  // Thread indicator - shows which history thread is loaded
+  activeThreadTitle?: string;
+  // Mobile keyboard state - used to adapt layout when keyboard is open
+  isKeyboardOpen?: boolean;
 }
 
 export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
@@ -101,18 +110,29 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   language: languageProp,
   onLanguageChange,
   onHasMessagesChange,
+  isPremium: isPremiumProp = false,
+  onMessagesChange,
+  initialMessages: initialMessagesProp,
   ad,
   onAdVisible,
   onAdClick,
-  onAdDismiss,
+  onAdDismiss: _onAdDismiss,
   microAd,
   onMicroAdVisible,
   onMicroAdClick,
   inputContainerRef,
+  activeThreadTitle: _activeThreadTitle,
+  isKeyboardOpen = false,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const floatingInput = isMobile && variant === "sidebar";
+  // Track whether user has manually scrolled away from the bottom
+  const isUserScrolledUpRef = useRef(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const rafIdRef = useRef<number>(0);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const isPremium = usageData?.isPremium ?? false;
@@ -130,6 +150,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
   const {
     messages,
+    setMessages,
     input,
     setInput,
     handleSubmit,
@@ -142,10 +163,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     articleContent,
     articleTitle,
     language: preferredLanguage,
+    isPremium: isPremiumProp,
     onUsageUpdate: setUsageData,
+    initialMessages: initialMessagesProp,
   });
 
-  const [justSubmitted, setJustSubmitted] = useState(false);
 
   // Copy state for messages
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -191,7 +213,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       
       // Handle Enter key from mobile keyboard
       if (e.key === "Enter" && !e.shiftKey && !isSlashMenuOpen && input.trim()) {
-        setJustSubmitted(true);
+        isUserScrolledUpRef.current = false;
         // Blur textarea to close keyboard on mobile
         setTimeout(() => {
           textareaRef.current?.blur();
@@ -201,33 +223,68 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     [handleSlashKeyDown, isSlashMenuOpen, input]
   );
 
-  // Expose clearMessages and hasMessages to parent via ref
+  // Expose clearMessages, setMessages, and hasMessages to parent via ref
   useImperativeHandle(ref, () => ({
     clearMessages,
+    setMessages,
     hasMessages: messages.length > 0,
-  }), [clearMessages, messages.length]);
+  }), [clearMessages, setMessages, messages.length]);
 
   // Notify parent when hasMessages changes
   useEffect(() => {
     onHasMessagesChange?.(messages.length > 0);
   }, [messages.length, onHasMessagesChange]);
 
-  // Get the last message text for scroll dependency
-  const lastMessageText = messages.length > 0
-    ? getMessageText(messages[messages.length - 1])
-    : "";
-
-  // Auto-scroll to bottom when messages change or during streaming
+  // Ref for callback to avoid effect re-firing when callback reference changes
+  const onMessagesChangeRef = useRef(onMessagesChange);
   useEffect(() => {
-    const delay = justSubmitted ? 450 : 150;
-    const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      if (justSubmitted) {
-        setJustSubmitted(false);
+    onMessagesChangeRef.current = onMessagesChange;
+  }, [onMessagesChange]);
+
+  // Notify parent when messages change (for thread syncing)
+  useEffect(() => {
+    onMessagesChangeRef.current?.(messages);
+  }, [messages]);
+
+  // Track user scroll: if they scroll up, pause auto-scroll and show scroll-to-bottom button
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // Floating input adds ~120px of bottom padding/spacer that sits below the last message.
+      // Use a larger threshold so the user is considered "at bottom" even when they haven't
+      // scrolled past all the padding beneath the content.
+      const threshold = floatingInput ? 150 : 80;
+      const scrolledUp = scrollHeight - scrollTop - clientHeight > threshold;
+      isUserScrolledUpRef.current = scrolledUp;
+      setShowScrollButton(scrolledUp);
+    };
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [floatingInput]);
+
+  // During streaming: auto-scroll when at bottom, show arrow button when scrolled up
+  useEffect(() => {
+    if (!isLoading) return;
+    const threshold = floatingInput ? 150 : 80;
+    const tick = () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+        if (isAtBottom && !isUserScrolledUpRef.current) {
+          container.scrollTop = scrollHeight;
+        } else {
+          // Content is growing below the viewport — show the arrow
+          setShowScrollButton(true);
+        }
       }
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [messages, lastMessageText, isLoading, justSubmitted]);
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+    rafIdRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafIdRef.current);
+  }, [isLoading, floatingInput]);
 
   // Auto-focus textarea when chat opens
   useEffect(() => {
@@ -281,7 +338,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       className={cn(
         "overflow-hidden",
         variant === "sidebar"
-          ? "flex h-full w-full flex-col bg-card"
+          ? cn("flex h-full w-full flex-col bg-card", floatingInput && "relative")
           : "rounded-xl border border-border bg-card shadow-sm mb-6",
       )}
     >
@@ -343,22 +400,33 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {/* Messages - Mobile-first conversation container */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
         <div
+          ref={scrollContainerRef}
           className={cn(
-            "h-full overflow-y-auto",
+            "h-full overflow-y-auto scrollbar-hide",
             variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",
+            floatingInput && "pb-[88px]",
           )}
         >
         {messages.length === 0 ? (
-          <div className="flex min-h-[200px] h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
-            <div className="flex-1 flex flex-col items-center justify-center text-center mb-6">
-              <div className="relative mb-3">
-                <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
-                <Logo size="lg" className="text-primary/70 relative" />
+          <div className={cn(
+            "flex h-full flex-col px-3 sm:px-4",
+            isKeyboardOpen && isMobile ? "py-2" : "py-4 sm:py-6",
+            !(isMobile && variant === "sidebar") && "min-h-[200px]",
+            floatingInput && "pb-12"
+          )}>
+            {/* Logo/branding - hidden when keyboard is open on mobile to maximize space */}
+            {!(isKeyboardOpen && isMobile) && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center mb-3 sm:mb-6">
+                <div className="relative mb-3">
+                  <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
+                  <Logo size="lg" className="text-primary/70 relative" />
+                </div>
+                <p className="text-[13px] text-muted-foreground/60">
+                  Ask anything about this article
+                </p>
               </div>
-              <p className="text-[13px] text-muted-foreground/60">
-                Ask anything about this article
-              </p>
-            </div>
+            )}
+            {isKeyboardOpen && isMobile && <div className="flex-1" />}
             <ChatSuggestions
               suggestions={DEFAULT_SUGGESTIONS}
               onSuggestionClick={handleSuggestionClick}
@@ -486,19 +554,57 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
             <div ref={messagesEndRef} data-messages-end />
+            {floatingInput && <div className="h-8" aria-hidden="true" />}
           </div>
         )}
         </div>
-        {/* Fog effect at bottom */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
+        {/* Fog effect at bottom (hidden when input floats — it has its own gradient) */}
+        {!floatingInput && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
+        )}
       </div>
 
-      {/* Input area - Cursor-style clean design */}
-      <div className="shrink-0" ref={inputContainerRef}>
-        <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
+      {/* Input area - floating on mobile, static on desktop */}
+      <div
+        className={cn(
+          floatingInput
+            ? "absolute bottom-0 inset-x-0 z-10"
+            : "shrink-0"
+        )}
+        ref={inputContainerRef}
+      >
+        {/* Scroll to bottom button */}
+        {showScrollButton && messages.length > 0 && (
+          <div className="flex justify-center pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                const container = scrollContainerRef.current;
+                if (container) {
+                  container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+                }
+                isUserScrolledUpRef.current = false;
+                setShowScrollButton(false);
+              }}
+              className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background shadow-md transition-all hover:bg-muted/50 active:scale-95"
+              style={{ touchAction: "manipulation" }}
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="size-4 text-foreground" />
+            </button>
+          </div>
+        )}
+        {/* Gradient fade above floating input */}
+        {floatingInput && !showScrollButton && (
+          <div className="h-8 bg-linear-to-t from-card to-transparent pointer-events-none" />
+        )}
+        <div className={cn(
+          "px-3 pt-1 sm:px-4",
+          floatingInput ? "bg-card pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
+        )}>
           {/* Cursor-style input container with subtle border */}
           <div
-            className="relative rounded-[10px] border border-border/60 bg-background overflow-hidden"
+            className="relative rounded-2xl border border-border/60 bg-background overflow-hidden shadow-sm"
           >
             {/* Slash Commands Menu - inside the container */}
             {isSlashMenuOpen && !isLoading && (
@@ -524,16 +630,42 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
                 disabled={isLimitReached}
                 className="rounded-none border-0 shadow-none bg-transparent"
+                maxHeight={isMobile ? 120 : 240}
                 textareaRef={textareaRef}
               >
                 <PromptInputTextarea
                   placeholder={isLimitReached ? "Daily limit reached" : "Ask anything..."}
-                  className="text-[14px] min-h-[40px]"
+                  className="text-base sm:text-[14px] min-h-[40px]"
                   onKeyDown={handleTextareaKeyDown}
                 />
                 <PromptInputActions className="justify-between px-2 pb-2">
-                  {/* Left side - could add mode/model selector here later */}
-                  <div className="flex items-center gap-1" />
+                  {/* Left side - usage counter on mobile */}
+                  <div className="flex items-center gap-1 text-[10px] font-mono tracking-tight text-muted-foreground/50">
+                    {isMobile && !isPremium && showUsageCounter && usageData && (
+                      <>
+                        <span className={cn(usageData.remaining === 0 ? "text-destructive/60" : "")}>
+                          {usageData.limit - usageData.remaining}/{usageData.limit}
+                        </span>
+                        <Link
+                          href="/pricing"
+                          className={cn(
+                            "font-sans text-[9px] font-medium transition-colors",
+                            usageData.remaining === 0
+                              ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
+                              : "text-primary/70 hover:text-primary hover:underline"
+                          )}
+                        >
+                          Upgrade
+                        </Link>
+                      </>
+                    )}
+                    {isMobile && isPremium && usageData?.model && (
+                      <span className="flex items-center gap-1">
+                        <Zap className="size-2" />
+                        {usageData.model}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Right side - submit button */}
                   <div className="flex items-center">
@@ -586,11 +718,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
       </div>
 
-      {/* Footer - controls + usage counter (always show for sidebar) */}
-      {(variant === "sidebar" || isPremium || showUsageCounter) && (
+      {/* Footer - controls + usage counter (hidden on mobile to save space) */}
+      {!isMobile && (variant === "sidebar" || isPremium || showUsageCounter) && (
         <div
           className={cn(
-            "px-3 py-1.5 shrink-0",
+            "px-3 py-2 shrink-0",
             variant === "sidebar"
               ? "bg-muted/15 border-t border-border/20"
               : "border-t border-border/50",
@@ -603,11 +735,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 {messages.length > 0 && (
                   <button
                     onClick={clearMessages}
-                    className="flex size-5 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                    className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
                     aria-label="Clear chat"
                     title="Clear chat"
                   >
-                    <Trash className="size-2.5" />
+                    <Trash className="size-3" />
                   </button>
                 )}
                 <Select
@@ -616,10 +748,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   disabled={isLoading}
                 >
                   <SelectTrigger
-                    className="h-5 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    className="h-6 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1.5 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                     title="Response language"
                   >
-                    <LanguageIcon className="size-2.5" />
+                    <LanguageIcon className="size-3" />
                     <span className="text-[10px] font-sans">
                       {LANGUAGES.find((l) => l.code === preferredLanguage)?.code.toUpperCase() || "EN"}
                     </span>
@@ -661,6 +793,16 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   Upgrade
                 </Link>
               </>
+            )}
+
+            {/* Free user hint - saved history upsell */}
+            {!isPremiumProp && !showUsageCounter && messages.length > 0 && variant === "sidebar" && (
+              <Link
+                href="/pricing"
+                className="ml-auto font-sans text-[9px] text-muted-foreground/40 hover:text-primary/70 transition-colors"
+              >
+                Pro users get saved history
+              </Link>
             )}
           </div>
         </div>

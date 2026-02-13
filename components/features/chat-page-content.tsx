@@ -3,8 +3,9 @@
 import React, { useEffect, useCallback, useState, useRef, useSyncExternalStore } from "react";
 import { ResizableChatLayout } from "@/components/features/chat-sidebar";
 import { useChatThreads } from "@/lib/hooks/use-chat-threads";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { cn } from "@/lib/utils";
-import { ArrowUp, Square, PanelLeft, Sparkles, Trash } from "lucide-react";
+import { ArrowUp, Square, PanelLeft, MessageSquare, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AuthBar } from "@/components/shared/auth-bar";
 import Link from "next/link";
@@ -46,6 +47,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   const router = useRouter();
   const { getToken } = useAuth();
   const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+  const { isPremium } = useIsPremium();
 
   const {
     threads,
@@ -53,7 +55,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     setActiveThreadId,
     createThread,
     updateThread,
-  } = useChatThreads();
+    deleteThread,
+    togglePin,
+    renameThread,
+    groupedThreads,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    searchThreads,
+  } = useChatThreads(isPremium);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState("");
@@ -103,14 +113,10 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   // Get active thread for initial messages
   const activeThread = threads.find((t) => t.id === activeThreadId);
 
-  // Convert stored messages to UIMessage format
+  // Thread messages are already UIMessage-compatible (ThreadMessage format)
   const getInitialMessages = useCallback((): UIMessage[] => {
     if (!activeThread) return [];
-    return activeThread.messages.map((m, i) => ({
-      id: `${activeThread.id}-${i}`,
-      role: m.role as "user" | "assistant",
-      parts: [{ type: "text" as const, text: m.content }],
-    }));
+    return activeThread.messages as UIMessage[];
   }, [activeThread]);
 
   const {
@@ -126,21 +132,30 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     experimental_throttle: 50,
   });
 
-  // Sync messages back when they change
+  // Ref for threads so the sync effect can read latest state without depending on it
+  const threadsRef = useRef(threads);
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  // Sync messages back when they change (save as ThreadMessage[] directly)
   useEffect(() => {
     if (activeThreadId && messages.length > 0) {
-      const simplifiedMessages = messages.map((m) => ({
+      const threadMessages = messages.map((m) => ({
+        id: m.id,
         role: m.role as "user" | "assistant",
-        content: getMessageText(m),
+        parts: m.parts
+          .filter((p) => isTextUIPart(p))
+          .map((p) => ({ type: "text" as const, text: (p as { text: string }).text })),
       }));
 
       // Generate title from first user message if needed
-      const firstUserMessage = messages.find((m) => m.role === "user");
-      const currentThread = threads.find((t) => t.id === activeThreadId);
+      const firstUserMessage = threadMessages.find((m) => m.role === "user");
+      const currentThread = threadsRef.current.find((t) => t.id === activeThreadId);
 
       if (currentThread) {
         const updates: Parameters<typeof updateThread>[1] = {
-          messages: simplifiedMessages,
+          messages: threadMessages,
         };
 
         // Auto-generate title from first message if still default
@@ -148,7 +163,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
           currentThread.title === "New Chat" &&
           firstUserMessage
         ) {
-          const text = getMessageText(firstUserMessage);
+          const text = firstUserMessage.parts[0]?.text || "";
           if (text) {
             updates.title = text.slice(0, 50) + (text.length > 50 ? "..." : "");
           }
@@ -157,7 +172,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         updateThread(activeThreadId, updates);
       }
     }
-  }, [messages, activeThreadId, updateThread, threads]);
+  }, [messages, activeThreadId, updateThread]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -175,18 +190,13 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     router.push(`/chat/${newThread.id}`);
   }, [createThread, setMessages, router]);
 
-  // Handle thread selection
+  // Handle thread selection — thread messages are already UIMessage-compatible
   const handleSelectThread = useCallback(
     (id: string) => {
       setActiveThreadId(id);
       const thread = threads.find((t) => t.id === id);
       if (thread) {
-        const msgs: UIMessage[] = thread.messages.map((m, i) => ({
-          id: `${id}-${i}`,
-          role: m.role as "user" | "assistant",
-          parts: [{ type: "text" as const, text: m.content }],
-        }));
-        setMessages(msgs);
+        setMessages(thread.messages as UIMessage[]);
       }
       setInput("");
       router.push(`/chat/${id}`);
@@ -251,6 +261,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         onNewChat={handleNewChat}
         onSelectThread={handleSelectThread}
         activeThreadId={activeThreadId}
+        threads={threads}
+        onDeleteThread={deleteThread}
+        onTogglePin={togglePin}
+        onRenameThread={renameThread}
+        groupedThreads={groupedThreads}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMore}
+        searchThreads={searchThreads}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -309,7 +328,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-center">
                   <div className="p-4 rounded-full bg-primary/10 mb-4">
-                    <Sparkles className="size-8 text-primary" />
+                    <MessageSquare className="size-8 text-primary" />
                   </div>
                   <h2 className="text-xl font-semibold text-foreground mb-2">
                     How can I help you today?

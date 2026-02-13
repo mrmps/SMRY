@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useAuth } from "@clerk/nextjs";
@@ -34,10 +34,12 @@ import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { ArticleContent } from "@/components/article/content";
-import { ArticleChat } from "@/components/features/article-chat";
+import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
+import { ChatSidebar } from "@/components/features/chat-sidebar";
+import { useChatThreads, type ThreadMessage } from "@/lib/hooks/use-chat-threads";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -59,6 +61,7 @@ import {
   parseAsString,
 } from "nuqs";
 import { Source } from "@/types/api";
+import { isTextUIPart, type UIMessage } from "ai";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -348,6 +351,37 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  // Left sidebar (chat history) state
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyPanelRef = useRef<ImperativePanelHandle>(null);
+  const articleChatRef = useRef<ArticleChatHandle>(null);
+  const creatingThreadRef = useRef(false);
+  const {
+    threads,
+    activeThread: _activeThread,
+    activeThreadId: currentThreadId,
+    createThread,
+    updateThread,
+    setActiveThreadId,
+    deleteThread,
+    togglePin,
+    renameThread,
+    groupedThreads,
+    isLoaded: threadsLoaded,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    searchThreads,
+    getThreadWithMessages,
+    findThreadByArticleUrl,
+  } = useChatThreads(isPremium, url);
+
+  // Compute initialMessages from active thread (ThreadMessage is UIMessage-compatible)
+  const threadInitialMessages: UIMessage[] = useMemo(() => {
+    if (!_activeThread?.messages.length) return [];
+    return _activeThread.messages as UIMessage[];
+  }, [_activeThread]);
+
   const handleViewModeChange = React.useCallback(
     (mode: (typeof viewModes)[number]) => {
       setQuery({ view: mode });
@@ -434,18 +468,165 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     if (sidebarOpen === isExpanded) return;
 
     if (sidebarOpen) {
-      panel.expand(32);
+      panel.expand(25);
     } else {
       panel.collapse();
     }
   }, [sidebarOpen]);
 
+  // Sync history panel with historyOpen state
+  useEffect(() => {
+    const panel = historyPanelRef.current;
+    if (!panel) return;
+
+    const isExpanded = panel.getSize() > 0;
+    if (historyOpen === isExpanded) return;
+
+    if (historyOpen) {
+      panel.expand(18);
+    } else {
+      panel.collapse();
+    }
+  }, [historyOpen]);
+
+  // Handle new chat from history sidebar
+  const handleNewChat = React.useCallback(() => {
+    let articleDomain: string | undefined;
+    try {
+      articleDomain = new URL(url).hostname.replace("www.", "");
+    } catch {}
+    createThread(undefined, {
+      articleUrl: url,
+      articleTitle: articleTitle,
+      articleDomain,
+    });
+    // Clear current chat messages for the new thread
+    articleChatRef.current?.clearMessages();
+    setHistoryOpen(false);
+  }, [createThread, url, articleTitle]);
+
+  // Use ref for currentThreadId so the callback always reads the latest value
+  // without needing it as a dependency (which would cause recreations and re-fires)
+  const currentThreadIdRef = useRef(currentThreadId);
+  useEffect(() => {
+    currentThreadIdRef.current = currentThreadId;
+    // Reset the guard so a new thread can be created after switching/deleting
+    creatingThreadRef.current = false;
+  }, [currentThreadId]);
+
+  // Guard: skip onMessagesChange echo when loading messages from a thread selection
+  const isLoadingThreadRef = useRef(false);
+
+  // Auto-load the most recent thread for this article URL on page load.
+  // Uses articleChatRef.setMessages() to push messages into the already-mounted chat
+  // (since the initialMessages prop is ignored after mount by useChat's useState).
+  //
+  // Guard: `currentThreadId` is null on fresh load, set once a thread is loaded.
+  // This naturally prevents re-running after auto-load or user actions, and avoids
+  // the timing issue where threads haven't loaded from IDB yet (the effect re-fires
+  // when findThreadByArticleUrl updates with new threads data).
+  useEffect(() => {
+    if (!isPremium || !threadsLoaded || currentThreadId) return;
+
+    const match = findThreadByArticleUrl(url);
+    if (!match) return;
+
+    // Use the same flow as handleSelectThread to properly load messages
+    isLoadingThreadRef.current = true;
+    currentThreadIdRef.current = match.id;
+    setActiveThreadId(match.id);
+
+    // Async: fetch full messages if needed (cross-device), then push to chat
+    (async () => {
+      const thread = await getThreadWithMessages(match.id);
+      if (thread && thread.messages.length > 0) {
+        articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
+      }
+      requestAnimationFrame(() => {
+        isLoadingThreadRef.current = false;
+      });
+    })();
+  }, [isPremium, threadsLoaded, currentThreadId, url, findThreadByArticleUrl, setActiveThreadId, getThreadWithMessages]);
+
+  // Handle thread selection from history sidebar
+  const handleSelectThread = React.useCallback(async (threadId: string) => {
+    // Update ref synchronously BEFORE setting messages to prevent race condition
+    // (otherwise onMessagesChange fires with the old thread ID and overwrites it)
+    isLoadingThreadRef.current = true;
+    currentThreadIdRef.current = threadId;
+    setActiveThreadId(threadId);
+
+    // Try local messages first, then fetch from server if empty (cross-device)
+    const thread = await getThreadWithMessages(threadId);
+    if (thread && thread.messages.length > 0) {
+      articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
+    } else {
+      articleChatRef.current?.clearMessages();
+    }
+
+    // Allow the echo effect to fire and be skipped before re-enabling saves
+    requestAnimationFrame(() => {
+      isLoadingThreadRef.current = false;
+    });
+
+    // Ensure the chat sidebar is open on desktop so the user sees the loaded thread
+    if (!sidebarOpen) {
+      handleSidebarChange(true);
+    }
+  }, [setActiveThreadId, getThreadWithMessages, sidebarOpen, handleSidebarChange]);
+
+  // Sync chat messages back to the active thread (premium only)
+  const handleMessagesChange = useCallback((messages: UIMessage[]) => {
+    if (!isPremium) return;
+    // Skip echo-save when loading messages from thread selection
+    if (isLoadingThreadRef.current) return;
+    // Don't create/update threads when there are no messages (e.g. on mount or clear)
+    if (messages.length === 0) return;
+    // Save as ThreadMessage[] directly (no lossy {role,content} conversion)
+    const threadMessages: ThreadMessage[] = messages.map((msg) => ({
+      id: msg.id,
+      role: msg.role as "user" | "assistant",
+      parts: msg.parts.filter((p) => isTextUIPart(p)).map((p) => ({ type: "text" as const, text: (p as { text: string }).text })),
+    }));
+    // Auto-title from first user message
+    const firstUserMsg = threadMessages.find((m) => m.role === "user");
+    const firstUserText = firstUserMsg?.parts[0]?.text || "";
+    const title = firstUserText
+      ? firstUserText.slice(0, 50) + (firstUserText.length > 50 ? "..." : "")
+      : "New Chat";
+
+    const threadId = currentThreadIdRef.current;
+    if (threadId) {
+      updateThread(threadId, { messages: threadMessages, title });
+    } else if (!creatingThreadRef.current) {
+      // Guard against duplicate creates during rapid message updates
+      creatingThreadRef.current = true;
+      let articleDomain: string | undefined;
+      try {
+        articleDomain = new URL(url).hostname.replace("www.", "");
+      } catch {}
+      const newThread = createThread(title, {
+        articleUrl: url,
+        articleTitle: articleTitle,
+        articleDomain,
+      }, threadMessages);
+      // Set ref synchronously so the next onMessagesChange (which fires fast during streaming)
+      // can update the thread instead of being silently dropped
+      currentThreadIdRef.current = newThread.id;
+    }
+  }, [isPremium, updateThread, createThread, url, articleTitle]);
+
   // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
+  // Keyboard shortcut: Cmd+Shift+H (Mac) or Ctrl+Shift+H (Windows/Linux) to toggle history sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "i") {
         e.preventDefault();
         handleSidebarChange(!sidebarOpen);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        setHistoryOpen((prev) => !prev);
       }
     };
 
@@ -526,10 +707,30 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1.5">
+              {/* History sidebar toggle */}
+              <button
+                onClick={() => setHistoryOpen((prev) => !prev)}
+                className={cn(
+                  "h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5",
+                  historyOpen
+                    ? "bg-accent text-foreground border-border"
+                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
+                )}
+                title="Chat history (⌘⇧H)"
+              >
+                <HistoryIcon className="size-4" />
+                History
+              </button>
+
               {/* Ask AI button - toggles sidebar */}
               <button
                 onClick={() => handleSidebarChange(!sidebarOpen)}
-                className="relative h-9 pl-3 pr-12 text-sm text-muted-foreground bg-muted/50 border border-border rounded-lg hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                className={cn(
+                  "relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer",
+                  sidebarOpen
+                    ? "bg-accent text-foreground border-border"
+                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
+                )}
               >
                 <span className="mt-px">Ask AI</span>
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -662,8 +863,55 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             // Desktop: Resizable panels with sidebars
             <div className="h-full relative">
               <ResizablePanelGroup direction="horizontal" className="h-full">
+                {/* Left sidebar panel - Chat history */}
+                <ResizablePanel
+                  ref={historyPanelRef}
+                  defaultSize={historyOpen ? 18 : 0}
+                  minSize={15}
+                  maxSize={25}
+                  collapsible
+                  collapsedSize={0}
+                  className="bg-background"
+                  onCollapse={() => {
+                    if (historyOpen) setHistoryOpen(false);
+                  }}
+                  onExpand={() => {
+                    if (!historyOpen) setHistoryOpen(true);
+                  }}
+                >
+                  <ChatSidebar
+                    isOpen={historyOpen}
+                    onOpenChange={setHistoryOpen}
+                    onNewChat={handleNewChat}
+                    onSelectThread={handleSelectThread}
+                    activeThreadId={currentThreadId}
+                    isPremium={isPremium}
+                    threads={threads}
+                    onDeleteThread={deleteThread}
+                    onTogglePin={togglePin}
+                    onRenameThread={renameThread}
+                    groupedThreads={groupedThreads}
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={loadMore}
+                    searchThreads={searchThreads}
+                  />
+                </ResizablePanel>
+
+                {/* Left resize handle */}
+                <ResizableHandle
+                  withToggle
+                  isCollapsed={!historyOpen}
+                  onToggle={() => setHistoryOpen(!historyOpen)}
+                  panelPosition="left"
+                  className={cn(
+                    "transition-opacity duration-150",
+                    !historyOpen && "opacity-0 hover:opacity-100"
+                  )}
+                />
+
                 {/* Main content panel */}
-                <ResizablePanel defaultSize={sidebarOpen ? 68 : 100} minSize={40}>
+                <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
                   <div className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
@@ -700,13 +948,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 />
 
-                {/* Summary sidebar panel - resizable between 25-50% for flexibility.
-                    Default width of ~35% provides comfortable chat experience. */}
+                {/* Summary sidebar panel */}
                 <ResizablePanel
                   ref={summaryPanelRef}
-                  defaultSize={sidebarOpen ? 32 : 0}
-                  minSize={25}
-                  maxSize={45}
+                  defaultSize={sidebarOpen ? 25 : 0}
+                  minSize={20}
+                  maxSize={35}
                   collapsible
                   collapsedSize={0}
                   className="bg-card"
@@ -719,11 +966,16 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 >
                   <div className="h-full border-l border-border/40">
                     <ArticleChat
+                      ref={articleChatRef}
                       articleContent={articleTextContent || ""}
                       articleTitle={articleTitle}
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
                       variant="sidebar"
+                      isPremium={isPremium}
+                      initialMessages={threadInitialMessages}
+                      onMessagesChange={isPremium ? handleMessagesChange : undefined}
+                      activeThreadTitle={_activeThread?.title}
                       ad={!isPremium ? chatAd : null}
                       onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onAdClick={chatAd ? () => fireClick(chatAd) : undefined}
@@ -853,6 +1105,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onChatAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                 onChatAdClick={chatAd ? () => fireClick(chatAd) : undefined}
                 onChatAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
+                isPremium={isPremium}
+                initialMessages={threadInitialMessages}
+                threads={threads}
+                activeThreadId={currentThreadId}
+                onSelectThread={handleSelectThread}
+                onNewChat={handleNewChat}
+                onDeleteThread={deleteThread}
+                groupedThreads={groupedThreads}
+                onMessagesChange={isPremium ? handleMessagesChange : undefined}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                searchThreads={searchThreads}
+                getThreadWithMessages={getThreadWithMessages}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}

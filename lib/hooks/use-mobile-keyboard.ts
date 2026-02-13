@@ -4,6 +4,8 @@ interface KeyboardState {
   isOpen: boolean;
   height: number;
   viewportHeight: number;
+  /** Visual viewport offset from layout viewport top (non-zero on iOS when keyboard scrolls the page) */
+  offsetTop: number;
 }
 
 export function useMobileKeyboard(): KeyboardState {
@@ -11,6 +13,7 @@ export function useMobileKeyboard(): KeyboardState {
     isOpen: false,
     height: 0,
     viewportHeight: typeof window !== "undefined" ? window.innerHeight : 0,
+    offsetTop: 0,
   });
 
   useEffect(() => {
@@ -28,14 +31,15 @@ export function useMobileKeyboard(): KeyboardState {
     const updateKeyboardState = () => {
       const currentHeight = viewport.height;
       const heightDiff = windowHeight - currentHeight;
-      
+
       const isOpen = heightDiff > 150;
       const height = isOpen ? heightDiff : 0;
 
-      setKeyboardState({ 
-        isOpen, 
+      setKeyboardState({
+        isOpen,
         height,
         viewportHeight: currentHeight,
+        offsetTop: viewport.offsetTop,
       });
     };
 

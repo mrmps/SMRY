@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Search, Pin, X, LogIn, PanelLeftClose } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useChatThreads, type ChatThread } from "@/lib/hooks/use-chat-threads";
+import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import {
   ResizableHandle,
@@ -14,6 +13,12 @@ import {
 } from "@/components/ui/resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import { buildUrlWithReturn } from "@/lib/hooks/use-return-url";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverPopup,
+  PopoverClose,
+} from "@/components/ui/popover";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -21,6 +26,18 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onSelectThread: (threadId: string) => void;
   activeThreadId?: string | null;
+  isPremium?: boolean;
+  threads?: ChatThread[];
+  onDeleteThread?: (id: string) => void;
+  onTogglePin?: (id: string) => void;
+  onRenameThread?: (id: string, title: string) => void;
+  groupedThreads?: () => { label: string; threads: ChatThread[] }[];
+  // Pagination
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  // Search
+  searchThreads?: (query: string) => Promise<ChatThread[]>;
 }
 
 function ThreadItem({
@@ -58,119 +75,142 @@ function ThreadItem({
     setIsEditing(false);
   };
 
-  return (
-    <div className="relative px-2 mb-1">
-      <a
-        href={`/chat/${thread.id}`}
-        onClick={(e) => {
-          e.preventDefault();
-          onSelect();
-        }}
-        className={cn(
-          "group flex items-center relative w-full rounded-lg overflow-hidden",
-          "p-1 pr-2 transition-colors",
-          isActive
-            ? "bg-accent/60"
-            : "hover:bg-accent/40"
-        )}
-      >
-        <div className="flex items-center relative w-full">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditing(true);
-            }}
-            className="w-full text-left"
-          >
-            <div className="relative w-full">
-              {isEditing ? (
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleSubmitRename}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSubmitRename();
-                    if (e.key === "Escape") {
-                      setEditValue(thread.title);
-                      setIsEditing(false);
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    "w-full bg-transparent rounded px-1 py-0.5",
-                    "text-sm text-primary-foreground/90",
-                    "focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  )}
-                  aria-label="Thread title"
-                />
-              ) : (
-                <span
-                  className={cn(
-                    "block truncate text-sm px-1 py-0.5",
-                    "text-primary-foreground/80"
-                  )}
-                  title={thread.title}
-                >
-                  {thread.title}
-                </span>
-              )}
-            </div>
-          </button>
+  const handleDelete = useCallback(() => {
+    onDelete();
+  }, [onDelete]);
 
-          {/* Action buttons - visible on hover */}
-          <div
-            className={cn(
-              "absolute right-0 flex items-center z-50",
-              "opacity-0 group-hover:opacity-100 transition-opacity"
-            )}
-          >
-            {/* Gradient fade */}
-            <div
-              className={cn(
-                "absolute -left-8 w-8 h-12 pointer-events-none",
-                isActive
-                  ? "bg-gradient-to-l from-accent/60 to-transparent"
-                  : "bg-gradient-to-l from-background to-transparent"
-              )}
+  const displayTitle = thread.title || thread.articleTitle || "New Chat";
+
+  return (
+    <div className="group relative">
+      {isEditing ? (
+        <div
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5",
+            isActive ? "bg-accent/70" : "bg-transparent"
+          )}
+        >
+          <div className="flex-1 min-w-0">
+            <input
+              ref={inputRef}
+              type="text"
+              name="thread-title"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSubmitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmitRename();
+                if (e.key === "Escape") {
+                  setEditValue(thread.title);
+                  setIsEditing(false);
+                }
+              }}
+              className="w-full bg-background rounded px-1.5 py-0.5 text-[13px] text-foreground border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Thread title"
             />
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onTogglePin();
-              }}
-              className={cn(
-                "p-1.5 rounded-md",
-                "text-muted-foreground hover:text-foreground hover:bg-accent/50",
-                thread.isPinned && "text-primary"
-              )}
-              aria-label={thread.isPinned ? "Unpin Thread" : "Pin Thread"}
-            >
-              <Pin className="size-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete();
-              }}
-              className={cn(
-                "p-1.5 rounded-md",
-                "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              )}
-              aria-label="Delete thread"
-            >
-              <X className="size-4" />
-            </button>
           </div>
         </div>
-      </a>
+      ) : (
+        <button
+          onClick={onSelect}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
+            isActive
+              ? "bg-accent/70"
+              : "hover:bg-accent/30"
+          )}
+        >
+          <div className="flex-1 min-w-0">
+            <span
+              className={cn(
+                "block truncate text-[13px]",
+                isActive ? "text-foreground" : "text-foreground/70"
+              )}
+              title={displayTitle}
+            >
+              {displayTitle}
+            </span>
+            <span className="block text-[11px] text-muted-foreground/40 tabular-nums truncate">
+              {formatRelativeTime(thread.updatedAt)}
+              {(() => { const c = thread.messages.filter(m => m.role === "user").length; return c > 0 ? ` \u00B7 ${c} message${c !== 1 ? "s" : ""}` : ""; })()}
+            </span>
+          </div>
+        </button>
+      )}
+
+      {/* More menu - visible on hover */}
+      {!isEditing && (
+        <div
+          className={cn(
+            "absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center",
+            "opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          )}
+        >
+          {/* Gradient fade */}
+          <div
+            className={cn(
+              "absolute -left-5 w-5 h-full pointer-events-none",
+              isActive
+                ? "bg-gradient-to-l from-accent/70 to-transparent"
+                : "bg-gradient-to-l from-card to-transparent group-hover:from-accent/30"
+            )}
+          />
+          <Popover>
+            <PopoverTrigger
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Thread options"
+            >
+              <MoreHorizontal className="size-3.5" aria-hidden="true" />
+            </PopoverTrigger>
+            <PopoverPopup
+              side="right"
+              align="start"
+              sideOffset={4}
+              className="min-w-[160px] !w-auto"
+            >
+              <div className="py-1">
+                <PopoverClose
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-foreground/80 hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  Delete
+                </PopoverClose>
+                <PopoverClose
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setEditValue(thread.title);
+                    setIsEditing(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-foreground/80 hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  Rename
+                </PopoverClose>
+                <PopoverClose
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    onTogglePin();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-foreground/80 hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  <Pin className="size-3.5" aria-hidden="true" />
+                  {thread.isPinned ? "Unpin" : "Pin"}
+                </PopoverClose>
+              </div>
+            </PopoverPopup>
+          </Popover>
+        </div>
+      )}
     </div>
   );
 }
+
+const KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"]);
 
 function ThreadGroup({
   label,
@@ -191,176 +231,322 @@ function ThreadGroup({
 }) {
   if (threads.length === 0) return null;
 
+  const isArticleGroup = !KNOWN_LABELS.has(label);
+  const articleDomain = isArticleGroup ? threads[0]?.articleDomain : null;
+
   return (
-    <div className="mb-2">
-      <div className="px-3.5 py-2 pb-1">
-        <span className="text-xs font-medium text-primary/60">{label}</span>
+    <div className="mb-0.5">
+      <div className="px-3 pt-3 pb-1">
+        <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? label : undefined}>{label}</span>
+        {articleDomain && (
+          <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+        )}
       </div>
-      {threads.map((thread) => (
-        <ThreadItem
-          key={thread.id}
-          thread={thread}
-          isActive={activeThreadId === thread.id}
-          onSelect={() => onSelect(thread.id)}
-          onDelete={() => onDelete(thread.id)}
-          onTogglePin={() => onTogglePin(thread.id)}
-          onRename={(title) => onRename(thread.id, title)}
-        />
-      ))}
+      <div className="px-1.5 space-y-px">
+        {threads.map((thread) => (
+          <ThreadItem
+            key={thread.id}
+            thread={thread}
+            isActive={activeThreadId === thread.id}
+            onSelect={() => onSelect(thread.id)}
+            onDelete={() => onDelete(thread.id)}
+            onTogglePin={() => onTogglePin(thread.id)}
+            onRename={(title) => onRename(thread.id, title)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Upgrade prompt shown to free users in desktop sidebar */
+function PremiumGate() {
+  const features = [
+    { icon: Smartphone, text: "Synced across all devices" },
+    { icon: MessageSquare, text: "Resume any conversation" },
+    { icon: Zap, text: "Unlimited AI chats" },
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col px-3 pt-4 pb-3">
+      <div className="rounded-xl border border-border/60 bg-accent/30 p-4">
+        <h3
+          className="text-[13px] font-semibold text-foreground mb-1"
+          style={{ textWrap: "balance" }}
+        >
+          Don&apos;t lose this conversation
+        </h3>
+        <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
+          Your chats vanish when you leave. Keep them forever with Pro.
+        </p>
+
+        <div className="space-y-2.5 mb-4">
+          {features.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-2">
+              <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Icon className="size-2.5 text-primary" aria-hidden="true" />
+              </div>
+              <span className="text-[11px] text-foreground/80">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        <Link
+          href="/pricing"
+          className="flex items-center justify-center w-full h-9 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Start free trial
+        </Link>
+        <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+          7 days free &middot; Cancel anytime
+        </p>
+      </div>
     </div>
   );
 }
 
 export function ChatSidebar({
-  isOpen,
+  isOpen: _isOpen,
   onOpenChange,
   onNewChat,
   onSelectThread,
   activeThreadId,
+  isPremium = false,
+  onDeleteThread,
+  onTogglePin,
+  onRenameThread,
+  groupedThreads,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+  searchThreads,
 }: ChatSidebarProps) {
   const { isSignedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const {
-    groupedThreads,
-    deleteThread,
-    togglePin,
-    renameThread,
-  } = useChatThreads();
+  const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const groups = groupedThreads();
+  // Async search state
+  const [searchResults, setSearchResults] = useState<ChatThread[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Filter threads by search query
-  const filteredGroups = searchQuery.trim()
-    ? groups
-        .map((group) => ({
-          ...group,
-          threads: group.threads.filter((t) =>
-            t.title.toLowerCase().includes(searchQuery.toLowerCase())
-          ),
-        }))
-        .filter((g) => g.threads.length > 0)
-    : groups;
+  const groups = useMemo(() => groupedThreads?.() ?? [], [groupedThreads]);
+  const groupsRef = useRef(groups);
+  useEffect(() => { groupsRef.current = groups; }, [groups]);
+
+  // Auto-focus search input when revealed
+  useEffect(() => {
+    if (showSearch) {
+      searchInputRef.current?.focus();
+    }
+  }, [showSearch]);
+
+  // Debounced async search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    if (!searchThreads) {
+      // Fallback to synchronous filtering if no async search provided
+      const lower = searchQuery.toLowerCase();
+      const filtered = groupsRef.current
+        .flatMap((g) => g.threads)
+        .filter(
+          (t) =>
+            t.title.toLowerCase().includes(lower) ||
+            t.articleTitle?.toLowerCase().includes(lower) ||
+            t.articleDomain?.toLowerCase().includes(lower)
+        );
+      setSearchResults(filtered);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchThreads(searchQuery);
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchThreads]);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore) onLoadMore?.();
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, onLoadMore]);
+
+  // Determine what to display
+  const isSearchActive = searchQuery.trim().length > 0;
+  const displayGroups = isSearchActive ? [] : groups;
 
   return (
-    <div
-      className={cn(
-        "flex flex-col h-full bg-background",
-        "border-r border-border/40"
-      )}
-    >
+    <div className="flex flex-col h-full bg-card border-r border-border/40">
       {/* Header */}
-      <div className="flex flex-col gap-2 p-2 mx-1 mt-1">
-        {/* Logo and close button */}
-        <div className="flex items-center justify-between h-8 mb-1">
-          <Link
-            href="/"
-            className="flex items-center justify-center transition-opacity hover:opacity-80"
-          >
-            <Image
-              src="/logo.svg"
-              width={65}
-              height={14}
-              alt="smry logo"
-              className="h-3.5 w-auto dark:invert"
-              priority
-            />
-          </Link>
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
+        <h2 className="text-[13px] font-semibold text-foreground">History</h2>
+        <div className="flex items-center gap-0.5">
+          {isPremium && (
+            <>
+              <button
+                onClick={() => { setShowSearch(!showSearch); if (showSearch) { setSearchQuery(""); setSearchResults(null); } }}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                  showSearch
+                    ? "text-foreground bg-accent/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                )}
+                aria-label="Search threads"
+                aria-expanded={showSearch}
+              >
+                <Search className="size-3.5" aria-hidden="true" />
+              </button>
+              <button
+                onClick={onNewChat}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                aria-label="New chat"
+              >
+                <Plus className="size-3.5" aria-hidden="true" />
+              </button>
+            </>
+          )}
           <button
             onClick={() => onOpenChange(false)}
-            className={cn(
-              "p-1.5 rounded-md",
-              "text-muted-foreground hover:text-foreground hover:bg-accent/50",
-              "transition-colors"
-            )}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             aria-label="Close sidebar"
           >
-            <PanelLeftClose className="size-4" />
+            <PanelLeftClose className="size-3.5" aria-hidden="true" />
           </button>
         </div>
+      </div>
 
-        {/* New Chat button */}
-        <div className="px-1">
-          <button
-            onClick={onNewChat}
-            className={cn(
-              "relative w-full inline-flex items-center justify-center gap-2",
-              "h-9 px-4 rounded-lg",
-              "text-sm font-semibold",
-              "bg-primary/20 text-primary",
-              "shadow-sm",
-              "transition-colors hover:bg-primary/30",
-              // Gradient border using pseudo-element
-              "before:absolute before:inset-0 before:rounded-lg before:p-px",
-              "before:bg-gradient-to-b before:from-primary/0 before:via-primary/40 before:to-primary/10",
-              "before:-z-10"
-            )}
-          >
-            New Chat
-          </button>
+      {/* Search - toggleable */}
+      {isPremium && showSearch && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30">
+          <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
+          <input
+            ref={searchInputRef}
+            type="search"
+            name="thread-search"
+            role="searchbox"
+            aria-label="Search threads"
+            placeholder="Search messages..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearchQuery("");
+                setSearchResults(null);
+                setShowSearch(false);
+              }
+            }}
+            className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/40 focus-visible:outline-none"
+          />
+          {isSearching && (
+            <Loader2 className="size-3 animate-spin text-muted-foreground/50 shrink-0" aria-hidden="true" />
+          )}
         </div>
+      )}
 
-        {/* Search */}
-        <div className="px-3 pb-2 border-b border-border/40">
-          <div className="flex items-center h-9">
-            <Search className="size-4 mr-3 -ml-0.5 text-muted-foreground/70 shrink-0" />
-            <input
-              type="search"
-              role="searchbox"
-              aria-label="Search threads"
-              placeholder="Search your threads..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
-                "flex-1 bg-transparent",
-                "text-sm text-foreground placeholder:text-muted-foreground/50",
-                "focus:outline-none"
+      {/* Thread list (premium only) */}
+      {isPremium ? (
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+          {isSearchActive ? (
+            // Search results (flat list, not grouped)
+            searchResults && searchResults.length > 0 ? (
+              <div className="px-1.5 py-1 space-y-px">
+                {searchResults.map((thread) => (
+                  <ThreadItem
+                    key={thread.id}
+                    thread={thread}
+                    isActive={activeThreadId === thread.id}
+                    onSelect={() => onSelectThread(thread.id)}
+                    onDelete={() => onDeleteThread?.(thread.id)}
+                    onTogglePin={() => onTogglePin?.(thread.id)}
+                    onRename={(title) => onRenameThread?.(thread.id, title)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-8 text-center">
+                <p className="text-[13px] text-muted-foreground/40">
+                  {isSearching ? "Searching\u2026" : "No matching threads"}
+                </p>
+              </div>
+            )
+          ) : (
+            // Normal grouped view
+            <>
+              {displayGroups.length > 0 ? (
+                displayGroups.map((group) => (
+                  <ThreadGroup
+                    key={group.label}
+                    label={group.label}
+                    threads={group.threads}
+                    activeThreadId={activeThreadId}
+                    onSelect={onSelectThread}
+                    onDelete={onDeleteThread ?? (() => {})}
+                    onTogglePin={onTogglePin ?? (() => {})}
+                    onRename={onRenameThread ?? (() => {})}
+                  />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full px-6 text-center py-8">
+                  <HistoryIcon className="size-8 text-muted-foreground/30 mb-3" aria-hidden="true" />
+                  <p className="text-sm text-muted-foreground/50">
+                    No chat history yet
+                  </p>
+                  <p className="text-xs text-muted-foreground/30 mt-1">
+                    Start a conversation to see it here
+                  </p>
+                </div>
               )}
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* Thread list */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
-        {filteredGroups.length > 0 ? (
-          filteredGroups.map((group) => (
-            <ThreadGroup
-              key={group.label}
-              label={group.label}
-              threads={group.threads}
-              activeThreadId={activeThreadId}
-              onSelect={onSelectThread}
-              onDelete={deleteThread}
-              onTogglePin={togglePin}
-              onRename={renameThread}
-            />
-          ))
-        ) : (
-          <div className="px-4 py-8 text-center">
-            <p className="text-sm text-muted-foreground/60">
-              {searchQuery ? "No matching threads" : "No chat history yet"}
-            </p>
-          </div>
-        )}
-      </div>
+              {/* Infinite scroll sentinel */}
+              {hasMore && (
+                <div ref={sentinelRef} className="h-8 flex items-center justify-center">
+                  {isLoadingMore && (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground/40" aria-hidden="true" />
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <PremiumGate />
+      )}
 
       {/* Footer - Login prompt for unauthenticated users */}
       {!isSignedIn && (
-        <div className="p-2">
+        <div className="p-2 border-t border-border/30">
           <SignInButton
             mode="modal"
             fallbackRedirectUrl={buildUrlWithReturn("/auth/redirect")}
           >
             <button
-              className={cn(
-                "flex items-center gap-4 w-full",
-                "p-4 rounded-lg",
-                "text-muted-foreground hover:text-foreground hover:bg-accent/40",
-                "transition-colors"
-              )}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors text-[13px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               aria-label="Login"
             >
-              <LogIn className="size-4" />
+              <LogIn className="size-3.5" aria-hidden="true" />
               <span>Login</span>
             </button>
           </SignInButton>
@@ -381,6 +567,16 @@ export function ResizableChatLayout({
   onNewChat,
   onSelectThread,
   activeThreadId,
+  isPremium,
+  threads,
+  onDeleteThread,
+  onTogglePin,
+  onRenameThread,
+  groupedThreads,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+  searchThreads,
   children,
 }: ResizableChatSidebarProps) {
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
@@ -410,7 +606,6 @@ export function ResizableChatLayout({
         maxSize={30}
         collapsible
         collapsedSize={0}
-        className="bg-background"
         onCollapse={() => {
           if (isOpen) onOpenChange(false);
         }}
@@ -424,6 +619,16 @@ export function ResizableChatLayout({
           onNewChat={onNewChat}
           onSelectThread={onSelectThread}
           activeThreadId={activeThreadId}
+          isPremium={isPremium}
+          threads={threads}
+          onDeleteThread={onDeleteThread}
+          onTogglePin={onTogglePin}
+          onRenameThread={onRenameThread}
+          groupedThreads={groupedThreads}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
+          searchThreads={searchThreads}
         />
       </ResizablePanel>
 

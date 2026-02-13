@@ -1,14 +1,18 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { X, Trash } from "lucide-react";
+import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
-import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
+import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
+import Link from "next/link";
+import type { UIMessage } from "ai";
+
+type DrawerView = "chat" | "history";
 
 interface MobileChatDrawerProps {
   open: boolean;
@@ -20,7 +24,134 @@ interface MobileChatDrawerProps {
   onChatAdVisible?: () => void;
   onChatAdClick?: () => void;
   onChatAdDismiss?: () => void;
+  // Thread/history props
+  isPremium?: boolean;
+  initialMessages?: UIMessage[];
+  threads?: ChatThread[];
+  activeThreadId?: string | null;
+  onSelectThread?: (threadId: string) => void;
+  onNewChat?: () => void;
+  onDeleteThread?: (threadId: string) => void;
+  groupedThreads?: () => { label: string; threads: ChatThread[] }[];
+  onMessagesChange?: (messages: UIMessage[]) => void;
+  // Pagination
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  // Search
+  searchThreads?: (query: string) => Promise<ChatThread[]>;
+  // Fetch full thread with messages (cross-device)
+  getThreadWithMessages?: (threadId: string) => Promise<ChatThread | null>;
 }
+
+/** Single thread item for mobile history view — tap to select, trash icon to delete */
+function MobileThreadItem({
+  thread,
+  isActive,
+  onSelect,
+  onDelete,
+}: {
+  thread: ChatThread;
+  isActive: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+}) {
+  const displayTitle = thread.title || thread.articleTitle || "New Chat";
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center rounded-lg px-3 py-2.5 text-left select-none",
+        isActive ? "bg-accent/70" : "bg-background active:bg-accent/50"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex-1 min-w-0 text-left"
+        style={{ touchAction: "manipulation" }}
+      >
+        <div className="flex items-center gap-1.5">
+          {thread.isPinned && (
+            <Pin className="size-2.5 text-primary shrink-0" aria-hidden="true" />
+          )}
+          <span className={cn(
+            "flex-1 truncate text-[14px]",
+            isActive ? "text-foreground font-medium" : "text-foreground/80"
+          )}>
+            {displayTitle}
+          </span>
+        </div>
+        <span className="block text-[11px] text-muted-foreground/40 tabular-nums truncate mt-0.5">
+          {formatRelativeTime(thread.updatedAt)}
+          {(() => { const c = thread.messages.filter(m => m.role === "user").length; return c > 0 ? ` \u00B7 ${c} message${c !== 1 ? "s" : ""}` : ""; })()}
+        </span>
+      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="shrink-0 flex size-7 items-center justify-center rounded-md text-muted-foreground/30 active:text-destructive active:bg-destructive/10 transition-colors ml-1"
+          aria-label={`Delete ${displayTitle}`}
+          style={{ touchAction: "manipulation" }}
+        >
+          <Trash2 className="size-3.5" aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Premium gate shown in history view for free users */
+function MobilePremiumGate() {
+  const features = [
+    { icon: Smartphone, text: "Synced across all your devices" },
+    { icon: MessageSquare, text: "Resume any conversation later" },
+    { icon: Zap, text: "Unlimited AI conversations" },
+  ];
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center px-5">
+      <div className="w-full max-w-sm rounded-2xl border border-border/60 bg-accent/30 p-6 text-center">
+        <h3
+          className="text-base font-semibold text-foreground mb-1.5"
+          style={{ textWrap: "balance" }}
+        >
+          Don&apos;t lose this conversation
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-[260px] mx-auto">
+          Your chats vanish when you leave. Keep them forever with Pro.
+        </p>
+
+        <div className="space-y-3 mb-6 text-left max-w-[260px] mx-auto">
+          {features.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Icon className="size-3 text-primary" aria-hidden="true" />
+              </div>
+              <span className="text-[13px] text-foreground/80">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        <Link
+          href="/pricing"
+          className="flex items-center justify-center w-full h-11 rounded-xl text-sm font-semibold bg-primary text-primary-foreground active:bg-primary/90 transition-colors shadow-sm"
+        >
+          Start free trial
+        </Link>
+        <p className="text-[11px] text-muted-foreground/60 mt-2.5">
+          7 days free &middot; Cancel anytime
+        </p>
+      </div>
+    </div>
+  );
+}
+
+const MOBILE_KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"]);
 
 export function MobileChatDrawer({
   open,
@@ -30,14 +161,33 @@ export function MobileChatDrawer({
   chatAd,
   onChatAdVisible,
   onChatAdClick,
-  onChatAdDismiss,
+  onChatAdDismiss: _onChatAdDismiss,
+  isPremium = false,
+  initialMessages: initialMessagesProp,
+  threads = [],
+  activeThreadId,
+  onSelectThread,
+  onNewChat,
+  onDeleteThread,
+  groupedThreads,
+  onMessagesChange,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+  searchThreads,
+  getThreadWithMessages,
 }: MobileChatDrawerProps) {
   const chatRef = useRef<ArticleChatHandle>(null);
   const drawerContentRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
-  const { isOpen: isKeyboardOpen, viewportHeight } = useMobileKeyboard();
-  const wasKeyboardOpenRef = useRef(false);
+  const { isOpen: isKeyboardOpen } = useMobileKeyboard();
+  const [activeView, setActiveView] = useState<DrawerView>("chat");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Async search state
+  const [searchResults, setSearchResults] = useState<ChatThread[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
     "chat-language",
@@ -50,52 +200,107 @@ export function MobileChatDrawer({
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
+    // Reset to chat view on close
+    setTimeout(() => setActiveView("chat"), 300);
   }, [onOpenChange]);
 
+  const selectRequestRef = useRef(0);
+  const handleSelectThread = useCallback(async (threadId: string) => {
+    const requestId = ++selectRequestRef.current;
+    onSelectThread?.(threadId);
+    setActiveView("chat");
+
+    // Try local messages first, then fetch from server if empty (cross-device)
+    if (getThreadWithMessages) {
+      const thread = await getThreadWithMessages(threadId);
+      if (selectRequestRef.current !== requestId) return; // stale
+      if (thread && thread.messages.length > 0) {
+        chatRef.current?.setMessages(thread.messages as UIMessage[]);
+      } else {
+        chatRef.current?.clearMessages();
+      }
+    } else {
+      const thread = threads.find((t) => t.id === threadId);
+      if (thread && thread.messages.length > 0) {
+        chatRef.current?.setMessages(thread.messages as UIMessage[]);
+      } else {
+        chatRef.current?.clearMessages();
+      }
+    }
+  }, [onSelectThread, threads, getThreadWithMessages]);
+
+  const handleNewChat = useCallback(() => {
+    onNewChat?.();
+    chatRef.current?.clearMessages();
+    setActiveView("chat");
+  }, [onNewChat]);
+
+  const handleDeleteThread = useCallback((threadId: string) => {
+    onDeleteThread?.(threadId);
+    // If deleting the active thread, clear chat UI (hook already sets activeThreadId to null)
+    if (activeThreadId === threadId) {
+      chatRef.current?.clearMessages();
+    }
+  }, [onDeleteThread, activeThreadId]);
+
+  const groups = useMemo(() => groupedThreads?.() ?? [], [groupedThreads]);
+  const groupsRef = useRef(groups);
+  useEffect(() => { groupsRef.current = groups; }, [groups]);
+
+  // Debounced async search
   useEffect(() => {
-    if (isKeyboardOpen && inputContainerRef.current && drawerContentRef.current) {
-      const timer = setTimeout(() => {
-        if (inputContainerRef.current) {
-          inputContainerRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "end",
-            inline: "nearest",
-          });
-        }
-      }, 200);
-      return () => clearTimeout(timer);
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
     }
-  }, [isKeyboardOpen]);
 
+    if (!searchThreads) {
+      // Fallback to synchronous filtering
+      const lower = searchQuery.toLowerCase();
+      const filtered = groupsRef.current
+        .flatMap((g) => g.threads)
+        .filter(
+          (t) =>
+            t.title.toLowerCase().includes(lower) ||
+            t.articleTitle?.toLowerCase().includes(lower) ||
+            t.articleDomain?.toLowerCase().includes(lower)
+        );
+      setSearchResults(filtered);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchThreads(searchQuery);
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchThreads]);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const wasOpen = wasKeyboardOpenRef.current;
-    wasKeyboardOpenRef.current = isKeyboardOpen;
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore) onLoadMore?.();
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, onLoadMore]);
 
-    if (wasOpen && !isKeyboardOpen && hasMessages) {
-      const timer = setTimeout(() => {
-        const messagesContainer = drawerContentRef.current?.querySelector('.overflow-y-auto');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        const messagesEnd = messagesContainer?.querySelector('[data-messages-end]') || 
-                            messagesContainer?.lastElementChild;
-        if (messagesEnd) {
-          messagesEnd.scrollIntoView({ behavior: "smooth", block: "end" });
-        }
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isKeyboardOpen, hasMessages]);
-
-  const getDrawerHeight = () => {
-    if (isKeyboardOpen && viewportHeight > 0) {
-      const minHeight = typeof window !== "undefined" ? window.innerHeight * 0.5 : 400;
-      return `${Math.max(viewportHeight, minHeight)}px`;
-    }
-    return "85vh";
-  };
-
-  const drawerHeight = getDrawerHeight();
+  const isSearchActive = searchQuery.trim().length > 0;
 
   return (
     <DrawerPrimitive.Root
@@ -103,100 +308,224 @@ export function MobileChatDrawer({
       onOpenChange={onOpenChange}
       shouldScaleBackground={false}
       modal={true}
+      repositionInputs={false}
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
-          className="fixed inset-0 z-50 bg-black/40"
-          onClick={handleClose}
+          className="fixed inset-0 z-50 bg-background"
         />
 
         <DrawerPrimitive.Content
           ref={drawerContentRef}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50",
-            "rounded-t-[20px]",
+            "fixed inset-x-0 top-0 z-50",
             "bg-background",
             "flex flex-col",
             "outline-none",
-            "shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.12)]",
-            "dark:shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.35)]",
-            "transition-all duration-200 ease-out",
+            "pt-[env(safe-area-inset-top,0px)]",
             "pb-[env(safe-area-inset-bottom,0px)]"
           )}
-          style={{
-            height: drawerHeight,
-            maxHeight: drawerHeight,
-            minHeight: isKeyboardOpen ? "50vh" : undefined,
-          }}
+          style={{ height: "100dvh" }}
         >
-          {/* Drag handle area - subtle */}
-          <div className="flex justify-center pt-3 pb-1 shrink-0">
-            <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
-          </div>
-
-          {/* Header - Cursor-style clean minimal design */}
-          <div className="flex items-center justify-between px-4 py-2 shrink-0 bg-muted/20 border-b border-border/30">
-            {/* Left: Title */}
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-foreground">
-                Chat
-              </span>
-            </div>
-
-            {/* Right: Controls */}
-            <div className="flex items-center gap-1">
-              {/* Clear messages - only show when there are messages */}
-              {hasMessages && (
-                <button
-                  type="button"
-                  onClick={handleClearMessages}
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                  aria-label="Clear chat"
-                >
-                  <Trash className="size-3" />
-                </button>
-              )}
-
-              {/* Close button */}
+          {/* Fullscreen header — swipe-down here to dismiss */}
+          <div className="shrink-0 border-b border-border/30">
+            <div className="flex items-center justify-between px-2 py-1.5">
+              {/* Left: Back button */}
               <button
                 type="button"
                 onClick={handleClose}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                aria-label="Close chat"
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                aria-label="Back"
+                style={{ touchAction: "manipulation" }}
               >
-                <X className="size-4" />
+                <ChevronLeft className="size-5" aria-hidden="true" />
               </button>
+
+              {/* Center: Tab switcher */}
+              <div className="flex items-center bg-muted/60 rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveView("chat")}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all",
+                    activeView === "chat"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  style={{ touchAction: "manipulation" }}
+                >
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveView("history")}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all",
+                    activeView === "history"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  style={{ touchAction: "manipulation" }}
+                >
+                  History
+                </button>
+              </div>
+
+              {/* Right: Context action */}
+              <div className="flex size-9 items-center justify-center">
+                {activeView === "chat" && hasMessages ? (
+                  <button
+                    type="button"
+                    onClick={handleClearMessages}
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    aria-label="Clear chat"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <Trash className="size-4" aria-hidden="true" />
+                  </button>
+                ) : activeView === "history" && isPremium ? (
+                  <button
+                    type="button"
+                    onClick={handleNewChat}
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    aria-label="New chat"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <Plus className="size-5" aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          {/* Ad inside drawer - subtle placement */}
-          {chatAd && (
-            <div className="px-4 py-2 shrink-0 bg-muted/10 border-b border-border/20">
-              <GravityAd
-                ad={chatAd}
-                variant="compact"
-                onVisible={onChatAdVisible ?? (() => {})}
-                onClick={onChatAdClick}
-                onDismiss={onChatAdDismiss}
-              />
+          {/* View container — both views stay mounted so refs work; hidden via display:none */}
+          <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag>
+            {/* Chat view */}
+            <div className={cn("h-full", activeView !== "chat" && "hidden")}>
+              <div className="h-full mx-auto max-w-lg">
+                <ArticleChat
+                  ref={chatRef}
+                  articleContent={articleContent}
+                  articleTitle={articleTitle}
+                  isOpen={true}
+                  onOpenChange={onOpenChange}
+                  variant="sidebar"
+                  hideHeader
+                  language={preferredLanguage}
+                  onLanguageChange={setPreferredLanguage}
+                  onHasMessagesChange={setHasMessages}
+                  initialMessages={initialMessagesProp}
+                  inputContainerRef={inputContainerRef}
+                  onMessagesChange={onMessagesChange}
+                  isKeyboardOpen={isKeyboardOpen}
+                  ad={chatAd}
+                  onAdVisible={onChatAdVisible}
+                  onAdClick={onChatAdClick}
+                />
+              </div>
             </div>
-          )}
 
-          {/* Chat content */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <ArticleChat
-              ref={chatRef}
-              articleContent={articleContent}
-              articleTitle={articleTitle}
-              isOpen={true}
-              onOpenChange={onOpenChange}
-              variant="sidebar"
-              hideHeader
-              language={preferredLanguage}
-              onLanguageChange={setPreferredLanguage}
-              onHasMessagesChange={setHasMessages}
-              inputContainerRef={inputContainerRef}
-            />
+            {/* History view */}
+            <div className={cn("h-full", activeView !== "history" && "hidden")}>
+              {isPremium ? (
+                <div className="h-full flex flex-col" style={{ overscrollBehavior: "contain" }}>
+                  {/* Search */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
+                    <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                    <input
+                      type="search"
+                      name="mobile-thread-search"
+                      aria-label="Search threads"
+                      placeholder="Search messages..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/40 focus-visible:outline-none"
+                    />
+                    {isSearching && (
+                      <Loader2 className="size-3.5 animate-spin text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto scrollbar-hide">
+                  {isSearchActive ? (
+                    // Search results (flat list)
+                    searchResults && searchResults.length > 0 ? (
+                      <div className="px-4 py-2 space-y-1">
+                        {searchResults.map((thread) => (
+                          <MobileThreadItem
+                            key={thread.id}
+                            thread={thread}
+                            isActive={activeThreadId === thread.id}
+                            onSelect={() => handleSelectThread(thread.id)}
+                            onDelete={onDeleteThread ? () => handleDeleteThread(thread.id) : undefined}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                        <p className="text-sm text-muted-foreground/60">
+                          {isSearching ? "Searching..." : "No matching threads"}
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    // Normal grouped view
+                    <>
+                      {groups.length > 0 ? (
+                        <div className="py-2">
+                          {groups.map((group) => {
+                            const isArticleGroup = !MOBILE_KNOWN_LABELS.has(group.label);
+                            const articleDomain = isArticleGroup ? group.threads[0]?.articleDomain : null;
+                            return (
+                            <div key={group.label} className="mb-1">
+                              <div className="px-4 pt-3 pb-1">
+                                <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? group.label : undefined}>{group.label}</span>
+                                {articleDomain && (
+                                  <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+                                )}
+                              </div>
+                              <div className="px-4 space-y-1">
+                                {group.threads.map((thread) => (
+                                  <MobileThreadItem
+                                    key={thread.id}
+                                    thread={thread}
+                                    isActive={activeThreadId === thread.id}
+                                    onSelect={() => handleSelectThread(thread.id)}
+                                    onDelete={onDeleteThread ? () => handleDeleteThread(thread.id) : undefined}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full px-6 text-center">
+                          <History className="size-8 text-muted-foreground/30 mb-3" aria-hidden="true" />
+                          <p className="text-sm text-muted-foreground/60">
+                            No chat history yet
+                          </p>
+                          <p className="text-xs text-muted-foreground/40 mt-1">
+                            Start a conversation to see it here
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Infinite scroll sentinel */}
+                      {hasMore && (
+                        <div ref={sentinelRef} className="h-8 flex items-center justify-center">
+                          {isLoadingMore && (
+                            <Loader2 className="size-4 animate-spin text-muted-foreground/40" aria-hidden="true" />
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  </div>
+                </div>
+              ) : (
+                <MobilePremiumGate />
+              )}
+            </div>
           </div>
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
