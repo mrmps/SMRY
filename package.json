@@ -25,6 +25,7 @@
     "pages:deploy": "bunx wrangler pages deploy .vercel/output/static",
     "prepare": "husky || true",
     "check-env": "bun scripts/check-env.ts",
+    "check-i18n": "bun scripts/check-i18n.ts",
     "check-deps": "knip --dependencies --no-config-hints --exclude unlisted",
     "email:changelog": "bun scripts/send-changelog-email.ts",
     "email:changelog:dry": "bun scripts/send-changelog-email.ts --dry-run"

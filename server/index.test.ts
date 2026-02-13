@@ -104,7 +104,8 @@ describe("Elysia API Server", () => {
       );
 
       // May return 200 or 500 depending on ClickHouse availability
-      expect([200, 500]).toContain(response.status);
+      // May return 200/500 (ClickHouse) or 401 if admin auth is enabled
+      expect([200, 500, 401]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -120,7 +121,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?range=1h")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 500, 401]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -132,7 +133,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?range=7d")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 500, 401]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -144,7 +145,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?hostname=example.com&source=smry-fast&outcome=success")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 500, 401]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -159,7 +160,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?urlSearch=test")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 500, 401]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
