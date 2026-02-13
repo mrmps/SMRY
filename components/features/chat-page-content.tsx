@@ -37,8 +37,8 @@ function getMessageText(message: UIMessage): string {
 // Thinking shimmer indicator (CSS in globals.css)
 function ChatLoader() {
   return (
-    <div className="thinking-indicator">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+    <div className="flex items-center gap-2 h-7 py-1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" className="shrink-0 opacity-40 text-muted-foreground">
         <rect fill="none" width="256" height="256" />
         <line fill="none" stroke="currentColor" x1="88" y1="232" x2="168" y2="232" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
         <line fill="none" stroke="currentColor" x1="128" y1="200" x2="128" y2="144" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
