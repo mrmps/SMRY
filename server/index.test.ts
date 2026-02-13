@@ -67,7 +67,7 @@ describe("Elysia API Server", () => {
       );
       // May return 200 or 500 depending on external service - just verify route is hit
       expect([200, 500]).toContain(response.status);
-    });
+    }, { timeout: 15000 });
 
     it("should accept valid smry-slow source", async () => {
       const response = await app.handle(
@@ -75,7 +75,7 @@ describe("Elysia API Server", () => {
       );
       // Just verify route accepts the source
       expect([200, 500]).toContain(response.status);
-    });
+    }, { timeout: 15000 });
 
     it("should accept valid wayback source", async () => {
       // Note: Wayback Machine can be slow, so we just verify the route accepts the parameter
@@ -252,7 +252,7 @@ describe("Article Route Integration", () => {
       expect(body.article.length).toBeGreaterThan(0);
       expect(body.article.htmlContent).toBeDefined(); // Original HTML for "Original" tab
     }
-  });
+  }, { timeout: 15000 });
 
   it("should return article with htmlContent for Original tab", async () => {
     const response = await app.handle(
@@ -266,7 +266,7 @@ describe("Article Route Integration", () => {
       expect(typeof body.article.htmlContent).toBe("string");
       expect(body.article.htmlContent.length).toBeGreaterThan(0);
     }
-  });
+  }, { timeout: 15000 });
 });
 
 describe("HTML Content for Original View", () => {
@@ -293,7 +293,7 @@ describe("HTML Content for Original View", () => {
     expect(body.article.htmlContent).toContain("<!DOCTYPE html>");
     expect(body.article.htmlContent).toContain("<html");
     expect(body.article.htmlContent).toContain("</html>");
-  });
+  }, { timeout: 15000 });
 
   it("should return htmlContent with complete HTML structure", async () => {
     // htmlContent should contain the original HTML
@@ -309,7 +309,7 @@ describe("HTML Content for Original View", () => {
     expect(body.article.htmlContent).toContain("<body");
     expect(body.article.htmlContent).toContain("</body>");
     expect(body.article.htmlContent).toContain("</html>");
-  });
+  }, { timeout: 15000 });
 
   it("should include htmlContent in cache hit response", async () => {
     // First request to populate cache
@@ -328,6 +328,6 @@ describe("HTML Content for Original View", () => {
     expect(body.article).toBeDefined();
     expect(body.article.htmlContent).toBeDefined();
     expect(body.article.htmlContent.length).toBeGreaterThan(0);
-  });
+  }, { timeout: 30000 });
 });
 

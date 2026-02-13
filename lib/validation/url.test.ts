@@ -83,9 +83,26 @@ describe("normalizeUrl", () => {
       );
     });
 
+    it("blocks IPv4-mapped hex-hextet private IPv6 addresses", () => {
+      expect(() => normalizeUrl("http://[::ffff:a00:1]/")).toThrow(
+        "Cannot access internal or private network addresses."
+      );
+    });
+
+    it("blocks expanded IPv4-mapped private IPv6 addresses", () => {
+      expect(() => normalizeUrl("http://[0:0:0:0:0:ffff:10.0.0.1]/")).toThrow(
+        "Cannot access internal or private network addresses."
+      );
+    });
+
     it("allows IPv4-mapped public IPv6 addresses", () => {
       const result = normalizeUrl("http://[::ffff:8.8.8.8]/");
       expect(result).toBe("http://[::ffff:8.8.8.8]/");
+    });
+
+    it("allows IPv4-mapped hex-hextet public IPv6 addresses", () => {
+      const result = normalizeUrl("http://[::ffff:808:808]/");
+      expect(result).toBe("http://[::ffff:808:808]/");
     });
 
     it("blocks cloud metadata endpoints", () => {
