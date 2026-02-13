@@ -26,6 +26,8 @@ import { PromoBanner } from "@/components/marketing/promo-banner";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
+import { getLastUnfinishedArticle, clearReadingProgress } from "@/lib/hooks/use-reading-progress";
+import { FaviconImage } from "@/components/shared/favicon-image";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -257,6 +259,69 @@ function looksLikeUrlAttempt(input: string): boolean {
   return TLD_REGEX.test(trimmed) || HTTP_REGEX.test(trimmed);
 }
 
+// Continue Reading card - shown when user has an unfinished article
+function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, string | number>) => string }) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const article = useMemo(() => {
+    if (!mounted) return null;
+    return getLastUnfinishedArticle();
+  }, [mounted]);
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!article || dismissed) return null;
+
+  const proxyUrl = `/proxy?url=${encodeURIComponent(article.url)}`;
+
+  return (
+    <div className="mt-4 w-full animate-in fade-in duration-300">
+      <Link
+        href={proxyUrl}
+        className="group relative flex items-center gap-3 rounded-xl border border-border/40 bg-card/50 px-4 py-3 backdrop-blur-sm transition-colors hover:bg-card/80"
+      >
+        {/* Favicon */}
+        <div className="size-5 shrink-0 overflow-hidden rounded">
+          <FaviconImage domain={article.domain} className="size-full" />
+        </div>
+
+        {/* Title + domain */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate group-hover:text-foreground/90">
+            {article.title}
+          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground/60">{article.domain}</span>
+            <span className="text-[11px] text-muted-foreground/40">·</span>
+            <span className="text-[11px] text-muted-foreground/60">
+              {t("continueReadingProgress", { progress: article.progress })}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+            <div
+              className="h-full rounded-full bg-foreground/20 transition-[width] duration-300"
+              style={{ width: `${article.progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Dismiss button */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clearReadingProgress(article.url);
+            setDismissed(true);
+          }}
+          className="shrink-0 p-1 rounded-md text-muted-foreground/40 hover:text-muted-foreground hover:bg-foreground/[0.05] transition-colors"
+          aria-label="Dismiss"
+        >
+          <X className="size-3.5" />
+        </button>
+      </Link>
+    </div>
+  );
+}
+
 export const HomeContent = memo(function HomeContent() {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -459,6 +524,9 @@ export const HomeContent = memo(function HomeContent() {
               />
             )}
           </div>
+
+          {/* Continue Reading card */}
+          <ContinueReadingCard t={t} />
 
         </div>
 

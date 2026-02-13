@@ -61,6 +61,7 @@ import {
   parseAsString,
 } from "nuqs";
 import { Source } from "@/types/api";
+import { saveReadingProgress } from "@/lib/hooks/use-reading-progress";
 import { isTextUIPart, type UIMessage } from "ai";
 import {
   ResizableHandle,
@@ -68,11 +69,22 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ImperativePanelHandle } from "react-resizable-panels";
+import { KeyboardShortcutsDialog } from "@/components/features/keyboard-shortcuts-dialog";
 
 // Helper to detect client-side rendering without setState in effect
 const emptySubscribe = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
+
+// Check if the user is typing in an input/textarea/contentEditable
+function isTypingInInput(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  if (!target) return false;
+  const tagName = target.tagName;
+  if (tagName === "INPUT" || tagName === "TEXTAREA") return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
 
 // History menu item for the More dropdown
 function HistoryMenuItem() {
@@ -350,6 +362,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
 
   // Left sidebar (chat history) state
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -396,9 +409,65 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     [setQuery]
   );
 
+  // Scroll refs (shared between progress tracking and header hide)
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
+
+  // Reading progress tracking (throttled save to localStorage)
+  const progressSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const calculateProgress = (scrollEl: HTMLElement): number => {
+      const scrollTop = scrollEl.scrollTop;
+      const scrollHeight = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (scrollHeight <= 0) return 100;
+      return Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
+    };
+
+    const handleScroll = (scrollEl: HTMLElement) => {
+      if (progressSaveTimerRef.current) return; // throttled
+      progressSaveTimerRef.current = setTimeout(() => {
+        progressSaveTimerRef.current = null;
+        const progress = calculateProgress(scrollEl);
+        saveReadingProgress(url, progress);
+      }, 3000);
+    };
+
+    const desktopEl = desktopScrollRef.current;
+    const mobileEl = mobileScrollRef.current;
+
+    const onDesktopScroll = () => desktopEl && handleScroll(desktopEl);
+    const onMobileScroll = () => mobileEl && handleScroll(mobileEl);
+
+    desktopEl?.addEventListener("scroll", onDesktopScroll, { passive: true });
+    mobileEl?.addEventListener("scroll", onMobileScroll, { passive: true });
+
+    return () => {
+      desktopEl?.removeEventListener("scroll", onDesktopScroll);
+      mobileEl?.removeEventListener("scroll", onMobileScroll);
+      if (progressSaveTimerRef.current) {
+        clearTimeout(progressSaveTimerRef.current);
+      }
+    };
+  }, [url, isDesktop]);
+
+  // Save progress on unmount (page navigation)
+  useEffect(() => {
+    const desktopEl = desktopScrollRef.current;
+    const mobileEl = mobileScrollRef.current;
+    return () => {
+      const scrollEl = desktopEl || mobileEl;
+      if (!scrollEl) return;
+      const scrollTop = scrollEl.scrollTop;
+      const scrollHeight = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (scrollHeight <= 0) return;
+      const progress = Math.min(100, Math.max(0, (scrollTop / scrollHeight) * 100));
+      saveReadingProgress(url, progress);
+    };
+  }, [url, isDesktop]);
+
   // Mobile header hide-on-scroll state
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
-  const mobileScrollRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const scrollDeltaAccum = useRef(0);
   const headerVisibleRef = useRef(true);
@@ -616,23 +685,61 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     }
   }, [isPremium, updateThread, createThread, url, articleTitle]);
 
-  // Keyboard shortcut: Cmd+I (Mac) or Ctrl+I (Windows/Linux) to toggle AI chat
-  // Keyboard shortcut: Cmd+Shift+H (Mac) or Ctrl+Shift+H (Windows/Linux) to toggle history sidebar
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "i") {
+      const mod = e.metaKey || e.ctrlKey;
+
+      // ⌘I — Toggle AI chat
+      if (mod && e.key === "i") {
         e.preventDefault();
         handleSidebarChange(!sidebarOpen);
+        return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "h" || e.key === "H")) {
+      // ⌘⇧H — Toggle history sidebar
+      if (mod && e.shiftKey && (e.key === "h" || e.key === "H")) {
         e.preventDefault();
         setHistoryOpen((prev) => !prev);
+        return;
+      }
+      // ⌘⇧N — New chat thread
+      if (mod && e.shiftKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        handleNewChat();
+        return;
+      }
+      // ⌘⇧C — Copy last AI response
+      if (mod && e.shiftKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        articleChatRef.current?.copyLastResponse();
+        return;
+      }
+      // Esc — Stop AI generation (don't preventDefault so dialogs still close)
+      if (e.key === "Escape") {
+        articleChatRef.current?.stopGeneration();
+        return;
+      }
+
+      // Guard: don't fire plain-key shortcuts while typing
+      if (isTypingInInput(e)) return;
+
+      // ? — Toggle shortcuts cheat sheet
+      if (e.key === "?" && !mod) {
+        e.preventDefault();
+        setShortcutsDialogOpen((prev) => !prev);
+        return;
+      }
+      // / — Focus chat input (only when sidebar is open)
+      if (e.key === "/" && !mod && sidebarOpen) {
+        e.preventDefault();
+        articleChatRef.current?.focusInput();
+        return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarOpen, handleSidebarChange]);
+  }, [sidebarOpen, handleSidebarChange, handleNewChat]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -710,12 +817,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* History sidebar toggle */}
               <button
                 onClick={() => setHistoryOpen((prev) => !prev)}
-                className={cn(
-                  "h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5",
-                  historyOpen
-                    ? "bg-accent text-foreground border-border"
-                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-                )}
+                className="h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
                 title="Chat history (⌘⇧H)"
               >
                 <HistoryIcon className="size-4" />
@@ -725,12 +827,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Ask AI button - toggles sidebar */}
               <button
                 onClick={() => handleSidebarChange(!sidebarOpen)}
-                className={cn(
-                  "relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer",
-                  sidebarOpen
-                    ? "bg-accent text-foreground border-border"
-                    : "text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-                )}
+                className="relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
               >
                 <span className="mt-px">Ask AI</span>
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -912,7 +1009,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
-                  <div className="h-full overflow-y-auto bg-card scrollbar-hide">
+                  <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-card scrollbar-hide">
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
                         data={articleQuery.data}
@@ -1153,6 +1250,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
           )}
         </main>
       </div>
+      <KeyboardShortcutsDialog
+        open={shortcutsDialogOpen}
+        onOpenChange={setShortcutsDialogOpen}
+      />
     </div>
   );
 }

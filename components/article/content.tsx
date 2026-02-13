@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, memo } from "react";
+import React, { useState, useEffect, useMemo, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -25,6 +25,7 @@ import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 import { HighlightToolbar } from "@/components/features/highlight-toolbar";
 import { HighlightsPanel } from "@/components/features/highlights-panel";
 import { useHighlights } from "@/lib/hooks/use-highlights";
+import { ImageLightbox, type LightboxImage } from "@/components/ui/image-lightbox";
 
 export type { Source };
 
@@ -334,32 +335,56 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
     deleteHighlight,
   } = useHighlights(url, articleTitle);
 
-  // Add click-to-expand for images
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxImages, setLightboxImages] = useState<LightboxImage[]>([]);
+
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+  const navigateLightbox = useCallback((i: number) => setLightboxIndex(i), []);
+
+  // Helper: is this image expandable (not a link child, not an icon)?
+  const isExpandable = useCallback((img: HTMLImageElement) => {
+    if (img.closest("a")) return false;
+    const w = img.getAttribute("width");
+    const h = img.getAttribute("height");
+    if ((w && parseInt(w, 10) <= 48) || (h && parseInt(h, 10) <= 48))
+      return false;
+    return true;
+  }, []);
+
+  // Event-delegated click handler on the article container.
+  // Recomputes image list on every click — no stale closures, no per-image listeners.
   useEffect(() => {
-    if (!contentRef.current || !sanitizedArticleContent) return;
+    const container = contentRef.current;
+    if (!container || !sanitizedArticleContent) return;
 
-    const images = contentRef.current.querySelectorAll("img");
-    const handleClick = (e: Event) => {
-      const img = e.target as HTMLImageElement;
-      // Don't expand if image is inside a link - let the link navigate instead
-      if (img.closest("a")) return;
-      img.classList.toggle("expanded");
-    };
+    const handleClick = (e: MouseEvent) => {
+      const img = (e.target as HTMLElement).closest?.("img");
+      if (!img || !isExpandable(img)) return;
 
-    images.forEach((img) => {
-      // Only add expand behavior to images not inside links
-      if (!img.closest("a")) {
-        img.addEventListener("click", handleClick);
-        img.title = "Click to expand/collapse";
-      }
-    });
+      // Build image list on-the-fly from current DOM
+      const all = Array.from(
+        container.querySelectorAll<HTMLImageElement>("img"),
+      ).filter(isExpandable);
+      const index = all.indexOf(img);
+      if (index === -1) return;
 
-    return () => {
-      images.forEach((img) => {
-        img.removeEventListener("click", handleClick);
+      const images = all.map((el) => {
+        const figure = el.closest("figure");
+        const caption =
+          figure?.querySelector("figcaption")?.textContent || undefined;
+        return { src: el.src, alt: el.alt || "", caption };
       });
+
+      setLightboxImages(images);
+      setLightboxIndex(index);
+      setLightboxOpen(true);
     };
-  }, [sanitizedArticleContent]);
+
+    container.addEventListener("click", handleClick);
+    return () => container.removeEventListener("click", handleClick);
+  }, [sanitizedArticleContent, isExpandable]);
 
   const debugContext = useMemo(() =>
     error instanceof ArticleFetchError ? error.debugContext : data?.debugContext,
@@ -731,6 +756,16 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
           )}
         </div>
       </article>
+
+      {/* Image lightbox (portal-rendered) */}
+      <ImageLightbox
+        images={lightboxImages}
+        currentIndex={lightboxIndex}
+        isOpen={lightboxOpen}
+        onClose={closeLightbox}
+        onNavigate={navigateLightbox}
+      />
+
       {process.env.NODE_ENV === "development" && debugContext && (
         <DebugPanel debugContext={debugContext} />
       )}

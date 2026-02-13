@@ -51,7 +51,9 @@
     "featureSummaryDescription": "用您的语言获取要点。无需滚动全文。",
     "trustNoSignup": "无需注册",
     "trustWorksWith": "支持1,000+网站",
-    "trustFree": "免费使用"
+    "trustFree": "免费使用",
+    "continueReading": "继续阅读",
+    "continueReadingProgress": "已读 {progress}%"
   },
   "banner": {
     "heading": "跳过这些付费墙："

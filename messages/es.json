@@ -51,7 +51,9 @@
     "featureSummaryDescription": "Los puntos clave en tu idioma. Sin necesidad de desplazarte.",
     "trustNoSignup": "Sin registro",
     "trustWorksWith": "Funciona en 1.000+ sitios",
-    "trustFree": "Gratis"
+    "trustFree": "Gratis",
+    "continueReading": "Seguir leyendo",
+    "continueReadingProgress": "{progress}% leído"
   },
   "banner": {
     "heading": "Salta estos muros de pago:"
