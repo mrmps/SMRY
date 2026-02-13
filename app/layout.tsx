@@ -18,6 +18,7 @@ import { Databuddy } from "@databuddy/sdk/react"
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "@/components/ui/sonner";
 import { getLocale } from 'next-intl/server';
 import { JsonLd, organizationSchema, websiteSchema } from "@/components/seo/json-ld";
 
@@ -103,6 +104,7 @@ export default async function RootLayout({
             <NuqsAdapter>
               <QueryProvider>
                 {children}
+                <Toaster position="top-center" />
               </QueryProvider>
             </NuqsAdapter>
           </ThemeProvider>
