@@ -33,6 +33,8 @@ export const env = createEnv({
 
     // ZeroClick Ads (fallback provider)
     ZEROCLICK_API_KEY: z.string().min(1),
+    // Set to "true" to disable MCP signal broadcasting (for debugging memory leaks)
+    ZEROCLICK_SIGNALS_DISABLED: z.string().optional(),
 
     // Email (inbound.new)
     INBOUND_API_KEY: z.string().min(1),

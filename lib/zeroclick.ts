@@ -377,6 +377,11 @@ export async function broadcastArticleSignal(article: {
   ip?: string;
   userAgent?: string;
 }): Promise<void> {
+  // Check if signals are disabled (for debugging memory leaks)
+  if (env.ZEROCLICK_SIGNALS_DISABLED === "true") {
+    return;
+  }
+
   // sessionId is required for client caching
   if (!article.sessionId) {
     logger.warn({ url: article.url }, "Missing sessionId for signal broadcast — skipping");
