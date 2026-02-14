@@ -86,68 +86,115 @@ interface CachedClient {
 }
 
 const clientCache = new Map<string, CachedClient>();
-const CLIENT_TTL_MS = 5 * 60 * 1000; // 5 minutes — sessions are short-lived
-const CLIENT_CLEANUP_INTERVAL_MS = 60 * 1000; // Cleanup every minute
-const MAX_CACHED_CLIENTS = 100; // Prevent unbounded growth
-const CLIENT_CLOSE_TIMEOUT_MS = 2000; // Max time to wait for client close
-const SIGNAL_RETRY_COOLDOWN_MS = 10_000; // Back off 10s after failure (was 60s - too aggressive)
+const CLIENT_TTL_MS = 2 * 60 * 1000; // 2 minutes (reduced from 5 - shorter = less orphans)
+const CLIENT_CLEANUP_INTERVAL_MS = 30 * 1000; // Cleanup every 30 seconds (more aggressive)
+const MAX_CACHED_CLIENTS = 50; // Reduced from 100 - fewer cached = less memory
+const CLIENT_CLOSE_TIMEOUT_MS = 1000; // 1 second (reduced from 2)
+const SIGNAL_RETRY_COOLDOWN_MS = 10_000; // Back off 10s after failure
 
 // Track failures per session instead of globally
 const sessionFailures = new Map<string, number>();
 
+// Track orphaned clients for debugging memory leaks
+let orphanedClientCount = 0;
+let totalClientsCreated = 0;
+let totalClientsClosed = 0;
+
 /**
- * Close a client with timeout to prevent hanging.
+ * Close a client - fire and forget to avoid blocking.
+ * Tracks orphaned clients (close timed out) for debugging.
  */
-async function closeClientWithTimeout(client: Client): Promise<void> {
-  try {
-    await Promise.race([
-      client.close(),
-      new Promise<void>((resolve) => setTimeout(resolve, CLIENT_CLOSE_TIMEOUT_MS)),
-    ]);
-  } catch {
-    // Ignore close errors — best effort cleanup
-  }
+function closeClientFireAndForget(client: Client): void {
+  const closePromise = client.close();
+  const timeoutPromise = new Promise<"timeout">((resolve) =>
+    setTimeout(() => resolve("timeout"), CLIENT_CLOSE_TIMEOUT_MS)
+  );
+
+  Promise.race([closePromise, timeoutPromise])
+    .then((result) => {
+      if (result === "timeout") {
+        orphanedClientCount++;
+        logger.warn(
+          { orphanedCount: orphanedClientCount, created: totalClientsCreated, closed: totalClientsClosed },
+          "MCP client close timed out - potential memory leak"
+        );
+      } else {
+        totalClientsClosed++;
+      }
+    })
+    .catch(() => {
+      // Close failed - still count as closed since we can't do more
+      totalClientsClosed++;
+    });
 }
 
 /**
- * Cleanup expired clients from the cache.
+ * Cleanup expired clients and stale failure entries from caches.
  * Called periodically to prevent memory leaks from abandoned sessions.
  */
-async function cleanupExpiredClients(): Promise<void> {
+function cleanupExpiredClients(): void {
   const now = Date.now();
-  const expiredKeys: string[] = [];
 
+  // Cleanup expired MCP clients
+  const expiredClientKeys: string[] = [];
   for (const [key, cached] of clientCache) {
     if (now - cached.lastUsed > CLIENT_TTL_MS) {
-      expiredKeys.push(key);
+      expiredClientKeys.push(key);
     }
   }
 
-  if (expiredKeys.length > 0) {
-    logger.info({ count: expiredKeys.length }, "Cleaning up expired MCP signal clients");
-    for (const key of expiredKeys) {
+  if (expiredClientKeys.length > 0) {
+    logger.info({ count: expiredClientKeys.length }, "Cleaning up expired MCP signal clients");
+    for (const key of expiredClientKeys) {
       const cached = clientCache.get(key);
       if (cached) {
         clientCache.delete(key);
-        await closeClientWithTimeout(cached.client);
+        closeClientFireAndForget(cached.client);
       }
     }
+  }
+
+  // Cleanup expired session failures (CRITICAL: prevents unbounded memory growth)
+  // Also enforce hard cap to prevent accumulation during high-traffic periods
+  const MAX_FAILURE_ENTRIES = 200;
+  let failuresRemoved = 0;
+
+  for (const [key, time] of sessionFailures) {
+    if (now - time > SIGNAL_RETRY_COOLDOWN_MS) {
+      sessionFailures.delete(key);
+      failuresRemoved++;
+    }
+  }
+
+  // If still over cap after removing expired, evict oldest entries
+  if (sessionFailures.size > MAX_FAILURE_ENTRIES) {
+    const sortedFailures = Array.from(sessionFailures.entries())
+      .sort((a, b) => a[1] - b[1]); // oldest first
+    const toRemove = sortedFailures.slice(0, sessionFailures.size - MAX_FAILURE_ENTRIES);
+    for (const [key] of toRemove) {
+      sessionFailures.delete(key);
+      failuresRemoved++;
+    }
+  }
+
+  if (failuresRemoved > 0) {
+    logger.info({ removed: failuresRemoved, remaining: sessionFailures.size }, "Cleaned up session failure entries");
   }
 }
 
 /**
  * Evict oldest clients if cache is full.
  */
-async function evictOldestClients(count: number): Promise<void> {
+function evictOldestClients(count: number): void {
   const entries = Array.from(clientCache.entries())
     .sort((a, b) => a[1].lastUsed - b[1].lastUsed)
     .slice(0, count);
 
   for (const [key, cached] of entries) {
     clientCache.delete(key);
-    await closeClientWithTimeout(cached.client);
+    closeClientFireAndForget(cached.client);
   }
-  logger.info({ count }, "Evicted oldest MCP signal clients");
+  logger.info({ count, cacheSize: clientCache.size }, "Evicted oldest MCP signal clients");
 }
 
 // Start periodic cleanup
@@ -155,9 +202,11 @@ let cleanupInterval: ReturnType<typeof setInterval> | null = null;
 function startCleanupInterval() {
   if (cleanupInterval) return;
   cleanupInterval = setInterval(() => {
-    cleanupExpiredClients().catch((err) => {
+    try {
+      cleanupExpiredClients();
+    } catch (err) {
       logger.warn({ error: String(err) }, "Error during client cleanup");
-    });
+    }
   }, CLIENT_CLEANUP_INTERVAL_MS);
   // Don't block process exit
   if (cleanupInterval.unref) cleanupInterval.unref();
@@ -166,8 +215,10 @@ startCleanupInterval();
 
 /**
  * Graceful shutdown — close all cached signal clients.
+ * Fires close for all clients then clears the cache.
+ * Close is fire-and-forget so we don't block shutdown.
  */
-export async function shutdownSignalClient(): Promise<void> {
+export function shutdownSignalClient(): void {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
     cleanupInterval = null;
@@ -176,10 +227,9 @@ export async function shutdownSignalClient(): Promise<void> {
   const clientCount = clientCache.size;
   if (clientCount > 0) {
     logger.info({ count: clientCount }, "Closing all MCP signal clients on shutdown");
-    const closePromises = Array.from(clientCache.values()).map((cached) =>
-      closeClientWithTimeout(cached.client)
-    );
-    await Promise.all(closePromises);
+    for (const cached of clientCache.values()) {
+      closeClientFireAndForget(cached.client);
+    }
     clientCache.clear();
   }
 }
@@ -191,12 +241,38 @@ function registerShutdownHandlers() {
   shutdownHandlersRegistered = true;
 
   const handleShutdown = () => {
-    shutdownSignalClient().catch(() => {});
+    try {
+      shutdownSignalClient();
+    } catch {
+      // Ignore shutdown errors
+    }
   };
   process.once("SIGTERM", handleShutdown);
   process.once("SIGINT", handleShutdown);
 }
 registerShutdownHandlers();
+
+/**
+ * Get cache statistics for monitoring/debugging.
+ * Used by memory monitor to track cache growth.
+ */
+export function getZeroClickCacheStats(): {
+  clientCacheSize: number;
+  sessionFailuresSize: number;
+  maxClients: number;
+  totalCreated: number;
+  totalClosed: number;
+  orphanedCount: number;
+} {
+  return {
+    clientCacheSize: clientCache.size,
+    sessionFailuresSize: sessionFailures.size,
+    maxClients: MAX_CACHED_CLIENTS,
+    totalCreated: totalClientsCreated,
+    totalClosed: totalClientsClosed,
+    orphanedCount: orphanedClientCount,
+  };
+}
 
 /**
  * Get or create an MCP Signal Client for the given session.
@@ -227,20 +303,11 @@ async function getOrCreateSignalClient(userContext: {
     return cached.client;
   }
 
-  // Evict oldest clients if cache is full
+  // Evict oldest clients if cache is full (more aggressive - evict 20 to prevent churn)
   if (clientCache.size >= MAX_CACHED_CLIENTS) {
-    await evictOldestClients(10); // Evict 10 to make room
+    evictOldestClients(20); // Fire-and-forget eviction
   }
-
-  // Also clean up old failure entries to prevent memory growth
-  if (sessionFailures.size > MAX_CACHED_CLIENTS * 2) {
-    const now = Date.now();
-    for (const [key, time] of sessionFailures) {
-      if (now - time > SIGNAL_RETRY_COOLDOWN_MS) {
-        sessionFailures.delete(key);
-      }
-    }
-  }
+  // Note: sessionFailures cleanup is handled by periodic cleanupExpiredClients()
 
   try {
     // Build headers — required + optional user context
@@ -262,6 +329,7 @@ async function getOrCreateSignalClient(userContext: {
       },
     );
     await client.connect(transport);
+    totalClientsCreated++;
 
     // Cache the client for reuse
     clientCache.set(cacheKey, {
@@ -272,7 +340,13 @@ async function getOrCreateSignalClient(userContext: {
 
     // Clear any previous failure for this session
     sessionFailures.delete(cacheKey);
-    logger.info({ sessionId: cacheKey.slice(-8), cacheSize: clientCache.size }, "MCP signal client connected");
+    logger.info({
+      sessionId: cacheKey.slice(-8),
+      cacheSize: clientCache.size,
+      created: totalClientsCreated,
+      closed: totalClientsClosed,
+      orphaned: orphanedClientCount,
+    }, "MCP signal client connected");
     return client;
   } catch (error) {
     logger.warn({ error: String(error), sessionId: cacheKey.slice(-8) }, "Failed to connect MCP signal client — will retry in 10s");
@@ -347,7 +421,7 @@ export async function broadcastArticleSignal(article: {
       const cached = clientCache.get(article.sessionId);
       if (cached) {
         clientCache.delete(article.sessionId);
-        await closeClientWithTimeout(cached.client);
+        closeClientFireAndForget(cached.client);
         logger.info({ sessionId: article.sessionId.slice(-8) }, "Removed failed client from cache");
       }
       // Set per-session cooldown (doesn't block other users)
