@@ -146,6 +146,7 @@ export function ImageLightbox({
             className="lightbox-figure"
             onPointerDown={(e) => e.stopPropagation()}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={image.src}
               src={image.src}

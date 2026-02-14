@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
       >
         {/* Article image as background (if available) */}
         {articleImage && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={articleImage}
             alt=""
