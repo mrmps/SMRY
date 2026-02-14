@@ -90,9 +90,10 @@ const CLIENT_TTL_MS = 5 * 60 * 1000; // 5 minutes — sessions are short-lived
 const CLIENT_CLEANUP_INTERVAL_MS = 60 * 1000; // Cleanup every minute
 const MAX_CACHED_CLIENTS = 100; // Prevent unbounded growth
 const CLIENT_CLOSE_TIMEOUT_MS = 2000; // Max time to wait for client close
-const SIGNAL_RETRY_COOLDOWN_MS = 60_000; // Back off 60s after failure
+const SIGNAL_RETRY_COOLDOWN_MS = 10_000; // Back off 10s after failure (was 60s - too aggressive)
 
-let lastFailureTime = 0;
+// Track failures per session instead of globally
+const sessionFailures = new Map<string, number>();
 
 /**
  * Close a client with timeout to prevent hanging.
@@ -213,8 +214,9 @@ async function getOrCreateSignalClient(userContext: {
 }): Promise<Client | null> {
   const cacheKey = userContext.sessionId;
 
-  // Check cooldown (applies to all clients after repeated failures)
-  if (Date.now() - lastFailureTime < SIGNAL_RETRY_COOLDOWN_MS) {
+  // Check per-session cooldown (not global - one failure shouldn't block all users)
+  const lastFailure = sessionFailures.get(cacheKey);
+  if (lastFailure && Date.now() - lastFailure < SIGNAL_RETRY_COOLDOWN_MS) {
     return null;
   }
 
@@ -228,6 +230,16 @@ async function getOrCreateSignalClient(userContext: {
   // Evict oldest clients if cache is full
   if (clientCache.size >= MAX_CACHED_CLIENTS) {
     await evictOldestClients(10); // Evict 10 to make room
+  }
+
+  // Also clean up old failure entries to prevent memory growth
+  if (sessionFailures.size > MAX_CACHED_CLIENTS * 2) {
+    const now = Date.now();
+    for (const [key, time] of sessionFailures) {
+      if (now - time > SIGNAL_RETRY_COOLDOWN_MS) {
+        sessionFailures.delete(key);
+      }
+    }
   }
 
   try {
@@ -258,12 +270,13 @@ async function getOrCreateSignalClient(userContext: {
       sessionId: userContext.sessionId,
     });
 
-    lastFailureTime = 0;
+    // Clear any previous failure for this session
+    sessionFailures.delete(cacheKey);
     logger.info({ sessionId: cacheKey.slice(-8), cacheSize: clientCache.size }, "MCP signal client connected");
     return client;
   } catch (error) {
-    logger.warn({ error: String(error) }, "Failed to connect MCP signal client — will retry in 60s");
-    lastFailureTime = Date.now();
+    logger.warn({ error: String(error), sessionId: cacheKey.slice(-8) }, "Failed to connect MCP signal client — will retry in 10s");
+    sessionFailures.set(cacheKey, Date.now());
     return null;
   }
 }
@@ -327,9 +340,9 @@ export async function broadcastArticleSignal(article: {
     logger.info({ url: article.url, result: JSON.stringify(result).slice(0, 200) }, "Article signal broadcasted");
   } catch (error) {
     const errorMsg = String(error);
-    logger.warn({ error: errorMsg }, "Failed to broadcast article signal");
+    logger.warn({ error: errorMsg, sessionId: article.sessionId?.slice(-8) }, "Failed to broadcast article signal");
 
-    // If connection error, remove from cache so next request creates fresh client
+    // If connection error, remove from cache and set per-session cooldown
     if (article.sessionId && (errorMsg.includes("ECONNRESET") || errorMsg.includes("socket") || errorMsg.includes("closed"))) {
       const cached = clientCache.get(article.sessionId);
       if (cached) {
@@ -337,6 +350,8 @@ export async function broadcastArticleSignal(article: {
         await closeClientWithTimeout(cached.client);
         logger.info({ sessionId: article.sessionId.slice(-8) }, "Removed failed client from cache");
       }
+      // Set per-session cooldown (doesn't block other users)
+      sessionFailures.set(article.sessionId, Date.now());
     }
   }
   // No finally close — clients are cached and closed by cleanup interval or shutdown
