@@ -155,7 +155,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       // Derive provider from impUrl prefix only — never trust client-sent adProvider
       // for forwarding decisions (prevents spoofing to skip Gravity billing)
       const isZeroClick = impUrl?.startsWith("zeroclick://") ?? false;
-      // adProvider from client is used only for ClickHouse logging, not forwarding logic
+      // _adProvider from client is accepted but intentionally unused
       const provider = isZeroClick ? "zeroclick" : "gravity";
 
       // For impressions with impUrl, forward to the appropriate provider

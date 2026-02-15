@@ -101,6 +101,7 @@ describe("normalizeUrl", () => {
     });
 
     it("allows IPv4-mapped hex-hextet public IPv6 addresses", () => {
+      // ::ffff:808:808 == ::ffff:8.8.8.8
       const result = normalizeUrl("http://[::ffff:808:808]/");
       expect(result).toBe("http://[::ffff:808:808]/");
     });

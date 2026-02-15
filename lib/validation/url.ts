@@ -43,7 +43,7 @@ const BLOCKED_HOSTNAMES = new Set([
  * Check if an IP address is in a private/internal range.
  * This catches SSRF attempts using raw IP addresses.
  */
-function isPrivateIP(hostname: string): boolean {
+export function isPrivateIP(hostname: string): boolean {
   // Remove brackets from IPv6
   const cleanHost = hostname.replace(/^\[|\]$/g, "");
 

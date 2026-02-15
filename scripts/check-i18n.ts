@@ -4,7 +4,7 @@
  * Run with: bun run check-i18n
  */
 
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
 
 type ShapeType = "object" | "array" | "leaf";
@@ -61,6 +61,11 @@ const projectRoot = process.cwd();
 const messagesDir = join(projectRoot, "messages");
 const baseFile = join(messagesDir, "en.json");
 
+if (!existsSync(baseFile)) {
+  console.error(`Base locale file not found: ${baseFile}`);
+  process.exit(1);
+}
+
 const baseJson = readJson(baseFile);
 const baseShape: ShapeMap = new Map();
 collectShape(baseJson, "", baseShape);
@@ -85,15 +90,21 @@ for (const file of localeFiles) {
     console.log(`\n${file}:`);
     if (missing.length) {
       console.log(`  Missing (${missing.length})`);
-      missing.forEach((key) => console.log(`    - ${key}`));
+      missing.forEach((key) => {
+        console.log(`    - ${key}`);
+      });
     }
     if (extra.length) {
       console.log(`  Extra (${extra.length})`);
-      extra.forEach((key) => console.log(`    - ${key}`));
+      extra.forEach((key) => {
+        console.log(`    - ${key}`);
+      });
     }
     if (typeMismatches.length) {
       console.log(`  Type mismatches (${typeMismatches.length})`);
-      typeMismatches.forEach((key) => console.log(`    - ${key}`));
+      typeMismatches.forEach((key) => {
+        console.log(`    - ${key}`);
+      });
     }
   }
 }

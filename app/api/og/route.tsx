@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
+import { isPrivateIP } from "@/lib/validation/url";
 
 export const runtime = "edge";
 
@@ -64,6 +65,23 @@ export async function GET(request: NextRequest) {
   // Truncate title if too long
   if (title.length > 80) {
     title = title.substring(0, 77) + "...";
+  }
+
+  // Validate articleImage to prevent SSRF attacks
+  // Reject any image URL pointing to private/internal IPs
+  if (articleImage) {
+    try {
+      const imageUrl = new URL(articleImage);
+      const imageHost = imageUrl.hostname;
+      
+      // Check if hostname is a private IP address
+      if (isPrivateIP(imageHost)) {
+        articleImage = ""; // Clear potentially malicious image URL
+      }
+    } catch {
+      // Invalid URL format, clear the image
+      articleImage = "";
+    }
   }
 
   // Load fonts with error handling
