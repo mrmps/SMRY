@@ -39,6 +39,9 @@ const BLOCKED_HOSTNAMES = new Set([
   "kubernetes.default.svc",
 ]);
 
+// Export for use in OG route and other security checks
+export { BLOCKED_HOSTNAMES };
+
 /**
  * Check if an IP address is in a private/internal range.
  * This catches SSRF attempts using raw IP addresses.

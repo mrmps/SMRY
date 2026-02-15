@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
-import { isPrivateIP } from "@/lib/validation/url";
+import { isPrivateIP, BLOCKED_HOSTNAMES } from "@/lib/validation/url";
 
 export const runtime = "edge";
 
@@ -68,15 +68,21 @@ export async function GET(request: NextRequest) {
   }
 
   // Validate articleImage to prevent SSRF attacks
-  // Reject any image URL pointing to private/internal IPs
+  // Reject any image URL pointing to private/internal IPs or blocked hostnames
   if (articleImage) {
     try {
       const imageUrl = new URL(articleImage);
-      const imageHost = imageUrl.hostname;
       
-      // Check if hostname is a private IP address
-      if (isPrivateIP(imageHost)) {
-        articleImage = ""; // Clear potentially malicious image URL
+      // Only allow http/https protocols
+      if (imageUrl.protocol !== "http:" && imageUrl.protocol !== "https:") {
+        articleImage = "";
+      } else {
+        const imageHost = imageUrl.hostname;
+        
+        // Check if hostname is a private IP address or blocked hostname
+        if (isPrivateIP(imageHost) || BLOCKED_HOSTNAMES.has(imageHost)) {
+          articleImage = ""; // Clear potentially malicious image URL
+        }
       }
     } catch {
       // Invalid URL format, clear the image
