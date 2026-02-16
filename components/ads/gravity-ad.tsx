@@ -177,35 +177,30 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   }
 
   // ============================================
-  // COMPACT VARIANT - Minimal inline
+  // COMPACT VARIANT - Minimal inline (smaller for desktop sidebar)
   // ============================================
   if (variant === "compact") {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
+      <div className={cn("flex items-center gap-1.5", className)}>
         <a
           ref={adRef}
           href={ad.clickUrl}
           target="_blank"
           rel="sponsored noopener"
           onClick={onClick}
-          className="flex-1 flex items-center gap-2 min-w-0 group rounded-md p-1.5 -m-1.5 hover:bg-muted/40 transition-colors"
+          className="flex-1 flex items-center gap-1.5 min-w-0 group rounded-md p-1 -m-1 hover:bg-muted/40 transition-colors"
         >
-          <div className="size-7 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
-            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={28} />
+          <div className="size-5 rounded overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={20} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
+            <p className="text-[11px] text-foreground/80 group-hover:text-primary transition-colors line-clamp-1">
               {valueProp}
-            </p>
-            <p className="text-[10px] text-muted-foreground/50">
-              {ad.brandName} · Ad
             </p>
           </div>
         </a>
-        <span className="shrink-0 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
-          {ctaText} →
-        </span>
-        <DismissButton onDismiss={onDismiss} />
+        <span className="shrink-0 text-[9px] text-muted-foreground/40">Ad</span>
+        <DismissButton onDismiss={onDismiss} className="size-5" />
       </div>
     );
   }

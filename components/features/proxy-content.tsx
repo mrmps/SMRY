@@ -340,6 +340,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const chatAd = gravityAds[3] ?? null;           // Chat header ad - only if we have a 4th ad
   const microAd = gravityAds[4] ?? null;          // Below chat input - only if we have a 5th ad
 
+  // Mobile chat header fallback: when chat drawer is open, article ads aren't visible,
+  // so we can reuse inlineAd/footerAd as fallback if chatAd is unavailable
+  const mobileChatAd = chatAd ?? inlineAd ?? footerAd ?? null;
+
   // Debug: Log how many unique ads we received and from which provider
   if (typeof window !== 'undefined' && gravityAds.length > 0) {
     const providers = [...new Set(gravityAds.map(a => a.ad_provider || 'gravity'))];
@@ -1073,10 +1077,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       initialMessages={threadInitialMessages}
                       onMessagesChange={isPremium ? handleMessagesChange : undefined}
                       activeThreadTitle={_activeThread?.title}
-                      ad={!isPremium ? chatAd : null}
-                      onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
-                      onAdClick={chatAd ? () => fireClick(chatAd) : undefined}
-                      onAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
+                      headerAd={!isPremium ? chatAd : null}
+                      onHeaderAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
+                      onHeaderAdClick={chatAd ? () => fireClick(chatAd) : undefined}
                       microAd={!isPremium ? microAd : null}
                       onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
                       onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}
@@ -1085,9 +1088,15 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </ResizablePanel>
               </ResizablePanelGroup>
 
-              {/* Fixed bottom-right ad when sidebar is closed */}
-              {!sidebarOpen && !isPremium && sidebarAd && !desktopAdDismissed && (
-                <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
+              {/* Fixed bottom-right ad - ALWAYS show regardless of sidebar state to maximize impressions */}
+              {!isPremium && sidebarAd && !desktopAdDismissed && (
+                <div className={cn(
+                  "fixed bottom-4 z-40 max-w-[calc(100vw-2rem)]",
+                  // Position changes based on sidebar: right when closed, left when open
+                  sidebarOpen
+                    ? "left-4 w-[240px] lg:w-[280px]"
+                    : "right-4 w-[280px] lg:w-[320px] xl:w-[360px]"
+                )}>
                   <GravityAd
                     ad={sidebarAd}
                     onVisible={() => fireImpression(sidebarAd)}
@@ -1096,6 +1105,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       fireDismiss(sidebarAd);
                       setDesktopAdDismissed(true);
                     }}
+                    variant={sidebarOpen ? "compact" : "default"}
                   />
                 </div>
               )}
@@ -1198,10 +1208,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onOpenChange={setMobileSummaryOpen}
                 articleContent={articleTextContent || ""}
                 articleTitle={articleTitle}
-                chatAd={!isPremium ? chatAd : null}
-                onChatAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
-                onChatAdClick={chatAd ? () => fireClick(chatAd) : undefined}
-                onChatAdDismiss={chatAd ? () => fireDismiss(chatAd) : undefined}
+                chatAd={!isPremium ? mobileChatAd : null}
+                onChatAdVisible={mobileChatAd ? () => fireImpression(mobileChatAd) : undefined}
+                onChatAdClick={mobileChatAd ? () => fireClick(mobileChatAd) : undefined}
+                onChatAdDismiss={mobileChatAd ? () => fireDismiss(mobileChatAd) : undefined}
                 isPremium={isPremium}
                 initialMessages={threadInitialMessages}
                 threads={threads}

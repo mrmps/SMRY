@@ -98,7 +98,11 @@ interface ArticleChatProps {
   isPremium?: boolean;
   onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
   initialMessages?: import("ai").UIMessage[];
-  // Header ad (compact variant)
+  // Header ad (compact variant - shows at top of chat on desktop)
+  headerAd?: GravityAdType | null;
+  onHeaderAdVisible?: () => void;
+  onHeaderAdClick?: () => void;
+  // Inline ad after messages
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
   onAdClick?: () => void;
@@ -128,6 +132,9 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   isPremium: isPremiumProp = false,
   onMessagesChange,
   initialMessages: initialMessagesProp,
+  headerAd,
+  onHeaderAdVisible,
+  onHeaderAdClick,
   ad,
   onAdVisible,
   onAdClick,
@@ -289,31 +296,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     onMessagesChangeRef.current?.(messages);
   }, [messages]);
 
-  // Premium upgrade nudge using marketing psychology:
-  // - Loss Aversion: Frame as losing the conversation (2x more powerful than gain)
-  // - Peak-End Rule: Trigger at peak engagement (after 2 exchanges = 4 messages)
-  // - Endowment Effect: They've invested time, they "own" this conversation
-  // - Zeigarnik Effect: Unsaved work creates mental tension
-  const hasShownUpgradeToastRef = useRef(false);
-  useEffect(() => {
-    // Trigger after 2 user-assistant exchanges (4 messages) - peak engagement moment
-    // This is when they've invested enough to feel ownership (Endowment Effect)
-    if (!isPremium && messages.length === 4 && !hasShownUpgradeToastRef.current) {
-      hasShownUpgradeToastRef.current = true;
-      // Slight delay so it doesn't interrupt the response they're reading
-      setTimeout(() => {
-        toast("Don't lose this conversation", {
-          description: "Your chat history disappears when you leave.",
-          action: {
-            label: "Save it",
-            onClick: () => window.open("/pricing", "_blank"),
-          },
-          duration: 10000,
-        });
-      }, 2000);
-    }
-  }, [isPremium, messages.length]);
-
   // Track user scroll: if they scroll up, pause auto-scroll and show scroll-to-bottom button
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -464,6 +446,17 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
       )}
 
+      {/* Header ad - desktop sidebar only (mobile has its own header ad in drawer) */}
+      {headerAd && variant === "sidebar" && !isMobile && (
+        <div className="shrink-0 border-b border-border/30 px-3 py-1.5">
+          <GravityAd
+            ad={headerAd}
+            variant="compact"
+            onVisible={onHeaderAdVisible ?? (() => {})}
+            onClick={onHeaderAdClick}
+          />
+        </div>
+      )}
 
       {/* Messages - Mobile-first conversation container */}
       <div className="relative flex-1 min-h-0 overflow-hidden">
@@ -503,24 +496,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           </div>
         ) : (
           <div className="px-3 py-1 sm:px-4 sm:py-3 space-y-4 overflow-x-hidden">
-            {/* Ephemeral chat notice - Marketing Psychology Applied:
-                - Loss Aversion: "disappears" triggers fear of loss (2x stronger than gain)
-                - Zeigarnik Effect: Open loop about unsaved work
-                - Low friction CTA: Easy path to resolve the tension */}
-            {!isPremium && messages.length > 0 && (
-              <div className="flex items-center justify-center py-2 mb-1">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/40">
-                  <div className="size-1.5 rounded-full bg-amber-500/70 animate-pulse" />
-                  <span className="text-[11px] text-muted-foreground">This chat disappears when you leave</span>
-                  <Link
-                    href="/pricing"
-                    className="text-[11px] font-medium text-primary hover:underline"
-                  >
-                    Save it →
-                  </Link>
-                </div>
-              </div>
-            )}
             {messages.map((message, messageIndex) => {
               const messageText = getMessageText(message);
               const isLastMessage = messageIndex === messages.length - 1;
