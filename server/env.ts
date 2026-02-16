@@ -33,6 +33,8 @@ export const env = createEnv({
 
     // ZeroClick Ads (fallback provider)
     ZEROCLICK_API_KEY: z.string().min(1),
+    // Kill switch to disable ZeroClick waterfall (for revenue testing)
+    ZEROCLICK_DISABLED: z.string().optional().transform(v => v === "true"),
 
     // Email (inbound.new)
     INBOUND_API_KEY: z.string().min(1),
