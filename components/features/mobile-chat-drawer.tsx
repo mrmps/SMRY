@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
+import { GravityAd } from "@/components/ads/gravity-ad";
 import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import type { UIMessage } from "ai";
@@ -430,6 +431,18 @@ export function MobileChatDrawer({
               </div>
             </div>
           </div>
+
+          {/* Header ad banner - visible immediately when chat opens */}
+          {chatAd && activeView === "chat" && (
+            <div className="shrink-0 border-b border-border/30 px-3 py-1.5">
+              <GravityAd
+                ad={chatAd}
+                variant="compact"
+                onVisible={onChatAdVisible ?? (() => {})}
+                onClick={onChatAdClick}
+              />
+            </div>
+          )}
 
           {/* View container — both views stay mounted so refs work; hidden via display:none */}
           <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag>

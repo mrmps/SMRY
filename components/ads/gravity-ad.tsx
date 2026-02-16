@@ -127,31 +127,14 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   const adRef = useRef<HTMLAnchorElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
 
-  // Reset on ad change
-  useLayoutEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional reset when ad changes
-    setHasTrackedImpression(false);
-  }, [ad.impUrl]);
-
-  // Impression tracking - useLayoutEffect ensures ref is available after DOM mount
+  // Fire impression immediately on render (per Gravity docs: "fire impUrl when ad is rendered")
+  // Previously used IntersectionObserver with 50% threshold, causing ~80% impression loss
   useLayoutEffect(() => {
     if (hasTrackedImpression) return;
-
-    const element = adRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setHasTrackedImpression(true);
-          onVisible();
-        }
-      },
-      { threshold: 0.5 }
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [hasTrackedImpression, onVisible, ad.impUrl]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fire once on mount
+    setHasTrackedImpression(true);
+    onVisible();
+  }, [ad.impUrl, hasTrackedImpression, onVisible]);
 
   // Derived content - prioritize VALUE (adText) over brand repetition
   const valueProp = ad.adText || ad.title;
