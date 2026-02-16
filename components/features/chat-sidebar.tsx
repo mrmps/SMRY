@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon, Lock } from "lucide-react";
+import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
@@ -259,14 +259,6 @@ function ThreadGroup({
   );
 }
 
-/** Ghost chat items shown to free users - creates FOMO through loss aversion */
-const GHOST_CHATS = [
-  { title: "Summary of market trends...", time: "2m" },
-  { title: "Key points from the article...", time: "1h" },
-  { title: "Research on climate policy...", time: "3h" },
-  { title: "Analysis of tech earnings...", time: "1d" },
-];
-
 /** Upgrade prompt shown to free users in desktop sidebar */
 function PremiumGate() {
   const features = [
@@ -276,64 +268,39 @@ function PremiumGate() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Ghost history - faded locked items */}
-      <div className="px-1.5 pt-2 pb-1">
-        <div className="px-3 pt-2 pb-1">
-          <span className="text-[11px] font-medium tracking-wider text-muted-foreground/30">Recent</span>
-        </div>
-        <div className="space-y-px">
-          {GHOST_CHATS.map((chat, i) => (
-            <div
-              key={i}
-              className="group relative flex items-center gap-2 rounded-lg px-2.5 py-2 opacity-40 cursor-not-allowed select-none"
-            >
-              <Lock className="size-3 text-muted-foreground/50 shrink-0" aria-hidden="true" />
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] text-muted-foreground/60 truncate blur-[2px]">
-                  {chat.title}
-                </p>
+    <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
+      <div className="text-center">
+        <HistoryIcon className="size-8 text-muted-foreground/30 mx-auto mb-3" aria-hidden="true" />
+        <h3
+          className="text-[13px] font-semibold text-foreground mb-1"
+          style={{ textWrap: "balance" }}
+        >
+          Save your chat history
+        </h3>
+        <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
+          Keep all your conversations and access them anywhere.
+        </p>
+
+        <div className="space-y-2.5 mb-4 text-left">
+          {features.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-2">
+              <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Icon className="size-2.5 text-primary" aria-hidden="true" />
               </div>
-              <span className="text-[11px] text-muted-foreground/30 shrink-0">{chat.time}</span>
+              <span className="text-[11px] text-foreground/80">{text}</span>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Upgrade CTA */}
-      <div className="px-3 pt-3 pb-3 mt-auto">
-        <div className="rounded-xl border border-border/60 bg-accent/30 p-4">
-          <h3
-            className="text-[13px] font-semibold text-foreground mb-1"
-            style={{ textWrap: "balance" }}
-          >
-            Don&apos;t lose this conversation
-          </h3>
-          <p className="text-[11px] text-muted-foreground leading-relaxed mb-4">
-            Your chats vanish when you leave. Keep them forever with Pro.
-          </p>
-
-          <div className="space-y-2.5 mb-4">
-            {features.map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2">
-                <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                  <Icon className="size-2.5 text-primary" aria-hidden="true" />
-                </div>
-                <span className="text-[11px] text-foreground/80">{text}</span>
-              </div>
-            ))}
-          </div>
-
-          <Link
-            href="/pricing"
-            className="flex items-center justify-center w-full h-9 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Start free trial
-          </Link>
-          <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
-            7 days free &middot; Cancel anytime
-          </p>
-        </div>
+        <Link
+          href="/pricing"
+          className="flex items-center justify-center w-full h-9 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Start free trial
+        </Link>
+        <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+          7 days free &middot; Cancel anytime
+        </p>
       </div>
     </div>
   );

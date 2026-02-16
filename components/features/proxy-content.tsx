@@ -1088,15 +1088,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </ResizablePanel>
               </ResizablePanelGroup>
 
-              {/* Fixed bottom-right ad - ALWAYS show regardless of sidebar state to maximize impressions */}
-              {!isPremium && sidebarAd && !desktopAdDismissed && (
-                <div className={cn(
-                  "fixed bottom-4 z-40 max-w-[calc(100vw-2rem)]",
-                  // Position changes based on sidebar: right when closed, left when open
-                  sidebarOpen
-                    ? "left-4 w-[240px] lg:w-[280px]"
-                    : "right-4 w-[280px] lg:w-[320px] xl:w-[360px]"
-                )}>
+              {/* Fixed bottom-right ad when sidebar is closed */}
+              {!sidebarOpen && !isPremium && sidebarAd && !desktopAdDismissed && (
+                <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
                   <GravityAd
                     ad={sidebarAd}
                     onVisible={() => fireImpression(sidebarAd)}

@@ -86,7 +86,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     return (
       <div
         ref={contentRef}
-        className="mt-6 wrap-break-word prose dark:prose-invert max-w-none"
+        className="mt-6 wrap-break-word prose dark:prose-invert max-w-none px-1 sm:px-0"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -96,7 +96,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
   // Render with inline ad (inlineAd is guaranteed non-null here since afterAd exists)
   return (
-    <div ref={contentRef} className="mt-6">
+    <div ref={contentRef} className="mt-6 px-1 sm:px-0">
       {/* First part of article */}
       <div
         className="wrap-break-word prose dark:prose-invert max-w-none"

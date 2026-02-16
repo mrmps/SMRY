@@ -444,6 +444,24 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* =============================================================================
+ * MOBILE SCROLLING IMPROVEMENTS
+ * Smooth momentum scrolling for iOS, overscroll containment
+ * ============================================================================= */
+.scroll-container,
+.scrollbar-hide {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Smooth scroll behavior for article navigation */
+@media (prefers-reduced-motion: no-preference) {
+  .article-container,
+  .prose {
+    scroll-behavior: smooth;
+  }
+}
+
 @theme inline {
   --font-heading: var(--font-heading);
   --font-syne: var(--font-syne);
@@ -563,6 +581,82 @@
     vertical-align: middle;
     border-radius: 0;
     cursor: default;
+  }
+
+  /* =============================================================================
+   * MOBILE READING TYPOGRAPHY
+   * Optimized for readability on small screens - Medium-inspired
+   * Body: 17px, Line-height: 1.65, Generous paragraph spacing
+   * ============================================================================= */
+  @media (max-width: 640px) {
+    .prose {
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    .prose p {
+      margin-bottom: 1.5em;
+    }
+
+    .prose h1 {
+      font-size: 1.75rem;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .prose h2 {
+      font-size: 1.5rem;
+      line-height: 1.25;
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .prose h3 {
+      font-size: 1.25rem;
+      line-height: 1.3;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .prose blockquote {
+      padding-left: 1rem;
+      border-left-width: 3px;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .prose ul,
+    .prose ol {
+      padding-left: 1.25rem;
+    }
+
+    .prose li {
+      margin-bottom: 0.5em;
+    }
+
+    .prose pre {
+      font-size: 14px;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .prose code {
+      font-size: 0.9em;
+    }
+
+    .prose img {
+      border-radius: 8px;
+      margin: 1.25rem 0;
+    }
+
+    .prose table {
+      font-size: 15px;
+    }
+
+    .prose th,
+    .prose td {
+      padding: 0.5rem 0.75rem;
+    }
   }
 }
 

@@ -522,7 +522,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           "rounded-[10px]",
                         )}
                       >
-                        <p className="text-[14px] leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
+                        <p className="text-[15px] sm:text-[14px] leading-normal sm:leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
                           {messageText}
                         </p>
                       </div>
@@ -530,7 +530,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   ) : (
                     /* Assistant message - Cursor-style clean content */
                     <div className="px-2 overflow-hidden">
-                      <div className="text-[14px] leading-[22.75px] overflow-x-auto">
+                      <div className="text-[15px] sm:text-[14px] leading-relaxed sm:leading-[22px] overflow-x-auto">
                         <Response
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}

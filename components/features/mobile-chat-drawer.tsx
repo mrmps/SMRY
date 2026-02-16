@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2, Lock } from "lucide-react";
+import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
@@ -106,13 +106,6 @@ function MobileThreadItem({
   );
 }
 
-/** Ghost chat items shown to free users - creates FOMO through loss aversion */
-const MOBILE_GHOST_CHATS = [
-  { title: "Summary of market trends...", time: "2m" },
-  { title: "Key points from the article...", time: "1h" },
-  { title: "Research on climate policy...", time: "3h" },
-];
-
 /** Premium gate shown in history view for free users */
 function MobilePremiumGate() {
   const features = [
@@ -122,64 +115,41 @@ function MobilePremiumGate() {
   ];
 
   return (
-    <div className="h-full flex flex-col px-4">
-      {/* Ghost history - faded locked items */}
-      <div className="pt-2 pb-4">
-        <div className="px-1 pt-2 pb-2">
-          <span className="text-xs font-medium tracking-wider text-muted-foreground/30">Recent</span>
+    <div className="h-full flex flex-col items-center justify-center px-6 py-8">
+      <div className="w-full max-w-sm text-center">
+        <div className="mb-4">
+          <History className="size-10 text-muted-foreground/30 mx-auto" aria-hidden="true" />
         </div>
-        <div className="space-y-1">
-          {MOBILE_GHOST_CHATS.map((chat, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 rounded-xl px-3 py-3 opacity-40 cursor-not-allowed select-none bg-accent/20"
-            >
-              <Lock className="size-4 text-muted-foreground/50 shrink-0" aria-hidden="true" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-muted-foreground/60 truncate blur-[2px]">
-                  {chat.title}
-                </p>
+        <h3
+          className="text-base font-semibold text-foreground mb-1.5"
+          style={{ textWrap: "balance" }}
+        >
+          Save your chat history
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-[260px] mx-auto">
+          Keep all your conversations and access them from any device.
+        </p>
+
+        <div className="space-y-3 mb-6 text-left max-w-[260px] mx-auto">
+          {features.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Icon className="size-3 text-primary" aria-hidden="true" />
               </div>
-              <span className="text-xs text-muted-foreground/30 shrink-0">{chat.time}</span>
+              <span className="text-[13px] text-foreground/80">{text}</span>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Upgrade CTA */}
-      <div className="flex-1 flex items-center justify-center pb-8">
-        <div className="w-full max-w-sm rounded-2xl border border-border/60 bg-accent/30 p-6 text-center">
-          <h3
-            className="text-base font-semibold text-foreground mb-1.5"
-            style={{ textWrap: "balance" }}
-          >
-            Don&apos;t lose this conversation
-          </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-5 max-w-[260px] mx-auto">
-            Your chats vanish when you leave. Keep them forever with Pro.
-          </p>
-
-          <div className="space-y-3 mb-6 text-left max-w-[260px] mx-auto">
-            {features.map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-3">
-                <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                  <Icon className="size-3 text-primary" aria-hidden="true" />
-                </div>
-                <span className="text-[13px] text-foreground/80">{text}</span>
-              </div>
-            ))}
-          </div>
-
-          <Link
-            href="/pricing"
-            className="flex items-center justify-center w-full h-11 rounded-xl text-sm font-semibold bg-primary text-primary-foreground active:bg-primary/90 transition-colors shadow-sm"
-          >
-            Start free trial
-          </Link>
-          <p className="text-[11px] text-muted-foreground/60 mt-2.5">
-            7 days free &middot; Cancel anytime
-          </p>
-        </div>
+        <Link
+          href="/pricing"
+          className="flex items-center justify-center w-full h-11 rounded-xl text-sm font-semibold bg-primary text-primary-foreground active:bg-primary/90 transition-colors shadow-sm"
+        >
+          Start free trial
+        </Link>
+        <p className="text-[11px] text-muted-foreground/60 mt-2.5">
+          7 days free &middot; Cancel anytime
+        </p>
       </div>
     </div>
   );
