@@ -586,22 +586,26 @@
   /* =============================================================================
    * MOBILE READING TYPOGRAPHY
    * Optimized for readability on small screens - Medium-inspired
-   * Body: 17px, Line-height: 1.65, Generous paragraph spacing
+   * Medium uses: 21px body, 1.58 line-height
+   * Research: 16-18px minimum, 1.5-1.6x line-height
+   * Source: https://developerux.com/2025/02/12/typography-in-ux-best-practices-guide/
    * ============================================================================= */
   @media (max-width: 640px) {
     .prose {
-      font-size: 17px;
-      line-height: 1.65;
+      font-size: 18px;
+      line-height: 1.7;
+      letter-spacing: -0.01em;
     }
 
     .prose p {
-      margin-bottom: 1.5em;
+      margin-bottom: 1.75em;
     }
 
     .prose h1 {
-      font-size: 1.75rem;
+      font-size: 1.875rem;
       line-height: 1.2;
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.02em;
     }
 
     .prose h2 {
@@ -627,11 +631,12 @@
 
     .prose ul,
     .prose ol {
-      padding-left: 1.25rem;
+      padding-left: 1.5rem;
     }
 
     .prose li {
-      margin-bottom: 0.5em;
+      margin-bottom: 0.75em;
+      line-height: 1.65;
     }
 
     .prose pre {

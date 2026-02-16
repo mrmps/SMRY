@@ -68,7 +68,7 @@ function Card({ children, className, ...props }: { children: React.ReactNode; cl
   );
 }
 
-// Segmented control component for native feel
+// iOS-native segmented control
 function SegmentedControl<T extends string>({
   value,
   onChange,
@@ -91,12 +91,16 @@ function SegmentedControl<T extends string>({
             role="radio"
             aria-checked={isSelected}
             aria-label={typeof option.label === 'string' ? option.label : undefined}
+            style={{ touchAction: "manipulation" }}
             className={cn(
-              "relative flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-all",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[13px] font-semibold rounded-[8px]",
+              "min-h-[44px]",
+              "transition-all duration-150 active:scale-[0.97]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isSelected
-                ? "bg-white text-[color(display-p3_0.13_0.13_0.14)] shadow-sm dark:bg-[color(display-p3_0.32_0.33_0.36)] dark:text-white"
-                : "text-muted-foreground active:opacity-70"
+                // iOS selected: elevated card with shadow
+                ? "bg-white text-foreground shadow-sm dark:bg-surface-2 dark:text-white"
+                : "text-muted-foreground"
             )}
           >
             {option.icon}
@@ -143,7 +147,8 @@ function SettingsRow({
 
   const baseClass = cn(
     "flex items-center justify-between w-full px-4 py-3.5 text-left",
-    "transition-opacity active:opacity-70",
+    "min-h-[48px]", // iOS HIG 44pt + padding
+    "transition-all duration-150 active:scale-[0.98] active:opacity-80",
     className
   );
 
@@ -219,7 +224,8 @@ function LanguageDrawer({
               <div key={loc} className="relative">
                 <button
                   onClick={() => switchLocale(loc)}
-                  className="flex items-center justify-between w-full px-4 py-3.5 text-left transition-opacity active:opacity-70"
+                  style={{ touchAction: "manipulation" }}
+                  className="flex items-center justify-between w-full px-4 py-3.5 min-h-[48px] text-left transition-all duration-150 active:scale-[0.98] active:opacity-80"
                 >
                   <span className="font-medium">{languageNames[loc]}</span>
                   {locale === loc && (
@@ -238,7 +244,7 @@ function LanguageDrawer({
   );
 }
 
-// Theme picker with card-like buttons
+// iOS-native theme picker
 function ThemePicker({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -253,7 +259,7 @@ function ThemePicker({ className }: { className?: string }) {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="flex-1 h-[68px] rounded-xl bg-muted animate-pulse"
+            className="flex-1 h-[72px] rounded-xl bg-muted animate-pulse"
           />
         ))}
       </div>
@@ -275,16 +281,21 @@ function ThemePicker({ className }: { className?: string }) {
           <button
             key={option.value}
             onClick={() => setTheme(option.value)}
+            style={{ touchAction: "manipulation" }}
             className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl transition-all",
-              "focus-visible:outline-none",
+              "flex-1 flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl",
+              "min-h-[72px]",
+              "transition-all duration-150 active:scale-[0.97]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isSelected
-                ? "bg-white text-[color(display-p3_0.13_0.13_0.14)] shadow-sm dark:bg-[color(display-p3_0.32_0.33_0.36)] dark:text-white"
-                : "bg-muted text-muted-foreground active:opacity-70"
+                // iOS selected: elevated card with shadow for depth
+                ? "bg-white text-foreground shadow-md dark:bg-surface-2 dark:text-white dark:shadow-none"
+                // iOS unselected: transparent, blends with container background
+                : "bg-muted text-muted-foreground dark:bg-transparent"
             )}
           >
             <Icon className="size-5" />
-            <span className="text-xs font-medium">{option.label}</span>
+            <span className="text-xs font-semibold">{option.label}</span>
           </button>
         );
       })}
@@ -331,7 +342,8 @@ function AccountSection({ onAction }: { onAction?: () => void }) {
         <div className="flex gap-2">
           <SignInButton mode="modal" fallbackRedirectUrl={authRedirectUrl}>
             <button
-              className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70"
+              style={{ touchAction: "manipulation" }}
+              className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted dark:bg-surface-1 text-foreground font-medium text-sm transition-all duration-150 active:scale-[0.98]"
               onClick={() => onAction?.()}
             >
               <User className="size-4" />
@@ -380,13 +392,13 @@ export const SettingsDrawer = React.forwardRef<SettingsDrawerHandle, SettingsDra
     return (
       <Drawer open={open} onOpenChange={setOpen}>
       {children}
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[70vh]">
         {/* Visually hidden but accessible header */}
         <DrawerHeader className="sr-only">
           <DrawerTitle>Settings</DrawerTitle>
         </DrawerHeader>
 
-        <div className="px-4 pb-8 space-y-6 overflow-y-auto" data-vaul-no-drag>
+        <div className="px-4 space-y-6 overflow-y-auto pb-[max(2rem,env(safe-area-inset-bottom))]" data-vaul-no-drag>
           {/* Reading Section */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

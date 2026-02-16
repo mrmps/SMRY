@@ -366,9 +366,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         <button
           onClick={() => onOpenChange(true)}
           disabled={!articleContent}
+          style={{ touchAction: "manipulation" }}
           className={cn(
-            "flex w-full items-center justify-between rounded-xl px-3 py-2.5 transition-all",
-            "bg-card hover:bg-muted/50",
+            "flex w-full items-center justify-between rounded-xl px-4 py-3 min-h-[48px] transition-all",
+            "bg-card hover:bg-muted/50 active:bg-muted/70 active:scale-[0.99]",
             "border border-border shadow-sm",
             "text-sm font-medium text-foreground",
             !articleContent && "cursor-not-allowed opacity-50",
@@ -403,10 +404,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground active:bg-muted/70"
+                style={{ touchAction: "manipulation" }}
                 aria-label="Clear chat"
               >
-                <Trash className="size-3" />
+                <Trash className="size-4" />
               </button>
             )}
 
@@ -436,7 +438,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               onPointerDown={(e) => {
                 e.stopPropagation();
               }}
-              className="ml-0.5 flex size-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground cursor-pointer select-none"
+              className="ml-0.5 flex size-9 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground active:bg-muted/70 cursor-pointer select-none"
               style={{ touchAction: 'manipulation' }}
               aria-label="Close chat"
             >
@@ -522,7 +524,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           "rounded-[10px]",
                         )}
                       >
-                        <p className="text-[15px] sm:text-[14px] leading-normal sm:leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
+                        <p className="text-[16px] sm:text-[14px] leading-[1.6] sm:leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
                           {messageText}
                         </p>
                       </div>
@@ -530,7 +532,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   ) : (
                     /* Assistant message - Cursor-style clean content */
                     <div className="px-2 overflow-hidden">
-                      <div className="text-[15px] sm:text-[14px] leading-relaxed sm:leading-[22px] overflow-x-auto">
+                      <div className="text-[16px] sm:text-[14px] leading-[1.65] sm:leading-[22px] overflow-x-auto">
                         <Response
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}
@@ -540,32 +542,34 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         </Response>
                       </div>
 
-                      {/* Action buttons - Cursor-style subtle actions */}
+                      {/* Action buttons - Cursor-style subtle actions with 44px touch targets */}
                       {isAssistant && messageText && (
                         <div className={cn(
-                          "flex items-center gap-0.5 mt-2 transition-opacity",
+                          "flex items-center gap-0 -ml-2 mt-1 transition-opacity",
                           showActions ? "opacity-100 md:opacity-0 md:group-hover:opacity-100" : "opacity-0 pointer-events-none"
                         )}>
                           <button
                             type="button"
                             onClick={() => handleCopyMessage(message.id, messageText)}
-                            className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                            className="flex size-9 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                            style={{ touchAction: "manipulation" }}
                             aria-label="Copy message"
                           >
                             {copiedMessageId === message.id ? (
-                              <Check className="size-3 text-green-500" />
+                              <Check className="size-4 text-green-500" />
                             ) : (
-                              <Copy className="size-3" />
+                              <Copy className="size-4" />
                             )}
                           </button>
                           {isLastMessage && (
                             <button
                               type="button"
                               onClick={handleReload}
-                              className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                              className="flex size-9 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                              style={{ touchAction: "manipulation" }}
                               aria-label="Regenerate response"
                             >
-                              <RotateCcw className="size-3" />
+                              <RotateCcw className="size-4" />
                             </button>
                           )}
                         </div>
@@ -637,6 +641,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             : "shrink-0"
         )}
         ref={inputContainerRef}
+        data-vaul-no-drag
       >
         {/* Scroll to bottom button */}
         {showScrollButton && messages.length > 0 && (
@@ -663,13 +668,17 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         {floatingInput && !showScrollButton && (
           <div className="h-8 bg-linear-to-t from-card to-transparent pointer-events-none" />
         )}
-        <div className={cn(
-          "px-3 pt-1 sm:px-4",
-          floatingInput ? "bg-card pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
-        )}>
+        <div
+          className={cn(
+            "px-3 pt-1 sm:px-4",
+            floatingInput ? "bg-card pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
+          )}
+          data-vaul-no-drag
+        >
           {/* Cursor-style input container with subtle border */}
           <div
             className="relative rounded-2xl border border-border/60 bg-background overflow-hidden shadow-sm"
+            style={{ touchAction: "pan-x pan-y" }}
           >
             {/* Slash Commands Menu - inside the container */}
             {isSlashMenuOpen && !isLoading && (

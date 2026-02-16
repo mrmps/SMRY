@@ -332,29 +332,30 @@ export function MobileChatDrawer({
           style={{ height: "100dvh" }}
         >
           {/* Fullscreen header — swipe-down here to dismiss */}
+          {/* Touch targets: 44px minimum per iOS HIG / WCAG 2.2 */}
           <div className="shrink-0 border-b border-border/30">
-            <div className="flex items-center justify-between px-2 py-1.5">
-              {/* Left: Back button */}
+            <div className="flex items-center justify-between px-2 py-2">
+              {/* Left: Back button - 44px touch target */}
               <button
                 type="button"
                 onClick={handleClose}
-                className="flex size-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70 transition-colors"
                 aria-label="Back"
                 style={{ touchAction: "manipulation" }}
               >
                 <ChevronLeft className="size-5" aria-hidden="true" />
               </button>
 
-              {/* Center: Tab switcher */}
-              <div className="flex items-center bg-muted/60 rounded-lg p-0.5">
+              {/* Center: Tab switcher - 44px height touch targets */}
+              <div className="flex items-center bg-muted/60 rounded-xl p-1">
                 <button
                   type="button"
                   onClick={() => setActiveView("chat")}
                   className={cn(
-                    "px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all",
+                    "px-4 py-2 rounded-lg text-[14px] font-medium transition-all min-h-[36px]",
                     activeView === "chat"
                       ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground active:bg-muted/40"
                   )}
                   style={{ touchAction: "manipulation" }}
                 >
@@ -364,10 +365,10 @@ export function MobileChatDrawer({
                   type="button"
                   onClick={() => setActiveView("history")}
                   className={cn(
-                    "px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all",
+                    "px-4 py-2 rounded-lg text-[14px] font-medium transition-all min-h-[36px]",
                     activeView === "history"
                       ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground active:bg-muted/40"
                   )}
                   style={{ touchAction: "manipulation" }}
                 >
@@ -375,13 +376,13 @@ export function MobileChatDrawer({
                 </button>
               </div>
 
-              {/* Right: Context action */}
-              <div className="flex size-9 items-center justify-center">
+              {/* Right: Context action - 44px touch target */}
+              <div className="flex size-11 items-center justify-center">
                 {activeView === "chat" && hasMessages ? (
                   <button
                     type="button"
                     onClick={handleClearMessages}
-                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    className="flex size-11 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 active:bg-muted/70 transition-colors"
                     aria-label="Clear chat"
                     style={{ touchAction: "manipulation" }}
                   >
@@ -391,7 +392,7 @@ export function MobileChatDrawer({
                   <button
                     type="button"
                     onClick={handleNewChat}
-                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                    className="flex size-11 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 active:bg-muted/70 transition-colors"
                     aria-label="New chat"
                     style={{ touchAction: "manipulation" }}
                   >
