@@ -15,10 +15,12 @@ import { bypassDetectionRoutes } from "./routes/bypass-detection";
 import { gravityRoutes } from "./routes/gravity";
 import { highlightsRoutes } from "./routes/highlights";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
+import { startCacheStatsLogger, getAllCacheStats } from "../lib/memory-tracker";
 import { checkErrorRateAndAlert } from "../lib/alerting";
 import { env } from "./env";
 
 startMemoryMonitor();
+startCacheStatsLogger();
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const app = new Elysia({ adapter: node() })
@@ -41,6 +43,7 @@ const app = new Elysia({ adapter: node() })
   }))
   .get("/health", ({ set }) => {
     const memory = getCurrentMemory();
+    const caches = getAllCacheStats();
     const UNHEALTHY_RSS_MB = 1024; // 1GB
 
     if (memory.rss_mb > UNHEALTHY_RSS_MB) {
@@ -54,6 +57,7 @@ const app = new Elysia({ adapter: node() })
           heapTotalMb: memory.heap_total_mb,
           rssMb: memory.rss_mb,
         },
+        caches,
       };
     }
 
@@ -65,6 +69,7 @@ const app = new Elysia({ adapter: node() })
         heapTotalMb: memory.heap_total_mb,
         rssMb: memory.rss_mb,
       },
+      caches,
     };
   })
   .use(articleRoutes)

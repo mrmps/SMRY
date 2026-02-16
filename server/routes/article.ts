@@ -17,6 +17,7 @@ import { parseHTML } from "linkedom";
 import { createRequestContext, extractClientIp } from "../../lib/request-context";
 import { getTextDirection } from "../../lib/rtl";
 import { abuseRateLimiter } from "../../lib/rate-limit-memory";
+import { startMemoryTrack, trackFetchResponse, logLargeAllocation } from "../../lib/memory-tracker";
 
 const logger = createLogger("api:article");
 
@@ -112,9 +113,12 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
 async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const hostname = (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })();
+  const memTracker = startMemoryTrack("article-fetch-smry-fast", { url_host: hostname });
 
   try {
-    logger.info({ source: "smry-fast", hostname: new URL(url).hostname }, "Fetching article directly");
+    logger.info({ source: "smry-fast", hostname }, "Fetching article directly");
+    const fetchStart = Date.now();
 
     const response = await fetch(url, {
       headers: {
@@ -130,11 +134,27 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
 
     if (!response.ok) {
       logger.error({ source: "smry-fast", status: response.status }, "Direct fetch HTTP error");
+      memTracker.end({ success: false, status: response.status });
       return { error: createNetworkError(`HTTP ${response.status} error when fetching article`, url, response.status) };
     }
 
+    memTracker.checkpoint("response-received");
     const html = await safeText(response);
-    if (!html) return { error: createParseError("Received empty HTML content", "smry-fast") };
+    const htmlBytes = html?.length || 0;
+
+    // Track fetch response for memory analysis
+    trackFetchResponse(url, "smry-fast", response, htmlBytes, fetchStart);
+    memTracker.addMetadata({ html_bytes: htmlBytes });
+
+    if (!html) {
+      memTracker.end({ success: false, reason: "empty_html" });
+      return { error: createParseError("Received empty HTML content", "smry-fast") };
+    }
+
+    // Log large HTML allocations
+    if (htmlBytes > 500_000) {
+      logLargeAllocation("article-html-parse", htmlBytes, { url_host: hostname, source: "smry-fast" });
+    }
 
     const { document } = parseHTML(html);
     const reader = new Readability(document);
@@ -163,17 +183,22 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
 
     const validation = CachedArticleSchema.safeParse(articleCandidate);
     if (!validation.success) {
+      memTracker.end({ success: false, reason: "validation_failed" });
       return { error: createParseError(`Invalid article: ${fromError(validation.error).toString()}`, "smry-fast") };
     }
 
+    memTracker.end({ success: true, article_length: validation.data.length, html_content_length: validation.data.htmlContent?.length || 0 });
     return { article: validation.data, cacheURL: url };
   } catch (error) {
     if (error instanceof ResponseTooLargeError) {
+      memTracker.end({ success: false, reason: "response_too_large" });
       return { error: createNetworkError("Response too large", url, 413) };
     }
     if (error instanceof Error && error.name === "AbortError") {
+      memTracker.end({ success: false, reason: "timeout" });
       return { error: createNetworkError("Request timed out", url, 408) };
     }
+    memTracker.end({ success: false, reason: "fetch_error", error: String(error) });
     return { error: createNetworkError("Failed to fetch article directly", url) };
   } finally {
     clearTimeout(timeoutId);
@@ -181,13 +206,23 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
 }
 
 async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: string): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
-  try {
-    logger.info({ source, hostname: new URL(urlWithSource).hostname }, "Fetching article with Diffbot");
-    const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source);
-    if (diffbotResult.isErr()) return { error: diffbotResult.error };
+  const hostname = (() => { try { return new URL(urlWithSource).hostname; } catch { return "unknown"; } })();
+  const memTracker = startMemoryTrack(`article-fetch-${source}`, { url_host: hostname, source });
 
+  try {
+    logger.info({ source, hostname }, "Fetching article with Diffbot");
+    const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source);
+    if (diffbotResult.isErr()) {
+      memTracker.end({ success: false, reason: "diffbot_error", error: diffbotResult.error.message });
+      return { error: diffbotResult.error };
+    }
+
+    memTracker.checkpoint("diffbot-response-received");
     const validation = DiffbotArticleSchema.safeParse(diffbotResult.value);
-    if (!validation.success) return { error: createParseError(`Invalid Diffbot response`, source) };
+    if (!validation.success) {
+      memTracker.end({ success: false, reason: "validation_failed" });
+      return { error: createParseError(`Invalid Diffbot response`, source) };
+    }
 
     const va = validation.data;
     const textDir = getTextDirection(va.lang, va.text);
@@ -197,8 +232,10 @@ async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: str
       image: va.image, htmlContent: va.htmlContent, lang: va.lang, dir: textDir,
     };
 
+    memTracker.end({ success: true, article_length: article.length, html_content_length: article.htmlContent?.length || 0 });
     return { article, cacheURL: urlWithSource };
-  } catch {
+  } catch (error) {
+    memTracker.end({ success: false, reason: "exception", error: String(error) });
     return { error: createParseError("Failed to parse article", source) };
   }
 }

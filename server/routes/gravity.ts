@@ -20,6 +20,7 @@ import {
   broadcastArticleSignal,
 } from "../../lib/zeroclick";
 import type { ContextAd } from "../../types/api";
+import { startMemoryTrack } from "../../lib/memory-tracker";
 
 const logger = createLogger("api:gravity");
 
@@ -235,6 +236,12 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   async ({ body, request }) => {
     const startTime = Date.now();
     const { title, url, articleContent, sessionId, device, user, byline, siteName, publishedTime, lang, prompt } = body;
+    const hostname = (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })();
+    const memTracker = startMemoryTrack("ad-context-request", {
+      url_host: hostname,
+      session_id: sessionId?.slice(-8),
+      article_content_length: articleContent?.length || 0,
+    });
 
     // Helper to extract hostname from URL
     const getHostname = (urlStr: string): string => {
@@ -288,6 +295,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const { isPremium, userId } = await getAuthInfo(request);
       if (isPremium) {
         track("premium_user", { userId, isPremium: true });
+        memTracker.end({ status: "premium_user" });
         return { status: "premium_user" as const };
       }
 
@@ -386,9 +394,11 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             userId,
             adCount: zcAds.length,
           });
+          memTracker.end({ status: "filled", ad_count: zcAds.length, provider: "zeroclick_skip_gravity" });
           return { status: "filled" as const, ad: primaryAd, ads: zcAds };
         }
         track("no_fill", { userId });
+        memTracker.end({ status: "no_fill", reason: "skip_gravity_no_zeroclick" });
         return { status: "no_fill" as const, debug: { errorMessage: "ZeroClick returned no offers" } };
       }
 
@@ -494,6 +504,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         // Return combined results
         if (allAds.length > 0) {
           const primaryAd = allAds[0];
+          const gravityCount = gravityAds.length;
+          const zcCount = allAds.length - gravityCount;
           track("filled", {
             gravityStatus: response.ok ? 200 : response.status,
             brandName: primaryAd.brandName,
@@ -506,6 +518,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             userId,
             adCount: allAds.length,
           });
+          memTracker.end({ status: "filled", ad_count: allAds.length, gravity_count: gravityCount, zeroclick_count: zcCount });
           return {
             status: "filled" as const,
             ad: primaryAd,
@@ -515,6 +528,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         // Nothing from either provider
         track("no_fill", { gravityStatus: response.status, userId });
+        memTracker.end({ status: "no_fill", gravity_status: response.status });
         return {
           status: "no_fill" as const,
           debug: { gravityStatus: response.status },
@@ -565,6 +579,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             userId,
             adCount: zcAds.length,
           });
+          memTracker.end({ status: "filled", ad_count: zcAds.length, provider: "zeroclick_fallback", gravity_error: true });
           return {
             status: "filled" as const,
             ad: primaryAd,
@@ -574,6 +589,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
 
         const status = isTimeout ? "timeout" : "gravity_error";
         track(status, { errorMessage: errorMsg.slice(0, 200), userId });
+        memTracker.end({ status, is_timeout: isTimeout });
         return {
           status: status as "timeout" | "gravity_error",
           debug: { errorMessage: errorMsg.slice(0, 200) },
@@ -583,6 +599,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
       const errorMsg = String(error);
       logger.error({ error: errorMsg }, "Unexpected error in context route");
       track("error", { errorMessage: errorMsg.slice(0, 200) });
+      memTracker.end({ status: "error", error: errorMsg.slice(0, 100) });
       return {
         status: "error" as const,
         debug: { errorMessage: errorMsg.slice(0, 200) },

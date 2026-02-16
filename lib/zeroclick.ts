@@ -13,6 +13,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { env } from "../server/env";
 import { createLogger } from "./logger";
+import { startMemoryTrack } from "./memory-tracker";
 import type { ContextAd } from "../types/api";
 
 const logger = createLogger("zeroclick");
@@ -383,6 +384,11 @@ export async function broadcastArticleSignal(article: {
     return;
   }
 
+  const memTracker = startMemoryTrack("zeroclick-signal-broadcast", {
+    session_id: article.sessionId.slice(-8),
+    content_length: article.content.length,
+  });
+
   try {
     const client = await getOrCreateSignalClient({
       sessionId: article.sessionId,
@@ -391,8 +397,12 @@ export async function broadcastArticleSignal(article: {
       ip: article.ip,
       userAgent: article.userAgent,
     });
-    if (!client) return;
+    if (!client) {
+      memTracker.end({ success: false, reason: "no_client" });
+      return;
+    }
 
+    memTracker.checkpoint("client-acquired");
     const result = await client.callTool({
       name: "broadcast_signal",
       arguments: {
@@ -411,13 +421,16 @@ export async function broadcastArticleSignal(article: {
         ],
       },
     });
+    memTracker.end({ success: true });
     logger.info({ url: article.url, result: JSON.stringify(result).slice(0, 200) }, "Article signal broadcasted");
   } catch (error) {
     const errorMsg = String(error);
+    const isConnectionError = errorMsg.includes("ECONNRESET") || errorMsg.includes("socket") || errorMsg.includes("closed");
     logger.warn({ error: errorMsg, sessionId: article.sessionId?.slice(-8) }, "Failed to broadcast article signal");
+    memTracker.end({ success: false, error: errorMsg.slice(0, 100), is_connection_error: isConnectionError });
 
     // If connection error, remove from cache and set per-session cooldown
-    if (article.sessionId && (errorMsg.includes("ECONNRESET") || errorMsg.includes("socket") || errorMsg.includes("closed"))) {
+    if (article.sessionId && isConnectionError) {
       const cached = clientCache.get(article.sessionId);
       if (cached) {
         clientCache.delete(article.sessionId);
@@ -454,6 +467,12 @@ export async function fetchZeroClickOffers(context: {
   userId?: string;
   origin?: string;
 }): Promise<ZeroClickOffer[]> {
+  const memTracker = startMemoryTrack("zeroclick-fetch-offers", {
+    session_id: context.sessionId?.slice(-8),
+    limit: context.limit,
+    query_length: context.query.length,
+  });
+
   const body: Record<string, unknown> = {
     method: "server",
     query: context.query,
@@ -490,6 +509,7 @@ export async function fetchZeroClickOffers(context: {
           { status: response.status, error: errorBody.slice(0, 200), attempt },
           "ZeroClick offers API error",
         );
+        memTracker.end({ success: false, reason: "api_error", status: response.status, attempt });
         return [];
       }
 
@@ -504,16 +524,19 @@ export async function fetchZeroClickOffers(context: {
       }
 
       logger.info({ count: offers.length, requested: context.limit, attempt }, "ZeroClick offers received");
+      memTracker.end({ success: true, offer_count: offers.length, attempt });
       return offers;
     } catch (error) {
       clearTimeout(timeoutId);
       const errorMsg = String(error);
       const isTimeout = errorMsg.includes("abort");
       logger.warn({ error: errorMsg, isTimeout, attempt }, "ZeroClick offers fetch failed");
+      memTracker.end({ success: false, reason: isTimeout ? "timeout" : "fetch_error", attempt });
       return [];
     }
   }
 
+  memTracker.end({ success: false, reason: "max_retries" });
   return [];
 }
 

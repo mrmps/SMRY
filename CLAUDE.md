@@ -41,3 +41,9 @@ bun test          # Run tests
 - Ad system: Gravity (primary) + ZeroClick (fallback) waterfall
 - Chat threads: offline-first (IndexedDB) with server sync (Redis) for premium users
 - Article history: client-side only (localStorage), premium users see full history
+
+## Memory Monitoring
+
+- `/health` endpoint includes memory stats and cache sizes
+- Memory tracking logs: `memory_spike_operation`, `memory_operation`, `fetch_response`
+- See [docs/MEMORY_TRACKING.md](docs/MEMORY_TRACKING.md) for debugging guide
