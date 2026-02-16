@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "lucide-react";
+import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";

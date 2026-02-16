@@ -12,7 +12,7 @@ import {
   Settings,
   BookOpen,
   Code,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   Drawer,
   DrawerContent,

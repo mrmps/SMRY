@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ExternalLink, Check } from "lucide-react";
+import { ExternalLink, Check } from "@/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";

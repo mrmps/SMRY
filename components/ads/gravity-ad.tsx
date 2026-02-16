@@ -12,7 +12,7 @@
  */
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 

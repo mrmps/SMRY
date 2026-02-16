@@ -5,7 +5,7 @@ import { ResizableChatLayout } from "@/components/features/chat-sidebar";
 import { useChatThreads } from "@/lib/hooks/use-chat-threads";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { cn } from "@/lib/utils";
-import { ArrowUp, Square, PanelLeft, MessageSquare, Trash } from "lucide-react";
+import { ArrowUp, Square, PanelLeft, MessageSquare, Trash } from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 import { AuthBar } from "@/components/shared/auth-bar";
 import Link from "next/link";

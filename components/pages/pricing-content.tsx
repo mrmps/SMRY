@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CheckoutButton, SubscriptionDetailsButton } from "@clerk/nextjs/experimental";
-import { Check, ChevronDown, ArrowLeft, CheckCircle, X } from "lucide-react";
+import { Check, ChevronDown, ArrowLeft, CheckCircle, X } from "@/components/ui/icons";
 import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { Link } from "@/i18n/navigation";

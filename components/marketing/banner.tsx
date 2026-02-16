@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Newspaper } from "lucide-react";
+import { Newspaper } from "@/components/ui/icons";
 
 type OutletType = {
   name: string;

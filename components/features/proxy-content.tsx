@@ -18,7 +18,7 @@ import {
   ArrowLeft,
   Copy,
   ArrowUpRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { FeedbackIcon, SummaryIcon } from "@/components/ui/custom-icons";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";

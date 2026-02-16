@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy, ChevronDown, ArrowUpRight } from "lucide-react";
+import { Check, Copy, ChevronDown, ArrowUpRight } from "@/components/ui/icons";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

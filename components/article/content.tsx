@@ -19,7 +19,7 @@ import { ErrorDisplay } from "../shared/error-display";
 import { DebugPanel } from "../shared/debug-panel";
 import { ArticleFetchError } from "@/lib/api/client";
 import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
-import { Newspaper } from "lucide-react";
+import { Newspaper } from "@/components/ui/icons";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 import { HighlightToolbar } from "@/components/features/highlight-toolbar";

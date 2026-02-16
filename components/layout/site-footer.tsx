@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Star } from "lucide-react";
+import { Star } from "@/components/ui/icons";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/app/config/site";

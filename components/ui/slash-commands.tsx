@@ -9,7 +9,7 @@ import {
   BookOpen,
   Languages,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export interface SlashCommand {
   command: string;

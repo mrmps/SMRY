@@ -1,7 +1,7 @@
 "use client";
 import type { MouseEvent, DragEvent } from "react";
 import { useEffect, useRef } from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark } from "@/components/ui/icons";
 import { useTranslations } from "next-intl";
 
 export const BookmarkletLink = () => {

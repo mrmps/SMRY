@@ -24,7 +24,7 @@ import {
   Copy,
   Check,
   RotateCcw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { LanguageIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

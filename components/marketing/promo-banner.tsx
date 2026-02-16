@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { useTranslations } from "next-intl";

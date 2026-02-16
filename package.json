@@ -40,6 +40,8 @@
     "@elysiajs/cron": "^1.4.1",
     "@elysiajs/node": "^1.4.3",
     "@heroicons/react": "^2.1.1",
+    "@hugeicons/core-free-icons": "^3.1.1",
+    "@hugeicons/react": "^1.1.5",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@mozilla/readability": "^0.4.4",
     "@next/third-parties": "^16.1.1",

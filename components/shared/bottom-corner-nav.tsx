@@ -19,7 +19,7 @@ import {
   BookOpen,
   ArrowUpRight,
   Bookmark,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { LanguageIcon } from "@/components/ui/custom-icons";
 import type { DragEvent, MouseEvent } from "react";
 import {

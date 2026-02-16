@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/nextjs";
 import { CheckoutButton } from "@clerk/nextjs/experimental";
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icons";
 
 // Clerk plan ID from dashboard
 const PATRON_PLAN_ID = "cplan_36Vi5qaiHA0417wdNSZjHSJrjxI";

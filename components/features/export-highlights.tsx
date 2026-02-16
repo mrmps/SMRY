@@ -6,7 +6,7 @@ import {
   Copy,
   Check,
   FileText,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

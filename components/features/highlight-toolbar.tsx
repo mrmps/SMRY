@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Highlighter, X, StickyNote, Copy, Check } from "lucide-react";
+import { Highlighter, X, StickyNote, Copy, Check } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import type { Highlight } from "@/lib/hooks/use-highlights";
 

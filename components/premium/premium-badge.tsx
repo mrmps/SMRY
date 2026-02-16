@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown } from "lucide-react";
+import { Crown } from "@/components/ui/icons";
 import { useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 

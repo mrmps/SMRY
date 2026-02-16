@@ -21,7 +21,7 @@ import {
   BookOpen,
   FileText,
   MonitorPlay,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { LanguageIcon, FeedbackIcon } from "@/components/ui/custom-icons";
 
 import { cn } from "@/lib/utils";

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "@/components/ui/icons";
 
 const emptySubscribe = () => () => {};
 const getClientSnapshot = () => true;

@@ -26,7 +26,7 @@ import {
   Command,
   CornerDownLeft,
   RotateCcw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { GlobeIcon } from "@/components/ui/custom-icons";
 import Link from "next/link";
 import Image from "next/image";

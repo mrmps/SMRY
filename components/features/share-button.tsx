@@ -8,7 +8,7 @@ import {
   Linkedin,
   X,
   Copy,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { generateShareUrls } from "@/lib/share-urls";
 import { Button } from "@/components/ui/button";
