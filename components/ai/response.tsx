@@ -56,22 +56,22 @@ const hardenConfig = {
 // Desktop: 14px, Mobile: 16px (set in parent article-chat.tsx)
 const components: StreamdownProps['components'] = {
   p: ({ node: _node, children, className, ...props }) => (
-    <p className={cn('mb-3 last:mb-0 leading-[1.65]', className)} {...props}>
+    <p className={cn('mb-2 last:mb-0 leading-[1.65]', className)} {...props}>
       {children}
     </p>
   ),
   ol: ({ node: _node, children, className, ...props }) => (
-    <ol className={cn('ml-5 mb-3 mt-2 list-outside list-decimal space-y-2', className)} {...props}>
+    <ol className={cn('ml-5 mb-2 mt-1.5 list-outside list-decimal space-y-1.5', className)} {...props}>
       {children}
     </ol>
   ),
   li: ({ node: _node, children, className, ...props }) => (
-    <li className={cn('leading-[1.6] my-1.5', className)} {...props}>
+    <li className={cn('leading-[1.6] my-1', className)} {...props}>
       {children}
     </li>
   ),
   ul: ({ node: _node, children, className, ...props }) => (
-    <ul className={cn('ml-5 mb-3 mt-2 list-outside list-disc space-y-2', className)} {...props}>
+    <ul className={cn('ml-5 mb-2 mt-1.5 list-outside list-disc space-y-1.5', className)} {...props}>
       {children}
     </ul>
   ),

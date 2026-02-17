@@ -400,7 +400,7 @@ export function ChatSidebar({
   const displayGroups = isSearchActive ? [] : groups;
 
   return (
-    <div className="flex flex-col h-full border-r border-border bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
         <h2 className="text-[13px] font-semibold text-foreground">History</h2>

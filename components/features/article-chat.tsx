@@ -502,7 +502,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             />
           </div>
         ) : (
-          <div className="px-3 py-1 sm:px-4 sm:py-3 space-y-4 overflow-x-hidden">
+          <div className="px-3 py-1 sm:px-4 sm:py-2 space-y-2 overflow-x-hidden">
             {messages.map((message, messageIndex) => {
               const messageText = getMessageText(message);
               const isLastMessage = messageIndex === messages.length - 1;
@@ -514,7 +514,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   key={message.id}
                   className={cn(
                     "group relative",
-                    message.role === "user" ? "mb-4" : "",
                     isAssistant && !messageText && "!mt-0 h-0 overflow-hidden",
                   )}
                 >

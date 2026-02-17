@@ -1050,7 +1050,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     if (!sidebarOpen) handleSidebarChange(true);
                   }}
                 >
-                  <div className="h-full border-l border-border/40">
+                  <div className="h-full">
                     <ArticleChat
                       ref={articleChatRef}
                       articleContent={articleTextContent || ""}
