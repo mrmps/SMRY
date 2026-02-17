@@ -107,7 +107,7 @@ function WisprAdCard({ className }: { className?: string }) {
             <p className="text-[11px] text-muted-foreground leading-tight" suppressHydrationWarning>
               {t("wispr.tagline")}
             </p>
-            <p className="text-[10px] text-muted-foreground/70 italic leading-tight" suppressHydrationWarning>
+            <p className="text-[11px] text-muted-foreground/70 italic leading-tight" suppressHydrationWarning>
               {t("wispr.endorsement")}
             </p>
           </div>
@@ -252,7 +252,7 @@ function AdDrawerContent() {
     <div className="flex flex-col bg-background">
       {/* Hero Stats */}
       <div className="px-6 pt-6 pb-2">
-        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-4 text-center">
+        <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-4 text-center">
           {t("modal.badge")}
         </p>
 
@@ -280,7 +280,7 @@ function AdDrawerContent() {
           <span className="text-xs font-medium text-muted-foreground">
             {t("modal.stats.topCountries")}
           </span>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             214 {t("modal.stats.countriesTotal")}
           </span>
         </div>

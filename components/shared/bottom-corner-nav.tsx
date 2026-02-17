@@ -1,9 +1,8 @@
 "use client";
 
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { usePathname, Link } from "@/i18n/navigation";
-import { routing, type Locale } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useTheme } from "next-themes";
 import {
   Search,
@@ -20,7 +19,6 @@ import {
   ArrowUpRight,
   Bookmark,
 } from "@/components/ui/icons";
-import { LanguageIcon } from "@/components/ui/custom-icons";
 import type { DragEvent, MouseEvent } from "react";
 import {
   SignedIn,
@@ -35,7 +33,6 @@ import {
   PopoverTrigger,
   PopoverPopup,
 } from "@/components/ui/popover";
-import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import { cn } from "@/lib/utils";
 import { getRecentChanges } from "@/lib/changelog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -87,69 +84,6 @@ function useIsClient() {
     emptySubscribe,
     () => true,
     () => false
-  );
-}
-
-const languageNames: Record<Locale, string> = {
-  en: "English",
-  pt: "Português",
-  de: "Deutsch",
-  zh: "中文",
-  es: "Español",
-  nl: "Nederlands",
-};
-
-// ============================================================================
-// Language Popover (separate button)
-// ============================================================================
-
-function LanguagePopover() {
-  const locale = useLocale() as Locale;
-  const rawPathname = usePathname();
-
-  // Normalize pathname because next-intl occasionally leaves the previous locale prefix in place
-  const pathname = stripLocaleFromPathname(rawPathname);
-
-  return (
-    <Popover>
-      <PopoverTrigger
-        className={cn(
-          "flex items-center justify-center size-8 rounded-full",
-          "bg-muted border border-border",
-          "text-muted-foreground hover:text-foreground hover:bg-accent",
-          "shadow-sm transition-all duration-150"
-        )}
-        aria-label="Language"
-      >
-        <LanguageIcon className="size-3.5" />
-      </PopoverTrigger>
-      <PopoverPopup
-        side="top"
-        align="end"
-        sideOffset={8}
-        className="w-44 rounded-lg bg-popover border-border"
-        contentClassName="p-1"
-      >
-        <div className="space-y-0.5">
-          {routing.locales.map((loc) => (
-            <Link
-              key={loc}
-              href={pathname}
-              locale={loc}
-              className={cn(
-                "flex items-center justify-between rounded px-2.5 py-1.5 text-[13px] transition-colors",
-                locale === loc
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <span>{languageNames[loc]}</span>
-              {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
-            </Link>
-          ))}
-        </div>
-      </PopoverPopup>
-    </Popover>
   );
 }
 
@@ -525,7 +459,6 @@ export function BottomCornerNav() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 md:bottom-6 md:right-6">
-      <LanguagePopover />
       <Popover>
         <PopoverTrigger
           className={cn(

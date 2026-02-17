@@ -127,7 +127,7 @@ export function ArticleReader({
       {/* Skip Link for Accessibility */}
       <a
         href="#article-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-[rgb(21,28,35)] focus:px-4 focus:py-2 focus:text-[rgb(224,227,230)] focus:ring-2 focus:ring-[rgb(67,203,255)]"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-surface-2 focus:px-4 focus:py-2 focus:text-foreground focus:ring-2 focus:ring-glow"
       >
         Skip to article
       </a>
@@ -142,7 +142,7 @@ export function ArticleReader({
         aria-label="Reading progress"
       >
         {/* Track */}
-        <div className="absolute inset-0 bg-[rgb(40,49,59)]" />
+        <div className="absolute inset-0 bg-surface-2" />
 
         {/* Gradient Fill */}
         <div
@@ -150,14 +150,14 @@ export function ArticleReader({
           style={{
             width: `${progress}%`,
             background:
-              "linear-gradient(108deg, rgb(67, 203, 255) 25%, rgb(151, 8, 204) 75%)",
+              "linear-gradient(108deg, var(--glow) 25%, #9708cc 75%)",
             transition: "width 80ms ease-out",
           }}
         />
 
         {/* Progress Indicator Dot */}
         <div
-          className="absolute -top-[3px] z-10 h-[10px] w-[10px] rounded-full bg-[rgb(224,227,230)] shadow-[0_0_0_2px_rgb(21,28,35)] will-change-[left]"
+          className="absolute -top-[3px] z-10 h-[10px] w-[10px] rounded-full bg-foreground shadow-[0_0_0_2px_var(--background)] will-change-[left]"
           style={{
             left: `calc(${progress}% - 5px)`,
             transition: "left 80ms ease-out",
@@ -231,30 +231,30 @@ export function ArticleReader({
             <div className="mb-8 sm:mb-10">
               <a
                 href={source.url}
-                className="source-badge group inline-flex items-center gap-2 rounded-full bg-[rgba(110,120,131,0.08)] py-1.5 pl-1.5 pr-3.5 shadow-[0_0_0_1px_rgba(110,120,131,0.06)] transition-all duration-250 ease-out hover:bg-[rgba(110,120,131,0.13)] hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3),0_0_0_1px_rgba(110,120,131,0.1)] hover:translate-y-[-1px]"
+                className="source-badge group inline-flex items-center gap-2 rounded-full bg-surface-1 py-1.5 pl-1.5 pr-3.5 shadow-[0_0_0_1px_var(--border)] transition-all duration-250 ease-out hover:bg-surface-2 hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.2),0_0_0_1px_var(--border)] hover:translate-y-[-1px]"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {source.favicon ? (
                   <div
-                    className="h-6 w-6 flex-shrink-0 rounded-full bg-cover bg-center ring-1 ring-white/[0.08] transition-all duration-200 group-hover:ring-white/[0.15]"
+                    className="h-6 w-6 flex-shrink-0 rounded-full bg-cover bg-center ring-1 ring-border transition-all duration-200 group-hover:ring-foreground-faint"
                     style={{ backgroundImage: `url(${source.favicon})` }}
                     role="img"
                     aria-hidden="true"
                   />
                 ) : (
                   <div
-                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[rgba(110,120,131,0.3)] text-[11px] font-bold uppercase text-[rgb(149,159,170)]"
+                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-surface-2 text-[11px] font-bold uppercase text-foreground-faint"
                     aria-hidden="true"
                   >
                     {source.name.charAt(0)}
                   </div>
                 )}
-                <span className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[rgb(156,165,175)] transition-colors duration-200 group-hover:text-[rgb(210,218,226)]">
+                <span className="text-[12px] font-semibold uppercase tracking-[0.06em] text-foreground-muted transition-colors duration-200 group-hover:text-foreground">
                   {source.name.replace(/^www\./i, "")}
                 </span>
                 <svg
-                  className="h-3 w-3 text-[rgb(100,108,118)] transition-all duration-200 group-hover:text-[rgb(140,150,160)] group-hover:translate-x-0.5"
+                  className="h-3 w-3 text-foreground-faint transition-all duration-200 group-hover:text-foreground-muted group-hover:translate-x-0.5"
                   viewBox="0 0 12 12"
                   fill="none"
                   aria-hidden="true"
@@ -271,42 +271,42 @@ export function ArticleReader({
             </div>
 
             {/* Title - Display typography with optical adjustments */}
-            <h1 className="article-title mb-6 font-serif text-[30px] font-bold leading-[1.15] tracking-[-0.022em] text-[rgb(250,251,252)] sm:mb-7 sm:text-[36px] sm:leading-[1.12] md:text-[44px] md:tracking-[-0.025em] lg:text-[52px] lg:leading-[1.08]">
+            <h1 className="article-title mb-6 font-sans text-[32px] font-bold leading-[1.25] tracking-[-0.02em] text-foreground">
               {title}
             </h1>
 
             {/* Gradient Divider */}
-            <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-[rgba(110,120,131,0.2)] to-transparent sm:mb-6" />
+            <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-border to-transparent sm:mb-6" />
 
             {/* Author & Meta Row */}
             <div className="article-meta flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
               <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                 {author && (
                   <>
-                    <span className="text-[13px] text-[rgb(100,108,118)]">By</span>
+                    <span className="text-[13px] text-foreground-faint">By</span>
                     {author.url ? (
                       <Link
                         href={author.url}
-                        className="text-[15px] font-medium text-[rgb(210,216,222)] transition-colors duration-150 hover:text-[rgb(174,200,241)]"
+                        className="text-[15px] font-medium text-foreground transition-colors duration-150 hover:text-link"
                       >
                         {author.name}
                       </Link>
                     ) : (
-                      <span className="text-[15px] font-medium text-[rgb(210,216,222)]">{author.name}</span>
+                      <span className="text-[15px] font-medium text-foreground">{author.name}</span>
                     )}
                   </>
                 )}
 
                 {readTime && (
-                  <span className="ml-1 text-[13px] tabular-nums text-[rgb(100,108,118)]">
-                    <span className="mx-1.5 text-[rgb(70,78,88)]">·</span>
+                  <span className="ml-1 text-[13px] tabular-nums text-foreground-faint">
+                    <span className="mx-1.5 text-foreground-faint">·</span>
                     {readTime}
                   </span>
                 )}
               </div>
 
               {publishedDate && (
-                <time dateTime={publishedDate} className="text-[13px] tabular-nums text-[rgb(90,98,108)]">
+                <time dateTime={publishedDate} className="text-[13px] tabular-nums text-foreground-faint">
                   {publishedDate}
                 </time>
               )}
@@ -319,7 +319,7 @@ export function ArticleReader({
                   <Link
                     key={tag.label}
                     href={tag.url}
-                    className="inline-flex h-[26px] items-center rounded-md bg-[rgba(110,120,131,0.08)] px-2.5 text-[11px] font-medium text-[rgb(140,150,160)] ring-1 ring-inset ring-[rgba(110,120,131,0.08)] transition-all duration-150 hover:bg-[rgba(110,120,131,0.14)] hover:text-[rgb(190,198,206)] hover:ring-[rgba(110,120,131,0.15)]"
+                    className="inline-flex h-[26px] items-center rounded-md bg-surface-1 px-2.5 text-[11px] font-medium text-foreground-muted ring-1 ring-inset ring-border transition-all duration-150 hover:bg-surface-2 hover:text-foreground hover:ring-foreground-faint"
                   >
                     {tag.label}
                   </Link>
@@ -368,22 +368,25 @@ export function ArticleReader({
 
         /* Title Typography */
         .article-title {
-          /* Core typography */
+          /* Core typography - System sans-serif for clean reading */
           font-family:
-            "Source Serif 4",
-            "Source Serif VF",
-            "Playfair Display",
-            Georgia,
-            "Times New Roman",
-            serif;
+            "Inter VF",
+            "Inter",
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            Roboto,
+            sans-serif;
+
+          /* Fixed 32px size across all breakpoints */
+          font-size: 32px !important;
+          line-height: 1.25 !important;
+          letter-spacing: -0.02em !important;
 
           /* Optical adjustments */
           text-wrap: balance;
           text-rendering: optimizeLegibility;
-          font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1, "dlig" 1;
-
-          /* Hanging punctuation for optical alignment */
-          hanging-punctuation: first last;
+          font-feature-settings: "kern" 1, "liga" 1;
 
           /* Prevent orphans in title */
           widows: 2;
@@ -392,18 +395,6 @@ export function ArticleReader({
           /* Smooth font rendering */
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-
-          /* Subtle text shadow for depth on dark bg */
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-        }
-
-        /* Title size responsive scale */
-        @media (min-width: 1280px) {
-          .article-title {
-            font-size: 56px;
-            line-height: 1.06;
-            letter-spacing: -0.028em;
-          }
         }
 
         /* Meta section styling */
@@ -427,25 +418,26 @@ export function ArticleReader({
 
         /* ─────────────────────────────────────────────────────────────────────
            Base Prose Styles
+           Premium reading with Literata font
            ───────────────────────────────────────────────────────────────────── */
         .prose-article {
-          /* Font Stack */
+          /* Font Stack - Literata for premium reading experience */
           font-family:
-            "Source Serif 4",
-            "Source Serif VF",
-            "Source Serif Pro",
+            var(--font-literata),
+            "Literata",
             Georgia,
             "Times New Roman",
             serif;
 
-          /* Size & Measure */
-          font-size: 19px;
-          line-height: 1.65;
+          /* Size & Measure - 18px for optimal reading */
+          font-size: 18px;
+          line-height: 1.8;
+          letter-spacing: 0.01em;
 
-          /* Color */
-          color: rgb(193, 199, 206);
+          /* Color - Warm cream for comfortable reading */
+          color: var(--article-text, var(--foreground));
 
-          /* Text Rendering */
+          /* Text Rendering - Smooth and legible */
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
           text-rendering: optimizeLegibility;
@@ -486,7 +478,7 @@ export function ArticleReader({
           padding-right: 0.08em;
           padding-top: 0.08em;
           font-weight: 700;
-          color: rgb(240, 241, 242);
+          color: var(--foreground);
           font-feature-settings: "smcp" off;
         }
 
@@ -494,9 +486,9 @@ export function ArticleReader({
            Links
            ───────────────────────────────────────────────────────────────────── */
         .prose-article a {
-          color: rgb(174, 200, 241);
+          color: var(--link-color);
           text-decoration: underline;
-          text-decoration-color: rgba(174, 200, 241, 0.35);
+          text-decoration-color: var(--link-underline);
           text-decoration-thickness: 1px;
           text-underline-offset: 3px;
           text-decoration-skip-ink: auto;
@@ -506,30 +498,56 @@ export function ArticleReader({
         }
 
         .prose-article a:hover {
-          text-decoration-color: rgba(174, 200, 241, 0.85);
+          text-decoration-color: var(--link-color);
         }
 
         .prose-article a:focus-visible {
-          outline: 2px solid rgb(67, 203, 255);
+          outline: 2px solid var(--glow);
           outline-offset: 3px;
           border-radius: 2px;
           text-decoration: none;
         }
 
+        /* Headings inside links should NOT use link color - use heading color */
+        .prose-article a h1,
+        .prose-article a h2,
+        .prose-article a h3,
+        .prose-article a h4,
+        .prose-article h1 a,
+        .prose-article h2 a,
+        .prose-article h3 a,
+        .prose-article h4 a {
+          color: var(--foreground);
+          text-decoration: none;
+        }
+
+        .prose-article a h1:hover,
+        .prose-article a h2:hover,
+        .prose-article a h3:hover,
+        .prose-article a h4:hover,
+        .prose-article h1 a:hover,
+        .prose-article h2 a:hover,
+        .prose-article h3 a:hover,
+        .prose-article h4 a:hover {
+          color: var(--foreground);
+          text-decoration: underline;
+          text-decoration-color: var(--foreground-faint);
+        }
+
         /* ─────────────────────────────────────────────────────────────────────
-           Headings
+           Headings - Literata for consistency
            ───────────────────────────────────────────────────────────────────── */
         .prose-article h2 {
           font-family:
-            "Source Serif 4",
-            "Source Serif VF",
+            var(--font-literata),
+            "Literata",
             Georgia,
             serif;
           font-size: 1.65em;
-          font-weight: 700;
-          line-height: 1.2;
-          letter-spacing: -0.02em;
-          color: rgb(240, 241, 242);
+          font-weight: 600;
+          line-height: 1.25;
+          letter-spacing: -0.01em;
+          color: var(--foreground);
           margin-top: 2.25em;
           margin-bottom: 0.65em;
           text-wrap: balance;
@@ -538,15 +556,15 @@ export function ArticleReader({
 
         .prose-article h3 {
           font-family:
-            "Source Serif 4",
-            "Source Serif VF",
+            var(--font-literata),
+            "Literata",
             Georgia,
             serif;
           font-size: 1.3em;
           font-weight: 600;
-          line-height: 1.25;
+          line-height: 1.3;
           letter-spacing: -0.01em;
-          color: rgb(240, 241, 242);
+          color: var(--foreground);
           margin-top: 1.85em;
           margin-bottom: 0.5em;
           text-wrap: balance;
@@ -555,20 +573,17 @@ export function ArticleReader({
 
         .prose-article h4 {
           font-family:
-            "Inter VF",
-            -apple-system,
-            system-ui,
-            sans-serif;
-          font-size: 1em;
+            var(--font-literata),
+            "Literata",
+            Georgia,
+            serif;
+          font-size: 1.1em;
           font-weight: 600;
           line-height: 1.4;
           letter-spacing: 0;
-          color: rgb(224, 227, 230);
+          color: var(--foreground);
           margin-top: 1.5em;
           margin-bottom: 0.5em;
-          text-transform: uppercase;
-          font-size: 0.85em;
-          letter-spacing: 0.05em;
         }
 
         /* ─────────────────────────────────────────────────────────────────────
@@ -582,7 +597,7 @@ export function ArticleReader({
         .prose-article strong,
         .prose-article b {
           font-weight: 600;
-          color: rgb(218, 223, 228);
+          color: var(--foreground);
         }
 
         /* ─────────────────────────────────────────────────────────────────────
@@ -591,9 +606,9 @@ export function ArticleReader({
         .prose-article blockquote {
           margin: 2em 0;
           padding: 0 0 0 1.5em;
-          border-left: 3px solid rgb(67, 203, 255);
+          border-left: 3px solid var(--glow);
           font-style: italic;
-          color: rgb(168, 176, 185);
+          color: var(--foreground-muted);
         }
 
         .prose-article blockquote p {
@@ -609,7 +624,7 @@ export function ArticleReader({
           margin-top: 0.75em;
           font-size: 0.9em;
           font-style: normal;
-          color: rgb(149, 159, 170);
+          color: var(--foreground-faint);
         }
 
         .prose-article blockquote cite::before {
@@ -635,7 +650,7 @@ export function ArticleReader({
         }
 
         .prose-article li::marker {
-          color: rgb(110, 120, 131);
+          color: var(--foreground-faint);
         }
 
         .prose-article ol {
@@ -667,16 +682,16 @@ export function ArticleReader({
             monospace;
           font-size: 0.875em;
           padding: 0.2em 0.45em;
-          background: rgba(110, 120, 131, 0.12);
+          background: var(--surface-1);
           border-radius: 5px;
-          color: rgb(224, 227, 230);
+          color: var(--foreground);
           font-variant-ligatures: none;
         }
 
         .prose-article pre {
           margin: 2em 0;
           padding: 1.25em 1.5em;
-          background: rgba(110, 120, 131, 0.08);
+          background: var(--surface-1);
           border-radius: 10px;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
@@ -705,7 +720,7 @@ export function ArticleReader({
           background-position: 0 78%;
           background-repeat: no-repeat;
           background-size: 100% 88%;
-          color: rgb(255, 255, 255);
+          color: var(--foreground);
           cursor: pointer;
           padding: 0 3px;
           margin: 0 -3px;
@@ -745,7 +760,7 @@ export function ArticleReader({
             system-ui,
             sans-serif;
           font-size: 0.85em;
-          color: rgb(149, 159, 170);
+          color: var(--foreground-faint);
           text-align: center;
           margin-top: 1em;
           line-height: 1.5;
@@ -758,13 +773,7 @@ export function ArticleReader({
           margin: 3.5em 0;
           border: none;
           height: 1px;
-          background: linear-gradient(
-            90deg,
-            transparent 0%,
-            rgba(110, 120, 131, 0.35) 15%,
-            rgba(110, 120, 131, 0.35) 85%,
-            transparent 100%
-          );
+          background: var(--border);
         }
 
         /* Section break (three dots) */
@@ -776,7 +785,7 @@ export function ArticleReader({
 
         .prose-article hr.section-break::after {
           content: "•  •  •";
-          color: rgb(110, 120, 131);
+          color: var(--foreground-faint);
           letter-spacing: 0.5em;
         }
 
@@ -794,7 +803,7 @@ export function ArticleReader({
         .prose-article th,
         .prose-article td {
           padding: 0.85em 1.15em;
-          border-bottom: 1px solid rgba(110, 120, 131, 0.2);
+          border-bottom: 1px solid var(--border);
           text-align: left;
           vertical-align: top;
         }
@@ -809,24 +818,24 @@ export function ArticleReader({
           font-size: 0.85em;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          color: rgb(200, 208, 216);
+          color: var(--foreground);
           border-bottom-width: 2px;
         }
 
         .prose-article tbody tr:hover {
-          background: rgba(110, 120, 131, 0.05);
+          background: var(--surface-1);
         }
 
         /* ─────────────────────────────────────────────────────────────────────
            Selection
            ───────────────────────────────────────────────────────────────────── */
         .prose-article ::selection {
-          background: rgba(67, 203, 255, 0.3);
+          background: color-mix(in srgb, var(--glow) 30%, transparent);
           color: inherit;
         }
 
         .prose-article ::-moz-selection {
-          background: rgba(67, 203, 255, 0.3);
+          background: color-mix(in srgb, var(--glow) 30%, transparent);
           color: inherit;
         }
 
@@ -843,7 +852,7 @@ export function ArticleReader({
 
         .prose-article sup a {
           text-decoration: none;
-          color: rgb(67, 203, 255);
+          color: var(--glow);
           padding: 0 0.15em;
         }
 
@@ -856,7 +865,7 @@ export function ArticleReader({
            ───────────────────────────────────────────────────────────────────── */
         .prose-article small {
           font-size: 0.875em;
-          color: rgb(149, 159, 170);
+          color: var(--foreground-faint);
         }
 
         /* ─────────────────────────────────────────────────────────────────────
@@ -868,7 +877,7 @@ export function ArticleReader({
 
         .prose-article dt {
           font-weight: 600;
-          color: rgb(224, 227, 230);
+          color: var(--foreground);
           margin-top: 1em;
         }
 
@@ -886,7 +895,7 @@ export function ArticleReader({
            ───────────────────────────────────────────────────────────────────── */
         .prose-article abbr[title] {
           text-decoration: underline dotted;
-          text-decoration-color: rgba(149, 159, 170, 0.5);
+          text-decoration-color: var(--foreground-faint);
           text-underline-offset: 2px;
           cursor: help;
         }
@@ -905,19 +914,13 @@ export function ArticleReader({
 
         /* Tablet */
         @media (max-width: 768px) {
-          .article-title {
-            font-size: 34px;
-            line-height: 1.14;
-            letter-spacing: -0.016em;
-          }
-
           .source-badge {
             padding: 0.3rem 0.75rem 0.3rem 0.3rem;
           }
 
           .prose-article {
             font-size: 18px;
-            line-height: 1.65;
+            line-height: 1.7;
           }
 
           .prose-article > p:first-of-type::first-letter {
@@ -935,12 +938,6 @@ export function ArticleReader({
 
         /* Mobile */
         @media (max-width: 480px) {
-          .article-title {
-            font-size: 26px;
-            line-height: 1.18;
-            letter-spacing: -0.01em;
-          }
-
           .article-header {
             padding-left: 1rem;
             padding-right: 1rem;
@@ -962,8 +959,8 @@ export function ArticleReader({
           }
 
           .prose-article {
-            font-size: 17px;
-            line-height: 1.6;
+            font-size: 18px;
+            line-height: 1.65;
             hyphens: auto;
             -webkit-hyphens: auto;
           }
@@ -1083,24 +1080,24 @@ export function ArticleReader({
         }
 
         /* ═══════════════════════════════════════════════════════════════════
-           DARK MODE SCROLLBAR (Webkit)
+           SCROLLBAR (Webkit)
            ═══════════════════════════════════════════════════════════════════ */
         .prose-article pre::-webkit-scrollbar {
           height: 8px;
         }
 
         .prose-article pre::-webkit-scrollbar-track {
-          background: rgba(110, 120, 131, 0.1);
+          background: var(--surface-1);
           border-radius: 4px;
         }
 
         .prose-article pre::-webkit-scrollbar-thumb {
-          background: rgba(110, 120, 131, 0.3);
+          background: var(--border);
           border-radius: 4px;
         }
 
         .prose-article pre::-webkit-scrollbar-thumb:hover {
-          background: rgba(110, 120, 131, 0.5);
+          background: var(--foreground-faint);
         }
       `}</style>
     </>
@@ -1128,9 +1125,9 @@ export function VerticalScrollIndicator({
       className="fixed right-4 top-1/2 z-40 hidden -translate-y-1/2 xl:block"
       aria-hidden="true"
     >
-      <div className="relative h-48 w-[3px] overflow-hidden rounded-full bg-[rgba(110,120,131,0.15)]">
+      <div className="relative h-48 w-[3px] overflow-hidden rounded-full bg-surface-2">
         <div
-          className="absolute left-0 top-0 w-full rounded-full bg-[rgb(67,203,255)] transition-[height] duration-100"
+          className="absolute left-0 top-0 w-full rounded-full bg-glow transition-[height] duration-100"
           style={{ height: `${progress}%` }}
         />
       </div>

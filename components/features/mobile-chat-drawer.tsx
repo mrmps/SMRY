@@ -443,9 +443,9 @@ export function MobileChatDrawer({
             </div>
 
             {/* History view */}
-            <div className={cn("h-full", activeView !== "history" && "hidden")}>
+            <div className={cn("h-full bg-background", activeView !== "history" && "hidden")}>
               {isPremium ? (
-                <div className="h-full flex flex-col" style={{ overscrollBehavior: "contain" }}>
+                <div className="h-full flex flex-col bg-background" style={{ overscrollBehavior: "contain" }}>
                   {/* Search */}
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
                     <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
@@ -497,7 +497,7 @@ export function MobileChatDrawer({
                               <div className="px-4 pt-3 pb-1">
                                 <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? group.label : undefined}>{group.label}</span>
                                 {articleDomain && (
-                                  <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+                                  <span className="block text-[11px] text-muted-foreground/30 truncate">{articleDomain}</span>
                                 )}
                               </div>
                               <div className="px-4 space-y-1">

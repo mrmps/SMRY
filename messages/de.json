@@ -350,6 +350,15 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryDesign_date": "17. Februar 2026",
+    "entryDesign_change1_text": "Warmes Papier Hellmodus",
+    "entryDesign_change1_detail": "Neues Standard-Hell-Theme für langes Lesen. Sanfte cremefarbene Hintergründe mit warmem sepiafarbenem Text fühlen sich an wie hochwertiges Buchpapier — stundenlang komfortabel ohne Augenbelastung.",
+    "entryDesign_change2_text": "Premium-Lesen Dunkelmodus",
+    "entryDesign_change2_detail": "Neu gestalteter Dunkelmodus für nächtliches Lesen. Satte Kohlegrau-Hintergründe mit warmem cremefarbenem Text reduzieren die Augenbelastung und ermöglichen längeres Lesen nach Einbruch der Dunkelheit.",
+    "entryDesign_change3_text": "Verfeinerte Farbpalette",
+    "entryDesign_change3_detail": "Wärmere, weichere Töne in der gesamten App. Der Artikeltext ist für langes Lesen optimiert mit sorgfältig abgestimmtem Kontrast, der angenehmer für die Augen ist.",
+    "entryDesign_change4_text": "Verbessertes Icon-System",
+    "entryDesign_change4_detail": "Neues Icon-Set mit schärferen Details und besserer visueller Gewichtung für ein poliertes Erlebnis in der gesamten App.",
     "entrySync_date": "13. Februar 2026",
     "entrySync_change1_text": "Dauerhafter Chatverlauf",
     "entrySync_change1_detail": "Ihr Chatverlauf wird automatisch synchronisiert. Melden Sie sich an, um von jedem Gerät auf Ihre Gespräche zuzugreifen und nie wieder ein wichtiges Gespräch zu verlieren.",

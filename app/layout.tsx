@@ -3,13 +3,20 @@ import { ReactScan } from "@/components/shared/react-scan";
 import { ReactGrab } from "@/components/shared/react-grab";
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
-import { Syne } from "next/font/google";
+import { Syne, Literata } from "next/font/google";
 import "./globals.css";
 import "streamdown/styles.css";
 
 const syne = Syne({
   subsets: ["latin"],
   variable: "--font-syne",
+  display: "swap",
+});
+
+// Literata - Premium reading font designed for long-form content
+const literata = Literata({
+  subsets: ["latin"],
+  variable: "--font-literata",
   display: "swap",
 });
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -56,8 +63,8 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+    { media: '(prefers-color-scheme: light)', color: '#faf6f1' },
+    { media: '(prefers-color-scheme: dark)', color: '#1c1e21' },
   ],
 };
 
@@ -80,7 +87,7 @@ export default async function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <body
-          className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
+          className={`${GeistSans.className} ${syne.variable} ${literata.variable} bg-background text-foreground`}
         >
           <Databuddy
             clientId="638f8e5f-f436-4d00-a459-66dee9152e3c"

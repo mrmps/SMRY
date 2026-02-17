@@ -27,7 +27,7 @@ import { LanguageIcon, FeedbackIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { buildUrlWithReturn, storeReturnUrl } from "@/lib/hooks/use-return-url";
-import { routing, type Locale } from "@/i18n/routing";
+import { routing, languageNames, type Locale } from "@/i18n/routing";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import {
   Drawer,
@@ -38,15 +38,6 @@ import {
 } from "@/components/ui/drawer";
 
 type ViewMode = "markdown" | "html" | "iframe";
-
-const languageNames: Record<Locale, string> = {
-  en: "English",
-  pt: "Português",
-  de: "Deutsch",
-  zh: "中文",
-  es: "Español",
-  nl: "Nederlands",
-};
 
 export interface SettingsDrawerHandle {
   open: () => void;

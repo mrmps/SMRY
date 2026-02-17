@@ -21,12 +21,12 @@ interface ThemeOption {
 }
 
 const themes: ThemeOption[] = [
-  { id: "system", name: "System", bg: "#f5f5f5", text: "#2e2f30", accent: "#5e69d1" },
-  { id: "light", name: "Light", bg: "#fcfcfc", text: "#2e2f30", accent: "#5e69d1" },
-  { id: "pure-light", name: "Pure Light", bg: "#ffffff", text: "#1a1a1a", accent: "#6366f1" },
-  { id: "dark", name: "Dark", bg: "#09090b", text: "#fafafa", accent: "#5e69d1" },
-  { id: "magic-blue", name: "Magic Blue", bg: "#191a22", text: "#e4e4ed", accent: "#575ac6" },
-  { id: "classic-dark", name: "Classic Dark", bg: "#1e2022", text: "#e4e5e9", accent: "#5e69d1" },
+  { id: "system", name: "System", bg: "#f4f0eb", text: "#37352f", accent: "#6366f1" },
+  { id: "light", name: "Light", bg: "#faf6f1", text: "#37352f", accent: "#6366f1" },
+  { id: "pure-light", name: "Pure Light", bg: "#ffffff", text: "#171717", accent: "#6366f1" },
+  { id: "dark", name: "Dark", bg: "#1c1e21", text: "#c9c5bd", accent: "#818cf8" },
+  { id: "magic-blue", name: "Magic Blue", bg: "#13151a", text: "#c9c5bd", accent: "#575ac6" },
+  { id: "classic-dark", name: "Classic Dark", bg: "#18191b", text: "#c9c5bd", accent: "#5e69d1" },
 ];
 
 function ThemeSwatch({ theme }: { theme: ThemeOption }) {

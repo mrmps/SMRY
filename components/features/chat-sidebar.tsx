@@ -239,7 +239,7 @@ function ThreadGroup({
       <div className="px-3 pt-3 pb-1">
         <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? label : undefined}>{label}</span>
         {articleDomain && (
-          <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+          <span className="block text-[11px] text-muted-foreground/30 truncate">{articleDomain}</span>
         )}
       </div>
       <div className="px-1.5 space-y-px">
@@ -298,7 +298,7 @@ function PremiumGate() {
         >
           Start free trial
         </Link>
-        <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+        <p className="text-[11px] text-muted-foreground/60 text-center mt-2">
           7 days free &middot; Cancel anytime
         </p>
       </div>
@@ -400,7 +400,7 @@ export function ChatSidebar({
   const displayGroups = isSearchActive ? [] : groups;
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border/40">
+    <div className="flex flex-col h-full border-r border-border bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
         <h2 className="text-[13px] font-semibold text-foreground">History</h2>

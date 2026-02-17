@@ -19,7 +19,8 @@ import {
   Copy,
   ArrowUpRight,
 } from "@/components/ui/icons";
-import { FeedbackIcon, SummaryIcon } from "@/components/ui/custom-icons";
+import { FeedbackIcon } from "@/components/ui/custom-icons";
+import { ChatGpt } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -27,7 +28,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { routing, type Locale } from "@/i18n/routing";
+import { routing, languageNames, type Locale } from "@/i18n/routing";
 import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import ShareButton from "@/components/features/share-button";
 import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown";
@@ -44,15 +45,13 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
-// import { UpdateBanner } from "@/components/marketing/update-banner";
+import { UpdateBanner } from "@/components/marketing/update-banner";
 import {
   Menu,
   MenuTrigger,
   MenuPopup,
   MenuItem,
   MenuSeparator,
-  MenuGroup,
-  MenuGroupLabel,
 } from "@/components/ui/menu";
 import {
   useQueryStates,
@@ -111,7 +110,7 @@ function HistoryMenuItem() {
             <HistoryIcon className="size-4" />
             <span className="flex-1">History</span>
             {showBadge && (
-              <span className="text-[10px] font-medium text-amber-500">PRO</span>
+              <span className="text-[11px] font-medium text-amber-500">PRO</span>
             )}
           </Link>
         );
@@ -120,15 +119,6 @@ function HistoryMenuItem() {
   );
 }
 
-const languageNames: Record<Locale, string> = {
-  en: "English",
-  pt: "Português",
-  de: "Deutsch",
-  zh: "中文",
-  es: "Español",
-  nl: "Nederlands",
-};
-
 // Locale switching using next-intl's router (preserves query params)
 function useLocaleSwitch() {
   const router = useRouter();
@@ -136,13 +126,9 @@ function useLocaleSwitch() {
   const searchParams = useSearchParams();
 
   return (newLocale: Locale) => {
-    // Strip any existing locale prefix to get the bare pathname
     const pathname = stripLocaleFromPathname(rawPathname);
-    // Build path with query params
     const search = searchParams.toString();
     const fullPath = `${pathname}${search ? `?${search}` : ''}`;
-
-    // Use next-intl's router to properly switch locales
     router.replace(fullPath, { locale: newLocale });
   };
 }
@@ -155,28 +141,27 @@ function LanguageMenuItems() {
   return (
     <>
       <MenuSeparator />
-      <MenuGroup>
-        <MenuGroupLabel>Language</MenuGroupLabel>
-        <div className="px-1 pb-1 space-y-0.5">
-          {routing.locales.map((loc) => (
-            <MenuItem
-              key={loc}
-              onClick={() => switchLocale(loc)}
-              className={cn(
-                "flex items-center justify-between w-full px-2 rounded cursor-pointer",
-                locale === loc && "bg-accent"
-              )}
-            >
-              <span>{languageNames[loc]}</span>
-              {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
-            </MenuItem>
-          ))}
-        </div>
-      </MenuGroup>
+      <div className="px-3 py-1.5">
+        <span className="text-xs font-medium text-muted-foreground">Language</span>
+      </div>
+      <div className="px-1 pb-1">
+        {routing.locales.map((loc) => (
+          <MenuItem
+            key={loc}
+            onClick={() => switchLocale(loc)}
+            className={cn(
+              "flex items-center justify-between w-full px-2 rounded",
+              locale === loc && "bg-accent"
+            )}
+          >
+            <span>{languageNames[loc]}</span>
+            {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
+          </MenuItem>
+        ))}
+      </div>
     </>
   );
 }
-
 
 // Theme menu items for the More dropdown
 function ThemeMenuItems() {
@@ -190,13 +175,13 @@ function ThemeMenuItems() {
   return (
     <>
       <MenuSeparator />
-      <MenuGroup>
-        <MenuGroupLabel>Theme</MenuGroupLabel>
-        <div className="flex items-center gap-1 px-3 pb-1.5">
+      <div className="px-3 py-1.5">
+        <span className="text-xs font-medium text-muted-foreground">Theme</span>
+        <div className="flex items-center justify-center gap-1.5 mt-1.5">
           <button
             onClick={() => setTheme("light")}
             className={cn(
-              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              "flex items-center justify-center rounded-md p-2 transition-colors",
               theme === "light" || (theme === "system" && !isDark)
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent/50 text-muted-foreground"
@@ -208,7 +193,7 @@ function ThemeMenuItems() {
           <button
             onClick={() => setTheme("dark")}
             className={cn(
-              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              "flex items-center justify-center rounded-md p-2 transition-colors",
               theme === "dark" || theme === "magic-blue" || theme === "classic-dark"
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent/50 text-muted-foreground"
@@ -220,7 +205,7 @@ function ThemeMenuItems() {
           <button
             onClick={() => setTheme("system")}
             className={cn(
-              "flex items-center justify-center rounded-md p-1.5 transition-colors",
+              "flex items-center justify-center rounded-md p-2 transition-colors",
               theme === "system"
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent/50 text-muted-foreground"
@@ -230,7 +215,7 @@ function ThemeMenuItems() {
             <Laptop className="size-4" />
           </button>
         </div>
-      </MenuGroup>
+      </div>
     </>
   );
 }
@@ -749,7 +734,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     <div className="flex h-dvh flex-col bg-background">
       {/* Promo Banner - desktop/tablet */}
       {showDesktopPromo && <PromoBanner />}
-      {/* <UpdateBanner className="hidden md:block" /> */}
+      <UpdateBanner className="hidden md:block" />
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
@@ -902,8 +887,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   </MenuItem>
                   <MenuSeparator />
                   <HistoryMenuItem />
-                  <LanguageMenuItems />
                   <ThemeMenuItems />
+                  <LanguageMenuItems />
                   <MenuSeparator />
                   <MenuItem
                     render={(props) => {
@@ -972,7 +957,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   maxSize={25}
                   collapsible
                   collapsedSize={0}
-                  className="bg-background"
+                  className="bg-sidebar"
                   onCollapse={() => {
                     if (historyOpen) setHistoryOpen(false);
                   }}
@@ -1057,7 +1042,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   maxSize={35}
                   collapsible
                   collapsedSize={0}
-                  className="bg-card"
+                  className="bg-sidebar"
                   onCollapse={() => {
                     if (sidebarOpen) handleSidebarChange(false);
                   }}
@@ -1123,7 +1108,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 >
                   {showMobilePromo && <PromoBanner className="md:hidden" />}
-                  {/* <UpdateBanner className="md:hidden" /> */}
+                  <UpdateBanner className="md:hidden" />
                   <header className="flex h-14 items-center bg-background px-4">
                     <div className="flex items-center gap-3 shrink-0">
                       <button
@@ -1156,7 +1141,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         )}
                         aria-label="Open chat"
                       >
-                        <SummaryIcon className="size-5" />
+                        <ChatGpt className="size-5" />
                       </button>
                       <SettingsDrawer
                         ref={settingsDrawerRef}

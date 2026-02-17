@@ -51,6 +51,14 @@
   --color-glow: var(--glow);
   --color-glow-muted: var(--glow-muted);
 
+  /* Link colors */
+  --color-link: var(--link-color);
+  --color-link-underline: var(--link-underline);
+
+  /* Article text colors */
+  --color-article-text: var(--article-text);
+  --color-article-text-muted: var(--article-text-muted);
+
   /* Chart colors */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -81,97 +89,107 @@
 
 /*
  * =============================================================================
- * THEME: Light (default)
- * Warm off-white with subtle warmth - not clinical
+ * THEME: Light (default) - "Warm Paper"
+ * Inspired by Kindle Paperwhite sepia mode and Substack
+ * Soft cream background with warm brown-black text for extended reading
  * =============================================================================
  */
 :root,
 .light {
   --radius: 0.625rem;
 
-  /* Base */
-  --background: #fcfcfc;
-  --foreground: #2e2f30;
+  /* Base - Warm cream like quality book paper */
+  --background: #faf6f1;
+  --foreground: #37352f;
 
-  /* Text hierarchy */
-  --foreground-muted: #6b6c6d;
-  --foreground-faint: #9a9b9c;
+  /* Text hierarchy - Warm sepia tones */
+  --foreground-muted: #6b6458;
+  --foreground-faint: #9b9488;
 
-  /* Surfaces */
-  --surface-1: #f8f8f8;
-  --surface-2: #f3f3f3;
-  --surface-3: #ebebeb;
+  /* Surfaces - Warm off-whites */
+  --surface-1: #f4f0eb;
+  --surface-2: #eeeae5;
+  --surface-3: #e5e1dc;
 
-  /* Card & Popover */
-  --card: #ffffff;
-  --card-foreground: #2e2f30;
-  --popover: #ffffff;
-  --popover-foreground: #2e2f30;
+  /* Card & Popover - Subtle warmth */
+  --card: #fdfbf8;
+  --card-foreground: #37352f;
+  --popover: #fdfbf8;
+  --popover-foreground: #37352f;
 
   /* Primary */
-  --primary: #2e2f30;
-  --primary-foreground: #fcfcfc;
+  --primary: #37352f;
+  --primary-foreground: #faf6f1;
 
   /* Secondary */
-  --secondary: #f3f3f3;
-  --secondary-foreground: #2e2f30;
+  --secondary: #eeeae5;
+  --secondary-foreground: #37352f;
 
   /* Muted */
-  --muted: #f3f3f3;
-  --muted-foreground: #6b6c6d;
+  --muted: #eeeae5;
+  --muted-foreground: #6b6458;
 
   /* Accent */
-  --accent: #ebebeb;
-  --accent-foreground: #2e2f30;
+  --accent: #e5e1dc;
+  --accent-foreground: #37352f;
 
   /* Destructive */
   --destructive: #e5484d;
   --destructive-foreground: #ffffff;
 
-  /* Borders & inputs */
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #5e69d1;
+  /* Borders & inputs - Warm border */
+  --border: #ddd9d4;
+  --input: #ddd9d4;
+  --ring: #6366f1;
 
-  /* Accent glow */
-  --glow: #5e69d1;
+  /* Accent glow - Indigo accent */
+  --glow: #6366f1;
   --glow-muted: #8b93db;
+
+  /* Link colors - Same as text, distinguished by underline only */
+  --link-color: #37352f;
+  --link-underline: rgba(55, 53, 47, 0.4);
+
+  /* Article-specific text - slightly softer for extended reading */
+  --article-text: #3d3a33;
+  --article-text-muted: #5c5850;
 
   /* Status colors */
   --success: #30a46c;
   --success-foreground: #ffffff;
   --warning: #f5a623;
-  --warning-foreground: #2e2f30;
+  --warning-foreground: #37352f;
   --info: #0091ff;
   --info-foreground: #ffffff;
 
   /* Charts */
-  --chart-1: #5e69d1;
+  --chart-1: #6366f1;
   --chart-2: #30a46c;
   --chart-3: #e5484d;
   --chart-4: #f5a623;
   --chart-5: #0091ff;
 
-  /* Sidebar */
-  --sidebar: #f8f8f8;
-  --sidebar-foreground: #2e2f30;
-  --sidebar-primary: #2e2f30;
-  --sidebar-primary-foreground: #fcfcfc;
-  --sidebar-accent: #ebebeb;
-  --sidebar-accent-foreground: #2e2f30;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #5e69d1;
+  /* Sidebar - Darker shade for depth contrast in light mode */
+  --sidebar: #ebe7e2;
+  --sidebar-foreground: #37352f;
+  --sidebar-primary: #37352f;
+  --sidebar-primary-foreground: #faf6f1;
+  --sidebar-accent: #ddd9d4;
+  --sidebar-accent-foreground: #37352f;
+  --sidebar-border: #d4d0cb;
+  --sidebar-ring: #6366f1;
 }
 
 /*
  * =============================================================================
  * THEME: Pure Light
  * Pure white - minimal, clean, bright
+ * Softened text (#171717) for reduced harshness
  * =============================================================================
  */
 .pure-light {
   --background: #ffffff;
-  --foreground: #1a1a1a;
+  --foreground: #171717;
 
   --foreground-muted: #666666;
   --foreground-faint: #999999;
@@ -181,21 +199,21 @@
   --surface-3: #eeeeee;
 
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #171717;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
+  --popover-foreground: #171717;
 
-  --primary: #1a1a1a;
+  --primary: #171717;
   --primary-foreground: #ffffff;
 
   --secondary: #f5f5f5;
-  --secondary-foreground: #1a1a1a;
+  --secondary-foreground: #171717;
 
   --muted: #f5f5f5;
   --muted-foreground: #666666;
 
   --accent: #eeeeee;
-  --accent-foreground: #1a1a1a;
+  --accent-foreground: #171717;
 
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
@@ -207,217 +225,257 @@
   --glow: #6366f1;
   --glow-muted: #a5b4fc;
 
-  --sidebar: #fafafa;
-  --sidebar-foreground: #1a1a1a;
-  --sidebar-primary: #1a1a1a;
+  /* Link colors - Same as text, distinguished by underline only */
+  --link-color: #171717;
+  --link-underline: rgba(23, 23, 23, 0.4);
+
+  /* Article-specific text */
+  --article-text: #2a2a2a;
+  --article-text-muted: #555555;
+
+  /* Sidebar - Slightly darker for depth in pure-light */
+  --sidebar: #f0f0f0;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eeeeee;
-  --sidebar-accent-foreground: #1a1a1a;
-  --sidebar-border: #e0e0e0;
+  --sidebar-accent: #e5e5e5;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #d8d8d8;
   --sidebar-ring: #6366f1;
 }
 
 /*
  * =============================================================================
- * THEME: Dark (Default)
- * Original zinc-based dark theme - clean and neutral
+ * THEME: Dark (Default) - "Premium Reading"
+ * Inspired by Readwise Reader's dark mode
+ * - Background: Rich charcoal gray (not pure black) for comfortable reading
+ * - Text: Warm cream/off-white for reduced eye strain
+ * - Surfaces: Layered depth for visual hierarchy
  * =============================================================================
  */
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --background: #1c1e21;
+  --foreground: #d4d2cf;
 
-  --foreground-muted: #a1a1aa;
-  --foreground-faint: #71717a;
+  --foreground-muted: #9a9895;
+  --foreground-faint: #6a6866;
 
-  --surface-1: #18181b;
-  --surface-2: #27272a;
-  --surface-3: #3f3f46;
+  /* Layered surfaces for depth */
+  --surface-1: #17191c;
+  --surface-2: #232528;
+  --surface-3: #2d3033;
 
-  --card: #09090b;
-  --card-foreground: #fafafa;
-  --popover: #09090b;
-  --popover-foreground: #fafafa;
+  --card: #1f2124;
+  --card-foreground: #d4d2cf;
+  --popover: #232528;
+  --popover-foreground: #d4d2cf;
 
-  --primary: #fafafa;
-  --primary-foreground: #18181b;
+  --primary: #d4d2cf;
+  --primary-foreground: #1c1e21;
 
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
+  --secondary: #2d3033;
+  --secondary-foreground: #d4d2cf;
 
-  --muted: #18181b;
-  --muted-foreground: #a1a1aa;
+  --muted: #232528;
+  --muted-foreground: #9a9895;
 
-  --accent: #18181b;
-  --accent-foreground: #fafafa;
+  --accent: #2d3033;
+  --accent-foreground: #d4d2cf;
 
   --destructive: #7f1d1d;
   --destructive-foreground: #fecaca;
 
-  --border: #27272a;
-  --input: #27272a;
+  --border: #3a3d42;
+  --input: #3a3d42;
   --ring: #52525b;
 
-  --glow: #5e69d1;
-  --glow-muted: #4a52a8;
+  --glow: #818cf8;
+  --glow-muted: #6366f1;
+
+  /* Link colors - Same as text, distinguished by underline only */
+  --link-color: #d4d2cf;
+  --link-underline: rgba(212, 210, 207, 0.35);
+
+  /* Article text - Soft off-white for comfortable reading */
+  --article-text: #d4d2cf;
+  --article-text-muted: #9a9895;
+
+  /* Sidebar - Same as background for clean OLED look */
+  --sidebar: #1c1e21;
+  --sidebar-foreground: #d4d2cf;
+  --sidebar-primary: #7cb3f0;
+  --sidebar-primary-foreground: #d4d2cf;
+  --sidebar-accent: #27292e;
+  --sidebar-accent-foreground: #d4d2cf;
+  --sidebar-border: #2d3033;
+  --sidebar-ring: #52525b;
 
   --success: #30a46c;
-  --success-foreground: #09090b;
+  --success-foreground: #0d0d0c;
   --warning: #f5a623;
-  --warning-foreground: #09090b;
+  --warning-foreground: #0d0d0c;
   --info: #0091ff;
-  --info-foreground: #09090b;
+  --info-foreground: #0d0d0c;
 
   --chart-1: #3b82f6;
   --chart-2: #22c55e;
   --chart-3: #f59e0b;
   --chart-4: #a855f7;
   --chart-5: #f43f5e;
-
-  --sidebar: #171717;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #262626;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #27272a;
-  --sidebar-ring: #52525b;
 }
 
 /*
  * =============================================================================
  * THEME: Magic Blue
  * Dark with subtle blue tint - Linear's signature look
- * Based on Linear's "Magic Blue" theme: rgb(25, 26, 34)
+ * Premium reading with warm cream text
  * =============================================================================
  */
 .magic-blue {
-  --background: #191a22;
-  --foreground: #e4e4ed;
+  --background: #13151a;
+  --foreground: #d4d2cf;
 
-  --foreground-muted: #9a9ba8;
-  --foreground-faint: #6b6c78;
+  --foreground-muted: #9a9895;
+  --foreground-faint: #6a6866;
 
-  --surface-1: #1f2029;
-  --surface-2: #262730;
-  --surface-3: #2d2e38;
+  --surface-1: #0e1015;
+  --surface-2: #1a1c22;
+  --surface-3: #24262d;
 
-  --card: #1f2029;
-  --card-foreground: #e4e4ed;
-  --popover: #262730;
-  --popover-foreground: #e4e4ed;
+  --card: #16181e;
+  --card-foreground: #d4d2cf;
+  --popover: #1a1c22;
+  --popover-foreground: #d4d2cf;
 
-  --primary: #e4e4ed;
-  --primary-foreground: #191a22;
+  --primary: #d4d2cf;
+  --primary-foreground: #13151a;
 
-  --secondary: #2d2e38;
-  --secondary-foreground: #e4e4ed;
+  --secondary: #24262d;
+  --secondary-foreground: #d4d2cf;
 
-  --muted: #262730;
-  --muted-foreground: #9a9ba8;
+  --muted: #1a1c22;
+  --muted-foreground: #9a9895;
 
-  --accent: #2d2e38;
-  --accent-foreground: #e4e4ed;
+  --accent: #24262d;
+  --accent-foreground: #d4d2cf;
 
   --destructive: #e5484d;
   --destructive-foreground: #ffffff;
 
-  --border: #3a3b48;
-  --input: #3a3b48;
+  --border: #2e3038;
+  --input: #2e3038;
   --ring: #575ac6;
 
   --glow: #575ac6;
   --glow-muted: #454899;
 
+  /* Link colors */
+  --link-color: #d4d2cf;
+  --link-underline: rgba(212, 210, 207, 0.35);
+
+  /* Article text - Soft off-white for comfortable reading */
+  --article-text: #d4d2cf;
+  --article-text-muted: #9a9895;
+
+  /* Sidebar - Same as background for clean OLED look */
+  --sidebar: #13151a;
+  --sidebar-foreground: #d4d2cf;
+  --sidebar-primary: #575ac6;
+  --sidebar-primary-foreground: #d4d2cf;
+  --sidebar-accent: #1e2128;
+  --sidebar-accent-foreground: #d4d2cf;
+  --sidebar-border: #252830;
+  --sidebar-ring: #575ac6;
+
   --success: #30a46c;
-  --success-foreground: #191a22;
+  --success-foreground: #0a0c12;
   --warning: #f5a623;
-  --warning-foreground: #191a22;
+  --warning-foreground: #0a0c12;
   --info: #0091ff;
-  --info-foreground: #191a22;
+  --info-foreground: #0a0c12;
 
   --chart-1: #575ac6;
   --chart-2: #30a46c;
   --chart-3: #e5484d;
   --chart-4: #f5a623;
   --chart-5: #0091ff;
-
-  --sidebar: #14151c;
-  --sidebar-foreground: #e4e4ed;
-  --sidebar-primary: #575ac6;
-  --sidebar-primary-foreground: #e4e4ed;
-  --sidebar-accent: #262730;
-  --sidebar-accent-foreground: #e4e4ed;
-  --sidebar-border: #3a3b48;
-  --sidebar-ring: #575ac6;
 }
 
 /*
  * =============================================================================
  * THEME: Classic Dark
  * Neutral dark gray - no color tint, professional
- * Based on Linear's "Classic Dark" theme: rgb(30, 32, 34)
+ * Premium reading with warm cream text
  * =============================================================================
  */
 .classic-dark {
-  --background: #1e2022;
-  --foreground: #e4e5e9;
+  --background: #18191b;
+  --foreground: #d4d2cf;
 
-  --foreground-muted: #9a9b9f;
-  --foreground-faint: #6b6c70;
+  --foreground-muted: #9a9895;
+  --foreground-faint: #6a6866;
 
-  --surface-1: #252729;
-  --surface-2: #2c2e30;
-  --surface-3: #343638;
+  --surface-1: #131415;
+  --surface-2: #1e1f21;
+  --surface-3: #282a2c;
 
-  --card: #252729;
-  --card-foreground: #e4e5e9;
-  --popover: #2c2e30;
-  --popover-foreground: #e4e5e9;
+  --card: #1c1d1f;
+  --card-foreground: #d4d2cf;
+  --popover: #1e1f21;
+  --popover-foreground: #d4d2cf;
 
-  --primary: #e4e5e9;
-  --primary-foreground: #1e2022;
+  --primary: #d4d2cf;
+  --primary-foreground: #18191b;
 
-  --secondary: #343638;
-  --secondary-foreground: #e4e5e9;
+  --secondary: #282a2c;
+  --secondary-foreground: #d4d2cf;
 
-  --muted: #2c2e30;
-  --muted-foreground: #9a9b9f;
+  --muted: #1e1f21;
+  --muted-foreground: #9a9895;
 
-  --accent: #343638;
-  --accent-foreground: #e4e5e9;
+  --accent: #282a2c;
+  --accent-foreground: #d4d2cf;
 
   --destructive: #e5484d;
   --destructive-foreground: #ffffff;
 
-  --border: #404244;
-  --input: #404244;
+  --border: #363839;
+  --input: #363839;
   --ring: #5e69d1;
 
   --glow: #5e69d1;
   --glow-muted: #4a52a8;
 
+  /* Link colors */
+  --link-color: #d4d2cf;
+  --link-underline: rgba(212, 210, 207, 0.35);
+
+  /* Article text - Soft off-white for comfortable reading */
+  --article-text: #d4d2cf;
+  --article-text-muted: #9a9895;
+
+  /* Sidebar - Same as background for clean OLED look */
+  --sidebar: #18191b;
+  --sidebar-foreground: #d4d2cf;
+  --sidebar-primary: #5e69d1;
+  --sidebar-primary-foreground: #d4d2cf;
+  --sidebar-accent: #232527;
+  --sidebar-accent-foreground: #d4d2cf;
+  --sidebar-border: #2a2c2e;
+  --sidebar-ring: #5e69d1;
+
   --success: #30a46c;
-  --success-foreground: #1e2022;
+  --success-foreground: #121314;
   --warning: #f5a623;
-  --warning-foreground: #1e2022;
+  --warning-foreground: #121314;
   --info: #0091ff;
-  --info-foreground: #1e2022;
+  --info-foreground: #121314;
 
   --chart-1: #5e69d1;
   --chart-2: #30a46c;
   --chart-3: #e5484d;
   --chart-4: #f5a623;
   --chart-5: #0091ff;
-
-  --sidebar: #191a1c;
-  --sidebar-foreground: #e4e5e9;
-  --sidebar-primary: #5e69d1;
-  --sidebar-primary-foreground: #e4e5e9;
-  --sidebar-accent: #2c2e30;
-  --sidebar-accent-foreground: #e4e5e9;
-  --sidebar-border: #404244;
-  --sidebar-ring: #5e69d1;
 }
 
 @layer base {
@@ -465,6 +523,7 @@
 @theme inline {
   --font-heading: var(--font-heading);
   --font-syne: var(--font-syne);
+  --font-literata: var(--font-literata);
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
@@ -497,11 +556,94 @@
   }
 }
 
-@theme inline {
-  @keyframes skeleton {
-    to {
-      background-position: -200% 0;
-    }
+/* =============================================================================
+ * PREMIUM SKELETON LOADING ANIMATION
+ * Smooth shimmer effect with graceful timing
+ * ============================================================================= */
+
+.skeleton-shimmer {
+  /* Base background - subtle surface color */
+  background: linear-gradient(
+    90deg,
+    var(--foreground) 0%,
+    var(--foreground) 40%,
+    color-mix(in srgb, var(--foreground) 60%, var(--background)) 50%,
+    var(--foreground) 60%,
+    var(--foreground) 100%
+  );
+  background-size: 200% 100%;
+  opacity: 0.08;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Dark mode - slightly brighter for visibility */
+:is(.dark, .magic-blue, .classic-dark) .skeleton-shimmer {
+  opacity: 0.12;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* Staggered animation delays for skeleton groups */
+.skeleton-shimmer:nth-child(1) { animation-delay: 0ms; }
+.skeleton-shimmer:nth-child(2) { animation-delay: 75ms; }
+.skeleton-shimmer:nth-child(3) { animation-delay: 150ms; }
+.skeleton-shimmer:nth-child(4) { animation-delay: 225ms; }
+.skeleton-shimmer:nth-child(5) { animation-delay: 300ms; }
+.skeleton-shimmer:nth-child(6) { animation-delay: 375ms; }
+
+/* Article skeleton container - smooth entrance */
+.article-skeleton-container {
+  animation: skeleton-fade-in 400ms ease-out forwards;
+}
+
+/* Skeleton groups - staggered fade-in */
+.skeleton-group {
+  opacity: 0;
+  animation: skeleton-group-enter 500ms ease-out forwards;
+}
+
+@keyframes skeleton-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes skeleton-group-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    opacity: 0.1;
+  }
+  :is(.dark, .magic-blue, .classic-dark) .skeleton-shimmer {
+    opacity: 0.15;
+  }
+
+  .article-skeleton-container,
+  .skeleton-group {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -544,7 +686,135 @@
   100% { background-position: -100% 0; }
 }
 
+/* =============================================================================
+ * PREMIUM READING TYPOGRAPHY - OUTSIDE @layer for higher specificity
+ * This MUST be outside @layer to override Tailwind Typography plugin defaults
+ * ============================================================================= */
+
+/* Base prose - Light mode */
+.prose {
+  /* Literata font for premium reading */
+  font-family: var(--font-literata), Georgia, "Times New Roman", serif !important;
+  font-size: 18px !important;
+  line-height: 1.8 !important;
+  letter-spacing: 0.01em !important;
+  color: var(--article-text, #37352f) !important;
+}
+
+/* Prose text elements - Light mode */
+.prose p,
+.prose li,
+.prose blockquote,
+.prose td,
+.prose th {
+  color: var(--article-text, #37352f) !important;
+}
+
+/* Prose headings - Light mode */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  color: var(--foreground, #1a1715) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Prose links - Same color as text, distinguished by underline only */
+.prose a:not(h1 a):not(h2 a):not(h3 a):not(h4 a):not(h5 a):not(h6 a) {
+  color: var(--link-color) !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--link-underline) !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 3px !important;
+  transition: text-decoration-color 0.15s ease !important;
+}
+
+.prose a:hover {
+  text-decoration-color: var(--link-color) !important;
+}
+
+/* Prose strong/bold */
+.prose strong,
+.prose b {
+  color: var(--foreground, #1a1715) !important;
+  font-weight: 600 !important;
+}
+
+/* Prose code */
+.prose code {
+  color: var(--foreground) !important;
+  background: var(--surface-1) !important;
+}
+
+/* Prose blockquote */
+.prose blockquote {
+  border-left-color: var(--glow, #6366f1) !important;
+  color: var(--foreground-muted) !important;
+}
+
+/* Dark mode prose overrides - using :is() for proper specificity */
+:is(.dark, .magic-blue, .classic-dark) .prose {
+  color: var(--foreground) !important;
+}
+
+:is(.dark, .magic-blue, .classic-dark) .prose p,
+:is(.dark, .magic-blue, .classic-dark) .prose li,
+:is(.dark, .magic-blue, .classic-dark) .prose blockquote,
+:is(.dark, .magic-blue, .classic-dark) .prose td,
+:is(.dark, .magic-blue, .classic-dark) .prose th {
+  color: var(--foreground) !important;
+}
+
+:is(.dark, .magic-blue, .classic-dark) .prose h1,
+:is(.dark, .magic-blue, .classic-dark) .prose h2,
+:is(.dark, .magic-blue, .classic-dark) .prose h3,
+:is(.dark, .magic-blue, .classic-dark) .prose h4,
+:is(.dark, .magic-blue, .classic-dark) .prose h5,
+:is(.dark, .magic-blue, .classic-dark) .prose h6 {
+  color: #e0dedb !important;
+}
+
+:is(.dark, .magic-blue, .classic-dark) .prose a:not(h1 a):not(h2 a):not(h3 a):not(h4 a):not(h5 a):not(h6 a) {
+  color: var(--link-color) !important;
+  text-decoration-color: var(--link-underline) !important;
+}
+
+:is(.dark, .magic-blue, .classic-dark) .prose strong,
+:is(.dark, .magic-blue, .classic-dark) .prose b {
+  color: var(--foreground) !important;
+}
+
+:is(.dark, .magic-blue, .classic-dark) .prose code {
+  color: var(--foreground) !important;
+  background: var(--surface-1) !important;
+}
+
+:is(.dark, .magic-blue, .classic-dark) .prose blockquote {
+  border-left-color: var(--glow) !important;
+  color: var(--foreground-muted) !important;
+}
+
+/* Headings inside links should use heading color */
+.prose a h1, .prose a h2, .prose a h3, .prose a h4, .prose a h5, .prose a h6,
+.prose h1 a, .prose h2 a, .prose h3 a, .prose h4 a, .prose h5 a, .prose h6 a {
+  color: var(--foreground) !important;
+  text-decoration: none !important;
+}
+
+
+/* =============================================================================
+ * PROSE COMPONENT STYLES - In @layer for proper cascade
+ * ============================================================================= */
+
 @layer components {
+  /* Paragraph spacing for readability */
+  .prose p {
+    margin-bottom: 1.5em;
+  }
+
   /* Remove all SVGs in article content */
   .prose svg {
     display: none !important;
@@ -583,86 +853,6 @@
     cursor: default;
   }
 
-  /* =============================================================================
-   * MOBILE READING TYPOGRAPHY
-   * Optimized for readability on small screens - Medium-inspired
-   * Medium uses: 21px body, 1.58 line-height
-   * Research: 16-18px minimum, 1.5-1.6x line-height
-   * Source: https://developerux.com/2025/02/12/typography-in-ux-best-practices-guide/
-   * ============================================================================= */
-  @media (max-width: 640px) {
-    .prose {
-      font-size: 18px;
-      line-height: 1.7;
-      letter-spacing: -0.01em;
-    }
-
-    .prose p {
-      margin-bottom: 1.75em;
-    }
-
-    .prose h1 {
-      font-size: 1.875rem;
-      line-height: 1.2;
-      margin-bottom: 1.25rem;
-      letter-spacing: -0.02em;
-    }
-
-    .prose h2 {
-      font-size: 1.5rem;
-      line-height: 1.25;
-      margin-top: 2rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .prose h3 {
-      font-size: 1.25rem;
-      line-height: 1.3;
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .prose blockquote {
-      padding-left: 1rem;
-      border-left-width: 3px;
-      font-size: 16px;
-      line-height: 1.6;
-    }
-
-    .prose ul,
-    .prose ol {
-      padding-left: 1.5rem;
-    }
-
-    .prose li {
-      margin-bottom: 0.75em;
-      line-height: 1.65;
-    }
-
-    .prose pre {
-      font-size: 14px;
-      padding: 1rem;
-      border-radius: 0.5rem;
-    }
-
-    .prose code {
-      font-size: 0.9em;
-    }
-
-    .prose img {
-      border-radius: 8px;
-      margin: 1.25rem 0;
-    }
-
-    .prose table {
-      font-size: 15px;
-    }
-
-    .prose th,
-    .prose td {
-      padding: 0.5rem 0.75rem;
-    }
-  }
 }
 
 /* ── Image lightbox ─────────────────────────────────────────────────── */
@@ -1060,21 +1250,6 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
 
 .tweet-card-minimal time {
   color: var(--muted-foreground) !important;
-}
-
-/*
- ---break---
- */
-
-:root {
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
-  --sidebar-primary: hsl(240 5.9% 10%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(240 4.8% 95.9%);
-  --sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --sidebar-border: hsl(220 13% 91%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 /* =============================================================================

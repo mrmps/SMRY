@@ -41,11 +41,12 @@ const HTTP_REGEX = /^https?:\/\//i;
 function FeatureVisual({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={clsx(
-      "relative flex h-[280px] sm:h-[320px] lg:h-[340px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#f8f8f8] via-[#f3f3f3] to-[#eee] dark:from-[#161616] dark:via-[#131313] dark:to-[#0f0f0f]",
+      "relative flex h-[280px] sm:h-[320px] lg:h-[340px] items-center justify-center overflow-hidden rounded-2xl",
+      "bg-gradient-to-br from-surface-1 via-surface-2 to-surface-3",
       className
     )}>
       {/* Subtle radial glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent dark:from-white/[0.03]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-background/40 via-transparent to-transparent dark:from-white/[0.03]" />
       {children}
     </div>
   );
@@ -73,51 +74,51 @@ function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, strin
   return (
     <div className="relative flex w-full max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
-      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/[0.06] dark:bg-white/[0.06]" />
+      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border/50" />
 
       {/* Badge */}
       <div className="relative z-10 flex justify-center">
-        <div className="flex items-center justify-center rounded-full bg-white/80 px-2.5 py-1 text-sm font-medium text-[#999] backdrop-blur-sm dark:bg-[#222]/80 dark:text-[#888]">
+        <div className="flex items-center justify-center rounded-full bg-card/80 px-2.5 py-1 text-sm font-medium text-muted-foreground backdrop-blur-sm">
           {t("fetchingBadge")}
         </div>
       </div>
 
       {/* Card */}
-      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-card p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
-          <p className="text-xs text-[#999] dark:text-[#777]">
+          <p className="text-xs text-muted-foreground">
             {t("racingSources", { count: 2 })}
           </p>
         </div>
 
         <div className="flex flex-col gap-[1.5px] overflow-hidden">
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <Check className="h-4 w-4 shrink-0 text-emerald-500" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceWayback")}</span>
+                <span className="truncate text-sm text-foreground">{t("sourceWayback")}</span>
               </div>
               <span className="text-[13px] text-emerald-500">{t("statusWinner")}</span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
-                <Ban className="h-4 w-4 shrink-0 text-[#999] dark:text-[#777]" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceDirect")}</span>
+                <Ban className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
+                <span className="truncate text-sm text-foreground">{t("sourceDirect")}</span>
               </div>
-              <span className="text-[13px] text-[#999] dark:text-[#777]">{t("statusPaywalled")}</span>
+              <span className="text-[13px] text-muted-foreground">{t("statusPaywalled")}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-2">
-          <div className="flex items-center gap-1.5 text-sm text-[#999] dark:text-[#777]">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
             <span className="truncate">nytimes.com/article</span>
           </div>
-          <span className="text-[13px] text-[#999] dark:text-[#777]">0.8s</span>
+          <span className="text-[13px] text-muted-foreground">0.8s</span>
         </div>
       </div>
     </div>
@@ -129,49 +130,49 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
   return (
     <div className="relative flex w-full max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
-      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/[0.06] dark:bg-white/[0.06]" />
+      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border/50" />
 
       {/* Badge */}
       <div className="relative z-10 flex justify-center">
-        <div className="flex items-center justify-center rounded-full bg-white/80 px-2.5 py-1 text-sm font-medium text-[#999] backdrop-blur-sm dark:bg-[#222]/80 dark:text-[#888]">
+        <div className="flex items-center justify-center rounded-full bg-card/80 px-2.5 py-1 text-sm font-medium text-muted-foreground backdrop-blur-sm">
           {t("cleanModeBadge")}
         </div>
       </div>
 
       {/* Card */}
-      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-card p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
-          <p className="text-xs text-[#999] dark:text-[#777]">
+          <p className="text-xs text-muted-foreground">
             {t("removedDistractions", { count: 12 })}
           </p>
         </div>
 
         <div className="flex flex-col gap-[1.5px] overflow-hidden">
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("paywallOverlay")}</span>
+                <span className="truncate text-sm text-foreground">{t("paywallOverlay")}</span>
               </div>
               <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("cookieBanner")}</span>
+                <span className="truncate text-sm text-foreground">{t("cookieBanner")}</span>
               </div>
               <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sidebarAds", { count: 3 })}</span>
+                <span className="truncate text-sm text-foreground">{t("sidebarAds", { count: 3 })}</span>
               </div>
               <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
@@ -179,7 +180,7 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
         </div>
 
         <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-2">
-          <div className="flex items-center gap-1.5 text-sm text-[#999] dark:text-[#777]">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <CheckCircle className="h-4 w-4" strokeWidth={2} />
             <span>{t("readyToRead")}</span>
           </div>
@@ -193,28 +194,28 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
 // AI Summary Card Visual
 function AISummaryCard({ t }: { t: (key: string) => string }) {
   return (
-    <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+    <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
           <FileText className="h-3.5 w-3.5" strokeWidth={2} />
         </div>
-        <span className="text-xs font-medium text-[#999] dark:text-[#777]">{t("summaryLabel")}</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("summaryLabel")}</span>
       </div>
       <div className="space-y-2">
-        <div className="h-2.5 w-full rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
-        <div className="h-2.5 w-[90%] rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
-        <div className="h-2.5 w-[95%] rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
-        <div className="h-2.5 w-[70%] rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
+        <div className="h-2.5 w-full rounded-full bg-surface-2" />
+        <div className="h-2.5 w-[90%] rounded-full bg-surface-2" />
+        <div className="h-2.5 w-[95%] rounded-full bg-surface-2" />
+        <div className="h-2.5 w-[70%] rounded-full bg-surface-2" />
       </div>
       <div className="mt-4 flex flex-wrap gap-1.5">
         {["EN", "DE", "ES", "FR", "PT", "NL", "ZH", "JA"].map((lang) => (
           <span
             key={lang}
             className={clsx(
-              "rounded-md px-2 py-0.5 text-[10px] font-medium",
+              "rounded-md px-2 py-0.5 text-[11px] font-medium",
               lang === "EN"
-                ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                : "bg-[#f0f0f0] text-[#999] dark:bg-[#333] dark:text-[#777]"
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                : "bg-surface-2 text-muted-foreground"
             )}
           >
             {lang}
@@ -273,10 +274,10 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
   const proxyUrl = `/proxy?url=${encodeURIComponent(article.url)}`;
 
   return (
-    <div className="mt-4 w-full animate-in fade-in duration-300">
+    <div className="mt-4 sm:mt-8 sm:mb-12 w-full animate-in fade-in duration-300">
       <Link
         href={proxyUrl}
-        className="group relative flex items-center gap-3 rounded-xl border border-border/40 bg-card/50 px-4 py-3 backdrop-blur-sm transition-colors hover:bg-card/80"
+        className="group relative flex items-center gap-3 rounded-lg sm:rounded-xl border border-border/30 bg-card/40 px-3 py-3 sm:px-4 sm:py-4 backdrop-blur-sm transition-colors hover:bg-card/60"
       >
         {/* Favicon */}
         <div className="size-5 shrink-0 overflow-hidden rounded">
@@ -285,20 +286,20 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
 
         {/* Title + domain */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate group-hover:text-foreground/90">
+          <p className="text-[13px] sm:text-sm font-medium text-foreground truncate group-hover:text-foreground/90">
             {article.title}
           </p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground/60">{article.domain}</span>
-            <span className="text-[11px] text-muted-foreground/40">·</span>
-            <span className="text-[11px] text-muted-foreground/60">
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/50">{article.domain}</span>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/30">·</span>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/50">
               {t("continueReadingProgress", { progress: article.progress })}
             </span>
           </div>
           {/* Progress bar */}
-          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+          <div className="mt-1 h-0.5 sm:h-1 w-full overflow-hidden rounded-full bg-foreground/[0.04]">
             <div
-              className="h-full rounded-full bg-foreground/20 transition-[width] duration-300"
+              className="h-full rounded-full bg-foreground/15 transition-[width] duration-300"
               style={{ width: `${article.progress}%` }}
             />
           </div>
@@ -312,10 +313,10 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
             clearReadingProgress(article.url);
             setDismissed(true);
           }}
-          className="shrink-0 p-1 rounded-md text-muted-foreground/40 hover:text-muted-foreground hover:bg-foreground/[0.05] transition-colors"
+          className="shrink-0 p-1 rounded-md text-muted-foreground/30 hover:text-muted-foreground hover:bg-foreground/[0.05] transition-colors"
           aria-label="Dismiss"
         >
-          <X className="size-3.5" />
+          <X className="size-3" />
         </button>
       </Link>
     </div>
@@ -506,14 +507,14 @@ export const HomeContent = memo(function HomeContent() {
             </p>
           )}
 
-          {/* Trust bar + sponsor — single muted footer under input */}
-          <div className="mt-4 flex flex-col items-center gap-1.5">
-            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[12px] text-muted-foreground/50">
-              <span className="whitespace-nowrap">{t("trustNoSignup")}</span>
+          {/* Trust bar + ad - single muted line */}
+          <div className="mt-4 flex flex-col items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground/40">
+            <p className="flex items-center gap-1.5">
+              <span>{t("trustNoSignup")}</span>
               <span aria-hidden="true">·</span>
-              <span className="whitespace-nowrap">{t("trustWorksWith")}</span>
-              <span aria-hidden="true">·</span>
-              <span className="whitespace-nowrap">{t("trustFree")}</span>
+              <span className="hidden sm:inline">{t("trustWorksWith")}</span>
+              <span aria-hidden="true" className="hidden sm:inline">·</span>
+              <span>{t("trustFree")}</span>
             </p>
             {!isPremium && !isPremiumLoading && ad && (
               <GravityAd
@@ -531,37 +532,37 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="mt-auto pt-8 sm:pt-0 sm:absolute sm:bottom-42 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] sm:px-6">
-          <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
-            <h2 className="text-center text-[15px] font-medium text-foreground/90">
+        <div className="mt-auto pt-4 sm:pt-0 sm:absolute sm:bottom-28 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] px-2 sm:px-6">
+          <div className="rounded-xl sm:rounded-2xl border border-border/30 bg-card/40 px-4 py-3.5 sm:px-6 sm:py-5 backdrop-blur-sm">
+            <h2 className="text-center text-[14px] sm:text-[15px] font-medium text-foreground/80">
               {t("valuePropTitle")}
             </h2>
-            <p className="mt-2.5 text-balance text-center text-[13px] leading-relaxed text-muted-foreground/70">
+            <p className="mt-2 text-balance text-center text-[12px] sm:text-[13px] leading-relaxed text-muted-foreground/60">
               {t("valuePropDescription")}
             </p>
-            <div className="mt-4 flex justify-center">
+            <div className="mt-3 sm:mt-4 flex justify-center">
               <Link
                 href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-                className="group inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.03] px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+                className="group inline-flex items-center gap-1 rounded-full bg-foreground/[0.03] px-3 py-1 sm:px-3.5 sm:py-1.5 text-[11px] sm:text-xs font-medium text-muted-foreground/70 transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
               >
                 <span>{t("tryPaywalledArticle")}</span>
-                <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="size-2.5 sm:size-3 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <div className="mt-6 pb-6 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
+        <div className="mt-2 pb-2 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="flex flex-col items-center gap-1 text-muted-foreground/40 transition-colors hover:text-muted-foreground/60"
+            className="flex flex-col items-center gap-0.5 text-muted-foreground/30 transition-colors hover:text-muted-foreground/50"
             aria-label={t("scrollToLearnMore")}
           >
-            <span className="text-xs">{t("learnMore")}</span>
-            <ChevronDown className="size-4" />
+            <span className="text-[10px] sm:text-xs">{t("learnMore")}</span>
+            <ChevronDown className="size-3 sm:size-4" />
           </button>
         </div>
       </main>

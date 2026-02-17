@@ -39,6 +39,7 @@ import {
   Edit01Icon,
   RotateLeftIcon,
   RotateRightIcon,
+  ArrowReloadHorizontalIcon,
   Search01Icon,
   SentIcon,
   Link01Icon,
@@ -120,6 +121,9 @@ import {
   LanguageSkillIcon,
   AlertCircleIcon,
   Loading03Icon,
+
+  // AI/Brand icons
+  ChatGptIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
@@ -201,6 +205,7 @@ export const Trash2 = createIcon(Delete02Icon, "Trash2");
 export const Pencil = createIcon(Edit01Icon, "Pencil");
 export const RotateCcw = createIcon(RotateLeftIcon, "RotateCcw");
 export const RefreshCw = createIcon(RotateRightIcon, "RefreshCw");
+export const ReloadIcon = createIcon(ArrowReloadHorizontalIcon, "ReloadIcon"); // Proper reload icon
 export const Search = createIcon(Search01Icon, "Search");
 export const Send = createIcon(SentIcon, "Send");
 export const ExternalLink = createIcon(Link02Icon, "ExternalLink");
@@ -214,6 +219,9 @@ export const Highlighter = createIcon(HighlighterIcon, "Highlighter");
 
 // Communication Icons
 export const MessageSquare = createIcon(Chat01Icon, "MessageSquare");
+
+// AI/Brand Icons
+export const ChatGpt = createIcon(ChatGptIcon, "ChatGpt");
 
 // Status/Feedback Icons
 export const Loader2 = createIcon(Loading01Icon, "Loader2");

@@ -128,7 +128,7 @@ export function HighlightsPanel({
                   ) : null}
 
                   {/* Timestamp */}
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {new Date(hl.createdAt).toLocaleDateString()}
                   </p>
                 </div>

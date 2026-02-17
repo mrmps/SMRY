@@ -520,12 +520,12 @@ export function PricingContent() {
                 {t("featureHowItWorksDesc")}
               </p>
             </div>
-            <div className="order-2 lg:order-1 flex h-[220px] sm:h-[260px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
+            <div className="order-2 lg:order-1 flex h-[220px] sm:h-[260px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
               <div className="flex flex-col gap-3 px-6">
                 {[
                   { step: "1", text: t("stepPasteUrl"), color: "bg-foreground text-background" },
-                  { step: "2", text: t("stepFetchSources"), color: "bg-muted text-muted-foreground" },
-                  { step: "3", text: t("stepReadWithout"), color: "bg-muted text-muted-foreground" },
+                  { step: "2", text: t("stepFetchSources"), color: "bg-surface-2 text-muted-foreground" },
+                  { step: "3", text: t("stepReadWithout"), color: "bg-surface-2 text-muted-foreground" },
                 ].map((item) => (
                   <div key={item.step} className="flex items-center gap-3">
                     <span className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${item.color}`}>
@@ -546,8 +546,8 @@ export function PricingContent() {
                 {t("featureCompareDesc", { price: billingPeriod === "annual" ? annualMonthly : monthlyPrice })}
               </p>
             </div>
-            <div className="order-4 lg:order-4 flex h-[180px] sm:h-[220px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
-              <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-white p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)] mx-4">
+            <div className="order-4 lg:order-4 flex h-[180px] sm:h-[220px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
+              <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-card p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)] mx-4">
                 <div className="space-y-2 sm:space-y-2.5">
                   {[
                     { feature: t("compareAiSummaries"), free: t("comparePerDay", { count: 20 }), pro: t("statUnlimited") },
@@ -576,14 +576,14 @@ export function PricingContent() {
                 {t("featurePubsDesc")}
               </p>
             </div>
-            <div className="order-6 lg:order-5 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-[#f5f5f5] dark:bg-[#111]">
+            <div className="order-6 lg:order-5 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
               <div className="grid grid-cols-2 gap-2 sm:gap-3 px-4 sm:px-6 w-full max-w-[320px]">
                 {getPublicationCategories(t).map((cat) => (
-                  <div key={cat.label} className="rounded-lg bg-white/80 dark:bg-[#222]/80 p-2 sm:p-2.5">
-                    <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.label}</p>
+                  <div key={cat.label} className="rounded-lg bg-card/80 p-2 sm:p-2.5">
+                    <p className="text-[11px] sm:text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.label}</p>
                     <div className="space-y-0.5">
                       {cat.pubs.slice(0, 3).map((pub) => (
-                        <p key={pub} className="text-[10px] sm:text-[11px] text-foreground/80">{pub}</p>
+                        <p key={pub} className="text-[11px] sm:text-[12px] text-foreground/80">{pub}</p>
                       ))}
                     </div>
                   </div>
@@ -843,10 +843,10 @@ export function PricingContent() {
               ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo
             </span>
             {billingPeriod === "annual" && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{t("discountOff")}</span>
+              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">{t("discountOff")}</span>
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground">{t("freeTrialShort")}</span>
+          <span className="text-[11px] text-muted-foreground">{t("freeTrialShort")}</span>
         </div>
         <CTAButton
           variant="mobile"
