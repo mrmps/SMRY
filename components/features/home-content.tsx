@@ -274,10 +274,10 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
   const proxyUrl = `/proxy?url=${encodeURIComponent(article.url)}`;
 
   return (
-    <div className="mt-8 sm:mb-12 w-full animate-in fade-in duration-300">
+    <div className="mt-4 sm:mt-8 sm:mb-12 w-full animate-in fade-in duration-300">
       <Link
         href={proxyUrl}
-        className="group relative flex items-center gap-4 rounded-xl border border-border/40 bg-card/50 px-4 py-4 backdrop-blur-sm transition-colors hover:bg-card/80"
+        className="group relative flex items-center gap-3 rounded-lg sm:rounded-xl border border-border/30 bg-card/40 px-3 py-3 sm:px-4 sm:py-4 backdrop-blur-sm transition-colors hover:bg-card/60"
       >
         {/* Favicon */}
         <div className="size-5 shrink-0 overflow-hidden rounded">
@@ -286,20 +286,20 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
 
         {/* Title + domain */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate group-hover:text-foreground/90">
+          <p className="text-[13px] sm:text-sm font-medium text-foreground truncate group-hover:text-foreground/90">
             {article.title}
           </p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground/60">{article.domain}</span>
-            <span className="text-[11px] text-muted-foreground/40">·</span>
-            <span className="text-[11px] text-muted-foreground/60">
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/50">{article.domain}</span>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/30">·</span>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground/50">
               {t("continueReadingProgress", { progress: article.progress })}
             </span>
           </div>
           {/* Progress bar */}
-          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+          <div className="mt-1 h-0.5 sm:h-1 w-full overflow-hidden rounded-full bg-foreground/[0.04]">
             <div
-              className="h-full rounded-full bg-foreground/20 transition-[width] duration-300"
+              className="h-full rounded-full bg-foreground/15 transition-[width] duration-300"
               style={{ width: `${article.progress}%` }}
             />
           </div>
@@ -313,10 +313,10 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
             clearReadingProgress(article.url);
             setDismissed(true);
           }}
-          className="shrink-0 p-1 rounded-md text-muted-foreground/40 hover:text-muted-foreground hover:bg-foreground/[0.05] transition-colors"
+          className="shrink-0 p-1 rounded-md text-muted-foreground/30 hover:text-muted-foreground hover:bg-foreground/[0.05] transition-colors"
           aria-label="Dismiss"
         >
-          <X className="size-3.5" />
+          <X className="size-3" />
         </button>
       </Link>
     </div>
@@ -507,14 +507,14 @@ export const HomeContent = memo(function HomeContent() {
             </p>
           )}
 
-          {/* Trust bar + sponsor — single muted footer under input */}
-          <div className="mt-4 flex flex-col items-center gap-1.5">
-            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[11px] sm:text-[13px] text-muted-foreground/50">
-              <span className="whitespace-nowrap">{t("trustNoSignup")}</span>
+          {/* Trust bar + ad - single muted line */}
+          <div className="mt-4 flex flex-col items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground/40">
+            <p className="flex items-center gap-1.5">
+              <span>{t("trustNoSignup")}</span>
               <span aria-hidden="true">·</span>
-              <span className="whitespace-nowrap">{t("trustWorksWith")}</span>
-              <span aria-hidden="true">·</span>
-              <span className="whitespace-nowrap">{t("trustFree")}</span>
+              <span className="hidden sm:inline">{t("trustWorksWith")}</span>
+              <span aria-hidden="true" className="hidden sm:inline">·</span>
+              <span>{t("trustFree")}</span>
             </p>
             {!isPremium && !isPremiumLoading && ad && (
               <GravityAd
@@ -532,37 +532,37 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="mt-auto pt-16 sm:pt-0 sm:absolute sm:bottom-28 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] sm:px-6">
-          <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
-            <h2 className="text-center text-[15px] font-medium text-foreground/90">
+        <div className="mt-auto pt-4 sm:pt-0 sm:absolute sm:bottom-28 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] px-2 sm:px-6">
+          <div className="rounded-xl sm:rounded-2xl border border-border/30 bg-card/40 px-4 py-3.5 sm:px-6 sm:py-5 backdrop-blur-sm">
+            <h2 className="text-center text-[14px] sm:text-[15px] font-medium text-foreground/80">
               {t("valuePropTitle")}
             </h2>
-            <p className="mt-2.5 text-balance text-center text-[13px] leading-relaxed text-muted-foreground/70">
+            <p className="mt-2 text-balance text-center text-[12px] sm:text-[13px] leading-relaxed text-muted-foreground/60">
               {t("valuePropDescription")}
             </p>
-            <div className="mt-4 flex justify-center">
+            <div className="mt-3 sm:mt-4 flex justify-center">
               <Link
                 href="/proxy?url=https://www.theatlantic.com/technology/archive/2017/11/the-big-unanswered-questions-about-paywalls/547091"
-                className="group inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.03] px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+                className="group inline-flex items-center gap-1 rounded-full bg-foreground/[0.03] px-3 py-1 sm:px-3.5 sm:py-1.5 text-[11px] sm:text-xs font-medium text-muted-foreground/70 transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
               >
                 <span>{t("tryPaywalledArticle")}</span>
-                <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="size-2.5 sm:size-3 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <div className="mt-6 pb-6 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
+        <div className="mt-2 pb-2 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="flex flex-col items-center gap-1 text-muted-foreground/40 transition-colors hover:text-muted-foreground/60"
+            className="flex flex-col items-center gap-0.5 text-muted-foreground/30 transition-colors hover:text-muted-foreground/50"
             aria-label={t("scrollToLearnMore")}
           >
-            <span className="text-xs">{t("learnMore")}</span>
-            <ChevronDown className="size-4" />
+            <span className="text-[10px] sm:text-xs">{t("learnMore")}</span>
+            <ChevronDown className="size-3 sm:size-4" />
           </button>
         </div>
       </main>

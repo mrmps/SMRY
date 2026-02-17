@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "New:",
-    "message": "Ask AI anything about articles you read",
+    "message": "Warm Paper theme — easier on the eyes for extended reading",
     "changelog": "Changelog"
   },
   "changelog": {
@@ -350,6 +350,15 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryDesign_date": "Feb 17, 2026",
+    "entryDesign_change1_text": "Warm Paper light theme",
+    "entryDesign_change1_detail": "New default light theme designed for extended reading. Soft cream backgrounds with warm sepia-toned text feel like quality book paper — comfortable for hours without eye strain.",
+    "entryDesign_change2_text": "Premium Reading dark theme",
+    "entryDesign_change2_detail": "Redesigned dark mode built for nighttime reading. Rich charcoal backgrounds paired with warm cream text reduce eye strain and help you read longer after dark.",
+    "entryDesign_change3_text": "Refined color palette",
+    "entryDesign_change3_detail": "Warmer, softer tones throughout the app. Article text is now optimized for long-form reading with carefully tuned contrast that's easier on the eyes.",
+    "entryDesign_change4_text": "Upgraded icon system",
+    "entryDesign_change4_detail": "New icon set with crisper details and better visual weight for a more polished experience across the app.",
     "entrySync_date": "Feb 13, 2026",
     "entrySync_change1_text": "Persistent chat history",
     "entrySync_change1_detail": "Your chat history syncs automatically. Sign in to access your conversations from any device and never lose an important conversation again.",

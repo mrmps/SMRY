@@ -155,6 +155,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const isUserScrolledUpRef = useRef(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const rafIdRef = useRef<number>(0);
+  // Track programmatic scrolling to avoid race conditions with scroll handler
+  const isProgrammaticScrollRef = useRef(false);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const isPremium = usageData?.isPremium ?? false;
@@ -301,6 +303,9 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     const container = scrollContainerRef.current;
     if (!container) return;
     const handleScroll = () => {
+      // Skip during programmatic scroll to avoid race conditions
+      if (isProgrammaticScrollRef.current) return;
+
       const { scrollTop, scrollHeight, clientHeight } = container;
       // Floating input adds ~120px of bottom padding/spacer that sits below the last message.
       // Use a larger threshold so the user is considered "at bottom" even when they haven't
@@ -652,7 +657,13 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               onClick={() => {
                 const container = scrollContainerRef.current;
                 if (container) {
+                  // Prevent race condition with scroll handler during smooth scroll
+                  isProgrammaticScrollRef.current = true;
                   container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+                  // Re-enable scroll detection after animation completes (~400ms for smooth scroll)
+                  setTimeout(() => {
+                    isProgrammaticScrollRef.current = false;
+                  }, 400);
                 }
                 isUserScrolledUpRef.current = false;
                 setShowScrollButton(false);

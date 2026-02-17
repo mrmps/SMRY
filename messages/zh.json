@@ -350,6 +350,15 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entryDesign_date": "2026年2月17日",
+    "entryDesign_change1_text": "暖纸浅色主题",
+    "entryDesign_change1_detail": "专为长时间阅读设计的新默认浅色主题。柔和的奶油色背景搭配温暖的棕褐色调文字，如同优质书纸般舒适——连续阅读数小时也不会眼睛疲劳。",
+    "entryDesign_change2_text": "高级阅读深色主题",
+    "entryDesign_change2_detail": "专为夜间阅读重新设计的深色模式。浓郁的炭灰色背景搭配温暖的奶油色文字，减少眼睛疲劳，让您在夜间也能阅读更久。",
+    "entryDesign_change3_text": "精致调色板",
+    "entryDesign_change3_detail": "整个应用采用更温暖、更柔和的色调。文章文字针对长时间阅读进行了优化，精心调整的对比度更护眼。",
+    "entryDesign_change4_text": "升级图标系统",
+    "entryDesign_change4_detail": "全新图标集，细节更清晰，视觉重量更佳，为整个应用带来更精致的体验。",
     "entrySync_date": "2026年2月13日",
     "entrySync_change1_text": "持久聊天记录",
     "entrySync_change1_detail": "您的聊天记录自动同步。登录后可从任何设备访问对话，再也不会丢失重要对话。",

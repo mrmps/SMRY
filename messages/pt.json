@@ -350,6 +350,15 @@
     "upgrade": "Atualizar"
   },
   "changelogEntries": {
+    "entryDesign_date": "17 de fevereiro de 2026",
+    "entryDesign_change1_text": "Tema claro Papel Quente",
+    "entryDesign_change1_detail": "Novo tema claro padrão projetado para leitura prolongada. Fundos creme suaves com texto em tons sépia quentes que parecem papel de livro de qualidade — confortável por horas sem cansaço visual.",
+    "entryDesign_change2_text": "Tema escuro Leitura Premium",
+    "entryDesign_change2_detail": "Modo escuro redesenhado para leitura noturna. Fundos carvão ricos com texto creme quente reduzem o cansaço visual e permitem ler mais tempo após escurecer.",
+    "entryDesign_change3_text": "Paleta de cores refinada",
+    "entryDesign_change3_detail": "Tons mais quentes e suaves em todo o app. O texto dos artigos está otimizado para leitura prolongada com contraste cuidadosamente ajustado que é mais fácil para os olhos.",
+    "entryDesign_change4_text": "Sistema de ícones aprimorado",
+    "entryDesign_change4_detail": "Novo conjunto de ícones com detalhes mais nítidos e melhor peso visual para uma experiência mais polida em todo o app.",
     "entrySync_date": "13 de fevereiro de 2026",
     "entrySync_change1_text": "Histórico de chat persistente",
     "entrySync_change1_detail": "Seu histórico de chat sincroniza automaticamente. Faça login para acessar suas conversas de qualquer dispositivo e nunca perder uma conversa importante.",

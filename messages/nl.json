@@ -350,6 +350,15 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entryDesign_date": "17 februari 2026",
+    "entryDesign_change1_text": "Warm Papier licht thema",
+    "entryDesign_change1_detail": "Nieuw standaard licht thema ontworpen voor langdurig lezen. Zachte crèmekleurige achtergronden met warme sepiatinten tekst voelen als kwaliteits boekpapier — urenlang comfortabel zonder oogvermoeidheid.",
+    "entryDesign_change2_text": "Premium Lezen donker thema",
+    "entryDesign_change2_detail": "Opnieuw ontworpen donkere modus voor nachtelijk lezen. Rijke houtskool achtergronden met warme crèmekleurige tekst verminderen oogvermoeidheid en laten je langer lezen na zonsondergang.",
+    "entryDesign_change3_text": "Verfijnd kleurenpalet",
+    "entryDesign_change3_detail": "Warmere, zachtere tinten door de hele app. Artikeltekst is geoptimaliseerd voor langdurig lezen met zorgvuldig afgestemd contrast dat prettiger is voor de ogen.",
+    "entryDesign_change4_text": "Verbeterd iconen systeem",
+    "entryDesign_change4_detail": "Nieuwe iconenset met scherpere details en beter visueel gewicht voor een meer gepolijste ervaring in de hele app.",
     "entrySync_date": "13 februari 2026",
     "entrySync_change1_text": "Blijvende chatgeschiedenis",
     "entrySync_change1_detail": "Je chatgeschiedenis synchroniseert automatisch. Log in om je gesprekken vanaf elk apparaat te openen en nooit meer een belangrijk gesprek te verliezen.",
