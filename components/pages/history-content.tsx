@@ -452,7 +452,7 @@ function HistoryItemCard({
           <span className="text-xs text-muted-foreground truncate flex-1">
             {item.domain}
           </span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+          <span className="text-[11px] text-muted-foreground tabular-nums">
             {formatRelativeTime(new Date(item.accessedAt))}
           </span>
         </div>
@@ -642,7 +642,7 @@ function CommandBar({
             <X className="size-3.5 text-muted-foreground" />
           </button>
         ) : (
-          <kbd className="hidden sm:flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-medium text-muted-foreground">
+          <kbd className="hidden sm:flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-muted text-[11px] font-medium text-muted-foreground">
             <Command className="size-3" />K
           </kbd>
         )}

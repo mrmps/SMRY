@@ -175,7 +175,7 @@ export const MenuDock: React.FC<MenuDockProps> = ({
                   'absolute -top-1 -right-1 flex items-center justify-center',
                   'min-w-[16px] h-4 px-1 rounded-full',
                   'bg-primary text-primary-foreground',
-                  'text-[10px] font-medium leading-none',
+                  'text-[11px] font-medium leading-none',
                   'transition-all duration-200',
                   isActive ? 'scale-110' : 'scale-100',
                   item.badgeVariant === 'dot' && 'min-w-[6px] h-[6px] p-0',

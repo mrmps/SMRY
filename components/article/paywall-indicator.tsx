@@ -48,7 +48,7 @@ export function PaywallIndicator({
         <TooltipTrigger
           render={<span />}
           className={cn(
-            "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center cursor-help",
+            "inline-flex h-5 min-w-5 items-center justify-center cursor-help",
             className
           )}
         >
@@ -65,7 +65,7 @@ export function PaywallIndicator({
         <TooltipTrigger
           render={<span />}
           className={cn(
-            "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold transition-colors cursor-help",
+            "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1 text-[11px] font-semibold transition-colors cursor-help",
             "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
             className
           )}
@@ -86,7 +86,7 @@ export function PaywallIndicator({
       <TooltipTrigger
         render={<span />}
         className={cn(
-          "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold transition-colors cursor-help",
+          "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1 text-[11px] font-semibold transition-colors cursor-help",
           config.color,
           className
         )}

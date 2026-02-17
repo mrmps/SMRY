@@ -169,7 +169,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
         rel="sponsored noopener"
         onClick={onClick}
         className={cn(
-          "flex items-center gap-3 bg-card border-t border-border/30",
+          "flex items-center gap-3 bg-card",
           "px-3 py-2.5",
           "sm:px-4",
           "md:mx-3 md:mb-2 md:rounded-lg md:border md:shadow-sm",
@@ -216,7 +216,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             </p>
           </div>
         </a>
-        <span className="shrink-0 text-[9px] text-muted-foreground/40">Ad</span>
+        <span className="shrink-0 text-[11px] text-muted-foreground/40">Ad</span>
         <DismissButton onDismiss={onDismiss} className="size-5" />
       </div>
     );
@@ -243,7 +243,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             <p className="text-[13px] font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
             </p>
-            <p className="text-[10px] text-muted-foreground/50 mt-1">
+            <p className="text-[11px] text-muted-foreground/50 mt-1">
               {ad.brandName} · Sponsored
             </p>
             <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
@@ -303,10 +303,10 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           {" "}
           <span className="inline-flex items-center gap-0.5 font-medium text-primary/60 group-hover:text-primary transition-colors whitespace-nowrap">
             {ctaText}
-            <span className="text-[10px]">↗</span>
+            <span className="text-[11px]">↗</span>
           </span>
         </p>
-        <span className="text-[9px] text-muted-foreground/30 mt-0.5 block">Sponsored</span>
+        <span className="text-[11px] text-muted-foreground/30 mt-0.5 block">Sponsored</span>
       </a>
     );
   }
@@ -316,7 +316,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   // ============================================
   if (variant === "inline") {
     return (
-      <div className={cn("border-t border-border/40 pt-6 pb-2 overflow-hidden", className)}>
+      <div className={cn("pt-6 pb-2 overflow-hidden", className)}>
         <a
           ref={adRef}
           href={ad.clickUrl}
@@ -332,7 +332,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             <p className="text-[13px] sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {valueProp}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-muted-foreground/50 mt-0.5">
+            <p className="text-[11px] sm:text-[11px] text-muted-foreground/50 mt-0.5">
               {ad.brandName} · Sponsored
             </p>
           </div>
@@ -363,7 +363,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-foreground truncate">{ad.brandName}</p>
-          <p className="text-[10px] text-muted-foreground/50">Sponsored</p>
+          <p className="text-[11px] text-muted-foreground/50">Sponsored</p>
         </div>
         <DismissButton onDismiss={onDismiss} />
       </div>

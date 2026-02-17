@@ -271,7 +271,7 @@ export function ArticleReader({
             </div>
 
             {/* Title - Display typography with optical adjustments */}
-            <h1 className="article-title mb-6 font-serif text-[30px] font-bold leading-[1.15] tracking-[-0.022em] text-foreground sm:mb-7 sm:text-[36px] sm:leading-[1.12] md:text-[44px] md:tracking-[-0.025em] lg:text-[52px] lg:leading-[1.08]">
+            <h1 className="article-title mb-6 font-sans text-[32px] font-bold leading-[1.25] tracking-[-0.02em] text-foreground">
               {title}
             </h1>
 
@@ -368,21 +368,25 @@ export function ArticleReader({
 
         /* Title Typography */
         .article-title {
-          /* Core typography - Literata for consistency */
+          /* Core typography - System sans-serif for clean reading */
           font-family:
-            var(--font-literata),
-            "Literata",
-            Georgia,
-            "Times New Roman",
-            serif;
+            "Inter VF",
+            "Inter",
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            Roboto,
+            sans-serif;
+
+          /* Fixed 32px size across all breakpoints */
+          font-size: 32px !important;
+          line-height: 1.25 !important;
+          letter-spacing: -0.02em !important;
 
           /* Optical adjustments */
           text-wrap: balance;
           text-rendering: optimizeLegibility;
-          font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1, "dlig" 1;
-
-          /* Hanging punctuation for optical alignment */
-          hanging-punctuation: first last;
+          font-feature-settings: "kern" 1, "liga" 1;
 
           /* Prevent orphans in title */
           widows: 2;
@@ -391,18 +395,6 @@ export function ArticleReader({
           /* Smooth font rendering */
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-
-          /* Subtle text shadow for depth on dark bg */
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-        }
-
-        /* Title size responsive scale */
-        @media (min-width: 1280px) {
-          .article-title {
-            font-size: 56px;
-            line-height: 1.06;
-            letter-spacing: -0.028em;
-          }
         }
 
         /* Meta section styling */
@@ -922,12 +914,6 @@ export function ArticleReader({
 
         /* Tablet */
         @media (max-width: 768px) {
-          .article-title {
-            font-size: 34px;
-            line-height: 1.14;
-            letter-spacing: -0.016em;
-          }
-
           .source-badge {
             padding: 0.3rem 0.75rem 0.3rem 0.3rem;
           }
@@ -952,12 +938,6 @@ export function ArticleReader({
 
         /* Mobile */
         @media (max-width: 480px) {
-          .article-title {
-            font-size: 26px;
-            line-height: 1.18;
-            letter-spacing: -0.01em;
-          }
-
           .article-header {
             padding-left: 1rem;
             padding-right: 1rem;

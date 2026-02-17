@@ -112,7 +112,7 @@ function HistoryMenuItem() {
             <HistoryIcon className="size-4" />
             <span className="flex-1">History</span>
             {showBadge && (
-              <span className="text-[10px] font-medium text-amber-500">PRO</span>
+              <span className="text-[11px] font-medium text-amber-500">PRO</span>
             )}
           </Link>
         );

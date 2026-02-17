@@ -86,7 +86,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     return (
       <div
         ref={contentRef}
-        className="mt-6 wrap-break-word prose max-w-none px-4 sm:px-0"
+        className="mt-6 wrap-break-word prose max-w-none px-4 sm:px-0 text-xl sm:text-lg"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -99,7 +99,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     <div ref={contentRef} className="mt-6 px-4 sm:px-0">
       {/* First part of article */}
       <div
-        className="wrap-break-word prose max-w-none"
+        className="wrap-break-word prose max-w-none text-xl sm:text-lg"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -119,7 +119,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
       {/* Rest of article */}
       <div
-        className="wrap-break-word prose max-w-none"
+        className="wrap-break-word prose max-w-none text-xl sm:text-lg"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: afterAd }}
@@ -447,7 +447,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
             </div>
 
             {data.article.title && (
-              <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl font-serif">
+              <h1 className="text-2xl sm:text-[32px] font-bold leading-[1.25] tracking-[-0.02em] text-foreground font-sans">
                 {data.article.title}
               </h1>
             )}

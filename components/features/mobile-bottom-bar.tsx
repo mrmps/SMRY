@@ -98,12 +98,12 @@ export function MobileBottomBar({
           {isReader ? (
             <>
               <BookOpen className="size-5" />
-              <span className="text-[10px] font-medium">Reader</span>
+              <span className="text-[11px] font-medium">Reader</span>
             </>
           ) : (
             <>
               <Code className="size-5" />
-              <span className="text-[10px] font-medium">Original</span>
+              <span className="text-[11px] font-medium">Original</span>
             </>
           )}
         </button>
@@ -120,7 +120,7 @@ export function MobileBottomBar({
                   className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] py-1.5 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Share2 key="share-icon" className="size-5" />
-                  <span key="share-label" className="text-[10px] font-medium">Share</span>
+                  <span key="share-label" className="text-[11px] font-medium">Share</span>
                 </button>
               );
             }}
@@ -211,7 +211,7 @@ export function MobileBottomBar({
           className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] py-1.5 text-muted-foreground hover:text-foreground transition-colors"
         >
           <Settings className="size-5" />
-          <span className="text-[10px] font-medium">Settings</span>
+          <span className="text-[11px] font-medium">Settings</span>
         </button>
       </div>
     </div>

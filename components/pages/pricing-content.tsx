@@ -580,10 +580,10 @@ export function PricingContent() {
               <div className="grid grid-cols-2 gap-2 sm:gap-3 px-4 sm:px-6 w-full max-w-[320px]">
                 {getPublicationCategories(t).map((cat) => (
                   <div key={cat.label} className="rounded-lg bg-card/80 p-2 sm:p-2.5">
-                    <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.label}</p>
+                    <p className="text-[11px] sm:text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.label}</p>
                     <div className="space-y-0.5">
                       {cat.pubs.slice(0, 3).map((pub) => (
-                        <p key={pub} className="text-[10px] sm:text-[11px] text-foreground/80">{pub}</p>
+                        <p key={pub} className="text-[11px] sm:text-[12px] text-foreground/80">{pub}</p>
                       ))}
                     </div>
                   </div>
@@ -843,10 +843,10 @@ export function PricingContent() {
               ${billingPeriod === "annual" ? annualMonthly : monthlyPrice}/mo
             </span>
             {billingPeriod === "annual" && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{t("discountOff")}</span>
+              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">{t("discountOff")}</span>
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground">{t("freeTrialShort")}</span>
+          <span className="text-[11px] text-muted-foreground">{t("freeTrialShort")}</span>
         </div>
         <CTAButton
           variant="mobile"

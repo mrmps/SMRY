@@ -212,7 +212,7 @@ function AISummaryCard({ t }: { t: (key: string) => string }) {
           <span
             key={lang}
             className={clsx(
-              "rounded-md px-2 py-0.5 text-[10px] font-medium",
+              "rounded-md px-2 py-0.5 text-[11px] font-medium",
               lang === "EN"
                 ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
                 : "bg-surface-2 text-muted-foreground"
@@ -509,7 +509,7 @@ export const HomeContent = memo(function HomeContent() {
 
           {/* Trust bar + sponsor — single muted footer under input */}
           <div className="mt-4 flex flex-col items-center gap-1.5">
-            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[12px] text-muted-foreground/50">
+            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[11px] sm:text-[13px] text-muted-foreground/50">
               <span className="whitespace-nowrap">{t("trustNoSignup")}</span>
               <span aria-hidden="true">·</span>
               <span className="whitespace-nowrap">{t("trustWorksWith")}</span>

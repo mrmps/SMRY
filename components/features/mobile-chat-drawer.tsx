@@ -497,7 +497,7 @@ export function MobileChatDrawer({
                               <div className="px-4 pt-3 pb-1">
                                 <span className="block text-[11px] font-medium tracking-wider text-muted-foreground/50 truncate" title={isArticleGroup ? group.label : undefined}>{group.label}</span>
                                 {articleDomain && (
-                                  <span className="block text-[10px] text-muted-foreground/30 truncate">{articleDomain}</span>
+                                  <span className="block text-[11px] text-muted-foreground/30 truncate">{articleDomain}</span>
                                 )}
                               </div>
                               <div className="px-4 space-y-1">

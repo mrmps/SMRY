@@ -219,7 +219,7 @@ export function CopyPageDropdown({
                       e.preventDefault();
                       selectAllSources();
                     }}
-                    className="text-[10px] text-primary hover:underline"
+                    className="text-[11px] text-primary hover:underline"
                   >
                     All
                   </button>
@@ -229,7 +229,7 @@ export function CopyPageDropdown({
                       e.preventDefault();
                       deselectAllSources();
                     }}
-                    className="text-[10px] text-primary hover:underline"
+                    className="text-[11px] text-primary hover:underline"
                   >
                     None
                   </button>
@@ -371,7 +371,7 @@ export function CopyPageDropdown({
                         e.preventDefault();
                         selectAllSources();
                       }}
-                      className="text-[10px] text-primary hover:underline"
+                      className="text-[11px] text-primary hover:underline"
                     >
                       All
                     </button>
@@ -381,7 +381,7 @@ export function CopyPageDropdown({
                         e.preventDefault();
                         deselectAllSources();
                       }}
-                      className="text-[10px] text-primary hover:underline"
+                      className="text-[11px] text-primary hover:underline"
                     >
                       None
                     </button>

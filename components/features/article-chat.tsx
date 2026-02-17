@@ -532,7 +532,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   ) : (
                     /* Assistant message - Cursor-style clean content */
                     <div className="px-2 overflow-hidden">
-                      <div className="font-sans text-[15px] leading-[1.65] overflow-x-auto">
+                      <div className="font-sans text-[17px] sm:text-[15px] leading-[1.65] overflow-x-auto">
                         <Response
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}
@@ -711,7 +711,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 />
                 <PromptInputActions className="justify-between px-2 pb-2">
                   {/* Left side - usage counter on mobile */}
-                  <div className="flex items-center gap-1 text-[10px] font-mono tracking-tight text-muted-foreground/50">
+                  <div className="flex items-center gap-1 text-[11px] font-mono tracking-tight text-muted-foreground/50">
                     {isMobile && !isPremium && showUsageCounter && usageData && (
                       <>
                         <span className={cn(usageData.remaining === 0 ? "text-destructive/60" : "")}>
@@ -720,7 +720,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         <Link
                           href="/pricing"
                           className={cn(
-                            "font-sans text-[9px] font-medium transition-colors",
+                            "font-sans text-[11px] font-medium transition-colors",
                             usageData.remaining === 0
                               ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
                               : "text-primary/70 hover:text-primary hover:underline"
@@ -802,7 +802,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               : "border-t border-border/50",
           )}
         >
-          <div className="flex items-center gap-2 text-[10px] font-mono tracking-tight text-muted-foreground/50">
+          <div className="flex items-center gap-2 text-[11px] font-mono tracking-tight text-muted-foreground/50">
             {/* Controls for sidebar variant */}
             {variant === "sidebar" && (
               <div className="flex items-center gap-0.5 mr-auto">
@@ -826,7 +826,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                     title="Response language"
                   >
                     <LanguageIcon className="size-3" />
-                    <span className="text-[10px] font-sans">
+                    <span className="text-[11px] font-sans">
                       {LANGUAGES.find((l) => l.code === preferredLanguage)?.code.toUpperCase() || "EN"}
                     </span>
                   </SelectTrigger>
@@ -858,7 +858,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 <Link
                   href="/pricing"
                   className={cn(
-                    "font-sans text-[9px] font-medium transition-colors",
+                    "font-sans text-[11px] font-medium transition-colors",
                     usageData.remaining === 0
                       ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
                       : "text-primary/70 hover:text-primary hover:underline"
@@ -873,7 +873,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             {!isPremiumProp && !showUsageCounter && messages.length > 0 && variant === "sidebar" && (
               <Link
                 href="/pricing"
-                className="ml-auto font-sans text-[9px] text-muted-foreground/40 hover:text-primary/70 transition-colors"
+                className="ml-auto font-sans text-[11px] text-muted-foreground/40 hover:text-primary/70 transition-colors"
               >
                 Pro users get saved history
               </Link>
