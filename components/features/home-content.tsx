@@ -41,11 +41,12 @@ const HTTP_REGEX = /^https?:\/\//i;
 function FeatureVisual({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={clsx(
-      "relative flex h-[280px] sm:h-[320px] lg:h-[340px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#f8f8f8] via-[#f3f3f3] to-[#eee] dark:from-[#161616] dark:via-[#131313] dark:to-[#0f0f0f]",
+      "relative flex h-[280px] sm:h-[320px] lg:h-[340px] items-center justify-center overflow-hidden rounded-2xl",
+      "bg-gradient-to-br from-surface-1 via-surface-2 to-surface-3",
       className
     )}>
       {/* Subtle radial glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent dark:from-white/[0.03]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-background/40 via-transparent to-transparent dark:from-white/[0.03]" />
       {children}
     </div>
   );
@@ -73,51 +74,51 @@ function SourceFetchCard({ t }: { t: (key: string, values?: Record<string, strin
   return (
     <div className="relative flex w-full max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
-      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/[0.06] dark:bg-white/[0.06]" />
+      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border/50" />
 
       {/* Badge */}
       <div className="relative z-10 flex justify-center">
-        <div className="flex items-center justify-center rounded-full bg-white/80 px-2.5 py-1 text-sm font-medium text-[#999] backdrop-blur-sm dark:bg-[#222]/80 dark:text-[#888]">
+        <div className="flex items-center justify-center rounded-full bg-card/80 px-2.5 py-1 text-sm font-medium text-muted-foreground backdrop-blur-sm">
           {t("fetchingBadge")}
         </div>
       </div>
 
       {/* Card */}
-      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-card p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
-          <p className="text-xs text-[#999] dark:text-[#777]">
+          <p className="text-xs text-muted-foreground">
             {t("racingSources", { count: 2 })}
           </p>
         </div>
 
         <div className="flex flex-col gap-[1.5px] overflow-hidden">
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <Check className="h-4 w-4 shrink-0 text-emerald-500" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceWayback")}</span>
+                <span className="truncate text-sm text-foreground">{t("sourceWayback")}</span>
               </div>
               <span className="text-[13px] text-emerald-500">{t("statusWinner")}</span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
-                <Ban className="h-4 w-4 shrink-0 text-[#999] dark:text-[#777]" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sourceDirect")}</span>
+                <Ban className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
+                <span className="truncate text-sm text-foreground">{t("sourceDirect")}</span>
               </div>
-              <span className="text-[13px] text-[#999] dark:text-[#777]">{t("statusPaywalled")}</span>
+              <span className="text-[13px] text-muted-foreground">{t("statusPaywalled")}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-2">
-          <div className="flex items-center gap-1.5 text-sm text-[#999] dark:text-[#777]">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
             <span className="truncate">nytimes.com/article</span>
           </div>
-          <span className="text-[13px] text-[#999] dark:text-[#777]">0.8s</span>
+          <span className="text-[13px] text-muted-foreground">0.8s</span>
         </div>
       </div>
     </div>
@@ -129,49 +130,49 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
   return (
     <div className="relative flex w-full max-w-[320px] flex-col gap-3">
       {/* Vertical timeline line */}
-      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-black/[0.06] dark:bg-white/[0.06]" />
+      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border/50" />
 
       {/* Badge */}
       <div className="relative z-10 flex justify-center">
-        <div className="flex items-center justify-center rounded-full bg-white/80 px-2.5 py-1 text-sm font-medium text-[#999] backdrop-blur-sm dark:bg-[#222]/80 dark:text-[#888]">
+        <div className="flex items-center justify-center rounded-full bg-card/80 px-2.5 py-1 text-sm font-medium text-muted-foreground backdrop-blur-sm">
           {t("cleanModeBadge")}
         </div>
       </div>
 
       {/* Card */}
-      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-white p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative z-10 flex w-full max-w-[320px] flex-col gap-0.5 overflow-hidden rounded-xl bg-card p-1 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
         <div className="flex items-center px-2 py-1.5">
-          <p className="text-xs text-[#999] dark:text-[#777]">
+          <p className="text-xs text-muted-foreground">
             {t("removedDistractions", { count: 12 })}
           </p>
         </div>
 
         <div className="flex flex-col gap-[1.5px] overflow-hidden">
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("paywallOverlay")}</span>
+                <span className="truncate text-sm text-foreground">{t("paywallOverlay")}</span>
               </div>
               <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("cookieBanner")}</span>
+                <span className="truncate text-sm text-foreground">{t("cookieBanner")}</span>
               </div>
               <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-[#fafafa] dark:bg-[#2a2a2a]">
+          <div className="rounded-lg bg-surface-1">
             <div className="flex h-9 items-center justify-between gap-2 px-2">
               <div className="flex flex-1 items-center gap-1.5 overflow-hidden">
                 <X className="h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
-                <span className="truncate text-sm text-[#181925] dark:text-white">{t("sidebarAds", { count: 3 })}</span>
+                <span className="truncate text-sm text-foreground">{t("sidebarAds", { count: 3 })}</span>
               </div>
               <span className="text-[13px] text-red-400">{t("statusRemoved")}</span>
             </div>
@@ -179,7 +180,7 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
         </div>
 
         <div className="flex items-center justify-between gap-2 px-2 pb-1.5 pt-2">
-          <div className="flex items-center gap-1.5 text-sm text-[#999] dark:text-[#777]">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <CheckCircle className="h-4 w-4" strokeWidth={2} />
             <span>{t("readyToRead")}</span>
           </div>
@@ -193,18 +194,18 @@ function CleanReadingCard({ t }: { t: (key: string, values?: Record<string, stri
 // AI Summary Card Visual
 function AISummaryCard({ t }: { t: (key: string) => string }) {
   return (
-    <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:bg-[#222] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
+    <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
           <FileText className="h-3.5 w-3.5" strokeWidth={2} />
         </div>
-        <span className="text-xs font-medium text-[#999] dark:text-[#777]">{t("summaryLabel")}</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("summaryLabel")}</span>
       </div>
       <div className="space-y-2">
-        <div className="h-2.5 w-full rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
-        <div className="h-2.5 w-[90%] rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
-        <div className="h-2.5 w-[95%] rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
-        <div className="h-2.5 w-[70%] rounded-full bg-[#f0f0f0] dark:bg-[#333]" />
+        <div className="h-2.5 w-full rounded-full bg-surface-2" />
+        <div className="h-2.5 w-[90%] rounded-full bg-surface-2" />
+        <div className="h-2.5 w-[95%] rounded-full bg-surface-2" />
+        <div className="h-2.5 w-[70%] rounded-full bg-surface-2" />
       </div>
       <div className="mt-4 flex flex-wrap gap-1.5">
         {["EN", "DE", "ES", "FR", "PT", "NL", "ZH", "JA"].map((lang) => (
@@ -213,8 +214,8 @@ function AISummaryCard({ t }: { t: (key: string) => string }) {
             className={clsx(
               "rounded-md px-2 py-0.5 text-[10px] font-medium",
               lang === "EN"
-                ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                : "bg-[#f0f0f0] text-[#999] dark:bg-[#333] dark:text-[#777]"
+                ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                : "bg-surface-2 text-muted-foreground"
             )}
           >
             {lang}
@@ -273,10 +274,10 @@ function ContinueReadingCard({ t }: { t: (key: string, values?: Record<string, s
   const proxyUrl = `/proxy?url=${encodeURIComponent(article.url)}`;
 
   return (
-    <div className="mt-4 w-full animate-in fade-in duration-300">
+    <div className="mt-8 sm:mb-12 w-full animate-in fade-in duration-300">
       <Link
         href={proxyUrl}
-        className="group relative flex items-center gap-3 rounded-xl border border-border/40 bg-card/50 px-4 py-3 backdrop-blur-sm transition-colors hover:bg-card/80"
+        className="group relative flex items-center gap-4 rounded-xl border border-border/40 bg-card/50 px-4 py-4 backdrop-blur-sm transition-colors hover:bg-card/80"
       >
         {/* Favicon */}
         <div className="size-5 shrink-0 overflow-hidden rounded">
@@ -531,7 +532,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Value prop - positioned near bottom */}
-        <div className="mt-auto pt-8 sm:pt-0 sm:absolute sm:bottom-42 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] sm:px-6">
+        <div className="mt-auto pt-16 sm:pt-0 sm:absolute sm:bottom-28 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] sm:px-6">
           <div className="rounded-2xl border border-border/40 bg-card/50 px-6 py-5 backdrop-blur-sm">
             <h2 className="text-center text-[15px] font-medium text-foreground/90">
               {t("valuePropTitle")}
