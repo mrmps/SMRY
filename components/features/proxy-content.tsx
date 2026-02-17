@@ -19,7 +19,8 @@ import {
   Copy,
   ArrowUpRight,
 } from "@/components/ui/icons";
-import { FeedbackIcon, SummaryIcon } from "@/components/ui/custom-icons";
+import { FeedbackIcon } from "@/components/ui/custom-icons";
+import { ChatGpt } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -972,7 +973,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   maxSize={25}
                   collapsible
                   collapsedSize={0}
-                  className="bg-background"
+                  className="bg-sidebar"
                   onCollapse={() => {
                     if (historyOpen) setHistoryOpen(false);
                   }}
@@ -1057,7 +1058,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   maxSize={35}
                   collapsible
                   collapsedSize={0}
-                  className="bg-card"
+                  className="bg-sidebar"
                   onCollapse={() => {
                     if (sidebarOpen) handleSidebarChange(false);
                   }}
@@ -1156,7 +1157,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         )}
                         aria-label="Open chat"
                       >
-                        <SummaryIcon className="size-5" />
+                        <ChatGpt className="size-5" />
                       </button>
                       <SettingsDrawer
                         ref={settingsDrawerRef}

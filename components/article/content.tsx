@@ -86,7 +86,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     return (
       <div
         ref={contentRef}
-        className="mt-6 wrap-break-word prose dark:prose-invert max-w-none px-4 sm:px-0"
+        className="mt-6 wrap-break-word prose max-w-none px-4 sm:px-0"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -99,7 +99,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     <div ref={contentRef} className="mt-6 px-4 sm:px-0">
       {/* First part of article */}
       <div
-        className="wrap-break-word prose dark:prose-invert max-w-none"
+        className="wrap-break-word prose max-w-none"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -119,7 +119,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
       {/* Rest of article */}
       <div
-        className="wrap-break-word prose dark:prose-invert max-w-none"
+        className="wrap-break-word prose max-w-none"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: afterAd }}
@@ -541,41 +541,54 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
 
         <div className={viewMode !== "iframe" ? "block" : "hidden"}>
           {isLoading && (
-            <div className="animate-in fade-in duration-300">
+            <div className="article-skeleton-container">
               {/* Site name skeleton */}
-              <div className="flex items-center gap-3 mb-6">
-                <Skeleton className="size-5 rounded-sm" />
-                <Skeleton className="h-4 w-24" />
+              <div className="flex items-center gap-3 mb-6 skeleton-group" style={{ animationDelay: '0ms' }}>
+                <Skeleton className="size-5 rounded-full" />
+                <Skeleton className="h-4 w-28 rounded-full" />
               </div>
 
-              {/* Title skeleton */}
-              <div className="space-y-3 mb-6">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-4/5" />
+              {/* Title skeleton - larger lines for title feel */}
+              <div className="space-y-3 mb-6 skeleton-group" style={{ animationDelay: '80ms' }}>
+                <Skeleton className="h-10 w-full rounded-md" />
+                <Skeleton className="h-10 w-[85%] rounded-md" />
               </div>
 
               {/* Metadata skeleton */}
-              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-20" />
+              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-border skeleton-group" style={{ animationDelay: '160ms' }}>
+                <Skeleton className="h-4 w-32 rounded-full" />
+                <Skeleton className="h-4 w-20 rounded-full" />
               </div>
 
-              {/* Content skeleton - article-like paragraphs */}
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-11/12" />
-                  <Skeleton className="h-4 w-4/5" />
+              {/* Content skeleton - article-like paragraphs with staggered delays */}
+              <div className="space-y-6 mt-6">
+                {/* First paragraph */}
+                <div className="space-y-2.5 skeleton-group" style={{ animationDelay: '240ms' }}>
+                  <Skeleton className="h-[18px] w-full rounded" />
+                  <Skeleton className="h-[18px] w-full rounded" />
+                  <Skeleton className="h-[18px] w-[92%] rounded" />
+                  <Skeleton className="h-[18px] w-[78%] rounded" />
                 </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
+
+                {/* Second paragraph */}
+                <div className="space-y-2.5 skeleton-group" style={{ animationDelay: '320ms' }}>
+                  <Skeleton className="h-[18px] w-full rounded" />
+                  <Skeleton className="h-[18px] w-full rounded" />
+                  <Skeleton className="h-[18px] w-[88%] rounded" />
+                  <Skeleton className="h-[18px] w-[70%] rounded" />
                 </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
+
+                {/* Third paragraph */}
+                <div className="space-y-2.5 skeleton-group" style={{ animationDelay: '400ms' }}>
+                  <Skeleton className="h-[18px] w-full rounded" />
+                  <Skeleton className="h-[18px] w-[95%] rounded" />
+                  <Skeleton className="h-[18px] w-[82%] rounded" />
+                </div>
+
+                {/* Fourth paragraph - shorter */}
+                <div className="space-y-2.5 skeleton-group" style={{ animationDelay: '480ms' }}>
+                  <Skeleton className="h-[18px] w-full rounded" />
+                  <Skeleton className="h-[18px] w-[65%] rounded" />
                 </div>
               </div>
             </div>

@@ -23,7 +23,7 @@ import {
   X,
   Copy,
   Check,
-  RotateCcw,
+  ReloadIcon,
 } from "@/components/ui/icons";
 import { LanguageIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
@@ -389,8 +389,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       className={cn(
         "overflow-hidden",
         variant === "sidebar"
-          ? cn("flex h-full w-full flex-col bg-card", floatingInput && "relative")
-          : "rounded-xl border border-border bg-card shadow-sm mb-6",
+          ? cn("flex h-full w-full flex-col", floatingInput && "relative")
+          : "rounded-xl border border-border bg-surface-1 shadow-sm mb-6",
       )}
     >
       {/* Header - only show for non-sidebar variant (sidebar moves controls to footer) */}
@@ -461,11 +461,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       )}
 
       {/* Messages - Mobile-first conversation container */}
-      <div className="relative flex-1 min-h-0 overflow-hidden">
+      <div className="relative flex-1 min-h-0 overflow-hidden bg-background">
         <div
           ref={scrollContainerRef}
           className={cn(
-            "h-full overflow-y-auto scrollbar-hide",
+            "h-full overflow-y-auto scrollbar-hide bg-background",
             variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",
             floatingInput && "pb-[88px]",
           )}
@@ -524,7 +524,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           "rounded-[10px]",
                         )}
                       >
-                        <p className="text-[16px] sm:text-[14px] leading-[1.6] sm:leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
+                        <p className="font-sans text-[15px] leading-[1.6] whitespace-pre-wrap break-words overflow-hidden">
                           {messageText}
                         </p>
                       </div>
@@ -532,7 +532,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   ) : (
                     /* Assistant message - Cursor-style clean content */
                     <div className="px-2 overflow-hidden">
-                      <div className="text-[16px] sm:text-[14px] leading-[1.65] sm:leading-[22px] overflow-x-auto">
+                      <div className="font-sans text-[15px] leading-[1.65] overflow-x-auto">
                         <Response
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}
@@ -569,7 +569,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                               style={{ touchAction: "manipulation" }}
                               aria-label="Regenerate response"
                             >
-                              <RotateCcw className="size-4" />
+                              <ReloadIcon className="size-4" />
                             </button>
                           )}
                         </div>
@@ -629,13 +629,14 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
         {/* Fog effect at bottom (hidden when input floats — it has its own gradient) */}
         {!floatingInput && (
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-background/0" />
         )}
       </div>
 
       {/* Input area - floating on mobile, static on desktop */}
       <div
         className={cn(
+          "bg-background",
           floatingInput
             ? "absolute bottom-0 inset-x-0 z-10"
             : "shrink-0"
@@ -643,9 +644,9 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         ref={inputContainerRef}
         data-vaul-no-drag
       >
-        {/* Scroll to bottom button */}
+        {/* Scroll to bottom button - shows on both mobile and desktop */}
         {showScrollButton && messages.length > 0 && (
-          <div className="flex justify-center pb-1">
+          <div className="flex justify-center pb-2">
             <button
               type="button"
               onClick={() => {
@@ -656,33 +657,29 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 isUserScrolledUpRef.current = false;
                 setShowScrollButton(false);
               }}
-              className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-background shadow-md transition-all hover:bg-muted/50 active:scale-95"
+              className="flex size-8 items-center justify-center transition-all active:scale-95"
               style={{ touchAction: "manipulation" }}
               aria-label="Scroll to bottom"
             >
-              <ArrowDown className="size-4 text-foreground" />
+              <ArrowDown className="size-4 text-foreground/70" />
             </button>
           </div>
         )}
-        {/* Gradient fade above floating input */}
-        {floatingInput && !showScrollButton && (
-          <div className="h-8 bg-linear-to-t from-card to-transparent pointer-events-none" />
-        )}
         <div
           className={cn(
-            "px-3 pt-1 sm:px-4",
-            floatingInput ? "bg-card pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
+            "px-3 pt-1 sm:px-4 bg-background",
+            floatingInput ? "pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
           )}
           data-vaul-no-drag
         >
-          {/* Cursor-style input container with subtle border */}
+          {/* Input container */}
           <div
-            className="relative rounded-2xl border border-border/60 bg-background overflow-hidden shadow-sm"
+            className="relative rounded-2xl border border-border overflow-hidden bg-background"
             style={{ touchAction: "pan-x pan-y" }}
           >
             {/* Slash Commands Menu - inside the container */}
             {isSlashMenuOpen && !isLoading && (
-              <div className="px-2 pt-2">
+              <div className="px-2 pt-2 bg-background">
                 <SlashCommands
                   isOpen={true}
                   onClose={handleSlashClose}
@@ -695,8 +692,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
 
-            {/* Inner content wrapper with semi-transparent bg like Cursor */}
-            <div className="bg-muted/30 dark:bg-muted/20">
+            {/* Inner content wrapper */}
+            <div className="bg-background">
               <PromptInput
                 value={input}
                 onValueChange={setInput}
@@ -709,7 +706,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               >
                 <PromptInputTextarea
                   placeholder={isLimitReached ? "Daily limit reached" : "Ask anything..."}
-                  className="text-base sm:text-[14px] min-h-[40px]"
+                  className="text-base sm:text-[14px] min-h-[40px] bg-transparent"
                   onKeyDown={handleTextareaKeyDown}
                 />
                 <PromptInputActions className="justify-between px-2 pb-2">
@@ -799,9 +796,9 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       {!isMobile && (variant === "sidebar" || isPremium || showUsageCounter) && (
         <div
           className={cn(
-            "px-3 py-2 shrink-0",
+            "px-3 py-2 shrink-0 bg-background",
             variant === "sidebar"
-              ? "bg-muted/15 border-t border-border/20"
+              ? "border-t border-border/20"
               : "border-t border-border/50",
           )}
         >

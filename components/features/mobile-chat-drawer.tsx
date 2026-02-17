@@ -443,9 +443,9 @@ export function MobileChatDrawer({
             </div>
 
             {/* History view */}
-            <div className={cn("h-full", activeView !== "history" && "hidden")}>
+            <div className={cn("h-full bg-background", activeView !== "history" && "hidden")}>
               {isPremium ? (
-                <div className="h-full flex flex-col" style={{ overscrollBehavior: "contain" }}>
+                <div className="h-full flex flex-col bg-background" style={{ overscrollBehavior: "contain" }}>
                   {/* Search */}
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
                     <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
