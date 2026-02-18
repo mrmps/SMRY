@@ -136,38 +136,32 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
         "flex h-full w-full flex-col bg-background",
         !isOpen && "hidden"
       )}>
-        {/* Tab Header */}
-        <div className="shrink-0 border-b border-border/40">
-          <div className="flex">
+        {/* Compact Tab Header */}
+        <div className="shrink-0 flex items-center justify-center px-3 py-1.5 border-b border-border/40">
+          <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-muted/60">
             <button
               onClick={() => setActiveTab("chat")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors relative",
+                "flex items-center justify-center gap-1.5 px-5 py-1.5 rounded-md text-xs font-medium transition-all min-w-[80px]",
                 activeTab === "chat"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground/80"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <ChatGpt className="size-3.5" />
               <span>Chat</span>
-              {activeTab === "chat" && (
-                <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-foreground rounded-full" />
-              )}
             </button>
             <button
               onClick={() => setActiveTab("history")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors relative",
+                "flex items-center justify-center gap-1.5 px-5 py-1.5 rounded-md text-xs font-medium transition-all min-w-[80px]",
                 activeTab === "history"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground/80"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <History className="size-3.5" />
               <span>History</span>
-              {activeTab === "history" && (
-                <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-foreground rounded-full" />
-              )}
             </button>
           </div>
         </div>
