@@ -1084,7 +1084,7 @@
   line-height: var(--reader-line-height) !important;
   letter-spacing: 0.01em !important;
   color: var(--article-text, #37352f) !important;
-  max-width: var(--reader-content-width) !important;
+  max-width: var(--reader-content-width, 740px) !important;
 }
 
 /* Prose text elements - Light mode */

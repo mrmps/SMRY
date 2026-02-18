@@ -147,7 +147,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [styleOptionsOpen, setStyleOptionsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<"chat" | "history">("chat");
 
   const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);
@@ -193,7 +192,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     [setQuery]
   );
 
-  // Copy page as markdown
+  // Copy page as markdown (used by ⌘C keyboard shortcut)
+  // Note: Visual feedback is handled internally by FloatingToolbar when using the menu
   const handleCopyPage = React.useCallback(async () => {
     try {
       let markdown = `# ${articleTitle || "Article"}\n\n`;
@@ -202,8 +202,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         markdown += `---\n\n${articleTextContent}\n\n`;
       }
       await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
     }

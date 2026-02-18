@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react";
+import React, { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ChatGpt, History } from "@/components/ui/icons";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
@@ -91,18 +91,18 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
   ) {
     const [activeTab, setActiveTabInternal] = useState<SidebarTab>(defaultTab);
 
+    // Use a ref to always have the latest activeTab value available
+    // Updated synchronously in setActiveTab to avoid stale reads
+    const activeTabRef = useRef<SidebarTab>(defaultTab);
+
     // Wrapper to also notify parent when tab changes
+    // Updates ref synchronously so get activeTab() returns current value immediately
     const setActiveTab = (tab: SidebarTab) => {
+      activeTabRef.current = tab; // Update ref synchronously BEFORE state
       setActiveTabInternal(tab);
       onTabChange?.(tab);
     };
     const chatRef = useRef<ArticleChatHandle>(null);
-
-    // Use a ref to always have the latest activeTab value available
-    const activeTabRef = useRef<SidebarTab>(defaultTab);
-    useEffect(() => {
-      activeTabRef.current = activeTab;
-    }, [activeTab]);
 
     // Expose chat methods + tab control to parent
     // Using a getter ensures we always return the current value
