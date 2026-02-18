@@ -493,77 +493,78 @@
  * =============================================================================
  * THEME: Carbon
  * High contrast dark mode - maximum readability
+ * Based on Matter Reader's carbon theme
  * =============================================================================
  */
 .carbon {
-  --background: #1c1e21;
-  --foreground: #d4d2cf;
+  --background: #181a1b;
+  --foreground: #fffffff2;
 
-  --foreground-muted: #9a9895;
-  --foreground-faint: #6a6866;
+  --foreground-muted: #ffffffbf;
+  --foreground-faint: #ffffff87;
 
   /* Layered surfaces for depth */
-  --surface-1: #17191c;
-  --surface-2: #232528;
-  --surface-3: #2d3033;
+  --surface-1: #1f2023;
+  --surface-2: #2e2f33;
+  --surface-3: #44454b;
 
-  --card: #1f2124;
-  --card-foreground: #d4d2cf;
-  --popover: #232528;
-  --popover-foreground: #d4d2cf;
+  --card: #1f2023;
+  --card-foreground: #fffffff2;
+  --popover: #1f2023;
+  --popover-foreground: #fffffff2;
 
-  --primary: #d4d2cf;
-  --primary-foreground: #1c1e21;
+  --primary: #fffffff2;
+  --primary-foreground: #181a1b;
 
-  --secondary: #2d3033;
-  --secondary-foreground: #d4d2cf;
+  --secondary: #2e2f33;
+  --secondary-foreground: #fffffff2;
 
-  --muted: #232528;
-  --muted-foreground: #9a9895;
+  --muted: #1f2023;
+  --muted-foreground: #ffffffbf;
 
-  --accent: #2d3033;
-  --accent-foreground: #d4d2cf;
+  --accent: #2e2f33;
+  --accent-foreground: #fffffff2;
 
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fecaca;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
 
-  --border: #3a3d42;
-  --input: #3a3d42;
-  --ring: #52525b;
+  --border: #ffffff26;
+  --input: #ffffff26;
+  --ring: #009efa;
 
-  --glow: #818cf8;
-  --glow-muted: #6366f1;
+  --glow: #6d7eec;
+  --glow-muted: #009efa;
 
   /* Link colors - Same as text, distinguished by underline only */
-  --link-color: #d4d2cf;
-  --link-underline: rgba(212, 210, 207, 0.35);
+  --link-color: #fffffff2;
+  --link-underline: rgba(255, 255, 255, 0.35);
 
   /* Article text - Soft off-white for comfortable reading */
-  --article-text: #d4d2cf;
-  --article-text-muted: #9a9895;
+  --article-text: #fffffff2;
+  --article-text-muted: #ffffffbf;
 
   /* Sidebar - Same as background for clean look */
-  --sidebar: #1c1e21;
-  --sidebar-foreground: #d4d2cf;
-  --sidebar-primary: #7cb3f0;
-  --sidebar-primary-foreground: #d4d2cf;
-  --sidebar-accent: #27292e;
-  --sidebar-accent-foreground: #d4d2cf;
-  --sidebar-border: #2d3033;
-  --sidebar-ring: #52525b;
+  --sidebar: #181a1b;
+  --sidebar-foreground: #fffffff2;
+  --sidebar-primary: #24aeff;
+  --sidebar-primary-foreground: #fffffff2;
+  --sidebar-accent: #2e2f33;
+  --sidebar-accent-foreground: #fffffff2;
+  --sidebar-border: #ffffff26;
+  --sidebar-ring: #009efa;
 
-  --success: #30a46c;
-  --success-foreground: #0d0d0c;
-  --warning: #f5a623;
-  --warning-foreground: #0d0d0c;
-  --info: #0091ff;
-  --info-foreground: #0d0d0c;
+  --success: #62d348;
+  --success-foreground: #181a1b;
+  --warning: #facc15;
+  --warning-foreground: #181a1b;
+  --info: #009efa;
+  --info-foreground: #181a1b;
 
-  --chart-1: #3b82f6;
-  --chart-2: #22c55e;
-  --chart-3: #f59e0b;
-  --chart-4: #a855f7;
-  --chart-5: #f43f5e;
+  --chart-1: #009efa;
+  --chart-2: #62d348;
+  --chart-3: #ef4444;
+  --chart-4: #facc15;
+  --chart-5: #6d7eec;
 }
 
 /*
@@ -738,71 +739,72 @@ html.winter .bg-card {
 /*
  * =============================================================================
  * THEME: Forest
- * Dark green-tinted theme - natural and calming
+ * Warm brown-tinted dark theme - earthy and comfortable
+ * Based on Matter Reader's forest theme
  * =============================================================================
  */
 .forest {
-  --background: #0f1512;
-  --foreground: #d4e6db;
+  --background: #171512;
+  --foreground: #f0f4f2;
 
-  --foreground-muted: #9ab4a4;
-  --foreground-faint: #6b8c79;
+  --foreground-muted: #f0f4ffbf;
+  --foreground-faint: #f0f4ff87;
 
-  --surface-1: #0a100d;
-  --surface-2: #151d18;
-  --surface-3: #1e2a23;
+  --surface-1: #1f1c18;
+  --surface-2: #292520;
+  --surface-3: #302b26;
 
-  --card: #121916;
-  --card-foreground: #d4e6db;
-  --popover: #151d18;
-  --popover-foreground: #d4e6db;
+  --card: #1f1c18;
+  --card-foreground: #f0f4f2;
+  --popover: #1f1c18;
+  --popover-foreground: #f0f4f2;
 
-  --primary: #d4e6db;
-  --primary-foreground: #0f1512;
+  --primary: #f0f4f2;
+  --primary-foreground: #171512;
 
-  --secondary: #1e2a23;
-  --secondary-foreground: #d4e6db;
+  --secondary: #292520;
+  --secondary-foreground: #f0f4f2;
 
-  --muted: #151d18;
-  --muted-foreground: #9ab4a4;
+  --muted: #1f1c18;
+  --muted-foreground: #f0f4ffbf;
 
-  --accent: #1e2a23;
-  --accent-foreground: #d4e6db;
+  --accent: #292520;
+  --accent-foreground: #f0f4f2;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #2a3d31;
-  --input: #2a3d31;
-  --ring: #4ade80;
+  --border: #3a3530;
+  --input: #3a3530;
+  --ring: #62d348;
 
-  --glow: #4ade80;
-  --glow-muted: #22c55e;
+  --glow: #62d348;
+  --glow-muted: #4ade80;
 
-  --link-color: #d4e6db;
-  --link-underline: rgba(212, 230, 219, 0.35);
+  --link-color: #f0f4f2;
+  --link-underline: rgba(240, 244, 242, 0.35);
 
-  --article-text: #c8ddd0;
-  --article-text-muted: #9ab4a4;
+  --article-text: #f0f4f2;
+  --article-text-muted: #f0f4ffbf;
 
-  --sidebar: #0f1512;
-  --sidebar-foreground: #d4e6db;
-  --sidebar-primary: #4ade80;
-  --sidebar-primary-foreground: #d4e6db;
-  --sidebar-accent: #1a241e;
-  --sidebar-accent-foreground: #d4e6db;
-  --sidebar-border: #253029;
-  --sidebar-ring: #4ade80;
+  --sidebar: #171512;
+  --sidebar-foreground: #f0f4f2;
+  --sidebar-primary: #62d348;
+  --sidebar-primary-foreground: #f0f4f2;
+  --sidebar-accent: #292520;
+  --sidebar-accent-foreground: #f0f4f2;
+  --sidebar-border: #3a3530;
+  --sidebar-ring: #62d348;
 
-  --success: #4ade80;
-  --success-foreground: #0f1512;
+  --success: #62d348;
+  --success-foreground: #171512;
   --warning: #facc15;
-  --warning-foreground: #0f1512;
+  --warning-foreground: #171512;
   --info: #38bdf8;
-  --info-foreground: #0f1512;
+  --info-foreground: #171512;
 
-  --chart-1: #4ade80;
-  --chart-2: #22c55e;
+  --chart-1: #62d348;
+  --chart-2: #4ade80;
   --chart-3: #ef4444;
   --chart-4: #facc15;
   --chart-5: #38bdf8;
@@ -1066,21 +1068,55 @@ html.dawn .bg-card {
   }
 }
 
-/* Chat thinking indicator - shimmer text */
-.thinking-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 4px 0;
+/* Pulsing dot - thinking indicator */
+.thinking-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--muted-foreground);
+  animation: pulse-breathe 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.thinking-indicator svg {
-  flex-shrink: 0;
-  opacity: 0.4;
-  color: var(--muted-foreground);
+@keyframes pulse-breathe {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
 }
 
+/* Streaming content - smooth rendering */
+[data-streamdown] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Streaming cursor - gentle pulse */
+[data-streamdown] *:last-child::after {
+  animation: cursor-fade 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes cursor-fade {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.3; }
+}
+
+/* Mobile: reduce motion for smoother experience */
+@media (prefers-reduced-motion: reduce) {
+  .thinking-pulse {
+    animation: none;
+    opacity: 0.5;
+  }
+  [data-streamdown] *:last-child::after {
+    animation: none;
+  }
+}
+
+/* Legacy: Keep shimmer text for backwards compatibility */
 .thinking-text {
   font-size: 14px;
   line-height: 20px;

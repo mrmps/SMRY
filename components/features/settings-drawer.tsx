@@ -35,6 +35,16 @@ import {
   type ContentWidthLevel,
 } from "@/types/reader-preferences";
 import {
+  DARK_PALETTES,
+  LIGHT_PALETTES,
+  DEFAULT_THEME,
+  isDarkTheme,
+  getPaletteForTheme,
+  getPaletteStyle,
+  mapDropdownToTheme,
+  mapThemeToDropdown,
+} from "@/lib/theme-config";
+import {
   Drawer,
   DrawerContent,
   DrawerHeader,
@@ -184,43 +194,7 @@ function SettingsRow({
   );
 }
 
-// Theme constants matching desktop
-const LIGHT_THEMES = ["light", "pure-light", "winter", "dawn"];
-const DARK_THEMES = ["dark", "carbon", "black", "classic-dark", "magic-blue", "forest"];
-
-const DARK_PALETTES = [
-  { id: "carbon", label: "Carbon", theme: "carbon" },
-  { id: "black", label: "Black", theme: "black" },
-  { id: "winter", label: "Winter", theme: "classic-dark" },
-  { id: "forest", label: "Forest", theme: "forest" },
-] as const;
-
-const LIGHT_PALETTES = [
-  { id: "white", label: "White", theme: "pure-light" },
-  { id: "sepia", label: "Sepia", theme: "light" },
-  { id: "paper", label: "Paper", theme: "winter" },
-  { id: "dawn", label: "Dawn", theme: "dawn" },
-] as const;
-
-const THEME_TO_DARK_PALETTE: Record<string, string> = {
-  "carbon": "carbon",
-  "black": "black",
-  "classic-dark": "winter",
-  "dark": "carbon",
-  "magic-blue": "carbon",
-  "forest": "forest",
-};
-
-const THEME_TO_LIGHT_PALETTE: Record<string, string> = {
-  "pure-light": "white",
-  "light": "sepia",
-  "winter": "paper",
-  "dawn": "dawn",
-};
-
-// Default theme for the app - carbon is the actual default
-// "Match System" in dropdown maps to carbon
-const DEFAULT_THEME = "carbon";
+// Theme constants imported from @/lib/theme-config
 
 // Font display names
 const FONT_DISPLAY_NAMES: Record<ReaderFont, string> = {
@@ -267,82 +241,21 @@ function StyleOptionsSection() {
     }
   }, [mounted, theme, setTheme]);
 
-  // Determine if current theme is dark
-  // "system", "carbon", undefined all map to dark/carbon (our app's default)
-  const currentTheme = theme || "carbon";
-  const isDark = currentTheme === "system" || currentTheme === "carbon"
-    ? true  // default to dark
-    : DARK_THEMES.includes(currentTheme);
+  // Use shared theme helpers
+  const isDark = isDarkTheme(theme);
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
-
-  // Get dropdown value
-  // "carbon" (our default) shows as "Match System" in dropdown
-  const getDropdownValue = () => {
-    if (!theme || theme === "system" || theme === "carbon") return "system";
-    if (LIGHT_THEMES.includes(theme)) return "light";
-    if (DARK_THEMES.includes(theme)) return "dark";
-    return theme;
-  };
-
-  // Get selected palette
-  const getCurrentPalette = () => {
-    if (currentTheme === "system" || currentTheme === "carbon") {
-      return "carbon";
-    }
-    if (isDark) {
-      return THEME_TO_DARK_PALETTE[currentTheme] || "carbon";
-    }
-    return THEME_TO_LIGHT_PALETTE[currentTheme] || "sepia";
-  };
-
-  const selectedPalette = getCurrentPalette();
-
-  // Palette button background styles
-  const getPaletteBg = (paletteId: string) => {
-    if (isDark) {
-      switch (paletteId) {
-        case "carbon": return "bg-zinc-800 border-zinc-700";
-        case "black": return "bg-zinc-950 border-zinc-800";
-        case "winter": return "bg-slate-700 border-slate-600";
-        case "forest": return "bg-emerald-950 border-emerald-900";
-        default: return "bg-zinc-800 border-zinc-700";
-      }
-    }
-    switch (paletteId) {
-      case "white": return "bg-white border-gray-300";
-      case "sepia": return "bg-amber-50 border-amber-200";
-      case "paper": return "bg-slate-100 border-slate-300";
-      case "dawn": return "bg-rose-50 border-rose-200";
-      default: return "bg-white border-gray-300";
-    }
-  };
+  const selectedPalette = getPaletteForTheme(theme, isDark);
 
   // Check if theme is customized from the default (carbon)
   // Theme is customized if it's anything other than "carbon"
   const hasCustomTheme = mounted && theme !== undefined && theme !== DEFAULT_THEME;
   const hasAnyCustomization = hasCustomPreferences || hasCustomTheme || themeChanged;
 
-  // Handle theme change and track it
-  // Maps dropdown values to actual theme names:
-  // - "system" maps to "carbon" (our app's default)
-  // - "dark" maps to "carbon" (our preferred dark theme)
-  // - "light" maps to "light" (sepia - our preferred light theme)
+  // Handle theme change using shared mapper
   const handleThemeChange = (newTheme: string) => {
-    // Map generic values to our preferred themes
-    let actualTheme = newTheme;
-    if (newTheme === "system" || newTheme === "dark") {
-      actualTheme = "carbon";
-    } else if (newTheme === "light") {
-      actualTheme = "light"; // sepia
-    }
-
+    const actualTheme = mapDropdownToTheme(newTheme);
     setTheme(actualTheme);
-    // Clear themeChanged flag if selecting the default theme (carbon)
-    if (actualTheme === DEFAULT_THEME) {
-      setThemeChanged(false);
-    } else {
-      setThemeChanged(true);
-    }
+    setThemeChanged(actualTheme !== DEFAULT_THEME);
   };
 
   // Reset ALL - theme + reader preferences
@@ -377,7 +290,7 @@ function StyleOptionsSection() {
   // Get display name for current theme
   const getThemeDisplayName = () => {
     if (!mounted) return "...";
-    const dropdownVal = getDropdownValue();
+    const dropdownVal = mapThemeToDropdown(theme);
     if (dropdownVal === "system") return "Auto";
     if (dropdownVal === "light") return "Light";
     if (dropdownVal === "dark") return "Dark";
@@ -441,7 +354,7 @@ function StyleOptionsSection() {
                     <select
                       id="theme-select"
                       aria-label="Select theme"
-                      value={getDropdownValue()}
+                      value={mapThemeToDropdown(theme)}
                       onChange={(e) => handleThemeChange(e.target.value)}
                       style={{ touchAction: "manipulation" }}
                       className={cn(
@@ -465,11 +378,10 @@ function StyleOptionsSection() {
                         <button
                           key={palette.id}
                           onClick={() => handleThemeChange(palette.theme)}
-                          style={{ touchAction: "manipulation" }}
+                          style={{ touchAction: "manipulation", ...getPaletteStyle(palette.id, isDark) }}
                           className={cn(
                             "flex-1 py-2.5 px-2 rounded-lg text-xs font-medium transition-all border min-h-[44px]",
                             "active:scale-[0.97]",
-                            getPaletteBg(palette.id),
                             isDark ? "text-white" : "text-zinc-900",
                             isSelected && "ring-2 ring-ring ring-offset-2 ring-offset-background"
                           )}

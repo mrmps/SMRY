@@ -15,52 +15,16 @@ import {
   type LineSpacingLevel,
   type ContentWidthLevel,
 } from "@/types/reader-preferences";
-
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-// Default theme for the app - carbon is the actual default
-// "Match System" in dropdown maps to carbon
-const DEFAULT_THEME = "carbon";
-
-// Light themes in the app
-const LIGHT_THEMES = ["light", "pure-light", "winter", "dawn"];
-
-// Dark themes in the app
-const DARK_THEMES = ["dark", "carbon", "black", "classic-dark", "magic-blue", "forest"];
-
-// Palette configuration - maps display labels to actual theme names
-const DARK_PALETTES = [
-  { id: "carbon", label: "Carbon", theme: "carbon" },
-  { id: "black", label: "Black", theme: "black" },
-  { id: "winter", label: "Winter", theme: "classic-dark" },
-  { id: "forest", label: "Forest", theme: "forest" },
-] as const;
-
-const LIGHT_PALETTES = [
-  { id: "white", label: "White", theme: "pure-light" },
-  { id: "sepia", label: "Sepia", theme: "light" },
-  { id: "paper", label: "Paper", theme: "winter" },
-  { id: "dawn", label: "Dawn", theme: "dawn" },
-] as const;
-
-// Reverse lookup: theme name to palette id
-const THEME_TO_DARK_PALETTE: Record<string, string> = {
-  "carbon": "carbon",
-  "black": "black",
-  "classic-dark": "winter",
-  "dark": "carbon",
-  "magic-blue": "carbon",
-  "forest": "forest",
-};
-
-const THEME_TO_LIGHT_PALETTE: Record<string, string> = {
-  "pure-light": "white",
-  "light": "sepia",
-  "winter": "paper",
-  "dawn": "dawn",
-};
+import {
+  DARK_PALETTES,
+  LIGHT_PALETTES,
+  DEFAULT_THEME,
+  isDarkTheme,
+  getPaletteForTheme,
+  getPaletteStyle,
+  mapDropdownToTheme,
+  mapThemeToDropdown,
+} from "@/lib/theme-config";
 
 // =============================================================================
 // ICONS
@@ -106,19 +70,10 @@ function ThemeDropdown({
     { value: "dark", label: "Dark" },
   ];
 
-  // Map specific themes back to light/dark/system for dropdown
-  // "carbon" (our default) shows as "Match System"
-  const getDropdownValue = (theme: string) => {
-    if (theme === "system" || theme === "carbon") return "system";
-    if (LIGHT_THEMES.includes(theme)) return "light";
-    if (DARK_THEMES.includes(theme)) return "dark";
-    return theme;
-  };
-
   return (
     <div className="relative">
       <select
-        value={getDropdownValue(value)}
+        value={mapThemeToDropdown(value)}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "w-full appearance-none rounded-xl px-4 py-3 pr-10 text-sm font-medium",
@@ -151,32 +106,12 @@ function PaletteButton({
   isDark: boolean;
   paletteId: string;
 }) {
-  const getBgClass = () => {
-    if (isDark) {
-      switch (paletteId) {
-        case "carbon": return "bg-zinc-800 border-zinc-700";
-        case "black": return "bg-zinc-950 border-zinc-800";
-        case "winter": return "bg-slate-700 border-slate-600";
-        case "forest": return "bg-emerald-950 border-emerald-900";
-        default: return "bg-zinc-800 border-zinc-700";
-      }
-    } else {
-      switch (paletteId) {
-        case "white": return "bg-white border-gray-300";
-        case "sepia": return "bg-amber-50 border-amber-200";
-        case "paper": return "bg-slate-100 border-slate-300";
-        case "dawn": return "bg-rose-50 border-rose-200";
-        default: return "bg-white border-gray-300";
-      }
-    }
-  };
-
   return (
     <button
       onClick={onClick}
+      style={getPaletteStyle(paletteId, isDark)}
       className={cn(
         "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all border",
-        getBgClass(),
         isDark ? "text-white" : "text-zinc-900",
         selected && "ring-2 ring-ring ring-offset-2 ring-offset-background"
       )}
@@ -253,41 +188,14 @@ function ThemeSection({ onThemeChange }: { onThemeChange?: (theme: string) => vo
     );
   }
 
-  // Determine if current theme is dark
-  // "system", "carbon", undefined all map to dark/carbon (our app's default)
-  const currentTheme = theme || "carbon";
-  const isDark = currentTheme === "system" || currentTheme === "carbon"
-    ? true  // default to dark
-    : DARK_THEMES.includes(currentTheme);
-
+  // Use shared theme helpers
+  const isDark = isDarkTheme(theme);
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
+  const selectedPalette = getPaletteForTheme(theme, isDark);
 
-  // Determine selected palette based on current theme
-  const getCurrentPalette = () => {
-    if (currentTheme === "system" || currentTheme === "carbon") {
-      return "carbon";
-    }
-    if (isDark) {
-      return THEME_TO_DARK_PALETTE[currentTheme] || "carbon";
-    } else {
-      return THEME_TO_LIGHT_PALETTE[currentTheme] || "sepia";
-    }
-  };
-
-  const selectedPalette = getCurrentPalette();
-
-  // Handle dropdown change
-  // Maps dropdown values to actual theme names:
-  // - "system" maps to "carbon" (our app's default)
-  // - "dark" maps to "carbon" (our preferred dark theme)
-  // - "light" maps to "light" (sepia - our preferred light theme)
+  // Handle dropdown change using shared mapper
   const handleDropdownChange = (value: string) => {
-    let actualTheme = value;
-    if (value === "system" || value === "dark") {
-      actualTheme = "carbon";
-    } else if (value === "light") {
-      actualTheme = "light"; // sepia
-    }
+    const actualTheme = mapDropdownToTheme(value);
     setTheme(actualTheme);
     onThemeChange?.(actualTheme);
   };

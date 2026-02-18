@@ -19,6 +19,11 @@ import {
   PopoverPopup,
   PopoverClose,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -424,13 +429,16 @@ export function ChatSidebar({
                 >
                   <Search className="size-3.5" aria-hidden="true" />
                 </button>
-                <button
-                  onClick={onNewChat}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  aria-label="New chat"
-                >
-                  <Plus className="size-3.5" aria-hidden="true" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger
+                    onClick={onNewChat}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    aria-label="New chat"
+                  >
+                    <Plus className="size-3.5" aria-hidden="true" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">New chat</TooltipContent>
+                </Tooltip>
               </>
             )}
             <button
@@ -460,13 +468,16 @@ export function ChatSidebar({
           >
             <Search className="size-3.5" aria-hidden="true" />
           </button>
-          <button
-            onClick={onNewChat}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="New chat"
-          >
-            <Plus className="size-3.5" aria-hidden="true" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              onClick={onNewChat}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="New chat"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">New chat</TooltipContent>
+          </Tooltip>
         </div>
       )}
 
