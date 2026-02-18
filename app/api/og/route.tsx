@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
+import { isPrivateIP, BLOCKED_HOSTNAMES } from "@/lib/validation/url";
 
 export const runtime = "edge";
 
@@ -66,6 +67,29 @@ export async function GET(request: NextRequest) {
     title = title.substring(0, 77) + "...";
   }
 
+  // Validate articleImage to prevent SSRF attacks
+  // Reject any image URL pointing to private/internal IPs or blocked hostnames
+  if (articleImage) {
+    try {
+      const imageUrl = new URL(articleImage);
+      
+      // Only allow http/https protocols
+      if (imageUrl.protocol !== "http:" && imageUrl.protocol !== "https:") {
+        articleImage = "";
+      } else {
+        const imageHost = imageUrl.hostname;
+        
+        // Check if hostname is a private IP address or blocked hostname
+        if (isPrivateIP(imageHost) || BLOCKED_HOSTNAMES.has(imageHost)) {
+          articleImage = ""; // Clear potentially malicious image URL
+        }
+      }
+    } catch {
+      // Invalid URL format, clear the image
+      articleImage = "";
+    }
+  }
+
   // Load fonts with error handling
   let syneBold: ArrayBuffer;
   let interRegular: ArrayBuffer;
@@ -122,6 +146,7 @@ export async function GET(request: NextRequest) {
       >
         {/* Article image as background (if available) */}
         {articleImage && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={articleImage}
             alt=""

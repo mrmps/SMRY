@@ -39,11 +39,14 @@ const BLOCKED_HOSTNAMES = new Set([
   "kubernetes.default.svc",
 ]);
 
+// Export for use in OG route and other security checks
+export { BLOCKED_HOSTNAMES };
+
 /**
  * Check if an IP address is in a private/internal range.
  * This catches SSRF attempts using raw IP addresses.
  */
-function isPrivateIP(hostname: string): boolean {
+export function isPrivateIP(hostname: string): boolean {
   // Remove brackets from IPv6
   const cleanHost = hostname.replace(/^\[|\]$/g, "");
 
@@ -81,6 +84,32 @@ function isPrivateIP(hostname: string): boolean {
     const mappedMatch = lower.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
     if (mappedMatch) {
       return isPrivateIP(mappedMatch[1]);
+    }
+
+    // IPv4-mapped IPv6 expressed as hex hextets (e.g., ::ffff:a00:1)
+    if (lower.startsWith("::ffff:")) {
+      const tail = lower.slice("::ffff:".length);
+      const parts = tail.split(":");
+      if (parts.length === 2 && parts.every((part) => /^[0-9a-f]{1,4}$/.test(part))) {
+        const high = parseInt(parts[0], 16);
+        const low = parseInt(parts[1], 16);
+        const ipv4 = [
+          (high >> 8) & 0xff,
+          high & 0xff,
+          (low >> 8) & 0xff,
+          low & 0xff,
+        ].join(".");
+        return isPrivateIP(ipv4);
+      }
+    }
+
+    // Handle expanded IPv4-mapped IPv6 forms (e.g., 0:0:0:0:0:ffff:10.0.0.1)
+    if (lower.includes("ffff:")) {
+      const lastColon = lower.lastIndexOf(":");
+      const tail = lastColon >= 0 ? lower.slice(lastColon + 1) : "";
+      if (tail.includes(".") && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(tail)) {
+        return isPrivateIP(tail);
+      }
     }
   }
 

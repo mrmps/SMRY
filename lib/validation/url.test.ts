@@ -54,6 +54,65 @@ describe("normalizeUrl", () => {
     expect(() => normalizeUrl("http://127.0.0.1/test")).toThrow("Cannot summarize SMRY URLs");
   });
 
+  describe("edge-case hosts", () => {
+    it("allows URLs with userinfo", () => {
+      const result = normalizeUrl("https://user:pass@example.com/path");
+      expect(result).toBe("https://user:pass@example.com/path");
+    });
+
+    it("allows public IPv6 literals", () => {
+      const result = normalizeUrl("https://[2606:4700:4700::1111]/");
+      expect(result).toBe("https://[2606:4700:4700::1111]/");
+    });
+
+    it("blocks IPv6 loopback", () => {
+      expect(() => normalizeUrl("http://[::1]/")).toThrow(
+        "Cannot summarize SMRY URLs"
+      );
+    });
+
+    it("blocks IPv6 unique local addresses", () => {
+      expect(() => normalizeUrl("http://[fd00::1]/")).toThrow(
+        "Cannot access internal or private network addresses."
+      );
+    });
+
+    it("blocks IPv4-mapped private IPv6 addresses", () => {
+      expect(() => normalizeUrl("http://[::ffff:10.0.0.1]/")).toThrow(
+        "Cannot access internal or private network addresses."
+      );
+    });
+
+    it("blocks IPv4-mapped hex-hextet private IPv6 addresses", () => {
+      expect(() => normalizeUrl("http://[::ffff:a00:1]/")).toThrow(
+        "Cannot access internal or private network addresses."
+      );
+    });
+
+    it("blocks expanded IPv4-mapped private IPv6 addresses", () => {
+      expect(() => normalizeUrl("http://[0:0:0:0:0:ffff:10.0.0.1]/")).toThrow(
+        "Cannot access internal or private network addresses."
+      );
+    });
+
+    it("allows IPv4-mapped public IPv6 addresses", () => {
+      const result = normalizeUrl("http://[::ffff:8.8.8.8]/");
+      expect(result).toBe("http://[::ffff:8.8.8.8]/");
+    });
+
+    it("allows IPv4-mapped hex-hextet public IPv6 addresses", () => {
+      // ::ffff:808:808 == ::ffff:8.8.8.8
+      const result = normalizeUrl("http://[::ffff:808:808]/");
+      expect(result).toBe("http://[::ffff:808:808]/");
+    });
+
+    it("blocks cloud metadata endpoints", () => {
+      expect(() => normalizeUrl("http://169.254.169.254/latest/meta-data/")).toThrow(
+        "Cannot summarize SMRY URLs"
+      );
+    });
+  });
+
   describe("duplicate protocol handling", () => {
     it("removes duplicate protocols at start", () => {
       const result = normalizeUrl("https://https://example.com");
