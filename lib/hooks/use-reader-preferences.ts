@@ -76,6 +76,7 @@ export function useReaderPreferences() {
   }, [preferences, hasLoaded]);
 
   // Update a single preference
+  // Note: uses spread from preferences closure - safe with React's batching
   const updatePreference = useCallback(
     <K extends keyof ReaderPreferences>(key: K, value: ReaderPreferences[K]) => {
       setPreferences({

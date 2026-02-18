@@ -646,19 +646,19 @@
  * =============================================================================
  */
 .winter {
-  --background: #f8fafc;
+  --background: #e2e8f0;
   --foreground: #1e293b;
 
   --foreground-muted: #64748b;
   --foreground-faint: #94a3b8;
 
-  --surface-1: #f1f5f9;
-  --surface-2: #e2e8f0;
-  --surface-3: #cbd5e1;
+  --surface-1: #cbd5e1;
+  --surface-2: #94a3b8;
+  --surface-3: #64748b;
 
-  --card: #ffffff;
+  --card: #eef2f7;
   --card-foreground: #1e293b;
-  --popover: #ffffff;
+  --popover: #eef2f7;
   --popover-foreground: #1e293b;
 
   --primary: #1e293b;
@@ -710,6 +710,29 @@
   --chart-3: #ef4444;
   --chart-4: #f59e0b;
   --chart-5: #0ea5e9;
+}
+
+/* Winter/Paper theme - set Tailwind v4 semantic color tokens directly */
+/* In Tailwind v4, bg-card uses --color-card, so we must set it here */
+.winter {
+  --color-card: #eef2f7;
+  --color-card-foreground: #1e293b;
+  --color-background: #e2e8f0;
+  --color-popover: #eef2f7;
+  --color-popover-foreground: #1e293b;
+}
+
+/* Force card background color for winter theme on all viewports */
+/* This ensures the color applies even if CSS variable cascade fails */
+.winter .bg-card,
+:root.winter .bg-card,
+html.winter .bg-card {
+  background-color: #eef2f7 !important;
+}
+
+/* Target the specific mobile scroll container */
+.winter [class*="overflow-y-auto"].bg-card {
+  background-color: #eef2f7 !important;
 }
 
 /*
@@ -856,6 +879,22 @@
   --chart-3: #ef4444;
   --chart-4: #f59e0b;
   --chart-5: #0ea5e9;
+}
+
+/* Dawn theme - set Tailwind v4 semantic color tokens directly */
+.dawn {
+  --color-card: #fffaf8;
+  --color-card-foreground: #44403c;
+  --color-background: #fdf8f6;
+  --color-popover: #fffaf8;
+  --color-popover-foreground: #44403c;
+}
+
+/* Force card background color for dawn theme on all viewports */
+.dawn .bg-card,
+:root.dawn .bg-card,
+html.dawn .bg-card {
+  background-color: #fffaf8 !important;
 }
 
 @layer base {

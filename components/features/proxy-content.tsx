@@ -586,14 +586,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         }
         return;
       }
-      // G — Open in ChatGPT
-      if ((e.key === "g" || e.key === "G") && !mod) {
+      // ⌘⇧G — Open in ChatGPT (uses modifier to prevent accidental triggers)
+      if (mod && e.shiftKey && (e.key === "g" || e.key === "G")) {
         e.preventDefault();
         handleOpenInAI("chatgpt");
         return;
       }
-      // A — Open in Claude (Anthropic)
-      if ((e.key === "a" || e.key === "A") && !mod) {
+      // ⌘⇧A — Open in Claude (uses modifier to prevent accidental triggers)
+      if (mod && e.shiftKey && (e.key === "a" || e.key === "A")) {
         e.preventDefault();
         handleOpenInAI("claude");
         return;
@@ -876,7 +876,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   className={cn(
                     viewMode === "html"
                       ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
-                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
+                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4 min-h-full" // Padded for reader mode
                   )}
                 >
                   {/* Article content */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import useLocalStorage from "./use-local-storage";
 
 // All supported chat languages
@@ -23,6 +24,7 @@ export const CHAT_LANGUAGES = [
 export type ChatLanguageCode = typeof CHAT_LANGUAGES[number]["code"];
 
 const STORAGE_KEY = "smry-chat-language";
+const OLD_STORAGE_KEY = "chat-language"; // Legacy key for migration
 const DEFAULT_LANGUAGE: ChatLanguageCode = "en";
 
 export function useChatLanguage() {
@@ -30,6 +32,30 @@ export function useChatLanguage() {
     STORAGE_KEY,
     DEFAULT_LANGUAGE
   );
+
+  // Migrate from old storage key on first load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const newValue = localStorage.getItem(STORAGE_KEY);
+    const oldValue = localStorage.getItem(OLD_STORAGE_KEY);
+
+    // If new key doesn't exist but old key does, migrate
+    if (!newValue && oldValue) {
+      try {
+        const parsed = JSON.parse(oldValue) as ChatLanguageCode;
+        // Validate it's a valid language code
+        if (CHAT_LANGUAGES.some(l => l.code === parsed)) {
+          setLanguage(parsed);
+        }
+        // Remove old key after migration
+        localStorage.removeItem(OLD_STORAGE_KEY);
+      } catch {
+        // Invalid old value, just remove it
+        localStorage.removeItem(OLD_STORAGE_KEY);
+      }
+    }
+  }, [setLanguage]);
 
   const currentLanguage = CHAT_LANGUAGES.find(l => l.code === language) || CHAT_LANGUAGES[0];
 

@@ -94,7 +94,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     value: "carbon",
     label: "Carbon",
     description: "High contrast dark mode",
-    preview: { bg: "#0d0d0d", text: "#f0f0f0", accent: "#a3a3a3" },
+    preview: { bg: "#1c1e21", text: "#d4d2cf", accent: "#818cf8" },
   },
   {
     value: "black",
@@ -107,6 +107,12 @@ const THEME_OPTIONS: ThemeOption[] = [
     label: "Forest",
     description: "Dark green-tinted, calming",
     preview: { bg: "#0f1512", text: "#d4e6db", accent: "#4ade80" },
+  },
+  {
+    value: "dawn",
+    label: "Dawn",
+    description: "Warm peachy light theme",
+    preview: { bg: "#fdf8f6", text: "#44403c", accent: "#d97706" },
   },
 ];
 

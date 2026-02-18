@@ -20,7 +20,8 @@ import {
 // CONSTANTS
 // =============================================================================
 
-// Default theme for the app - carbon is the app default
+// Default theme for the app - carbon is the actual default
+// "Match System" in dropdown maps to carbon
 const DEFAULT_THEME = "carbon";
 
 // Light themes in the app
@@ -106,8 +107,9 @@ function ThemeDropdown({
   ];
 
   // Map specific themes back to light/dark/system for dropdown
+  // "carbon" (our default) shows as "Match System"
   const getDropdownValue = (theme: string) => {
-    if (theme === "system") return "system";
+    if (theme === "system" || theme === "carbon") return "system";
     if (LIGHT_THEMES.includes(theme)) return "light";
     if (DARK_THEMES.includes(theme)) return "dark";
     return theme;
@@ -220,12 +222,20 @@ function StepperButton({
 // =============================================================================
 
 function ThemeSection({ onThemeChange }: { onThemeChange?: (theme: string) => void }) {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Migrate "system" theme to "carbon" on mount
+  // Must be before early return to follow Rules of Hooks
+  React.useEffect(() => {
+    if (mounted && (theme === "system" || !theme)) {
+      setTheme("carbon");
+    }
+  }, [mounted, theme, setTheme]);
 
   if (!mounted) {
     return (
@@ -243,20 +253,19 @@ function ThemeSection({ onThemeChange }: { onThemeChange?: (theme: string) => vo
     );
   }
 
-  const isDark = DARK_THEMES.includes(resolvedTheme || "") ||
-    (resolvedTheme === "dark");
+  // Determine if current theme is dark
+  // "system", "carbon", undefined all map to dark/carbon (our app's default)
+  const currentTheme = theme || "carbon";
+  const isDark = currentTheme === "system" || currentTheme === "carbon"
+    ? true  // default to dark
+    : DARK_THEMES.includes(currentTheme);
 
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
 
   // Determine selected palette based on current theme
   const getCurrentPalette = () => {
-    const currentTheme = theme || "system";
-    if (currentTheme === "system") {
-      // For system theme, use resolved theme to determine palette
-      if (isDark) {
-        return "carbon"; // Default dark palette
-      }
-      return "sepia"; // Default light palette (light theme)
+    if (currentTheme === "system" || currentTheme === "carbon") {
+      return "carbon";
     }
     if (isDark) {
       return THEME_TO_DARK_PALETTE[currentTheme] || "carbon";
@@ -268,9 +277,19 @@ function ThemeSection({ onThemeChange }: { onThemeChange?: (theme: string) => vo
   const selectedPalette = getCurrentPalette();
 
   // Handle dropdown change
+  // Maps dropdown values to actual theme names:
+  // - "system" maps to "carbon" (our app's default)
+  // - "dark" maps to "carbon" (our preferred dark theme)
+  // - "light" maps to "light" (sepia - our preferred light theme)
   const handleDropdownChange = (value: string) => {
-    setTheme(value);
-    onThemeChange?.(value);
+    let actualTheme = value;
+    if (value === "system" || value === "dark") {
+      actualTheme = "carbon";
+    } else if (value === "light") {
+      actualTheme = "light"; // sepia
+    }
+    setTheme(actualTheme);
+    onThemeChange?.(actualTheme);
   };
 
   // Handle palette selection

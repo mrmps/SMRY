@@ -343,7 +343,7 @@ export function FloatingToolbar({
           >
             <OpenAIIcon className="size-4" />
             <span className="flex-1">Open in ChatGPT</span>
-            <Kbd className="text-[10px] px-1.5 py-0.5">G</Kbd>
+            <Kbd className="text-[10px] px-1.5 py-0.5">⌘⇧G</Kbd>
             <ArrowUpRight className="size-3 opacity-50 shrink-0" />
           </MenuItem>
           <MenuItem
@@ -352,7 +352,7 @@ export function FloatingToolbar({
           >
             <ClaudeIcon className="size-4" />
             <span className="flex-1">Open in Claude</span>
-            <Kbd className="text-[10px] px-1.5 py-0.5">A</Kbd>
+            <Kbd className="text-[10px] px-1.5 py-0.5">⌘⇧A</Kbd>
             <ArrowUpRight className="size-3 opacity-50 shrink-0" />
           </MenuItem>
           <MenuSeparator />

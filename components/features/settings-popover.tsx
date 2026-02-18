@@ -53,7 +53,8 @@ const SECTIONS: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
 // COMPONENTS
 // =============================================================================
 
-function LanguageSection() {
+// Inner component that uses useSearchParams - must be wrapped in Suspense
+function LanguageSectionInner() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const rawPathname = usePathname();
@@ -90,6 +91,24 @@ function LanguageSection() {
         ))}
       </div>
     </div>
+  );
+}
+
+// Wrapper with Suspense boundary for useSearchParams
+function LanguageSection() {
+  return (
+    <React.Suspense fallback={
+      <div className="space-y-4">
+        <div className="h-5 w-48 bg-muted rounded animate-pulse" />
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[52px] rounded-xl bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    }>
+      <LanguageSectionInner />
+    </React.Suspense>
   );
 }
 

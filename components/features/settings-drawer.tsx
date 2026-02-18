@@ -218,7 +218,8 @@ const THEME_TO_LIGHT_PALETTE: Record<string, string> = {
   "dawn": "dawn",
 };
 
-// Default theme - carbon is the app default (matches desktop)
+// Default theme for the app - carbon is the actual default
+// "Match System" in dropdown maps to carbon
 const DEFAULT_THEME = "carbon";
 
 // Font display names
@@ -258,12 +259,26 @@ function StyleOptionsSection() {
     setMounted(true);
   }, []);
 
-  const isDark = DARK_THEMES.includes(resolvedTheme || "") || resolvedTheme === "dark";
+  // Migrate "system" theme to "carbon" on mount
+  // This ensures the actual theme class is applied, not OS preference
+  React.useEffect(() => {
+    if (mounted && (theme === "system" || !theme)) {
+      setTheme("carbon");
+    }
+  }, [mounted, theme, setTheme]);
+
+  // Determine if current theme is dark
+  // "system", "carbon", undefined all map to dark/carbon (our app's default)
+  const currentTheme = theme || "carbon";
+  const isDark = currentTheme === "system" || currentTheme === "carbon"
+    ? true  // default to dark
+    : DARK_THEMES.includes(currentTheme);
   const palettes = isDark ? DARK_PALETTES : LIGHT_PALETTES;
 
   // Get dropdown value
+  // "carbon" (our default) shows as "Match System" in dropdown
   const getDropdownValue = () => {
-    if (!theme || theme === "system") return "system";
+    if (!theme || theme === "system" || theme === "carbon") return "system";
     if (LIGHT_THEMES.includes(theme)) return "light";
     if (DARK_THEMES.includes(theme)) return "dark";
     return theme;
@@ -271,9 +286,8 @@ function StyleOptionsSection() {
 
   // Get selected palette
   const getCurrentPalette = () => {
-    const currentTheme = theme || "system";
-    if (currentTheme === "system") {
-      return isDark ? "carbon" : "sepia";
+    if (currentTheme === "system" || currentTheme === "carbon") {
+      return "carbon";
     }
     if (isDark) {
       return THEME_TO_DARK_PALETTE[currentTheme] || "carbon";
@@ -303,18 +317,28 @@ function StyleOptionsSection() {
     }
   };
 
-  // Check if theme is customized
-  // Note: "system" is the initial value from next-themes, but our app default is "carbon"
-  // We consider theme customized if it's different from DEFAULT_THEME AND not undefined/system on initial load
-  const hasCustomTheme = mounted && theme !== undefined && theme !== "system" && theme !== DEFAULT_THEME;
+  // Check if theme is customized from the default (carbon)
+  // Theme is customized if it's anything other than "carbon"
+  const hasCustomTheme = mounted && theme !== undefined && theme !== DEFAULT_THEME;
   const hasAnyCustomization = hasCustomPreferences || hasCustomTheme || themeChanged;
 
   // Handle theme change and track it
-  // Only set themeChanged if the new theme differs from the default
+  // Maps dropdown values to actual theme names:
+  // - "system" maps to "carbon" (our app's default)
+  // - "dark" maps to "carbon" (our preferred dark theme)
+  // - "light" maps to "light" (sepia - our preferred light theme)
   const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
-    // Clear themeChanged flag if selecting the default theme
-    if (newTheme === DEFAULT_THEME) {
+    // Map generic values to our preferred themes
+    let actualTheme = newTheme;
+    if (newTheme === "system" || newTheme === "dark") {
+      actualTheme = "carbon";
+    } else if (newTheme === "light") {
+      actualTheme = "light"; // sepia
+    }
+
+    setTheme(actualTheme);
+    // Clear themeChanged flag if selecting the default theme (carbon)
+    if (actualTheme === DEFAULT_THEME) {
       setThemeChanged(false);
     } else {
       setThemeChanged(true);
