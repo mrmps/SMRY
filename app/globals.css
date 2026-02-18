@@ -1276,35 +1276,11 @@ html.dawn .bg-card {
     margin-bottom: 1.5em;
   }
 
-  /* Hide empty list items (bullets without text content) - comprehensive fix */
+  /* Hide empty list items - fallback CSS for any remaining empty elements */
+  /* Primary cleanup is done via JavaScript regex in content.tsx */
   .prose li:empty,
   .prose ul:empty,
   .prose ol:empty {
-    display: none !important;
-  }
-
-  /* Hide list items that only contain empty child elements */
-  .prose li:has(> :only-child:is(a, span, div, p):empty) {
-    display: none !important;
-  }
-
-  /* Hide list items with only empty nested lists */
-  .prose li:has(> ul:only-child:empty),
-  .prose li:has(> ol:only-child:empty),
-  .prose li:has(> ul:only-child:has(li:empty:only-child)),
-  .prose li:has(> ol:only-child:has(li:empty:only-child)) {
-    display: none !important;
-  }
-
-  /* Hide list items that have no visible text content (only whitespace) */
-  .prose li:not(:has(img, video, iframe, svg, picture)) {
-    &:has(> a:only-child:not([href*="http"])):has(> a:empty) {
-      display: none !important;
-    }
-  }
-
-  /* Hide list items that only contain whitespace or hidden elements */
-  .prose li:has(> :only-child:is(script, style, noscript, template)) {
     display: none !important;
   }
 

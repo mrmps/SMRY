@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { ProxyPageContent } from '@/components/pages/proxy-content';
 import { Metadata } from 'next';
 import { normalizeUrl } from '@/lib/validation/url';
+import { headers } from 'next/headers';
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -176,10 +177,17 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function ProxyPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { sidebar } = await searchParams;
+  const { url: searchParamUrl, sidebar } = await searchParams;
   setRequestLocale(locale);
+
+  // Get article URL from header (set by proxy middleware for URL-as-path routing)
+  // or fall back to searchParams (for direct /proxy?url=... access)
+  const headersList = await headers();
+  const headerUrl = headersList.get('x-proxy-article-url');
+  const articleUrl = headerUrl || searchParamUrl || null;
+
 
   const initialSidebarOpen = sidebar === 'true';
 
-  return <ProxyPageContent initialSidebarOpen={initialSidebarOpen} />;
+  return <ProxyPageContent initialSidebarOpen={initialSidebarOpen} articleUrl={articleUrl} />;
 }

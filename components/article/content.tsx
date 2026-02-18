@@ -30,38 +30,52 @@ import { ImageLightbox, type LightboxImage } from "@/components/ui/image-lightbo
 export type { Source };
 
 /**
- * Sanitize HTML content by removing empty list items
- * This handles scraped content that may contain empty <li> elements
+ * Sanitize HTML content by removing empty list items.
+ * Uses DOMParser to properly detect whitespace-only elements via textContent.
+ * Memoized in component to only run when content changes.
  */
 function sanitizeListItems(html: string): string {
   if (!html) return html;
-
-  // Create a temporary DOM to parse and clean the HTML
   if (typeof window === 'undefined') return html;
 
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
-  // Find all list items and remove empty ones
-  const listItems = doc.querySelectorAll('li');
-  listItems.forEach((li) => {
-    // Check if the li has any meaningful text content
-    const textContent = li.textContent?.trim() || '';
-    const hasImages = li.querySelector('img, video, iframe, svg, picture');
+  let changed: boolean;
 
-    // Remove if empty or only whitespace and no media
-    if (!textContent && !hasImages) {
-      li.remove();
-    }
-  });
+  // Iterate until no more changes (handles nested empty structures)
+  do {
+    changed = false;
 
-  // Also remove empty ul/ol elements that may be left behind
-  const lists = doc.querySelectorAll('ul, ol');
-  lists.forEach((list) => {
-    if (list.children.length === 0) {
-      list.remove();
-    }
-  });
+    // Find and remove empty list items
+    const listItems = doc.querySelectorAll('li');
+    listItems.forEach((li) => {
+      // Normalize text content (including &nbsp; = \u00A0)
+      const textContent = li.textContent?.replace(/[\s\u00A0]+/g, '').trim() || '';
+      const hasMedia = li.querySelector('img, video, iframe, picture, canvas');
+
+      // Check for links with visible text
+      const hasVisibleLink = Array.from(li.querySelectorAll('a[href]')).some(a => {
+        const href = a.getAttribute('href') || '';
+        const linkText = a.textContent?.replace(/[\s\u00A0]+/g, '').trim() || '';
+        return href && href !== '#' && linkText;
+      });
+
+      if (!textContent && !hasMedia && !hasVisibleLink) {
+        li.remove();
+        changed = true;
+      }
+    });
+
+    // Remove empty ul/ol elements
+    const lists = doc.querySelectorAll('ul, ol');
+    lists.forEach((list) => {
+      if (list.children.length === 0) {
+        list.remove();
+        changed = true;
+      }
+    });
+  } while (changed);
 
   return doc.body.innerHTML;
 }
@@ -88,10 +102,8 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
   onInlineAdVisible?: () => void;
   onInlineAdClick?: () => void;
 }) {
-  // Sanitize content to remove empty list items
-  const sanitizedContent = useMemo(() => {
-    return sanitizeListItems(content);
-  }, [content]);
+  // Sanitize content by removing empty list items (memoized - only runs when content changes)
+  const sanitizedContent = useMemo(() => sanitizeListItems(content), [content]);
 
   // Split content at a natural break point for ad insertion
   const { beforeAd, afterAd } = useMemo(() => {

@@ -48,6 +48,41 @@ describe("proxy redirect helpers", () => {
       expect(isAppRoute("/https:/www.nytimes.com/article")).toBe(false);
       expect(isAppRoute("/www.example.com/path")).toBe(false);
     });
+
+    // Locale-prefixed routes
+    it("identifies locale-prefixed app routes", () => {
+      expect(isAppRoute("/pt/proxy")).toBe(true);
+      expect(isAppRoute("/de/pricing")).toBe(true);
+      expect(isAppRoute("/zh/history")).toBe(true);
+      expect(isAppRoute("/es/chat")).toBe(true);
+      expect(isAppRoute("/nl/api/article")).toBe(true);
+    });
+
+    it("identifies default locale (en) prefixed routes", () => {
+      expect(isAppRoute("/en/proxy")).toBe(true);
+      expect(isAppRoute("/en/pricing")).toBe(true);
+      expect(isAppRoute("/en/chat/thread-id")).toBe(true);
+    });
+
+    it("identifies bare locale paths as app routes", () => {
+      expect(isAppRoute("/pt")).toBe(true);
+      expect(isAppRoute("/de")).toBe(true);
+      expect(isAppRoute("/zh")).toBe(true);
+      expect(isAppRoute("/es")).toBe(true);
+      expect(isAppRoute("/nl")).toBe(true);
+      expect(isAppRoute("/en")).toBe(true);
+    });
+
+    it("does NOT identify locale-like domains as app routes", () => {
+      expect(isAppRoute("/pt.com")).toBe(false);
+      expect(isAppRoute("/de.wikipedia.org")).toBe(false);
+      expect(isAppRoute("/en.example.com/article")).toBe(false);
+    });
+
+    it("does NOT identify paths after locale that aren't app routes", () => {
+      expect(isAppRoute("/pt/nytimes.com")).toBe(false);
+      expect(isAppRoute("/de/https:/example.com")).toBe(false);
+    });
   });
 
   describe("repairProtocol", () => {
@@ -108,7 +143,7 @@ describe("proxy redirect helpers", () => {
       it("builds proxy URL for bare domain", () => {
         const result = buildProxyRedirectUrl("/nytimes.com", "", BASE_ORIGIN);
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fnytimes.com"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fnytimes.com"
         );
       });
 
@@ -119,7 +154,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2Farticle"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2Farticle"
         );
     });
 
@@ -130,7 +165,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
         );
     });
 
@@ -141,7 +176,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
         );
     });
 
@@ -152,7 +187,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=http%3A%2F%2Fexample.com%2Fpage"
+          "https://smry.ai/en/proxy?url=http%3A%2F%2Fexample.com%2Fpage"
         );
     });
 
@@ -163,7 +198,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2F12%2F08%2Farticle.html"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2F12%2F08%2Farticle.html"
         );
     });
     });
@@ -177,7 +212,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Ffoo.com%2Farticle%3Fx%3D1"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Ffoo.com%2Farticle%3Fx%3D1"
         );
       });
 
@@ -201,7 +236,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fexample.com%3Fref%3Dsocial"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fexample.com%3Fref%3Dsocial"
         );
       });
     });
@@ -215,7 +250,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&sidebar=open"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&sidebar=open"
         );
       });
 
@@ -226,7 +261,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&tab=summary"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&tab=summary"
         );
       });
 
@@ -237,7 +272,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&source=smry-fast"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Ffoo.com%2Farticle&source=smry-fast"
         );
       });
     });
@@ -297,7 +332,7 @@ describe("proxy redirect helpers", () => {
         );
         // Should decode first, then re-encode properly
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fwww.nytimes.com%2Farticle"
         );
     });
 
@@ -305,7 +340,7 @@ describe("proxy redirect helpers", () => {
         // /proxy.com should redirect, not be treated as /proxy
         const result = buildProxyRedirectUrl("/proxy.com", "", BASE_ORIGIN);
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fproxy.com"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fproxy.com"
         );
       });
 
@@ -316,7 +351,7 @@ describe("proxy redirect helpers", () => {
           BASE_ORIGIN
         );
         expect(result).toBe(
-          "https://smry.ai/proxy?url=https%3A%2F%2Fapi.example.com"
+          "https://smry.ai/en/proxy?url=https%3A%2F%2Fapi.example.com"
         );
     });
 
@@ -354,6 +389,139 @@ describe("proxy redirect helpers", () => {
         expect(SMRY_PARAMS).toContain("sidebar");
         expect(SMRY_PARAMS).toContain("tab");
         expect(SMRY_PARAMS).toContain("source");
+      });
+    });
+
+    describe("chat routes (should return null)", () => {
+      it("returns null for /chat", () => {
+        expect(buildProxyRedirectUrl("/chat", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /chat/thread-id", () => {
+        expect(buildProxyRedirectUrl("/chat/abc123", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /chat/some-uuid", () => {
+        expect(buildProxyRedirectUrl("/chat/550e8400-e29b-41d4-a716-446655440000", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("handles /chat.com as URL (not app route)", () => {
+        const result = buildProxyRedirectUrl("/chat.com", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fchat.com");
+      });
+    });
+
+    describe("locale-prefixed routes (should return null)", () => {
+      it("returns null for /pt/proxy", () => {
+        expect(buildProxyRedirectUrl("/pt/proxy", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /de/pricing", () => {
+        expect(buildProxyRedirectUrl("/de/pricing", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /zh/chat", () => {
+        expect(buildProxyRedirectUrl("/zh/chat", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /es/chat/thread-id", () => {
+        expect(buildProxyRedirectUrl("/es/chat/abc123", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /nl/api/article", () => {
+        expect(buildProxyRedirectUrl("/nl/api/article", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for /en/proxy (default locale explicit)", () => {
+        expect(buildProxyRedirectUrl("/en/proxy", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for bare locale paths like /pt", () => {
+        expect(buildProxyRedirectUrl("/pt", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("returns null for bare locale paths like /de", () => {
+        expect(buildProxyRedirectUrl("/de", "", BASE_ORIGIN)).toBe(null);
+      });
+
+      it("handles /pt.com as URL (not locale route)", () => {
+        const result = buildProxyRedirectUrl("/pt.com", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fpt.com");
+      });
+
+      it("handles /de.example.com as URL (not locale route)", () => {
+        const result = buildProxyRedirectUrl("/de.example.com/article", "", BASE_ORIGIN);
+        expect(result).toContain("proxy?url=");
+        expect(result).toContain("de.example.com");
+      });
+    });
+
+    describe("protocol variations", () => {
+      it("handles mixed-case HTTPS protocol", () => {
+        const result = buildProxyRedirectUrl("/HTTPS://example.com", "", BASE_ORIGIN);
+        expect(result).toContain("proxy?url=");
+        expect(result).toContain("example.com");
+      });
+
+      it("handles mixed-case Http protocol", () => {
+        const result = buildProxyRedirectUrl("/Http://example.com", "", BASE_ORIGIN);
+        expect(result).toContain("proxy?url=");
+        expect(result).toContain("example.com");
+      });
+    });
+
+    describe("trailing slashes", () => {
+      it("handles bare domain with trailing slash", () => {
+        const result = buildProxyRedirectUrl("/example.com/", "", BASE_ORIGIN);
+        expect(result).toContain("proxy?url=");
+        expect(result).toContain("example.com");
+      });
+
+      it("handles path with trailing slash", () => {
+        const result = buildProxyRedirectUrl("/example.com/path/", "", BASE_ORIGIN);
+        expect(result).toContain("proxy?url=");
+        expect(result).toContain("example.com");
+        expect(result).toContain("path");
+      });
+    });
+
+    describe("modern and long TLDs", () => {
+      it("handles .io TLD", () => {
+        const result = buildProxyRedirectUrl("/example.io", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fexample.io");
+      });
+
+      it("handles .ai TLD", () => {
+        const result = buildProxyRedirectUrl("/example.ai", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fexample.ai");
+      });
+
+      it("handles .co TLD", () => {
+        const result = buildProxyRedirectUrl("/example.co", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fexample.co");
+      });
+
+      it("handles long TLD like .photography", () => {
+        const result = buildProxyRedirectUrl("/example.photography", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fexample.photography");
+      });
+    });
+
+    describe("subdomains", () => {
+      it("handles blog subdomain", () => {
+        const result = buildProxyRedirectUrl("/blog.example.com", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fblog.example.com");
+      });
+
+      it("handles mobile subdomain", () => {
+        const result = buildProxyRedirectUrl("/m.nytimes.com", "", BASE_ORIGIN);
+        expect(result).toBe("https://smry.ai/en/proxy?url=https%3A%2F%2Fm.nytimes.com");
+      });
+
+      it("handles deeply nested subdomain", () => {
+        const result = buildProxyRedirectUrl("/api.v2.service.example.com/endpoint", "", BASE_ORIGIN);
+        expect(result).toContain("proxy?url=");
+        expect(result).toContain("api.v2.service.example.com");
       });
     });
   });

@@ -27,6 +27,12 @@ function withLlmHeaders(response: NextResponse): NextResponse {
 export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   const { pathname, search, origin } = request.nextUrl;
 
+  // If x-proxy-article-url header is already set (from a previous rewrite), just pass through
+  // This prevents losing the header during the second middleware run
+  if (request.headers.get('x-proxy-article-url')) {
+    return withLlmHeaders(NextResponse.next());
+  }
+
   // Skip i18n for API routes, admin routes, and auth routes - just let them through
   if (pathname.startsWith('/api') || pathname.startsWith('/admin') || pathname.startsWith('/auth')) {
     return withLlmHeaders(NextResponse.next());
@@ -63,7 +69,17 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
   }
 
   if (redirectUrl) {
-    return withLlmHeaders(NextResponse.rewrite(redirectUrl));
+    // Pass article URL via header because the page sees the original request's
+    // searchParams, not the rewrite target's searchParams.
+    const redirectUrlObj = new URL(redirectUrl);
+    const articleUrl = redirectUrlObj.searchParams.get('url');
+    const requestHeaders = new Headers(request.headers);
+    if (articleUrl) {
+      requestHeaders.set('x-proxy-article-url', articleUrl);
+    }
+    return withLlmHeaders(NextResponse.rewrite(redirectUrl, {
+      request: { headers: requestHeaders },
+    }));
   }
 
   // Run i18n middleware for locale handling
