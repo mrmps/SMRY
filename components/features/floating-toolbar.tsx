@@ -7,7 +7,7 @@ import {
   FileText,
   MonitorPlay,
   Navigation04,
-  ChatGpt,
+  AiMagic,
   History,
   Settings,
   MoreHorizontal,
@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
+import { usePremium } from "@/lib/hooks/use-premium";
 import { FeedbackIcon } from "@/components/ui/custom-icons";
 import { Kbd } from "@/components/ui/kbd";
 import ShareButton from "@/components/features/share-button";
@@ -157,6 +158,7 @@ export function FloatingToolbar({
   onShareOpenChange,
 }: FloatingToolbarProps) {
   const [copied, setCopied] = React.useState(false);
+  const { isPremium } = usePremium();
 
   // Cycle through view modes
   const cycleViewMode = () => {
@@ -262,7 +264,7 @@ export function FloatingToolbar({
 
       {/* AI Chat - opens sidebar */}
       <ToolbarButton
-        icon={<ChatGpt className="size-5" />}
+        icon={<AiMagic className="size-5" />}
         label="Ask AI"
         shortcut="⌘I"
         onClick={onSidebarToggle}
@@ -370,10 +372,12 @@ export function FloatingToolbar({
                   className={cn(className, "flex items-center gap-2 w-full px-3")}
                 >
                   <History className="size-4" />
-                  <span className="flex-1">History</span>
-                  <span className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
-                    PRO
-                  </span>
+                  <span className="flex-1">Reading History</span>
+                  {!isPremium && (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
+                      PRO
+                    </span>
+                  )}
                 </Link>
               );
             }}

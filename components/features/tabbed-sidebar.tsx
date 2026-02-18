@@ -2,7 +2,7 @@
 
 import React, { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { ChatGpt, History } from "@/components/ui/icons";
+import { AiMagic, History, X } from "@/components/ui/icons";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { ChatSidebar } from "@/components/features/chat-sidebar";
 import type { ChatThread } from "@/lib/hooks/use-chat-threads";
@@ -137,7 +137,11 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
         !isOpen && "hidden"
       )}>
         {/* Compact Tab Header */}
-        <div className="shrink-0 flex items-center justify-center px-3 py-1.5 border-b border-border/40">
+        <div className="shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-border/40">
+          {/* Empty left spacer for centering */}
+          <div className="w-7" />
+
+          {/* Center: Tab switcher */}
           <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-muted/60">
             <button
               onClick={() => setActiveTab("chat")}
@@ -148,7 +152,7 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <ChatGpt className="size-3.5" />
+              <AiMagic className="size-3.5" />
               <span>Chat</span>
             </button>
             <button
@@ -164,6 +168,15 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
               <span>History</span>
             </button>
           </div>
+
+          {/* Right: Close button */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="flex size-7 items-center justify-center rounded-md text-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Tab Content - Both tabs stay mounted to preserve state */}

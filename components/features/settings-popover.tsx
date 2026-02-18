@@ -114,14 +114,33 @@ function LanguageSection() {
 
 function AccountSection({ onClose }: { onClose?: () => void }) {
   const { isPremium } = useIsPremium();
+  const cardRef = React.useRef<HTMLDivElement>(null);
   const authRedirectUrl = typeof window !== "undefined"
     ? buildUrlWithReturn("/auth/redirect")
     : "/auth/redirect";
 
+  const handleCardClick = () => {
+    // Find Clerk's UserButton trigger inside the card and click it
+    const btn = cardRef.current?.querySelector<HTMLButtonElement>(
+      "button[data-clerk-component], button[aria-label], .cl-userButtonTrigger, .cl-avatarBox"
+    );
+    if (btn) {
+      btn.click();
+      return;
+    }
+    // Fallback: find any button inside the Clerk-rendered div
+    const fallback = cardRef.current?.querySelector<HTMLButtonElement>("button");
+    fallback?.click();
+  };
+
   return (
     <div className="space-y-4">
       <SignedIn>
-        <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-border bg-muted/30">
+        <div
+          ref={cardRef}
+          className="flex items-center gap-4 p-4 rounded-xl border-2 border-border bg-muted/30 cursor-pointer transition-opacity hover:bg-muted/50 active:opacity-80"
+          onClick={handleCardClick}
+        >
           <UserButton
             appearance={{
               elements: {
@@ -140,7 +159,10 @@ function AccountSection({ onClose }: { onClose?: () => void }) {
               <Link
                 href="/pricing"
                 className="text-sm text-primary hover:underline"
-                onClick={onClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose?.();
+                }}
               >
                 Upgrade to Pro
               </Link>

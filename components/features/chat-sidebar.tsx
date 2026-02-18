@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon } from "@/components/ui/icons";
+import { Search, Pin, MoreHorizontal, Trash2, Pencil, LogIn, PanelLeftClose, MessageSquare, Zap, Smartphone, Plus, Loader2, History as HistoryIcon, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
@@ -487,7 +487,7 @@ export function ChatSidebar({
           <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
           <input
             ref={searchInputRef}
-            type="search"
+            type="text"
             name="thread-search"
             role="searchbox"
             aria-label="Search threads"
@@ -505,6 +505,19 @@ export function ChatSidebar({
           />
           {isSearching && (
             <Loader2 className="size-3 animate-spin text-muted-foreground/50 shrink-0" aria-hidden="true" />
+          )}
+          {searchQuery && !isSearching && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSearchResults(null);
+                searchInputRef.current?.focus();
+              }}
+              className="p-0.5 rounded text-foreground/50 hover:text-foreground transition-colors"
+              aria-label="Clear search"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
           )}
         </div>
       )}

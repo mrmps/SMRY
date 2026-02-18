@@ -207,6 +207,17 @@ const FONT_DISPLAY_NAMES: Record<ReaderFont, string> = {
   system: 'System Default',
 };
 
+// Font family styles for preview
+const FONT_PREVIEW_STYLES: Record<ReaderFont, React.CSSProperties> = {
+  literata: { fontFamily: 'var(--font-literata), Georgia, serif' },
+  atkinson: { fontFamily: 'var(--font-atkinson), system-ui, sans-serif' },
+  inter: { fontFamily: 'var(--font-geist-sans), Inter, system-ui, sans-serif' },
+  georgia: { fontFamily: 'Georgia, Times New Roman, serif' },
+  merriweather: { fontFamily: 'var(--font-merriweather), Georgia, serif' },
+  opendyslexic: { fontFamily: 'OpenDyslexic, Comic Sans MS, sans-serif' },
+  system: { fontFamily: 'system-ui, -apple-system, sans-serif' },
+};
+
 // Style Options Section - opens nested drawer with Theme + Style controls
 function StyleOptionsSection() {
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -568,10 +579,13 @@ function StyleOptionsSection() {
                       "transition-all duration-150 active:opacity-70"
                     )}
                   >
-                    <span className={cn(
-                      "text-base",
-                      isSelected ? "text-foreground font-medium" : "text-foreground/80"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-base",
+                        isSelected ? "text-foreground font-medium" : "text-foreground/80"
+                      )}
+                      style={FONT_PREVIEW_STYLES[font.value]}
+                    >
                       {FONT_DISPLAY_NAMES[font.value]}
                     </span>
                     {isSelected && (
@@ -589,21 +603,42 @@ function StyleOptionsSection() {
 }
 
 // Inner component that uses searchParams - must be wrapped in Suspense
-function LanguageSectionInner({ onClose }: { onClose?: () => void }) {
+function LanguageSectionInner() {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const rawPathname = usePathname();
   const searchParams = useSearchParams();
   const [languageDrawerOpen, setLanguageDrawerOpen] = React.useState(false);
+  const [selectedLocale, setSelectedLocale] = React.useState<Locale | null>(null);
 
-  const switchLocale = (newLocale: Locale) => {
+  const switchLocale = React.useCallback((newLocale: Locale) => {
+    // If same locale, just close
+    if (newLocale === locale) {
+      setLanguageDrawerOpen(false);
+      return;
+    }
+
+    // Show selection immediately for visual feedback
+    setSelectedLocale(newLocale);
+
+    // Build the path with query params preserved
     const pathname = stripLocaleFromPathname(rawPathname);
     const search = searchParams.toString();
     const fullPath = `${pathname}${search ? `?${search}` : ''}`;
-    router.replace(fullPath, { locale: newLocale });
-    setLanguageDrawerOpen(false);
-    onClose?.();
-  };
+
+    // Brief delay to show the selection before navigating
+    // This creates a premium feel - user sees their choice confirmed
+    setTimeout(() => {
+      setLanguageDrawerOpen(false);
+
+      // Small delay after drawer starts closing for smooth animation
+      setTimeout(() => {
+        React.startTransition(() => {
+          router.replace(fullPath, { locale: newLocale });
+        });
+      }, 150);
+    }, 200);
+  }, [rawPathname, searchParams, router, locale]);
 
   return (
     <>
@@ -643,27 +678,38 @@ function LanguageSectionInner({ onClose }: { onClose?: () => void }) {
           <div className="px-4 pb-[max(2rem,env(safe-area-inset-bottom))]" data-vaul-no-drag>
             <Card className="overflow-hidden divide-y divide-border/30">
               {routing.locales.map((loc) => {
-                const isSelected = locale === loc;
+                // Show checkmark for current locale OR the newly selected one (during transition)
+                const isCurrentLocale = locale === loc;
+                const isNewlySelected = selectedLocale === loc;
+                const showCheck = isCurrentLocale || isNewlySelected;
+                const isHighlighted = isNewlySelected || (isCurrentLocale && !selectedLocale);
+
                 return (
                   <button
                     key={loc}
                     onClick={() => switchLocale(loc)}
+                    disabled={!!selectedLocale} // Disable while transitioning
                     style={{ touchAction: "manipulation" }}
                     className={cn(
                       "flex items-center justify-between w-full px-4 py-4 text-left",
                       "min-h-[52px]",
-                      "transition-all duration-150 active:opacity-70"
+                      "transition-all duration-200 active:opacity-70",
+                      selectedLocale && "pointer-events-none", // Prevent double-tap
+                      isNewlySelected && "bg-muted/50" // Highlight new selection
                     )}
                   >
                     <span className={cn(
-                      "text-base",
-                      isSelected ? "text-foreground font-medium" : "text-foreground/80"
+                      "text-base transition-all duration-200",
+                      isHighlighted ? "text-foreground font-medium" : "text-foreground/80"
                     )}>
                       {languageNames[loc]}
                     </span>
-                    {isSelected && (
+                    <div className={cn(
+                      "transition-all duration-200",
+                      showCheck ? "opacity-100 scale-100" : "opacity-0 scale-75"
+                    )}>
                       <Check className="size-5 text-foreground" />
-                    )}
+                    </div>
                   </button>
                 );
               })}
@@ -676,7 +722,7 @@ function LanguageSectionInner({ onClose }: { onClose?: () => void }) {
 }
 
 // Language selector - wraps inner component in Suspense for useSearchParams
-function LanguageSection({ onClose }: { onClose?: () => void }) {
+function LanguageSection() {
   return (
     <React.Suspense fallback={
       <Card className="overflow-hidden">
@@ -694,7 +740,7 @@ function LanguageSection({ onClose }: { onClose?: () => void }) {
         </div>
       </Card>
     }>
-      <LanguageSectionInner onClose={onClose} />
+      <LanguageSectionInner />
     </React.Suspense>
   );
 }
@@ -754,14 +800,25 @@ function WidthNormalIcon({ className }: { className?: string }) {
 // Account section (compact)
 function AccountSection({ onAction }: { onAction?: () => void }) {
   const { isPremium } = useIsPremium();
+  const cardRef = React.useRef<HTMLDivElement>(null);
   const authRedirectUrl = typeof window !== "undefined"
     ? buildUrlWithReturn("/auth/redirect")
     : "/auth/redirect";
 
+  const handleCardClick = () => {
+    const btn = cardRef.current?.querySelector<HTMLButtonElement>("button");
+    btn?.click();
+  };
+
   return (
     <>
       <SignedIn>
-        <Card className="flex items-center gap-3 px-4 py-3">
+        <div ref={cardRef}>
+        <Card
+          className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-opacity active:opacity-80"
+          style={{ touchAction: "manipulation" }}
+          onClick={handleCardClick}
+        >
           <UserButton
             appearance={{
               elements: {
@@ -775,7 +832,10 @@ function AccountSection({ onAction }: { onAction?: () => void }) {
               <Link
                 href="/pricing"
                 className="text-xs text-primary hover:underline"
-                onClick={onAction}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction?.();
+                }}
               >
                 Upgrade to Pro
               </Link>
@@ -785,6 +845,7 @@ function AccountSection({ onAction }: { onAction?: () => void }) {
             )}
           </div>
         </Card>
+        </div>
       </SignedIn>
       <SignedOut>
         <div className="flex gap-2">
@@ -862,8 +923,7 @@ export const SettingsDrawer = React.forwardRef<SettingsDrawerHandle, SettingsDra
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Preferences
               </h3>
-              <StyleOptionsSection />
-              <LanguageSection onClose={() => setOpen(false)} />
+              <LanguageSection />
             </section>
 
             {/* ACCOUNT */}

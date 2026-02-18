@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState, useEffect, useMemo } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
-import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2 } from "@/components/ui/icons";
+import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
@@ -442,7 +442,7 @@ export function MobileChatDrawer({
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
                     <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
                     <input
-                      type="search"
+                      type="text"
                       name="mobile-thread-search"
                       aria-label="Search threads"
                       placeholder="Search messages..."
@@ -452,6 +452,19 @@ export function MobileChatDrawer({
                     />
                     {isSearching && (
                       <Loader2 className="size-3.5 animate-spin text-muted-foreground/50 shrink-0" aria-hidden="true" />
+                    )}
+                    {searchQuery && !isSearching && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSearchResults(null);
+                        }}
+                        className="p-1 rounded text-foreground/50 hover:text-foreground transition-colors"
+                        aria-label="Clear search"
+                        style={{ touchAction: "manipulation" }}
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
                     )}
                   </div>
                   <div className="flex-1 overflow-y-auto scrollbar-hide">

@@ -316,7 +316,7 @@
     "language": "语言",
     "help": "帮助与更多",
     "getStarted": "开始使用",
-    "history": "历史记录",
+    "history": "阅读历史",
     "changelog": "更新日志",
     "pricing": "价格",
     "feedback": "反馈",
@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "新功能：",
-    "message": "浮动工具栏、8种主题配色和全新移动端设置",
+    "message": "你的阅读体验迎来重大升级 — 全新工具栏、主题和字体",
     "changelog": "更新日志"
   },
   "changelog": {

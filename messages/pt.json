@@ -316,7 +316,7 @@
     "language": "Idioma",
     "help": "Ajuda e mais",
     "getStarted": "Começar",
-    "history": "Histórico",
+    "history": "Histórico de Leitura",
     "changelog": "Alterações",
     "pricing": "Preços",
     "feedback": "Feedback",
@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Novo:",
-    "message": "Barra flutuante, 8 paletas de temas e configurações móveis redesenhadas",
+    "message": "Sua experiência de leitura acabou de ganhar uma grande melhoria — nova barra de ferramentas, temas e fontes",
     "changelog": "Registro de alterações"
   },
   "changelog": {

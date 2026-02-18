@@ -26,7 +26,6 @@ import {
 } from 'streamdown';
 import { code } from '@streamdown/code';
 import { harden } from 'rehype-harden';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
@@ -209,31 +208,17 @@ export const Response = memo(
     lang,
     ...props
   }: ResponseProps) => {
-    const isMobile = useIsMobile();
-
-    // Smooth, premium streaming animation for both mobile and desktop
-    // Words fade in gracefully one by one for a polished AI chat experience
+    // Smooth streaming animation - balanced speed and readability
     const animatedConfig = useMemo(() => {
       if (!isAnimating) return false;
 
-      if (isMobile) {
-        // Mobile: smooth word-by-word with longer duration for elegant feel
-        return {
-          animation: 'fadeIn' as const,
-          duration: 120, // Slower fade for smooth appearance
-          easing: 'cubic-bezier(0.4, 0, 0.2, 1)', // Smooth ease-in-out
-          sep: 'word' as const,
-        };
-      }
-
-      // Desktop: slightly faster but still smooth word-by-word
       return {
         animation: 'fadeIn' as const,
-        duration: 100,
-        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        duration: 340, // Balanced: smooth but not sluggish
+        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
         sep: 'word' as const,
       };
-    }, [isAnimating, isMobile]);
+    }, [isAnimating]);
 
     return (
       <div

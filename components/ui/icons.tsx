@@ -125,6 +125,7 @@ import {
 
   // AI/Brand icons
   ChatGptIcon,
+  AiMagicIcon,
 
   // Typography
   TextFontIcon,
@@ -227,6 +228,7 @@ export const MessageSquare = createIcon(Chat01Icon, "MessageSquare");
 
 // AI/Brand Icons
 export const ChatGpt = createIcon(ChatGptIcon, "ChatGpt");
+export const AiMagic = createIcon(AiMagicIcon, "AiMagic");
 
 // Status/Feedback Icons
 export const Loader2 = createIcon(Loading01Icon, "Loader2");

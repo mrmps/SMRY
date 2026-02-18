@@ -316,7 +316,7 @@
     "language": "Language",
     "help": "Help & More",
     "getStarted": "Get started",
-    "history": "History",
+    "history": "Reading History",
     "changelog": "Changelog",
     "pricing": "Pricing",
     "feedback": "Feedback",
@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "New:",
-    "message": "Floating toolbar, 8 theme palettes, and redesigned mobile settings",
+    "message": "Your reading experience just got a major upgrade — new toolbar, themes, and fonts",
     "changelog": "Changelog"
   },
   "changelog": {

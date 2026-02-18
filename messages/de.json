@@ -316,7 +316,7 @@
     "language": "Sprache",
     "help": "Hilfe & Mehr",
     "getStarted": "Erste Schritte",
-    "history": "Verlauf",
+    "history": "Leseverlauf",
     "changelog": "Änderungen",
     "pricing": "Preise",
     "feedback": "Feedback",
@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Neu:",
-    "message": "Schwebende Symbolleiste, 8 Farbpaletten und überarbeitete mobile Einstellungen",
+    "message": "Dein Leseerlebnis hat ein großes Upgrade erhalten — neue Symbolleiste, Themes und Schriftarten",
     "changelog": "Änderungsprotokoll"
   },
   "changelog": {

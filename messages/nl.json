@@ -316,7 +316,7 @@
     "language": "Taal",
     "help": "Help & Meer",
     "getStarted": "Aan de slag",
-    "history": "Geschiedenis",
+    "history": "Leesgeschiedenis",
     "changelog": "Wijzigingen",
     "pricing": "Prijzen",
     "feedback": "Feedback",
@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Nieuw:",
-    "message": "Zwevende werkbalk, 8 themapaletten en vernieuwde mobiele instellingen",
+    "message": "Je leeservaring heeft een grote upgrade gekregen — nieuwe werkbalk, thema's en lettertypen",
     "changelog": "Wijzigingslogboek"
   },
   "changelog": {

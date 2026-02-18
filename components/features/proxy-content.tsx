@@ -3,13 +3,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
-import { AuthBar } from "@/components/shared/auth-bar";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { ArrowLeft } from "@/components/ui/icons";
-import { ChatGpt } from "@/components/ui/icons";
+import { AiMagic } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
-import Link from "next/link";
+
 import { ArticleContent } from "@/components/article/content";
 import { TabbedSidebar, TabbedSidebarHandle } from "@/components/features/tabbed-sidebar";
 import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
@@ -623,31 +621,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       <UpdateBanner className="hidden md:block" />
 
       <div className="flex-1 overflow-hidden flex flex-col">
-        <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
-          {/* Desktop Header - Minimal: Logo + Auth only */}
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/"
-              className="flex items-center gap-2 transition-opacity hover:opacity-80"
-            >
-              <Image
-                src="/logo.svg"
-                width={80}
-                height={80}
-                alt="smry logo"
-                className="h-6 w-auto dark:invert"
-                priority
-              />
-            </Link>
-          </div>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Right: Auth */}
-          <AuthBar variant="compact" showUpgrade={false} />
-        </header>
-
         {/* Content Area - conditionally render desktop or mobile layout */}
         <main className="flex-1 overflow-hidden">
           {isDesktop === null ? (
@@ -657,6 +630,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
           ) : isDesktop ? (
             // Desktop: Resizable panels with sidebars
             <div className="h-full relative">
+              {/* Back arrow - top left */}
+              <button
+                onClick={() => window.history.back()}
+                className="absolute top-4 left-4 z-50 size-10 flex items-center justify-center rounded-xl border border-border/60 bg-background/60 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="size-5" />
+              </button>
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
@@ -835,6 +816,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   {showMobilePromo && <PromoBanner className="md:hidden" />}
                   <UpdateBanner className="md:hidden" />
                   <header className="flex h-14 items-center bg-background px-4">
+                    {/* Back button - left */}
                     <div className="flex items-center gap-3 shrink-0">
                       <button
                         onClick={() => window.history.back()}
@@ -844,6 +826,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         <ArrowLeft className="size-5" />
                       </button>
                     </div>
+
+                    {/* Domain name - center */}
                     <div className="flex-1 flex items-center justify-center">
                       <span className="text-sm font-medium text-muted-foreground truncate max-w-[200px]">
                         {(() => {
@@ -855,6 +839,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         })()}
                       </span>
                     </div>
+
+                    {/* AI chat button - right */}
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setMobileSummaryOpen(true)}
@@ -866,7 +852,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                         )}
                         aria-label="Open chat"
                       >
-                        <ChatGpt className="size-5" />
+                        <AiMagic className="size-5" />
                       </button>
                     </div>
                   </header>
@@ -875,8 +861,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 <div
                   className={cn(
                     viewMode === "html"
-                      ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
-                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4 min-h-full" // Padded for reader mode
+                      ? "px-2 pt-2" // Near-fullscreen with small margins for HTML mode
+                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
                   )}
                 >
                   {/* Article content */}
