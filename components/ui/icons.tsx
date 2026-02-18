@@ -115,6 +115,7 @@ import {
   ClockIcon,
   SquareIcon,
   CommandLineIcon,
+  Navigation04Icon,
 
   // Additional icons for full compatibility
   CheckListIcon,
@@ -124,6 +125,9 @@ import {
 
   // AI/Brand icons
   ChatGptIcon,
+
+  // Typography
+  TextFontIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
@@ -209,6 +213,7 @@ export const ReloadIcon = createIcon(ArrowReloadHorizontalIcon, "ReloadIcon"); /
 export const Search = createIcon(Search01Icon, "Search");
 export const Send = createIcon(SentIcon, "Send");
 export const ExternalLink = createIcon(Link02Icon, "ExternalLink");
+export const Navigation04 = createIcon(Navigation04Icon, "Navigation04");
 
 // Media/Content Icons
 export const BookOpen = createIcon(BookOpenIcon, "BookOpen");
@@ -312,6 +317,9 @@ export const TriangleAlertIcon = createIcon(Alert01Icon, "TriangleAlertIcon");
 export const CircleAlert = createIcon(AlertCircleIcon, "CircleAlert");
 export const CircleAlertIcon = createIcon(AlertCircleIcon, "CircleAlertIcon");
 export const InfoIcon = createIcon(InformationCircleIcon, "InfoIcon");
+
+// Typography Icons
+export const TextFont = createIcon(TextFontIcon, "TextFont");
 
 // Type export for Lucide compatibility
 export type LucideIcon = FC<IconProps>;

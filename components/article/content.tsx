@@ -30,6 +30,57 @@ import { ImageLightbox, type LightboxImage } from "@/components/ui/image-lightbo
 export type { Source };
 
 /**
+ * Sanitize HTML content by removing empty list items.
+ * Uses DOMParser to properly detect whitespace-only elements via textContent.
+ * Memoized in component to only run when content changes.
+ */
+function sanitizeListItems(html: string): string {
+  if (!html) return html;
+  if (typeof window === 'undefined') return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  let changed: boolean;
+
+  // Iterate until no more changes (handles nested empty structures)
+  do {
+    changed = false;
+
+    // Find and remove empty list items
+    const listItems = doc.querySelectorAll('li');
+    listItems.forEach((li) => {
+      // Normalize text content (including &nbsp; = \u00A0)
+      const textContent = li.textContent?.replace(/[\s\u00A0]+/g, '').trim() || '';
+      const hasMedia = li.querySelector('img, video, iframe, picture, canvas');
+
+      // Check for links with visible text
+      const hasVisibleLink = Array.from(li.querySelectorAll('a[href]')).some(a => {
+        const href = a.getAttribute('href') || '';
+        const linkText = a.textContent?.replace(/[\s\u00A0]+/g, '').trim() || '';
+        return href && href !== '#' && linkText;
+      });
+
+      if (!textContent && !hasMedia && !hasVisibleLink) {
+        li.remove();
+        changed = true;
+      }
+    });
+
+    // Remove empty ul/ol elements
+    const lists = doc.querySelectorAll('ul, ol');
+    lists.forEach((list) => {
+      if (list.children.length === 0) {
+        list.remove();
+        changed = true;
+      }
+    });
+  } while (changed);
+
+  return doc.body.innerHTML;
+}
+
+/**
  * Component that renders article content with a single inline ad
  * Ad is placed after ~40% of the content (or after first paragraph if short)
  * Always shows ad if available
@@ -51,19 +102,22 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
   onInlineAdVisible?: () => void;
   onInlineAdClick?: () => void;
 }) {
+  // Sanitize content by removing empty list items (memoized - only runs when content changes)
+  const sanitizedContent = useMemo(() => sanitizeListItems(content), [content]);
+
   // Split content at a natural break point for ad insertion
   const { beforeAd, afterAd } = useMemo(() => {
-    if (!inlineAd || !content) {
-      return { beforeAd: content, afterAd: null };
+    if (!inlineAd || !sanitizedContent) {
+      return { beforeAd: sanitizedContent, afterAd: null };
     }
 
     // Find paragraph breaks
-    const paragraphEnds = [...content.matchAll(/<\/p>/gi)];
+    const paragraphEnds = [...sanitizedContent.matchAll(/<\/p>/gi)];
     const totalParagraphs = paragraphEnds.length;
 
     // No paragraphs found - show ad at end
     if (totalParagraphs === 0) {
-      return { beforeAd: content, afterAd: "" };
+      return { beforeAd: sanitizedContent, afterAd: "" };
     }
 
     // Insert ad after ~40% of content, minimum after 1st paragraph
@@ -71,22 +125,24 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     const splitIndex = paragraphEnds[targetParagraph - 1]?.index;
 
     if (splitIndex === undefined) {
-      return { beforeAd: content, afterAd: "" };
+      return { beforeAd: sanitizedContent, afterAd: "" };
     }
 
     const splitPoint = splitIndex + 4; // +4 for "</p>"
     return {
-      beforeAd: content.slice(0, splitPoint),
-      afterAd: content.slice(splitPoint),
+      beforeAd: sanitizedContent.slice(0, splitPoint),
+      afterAd: sanitizedContent.slice(splitPoint),
     };
-  }, [content, inlineAd]);
+  }, [sanitizedContent, inlineAd]);
 
   // No ad - render simply
+  // Note: Font size, line-height, and max-width are controlled by CSS variables
+  // set via useReaderPreferences hook (--reader-font-size, --reader-line-height, --reader-content-width)
   if (afterAd === null) {
     return (
       <div
         ref={contentRef}
-        className="mt-6 wrap-break-word prose max-w-none px-4 sm:px-0 text-xl sm:text-lg"
+        className="mt-6 wrap-break-word prose px-4 sm:px-0"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -99,7 +155,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     <div ref={contentRef} className="mt-6 px-4 sm:px-0">
       {/* First part of article */}
       <div
-        className="wrap-break-word prose max-w-none text-xl sm:text-lg"
+        className="wrap-break-word prose"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -119,7 +175,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
       {/* Rest of article */}
       <div
-        className="wrap-break-word prose max-w-none text-xl sm:text-lg"
+        className="wrap-break-word prose"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: afterAd }}
@@ -415,7 +471,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
       <article>
         {data && !isError && data.article && viewMode === "markdown" && (
           <div
-            className="mb-8 space-y-6 border-b border-border pb-6"
+            className="article-header mb-8 space-y-6 border-b border-border pb-6"
             dir={data.article.dir || "ltr"}
             lang={data.article.lang || undefined}
           >

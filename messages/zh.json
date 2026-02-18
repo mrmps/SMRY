@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "新功能：",
-    "message": "向AI询问您阅读的任何文章",
+    "message": "浮动工具栏、8种主题配色和全新移动端设置",
     "changelog": "更新日志"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entrySidebar_date": "2026年2月18日",
+    "entrySidebar_change1_text": "浮动工具栏",
+    "entrySidebar_change1_detail": "通过固定工具栏访问视图模式、AI聊天、样式选项和分享功能——无需在菜单中寻找。",
+    "entrySidebar_change2_text": "标签式侧边栏",
+    "entrySidebar_change2_detail": "在同一位置切换聊天和历史记录。浏览时对话保持完整。",
+    "entrySidebar_change3_text": "重新设计的移动端设置",
+    "entrySidebar_change3_detail": "原生抽屉式导航，更大的触控区域。无需离开文章即可自定义所有设置。",
+    "entrySidebar_change4_text": "阅读器自定义",
+    "entrySidebar_change4_detail": "7种字体（包括OpenDyslexic），可调节大小、间距和宽度。偏好设置自动保存。",
+    "entrySidebar_change5_text": "8种新主题配色",
+    "entrySidebar_change5_detail": "浅色选项：白色、棕褐、纸张、黎明。深色选项：碳黑、纯黑、冬日、森林。",
     "entryDesign_date": "2026年2月17日",
     "entryDesign_change1_text": "暖纸浅色主题",
     "entryDesign_change1_detail": "专为长时间阅读设计的新默认浅色主题。柔和的奶油色背景搭配温暖的棕褐色调文字，如同优质书纸般舒适——连续阅读数小时也不会眼睛疲劳。",

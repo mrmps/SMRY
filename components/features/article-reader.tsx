@@ -169,7 +169,7 @@ export function ArticleReader({
       {/* Article Container */}
       <article
         ref={articleRef}
-        className="article-container mx-auto w-full max-w-[740px] px-4 pb-32 pt-14 sm:pt-16 md:pt-20"
+        className="article-container mx-auto w-full max-w-3xl px-4 pb-32 pt-14 sm:pt-16 md:pt-20"
       >
         <div className="relative">
           {/* Document Header
@@ -421,17 +421,11 @@ export function ArticleReader({
            Premium reading with Literata font
            ───────────────────────────────────────────────────────────────────── */
         .prose-article {
-          /* Font Stack - Literata for premium reading experience */
-          font-family:
-            var(--font-literata),
-            "Literata",
-            Georgia,
-            "Times New Roman",
-            serif;
-
-          /* Size & Measure - 18px for optimal reading */
-          font-size: 18px;
-          line-height: 1.8;
+          /* Reader typography - all controlled via CSS variables from useReaderPreferences */
+          font-family: var(--reader-font-family, var(--font-literata, Georgia, serif));
+          font-size: var(--reader-font-size, 18px);
+          line-height: var(--reader-line-height, 1.8);
+          max-width: var(--reader-content-width, 740px);
           letter-spacing: 0.01em;
 
           /* Color - Warm cream for comfortable reading */
@@ -918,10 +912,7 @@ export function ArticleReader({
             padding: 0.3rem 0.75rem 0.3rem 0.3rem;
           }
 
-          .prose-article {
-            font-size: 18px;
-            line-height: 1.7;
-          }
+          /* Note: font-size respects user's reader preference via CSS variable */
 
           .prose-article > p:first-of-type::first-letter {
             font-size: 3.25em;
@@ -958,9 +949,8 @@ export function ArticleReader({
             display: none;
           }
 
+          /* Note: font-size respects user's reader preference via CSS variable */
           .prose-article {
-            font-size: 18px;
-            line-height: 1.65;
             hyphens: auto;
             -webkit-hyphens: auto;
           }

@@ -5,7 +5,6 @@ import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
-import useLocalStorage from "@/lib/hooks/use-local-storage";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -192,11 +191,6 @@ export function MobileChatDrawer({
   // Async search state
   const [searchResults, setSearchResults] = useState<ChatThread[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
-    "chat-language",
-    "en"
-  );
 
   const handleClearMessages = useCallback(() => {
     chatRef.current?.clearMessages();
@@ -428,8 +422,6 @@ export function MobileChatDrawer({
                   onOpenChange={onOpenChange}
                   variant="sidebar"
                   hideHeader
-                  language={preferredLanguage}
-                  onLanguageChange={setPreferredLanguage}
                   onHasMessagesChange={setHasMessages}
                   initialMessages={initialMessagesProp}
                   inputContainerRef={inputContainerRef}

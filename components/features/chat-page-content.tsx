@@ -34,18 +34,11 @@ function getMessageText(message: UIMessage): string {
     .join("");
 }
 
-// Thinking shimmer indicator (CSS in globals.css)
+// Pulsing dot indicator (CSS in globals.css)
 function ChatLoader() {
   return (
-    <div className="flex items-center gap-2 h-7 py-1">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" className="shrink-0 opacity-40 text-muted-foreground">
-        <rect fill="none" width="256" height="256" />
-        <line fill="none" stroke="currentColor" x1="88" y1="232" x2="168" y2="232" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-        <line fill="none" stroke="currentColor" x1="128" y1="200" x2="128" y2="144" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-        <polyline fill="none" stroke="currentColor" points="96 112 128 144 160 112" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-        <path d="M78.7,167A79.5,79.5,0,0,1,48,104.5C47.8,61.1,82.7,25,126.1,24a80,80,0,0,1,51.3,142.9A24.2,24.2,0,0,0,168,186v6a8,8,0,0,1-8,8H96a8,8,0,0,1-8-8v-6A24.4,24.4,0,0,0,78.7,167Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-      </svg>
-      <span className="thinking-text">Thinking...</span>
+    <div className="flex items-center h-6 py-1">
+      <span className="thinking-pulse" />
     </div>
   );
 }

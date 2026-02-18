@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Nuevo:",
-    "message": "Pregunta a la IA cualquier cosa sobre los artículos que lees",
+    "message": "Barra flotante, 8 paletas de temas y ajustes móviles rediseñados",
     "changelog": "Registro de cambios"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "Actualizar"
   },
   "changelogEntries": {
+    "entrySidebar_date": "18 de febrero de 2026",
+    "entrySidebar_change1_text": "Barra de herramientas flotante",
+    "entrySidebar_change1_detail": "Accede a modos de vista, chat con IA, opciones de estilo y compartir desde una barra persistente — sin buscar en menús.",
+    "entrySidebar_change2_text": "Barra lateral con pestañas",
+    "entrySidebar_change2_detail": "Cambia entre chat e historial en un solo lugar. Tu conversación se mantiene intacta mientras navegas.",
+    "entrySidebar_change3_text": "Ajustes móviles rediseñados",
+    "entrySidebar_change3_detail": "Navegación con cajones nativos y áreas táctiles más grandes. Personaliza todo sin salir de tu artículo.",
+    "entrySidebar_change4_text": "Personalización del lector",
+    "entrySidebar_change4_detail": "7 fuentes incluyendo OpenDyslexic, tamaño, espaciado y ancho ajustables. Las preferencias se guardan automáticamente.",
+    "entrySidebar_change5_text": "8 nuevas paletas de temas",
+    "entrySidebar_change5_detail": "Opciones claras: Blanco, Sepia, Papel, Amanecer. Opciones oscuras: Carbón, Negro, Invierno, Bosque.",
     "entryDesign_date": "17 de febrero de 2026",
     "entryDesign_change1_text": "Tema claro Papel Cálido",
     "entryDesign_change1_detail": "Nuevo tema claro predeterminado diseñado para lectura prolongada. Fondos crema suaves con texto en tonos sepia cálidos que se sienten como papel de libro de calidad — cómodo durante horas sin fatiga visual.",

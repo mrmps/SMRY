@@ -1,58 +1,28 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
-import { useAuth } from "@clerk/nextjs";
 import { AuthBar } from "@/components/shared/auth-bar";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
-import {
-  Bug as BugIcon,
-  Sun,
-  Moon,
-  Laptop,
-  History as HistoryIcon,
-  MoreHorizontal,
-  ExternalLink,
-  Check,
-  ArrowLeft,
-  Copy,
-  ArrowUpRight,
-} from "@/components/ui/icons";
-import { FeedbackIcon } from "@/components/ui/custom-icons";
+import { ArrowLeft } from "@/components/ui/icons";
 import { ChatGpt } from "@/components/ui/icons";
-import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "@/i18n/navigation";
-import { useLocale } from "next-intl";
-import { useSearchParams } from "next/navigation";
-import { routing, languageNames, type Locale } from "@/i18n/routing";
-import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
-import ShareButton from "@/components/features/share-button";
-import { OpenAIIcon, ClaudeIcon } from "@/components/features/copy-page-dropdown";
-import { Button } from "@/components/ui/button";
-import { useTheme } from "next-themes";
 import { ArticleContent } from "@/components/article/content";
-import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
+import { TabbedSidebar, TabbedSidebarHandle } from "@/components/features/tabbed-sidebar";
 import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
-import { SettingsDrawer, type SettingsDrawerHandle } from "@/components/features/settings-drawer";
-import { ChatSidebar } from "@/components/features/chat-sidebar";
+import { FloatingToolbar } from "@/components/features/floating-toolbar";
+import { SettingsPopover } from "@/components/features/settings-popover";
+import { SettingsDrawer, SettingsDrawerHandle } from "@/components/features/settings-drawer";
 import { useChatThreads, type ThreadMessage } from "@/lib/hooks/use-chat-threads";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import { PromoBanner } from "@/components/marketing/promo-banner";
 import { UpdateBanner } from "@/components/marketing/update-banner";
-import {
-  Menu,
-  MenuTrigger,
-  MenuPopup,
-  MenuItem,
-  MenuSeparator,
-} from "@/components/ui/menu";
 import {
   useQueryStates,
   parseAsStringLiteral,
@@ -70,11 +40,6 @@ import {
 import { ImperativePanelHandle } from "react-resizable-panels";
 import { KeyboardShortcutsDialog } from "@/components/features/keyboard-shortcuts-dialog";
 
-// Helper to detect client-side rendering without setState in effect
-const emptySubscribe = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
-
 // Check if the user is typing in an input/textarea/contentEditable
 function isTypingInInput(e: KeyboardEvent): boolean {
   const target = e.target as HTMLElement | null;
@@ -84,142 +49,6 @@ function isTypingInInput(e: KeyboardEvent): boolean {
   if (target.isContentEditable) return true;
   return false;
 }
-
-// History menu item for the More dropdown
-function HistoryMenuItem() {
-  const { isSignedIn, isLoaded } = useAuth();
-  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
-
-  const href = isSignedIn ? "/history" : "/pricing";
-  const showBadge = mounted && isLoaded && !isSignedIn;
-
-  return (
-    <MenuItem
-      render={(props) => {
-        const { key, className, ...rest } = props as typeof props & {
-          key?: React.Key;
-          className?: string;
-        };
-        return (
-          <Link
-            key={key}
-            {...rest}
-            href={href}
-            className={cn(className, "flex items-center gap-2 w-full px-3")}
-          >
-            <HistoryIcon className="size-4" />
-            <span className="flex-1">History</span>
-            {showBadge && (
-              <span className="text-[11px] font-medium text-amber-500">PRO</span>
-            )}
-          </Link>
-        );
-      }}
-    />
-  );
-}
-
-// Locale switching using next-intl's router (preserves query params)
-function useLocaleSwitch() {
-  const router = useRouter();
-  const rawPathname = usePathname();
-  const searchParams = useSearchParams();
-
-  return (newLocale: Locale) => {
-    const pathname = stripLocaleFromPathname(rawPathname);
-    const search = searchParams.toString();
-    const fullPath = `${pathname}${search ? `?${search}` : ''}`;
-    router.replace(fullPath, { locale: newLocale });
-  };
-}
-
-// Language menu items for the More dropdown
-function LanguageMenuItems() {
-  const locale = useLocale() as Locale;
-  const switchLocale = useLocaleSwitch();
-
-  return (
-    <>
-      <MenuSeparator />
-      <div className="px-3 py-1.5">
-        <span className="text-xs font-medium text-muted-foreground">Language</span>
-      </div>
-      <div className="px-1 pb-1">
-        {routing.locales.map((loc) => (
-          <MenuItem
-            key={loc}
-            onClick={() => switchLocale(loc)}
-            className={cn(
-              "flex items-center justify-between w-full px-2 rounded",
-              locale === loc && "bg-accent"
-            )}
-          >
-            <span>{languageNames[loc]}</span>
-            {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
-          </MenuItem>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// Theme menu items for the More dropdown
-function ThemeMenuItems() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
-
-  if (!mounted) return null;
-
-  const isDark = resolvedTheme === "dark" || resolvedTheme === "magic-blue" || resolvedTheme === "classic-dark";
-
-  return (
-    <>
-      <MenuSeparator />
-      <div className="px-3 py-1.5">
-        <span className="text-xs font-medium text-muted-foreground">Theme</span>
-        <div className="flex items-center justify-center gap-1.5 mt-1.5">
-          <button
-            onClick={() => setTheme("light")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2 transition-colors",
-              theme === "light" || (theme === "system" && !isDark)
-                ? "bg-accent text-accent-foreground"
-                : "hover:bg-accent/50 text-muted-foreground"
-            )}
-            title="Light"
-          >
-            <Sun className="size-4" />
-          </button>
-          <button
-            onClick={() => setTheme("dark")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2 transition-colors",
-              theme === "dark" || theme === "magic-blue" || theme === "classic-dark"
-                ? "bg-accent text-accent-foreground"
-                : "hover:bg-accent/50 text-muted-foreground"
-            )}
-            title="Dark"
-          >
-            <Moon className="size-4" />
-          </button>
-          <button
-            onClick={() => setTheme("system")}
-            className={cn(
-              "flex items-center justify-center rounded-md p-2 transition-colors",
-              theme === "system"
-                ? "bg-accent text-accent-foreground"
-                : "hover:bg-accent/50 text-muted-foreground"
-            )}
-            title="System"
-          >
-            <Laptop className="size-4" />
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
 
 interface ProxyContentProps {
   url: string;
@@ -259,42 +88,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const activeArticle = articleQuery.data?.article;
   const articleTitle = activeArticle?.title;
   const articleTextContent = activeArticle?.textContent;
-
-  // Copy page state and handlers
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyPage = async () => {
-    try {
-      let markdown = `# ${articleTitle || "Article"}\n\n`;
-      markdown += `**Source:** ${url}\n\n`;
-      if (articleTextContent) {
-        markdown += `---\n\n${articleTextContent}\n\n`;
-      }
-      await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy:", error);
-    }
-  };
-
-  const handleOpenInAI = (service: "chatgpt" | "claude") => {
-    const proxyUrlObj = new URL("https://www.smry.ai/proxy");
-    proxyUrlObj.searchParams.set("url", url);
-    if (source) {
-      proxyUrlObj.searchParams.set("source", source);
-    }
-    const smryUrl = proxyUrlObj.toString();
-    let aiUrl: string;
-    if (service === "chatgpt") {
-      const prompt = `Read from '${smryUrl}' so I can ask questions about it.`;
-      aiUrl = `https://chatgpt.com/?hints=search&prompt=${encodeURIComponent(prompt)}`;
-    } else {
-      const prompt = `Read from '${smryUrl}' so I can ask questions about it.`;
-      aiUrl = `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
-    }
-    window.open(aiUrl, "_blank", "noopener,noreferrer");
-  };
 
   // Track initialization state per URL
   const initializedUrlRef = useRef<string | null>(null);
@@ -346,17 +139,18 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     addArticleToHistory(url, firstSuccessfulArticle.title || "Untitled Article");
   }, [firstSuccessfulArticle, url]);
 
-  const settingsDrawerRef = React.useRef<SettingsDrawerHandle>(null);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [styleOptionsOpen, setStyleOptionsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [sidebarActiveTab, setSidebarActiveTab] = useState<"chat" | "history">("chat");
 
-  // Left sidebar (chat history) state
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const historyPanelRef = useRef<ImperativePanelHandle>(null);
-  const articleChatRef = useRef<ArticleChatHandle>(null);
+  const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);
+  const mobileSettingsRef = useRef<SettingsDrawerHandle>(null);
   const creatingThreadRef = useRef(false);
   const {
     threads,
@@ -397,6 +191,40 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     },
     [setQuery]
   );
+
+  // Copy page as markdown (used by ⌘C keyboard shortcut)
+  // Note: Visual feedback is handled internally by FloatingToolbar when using the menu
+  const handleCopyPage = React.useCallback(async () => {
+    try {
+      let markdown = `# ${articleTitle || "Article"}\n\n`;
+      markdown += `**Source:** ${url}\n\n`;
+      if (articleTextContent) {
+        markdown += `---\n\n${articleTextContent}\n\n`;
+      }
+      await navigator.clipboard.writeText(markdown);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  }, [articleTitle, articleTextContent, url]);
+
+  // Open in external AI service
+  const handleOpenInAI = React.useCallback((service: "chatgpt" | "claude") => {
+    const proxyUrlObj = new URL("https://www.smry.ai/proxy");
+    proxyUrlObj.searchParams.set("url", url);
+    if (source) {
+      proxyUrlObj.searchParams.set("source", source);
+    }
+    const smryUrl = proxyUrlObj.toString();
+    let aiUrl: string;
+    if (service === "chatgpt") {
+      const prompt = `Read from '${smryUrl}' so I can ask questions about it.`;
+      aiUrl = `https://chatgpt.com/?hints=search&prompt=${encodeURIComponent(prompt)}`;
+    } else {
+      const prompt = `Read from '${smryUrl}' so I can ask questions about it.`;
+      aiUrl = `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+    }
+    window.open(aiUrl, "_blank", "noopener,noreferrer");
+  }, [url, source]);
 
   // Scroll refs (shared between progress tracking and header hide)
   const desktopScrollRef = useRef<HTMLDivElement>(null);
@@ -532,21 +360,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     }
   }, [sidebarOpen]);
 
-  // Sync history panel with historyOpen state
-  useEffect(() => {
-    const panel = historyPanelRef.current;
-    if (!panel) return;
-
-    const isExpanded = panel.getSize() > 0;
-    if (historyOpen === isExpanded) return;
-
-    if (historyOpen) {
-      panel.expand(18);
-    } else {
-      panel.collapse();
-    }
-  }, [historyOpen]);
-
   // Handle new chat from history sidebar
   const handleNewChat = React.useCallback(() => {
     let articleDomain: string | undefined;
@@ -559,8 +372,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       articleDomain,
     });
     // Clear current chat messages for the new thread
-    articleChatRef.current?.clearMessages();
-    setHistoryOpen(false);
+    tabbedSidebarRef.current?.clearMessages();
   }, [createThread, url, articleTitle]);
 
   // Use ref for currentThreadId so the callback always reads the latest value
@@ -576,7 +388,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const isLoadingThreadRef = useRef(false);
 
   // Auto-load the most recent thread for this article URL on page load.
-  // Uses articleChatRef.setMessages() to push messages into the already-mounted chat
+  // Uses tabbedSidebarRef.setMessages() to push messages into the already-mounted chat
   // (since the initialMessages prop is ignored after mount by useChat's useState).
   //
   // Guard: `currentThreadId` is null on fresh load, set once a thread is loaded.
@@ -598,7 +410,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     (async () => {
       const thread = await getThreadWithMessages(match.id);
       if (thread && thread.messages.length > 0) {
-        articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
+        tabbedSidebarRef.current?.setMessages(thread.messages as UIMessage[]);
       }
       requestAnimationFrame(() => {
         isLoadingThreadRef.current = false;
@@ -617,9 +429,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     // Try local messages first, then fetch from server if empty (cross-device)
     const thread = await getThreadWithMessages(threadId);
     if (thread && thread.messages.length > 0) {
-      articleChatRef.current?.setMessages(thread.messages as UIMessage[]);
+      tabbedSidebarRef.current?.setMessages(thread.messages as UIMessage[]);
     } else {
-      articleChatRef.current?.clearMessages();
+      tabbedSidebarRef.current?.clearMessages();
     }
 
     // Allow the echo effect to fire and be skipped before re-enabling saves
@@ -682,13 +494,33 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       // ⌘I — Toggle AI chat
       if (mod && e.key === "i") {
         e.preventDefault();
-        handleSidebarChange(!sidebarOpen);
+        if (sidebarOpen && sidebarActiveTab === "chat") {
+          // Already on chat tab, close sidebar
+          handleSidebarChange(false);
+        } else {
+          // Open sidebar and switch to chat tab
+          if (!sidebarOpen) {
+            handleSidebarChange(true);
+          }
+          tabbedSidebarRef.current?.setActiveTab("chat");
+          setSidebarActiveTab("chat");
+        }
         return;
       }
-      // ⌘⇧H — Toggle history sidebar
+      // ⌘⇧H — Toggle history tab in sidebar
       if (mod && e.shiftKey && (e.key === "h" || e.key === "H")) {
         e.preventDefault();
-        setHistoryOpen((prev) => !prev);
+        if (sidebarOpen && sidebarActiveTab === "history") {
+          // Already on history tab, close sidebar
+          handleSidebarChange(false);
+        } else {
+          // Open sidebar and switch to history tab
+          if (!sidebarOpen) {
+            handleSidebarChange(true);
+          }
+          tabbedSidebarRef.current?.setActiveTab("history");
+          setSidebarActiveTab("history");
+        }
         return;
       }
       // ⌘⇧N — New chat thread
@@ -700,12 +532,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       // ⌘⇧C — Copy last AI response
       if (mod && e.shiftKey && (e.key === "c" || e.key === "C")) {
         e.preventDefault();
-        articleChatRef.current?.copyLastResponse();
+        tabbedSidebarRef.current?.copyLastResponse();
         return;
       }
       // Esc — Stop AI generation (don't preventDefault so dialogs still close)
       if (e.key === "Escape") {
-        articleChatRef.current?.stopGeneration();
+        tabbedSidebarRef.current?.stopGeneration();
         return;
       }
 
@@ -721,14 +553,68 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       // / — Focus chat input (only when sidebar is open)
       if (e.key === "/" && !mod && sidebarOpen) {
         e.preventDefault();
-        articleChatRef.current?.focusInput();
+        tabbedSidebarRef.current?.focusInput();
+        return;
+      }
+      // V — Cycle view mode (Reader → Original → Frame)
+      if ((e.key === "v" || e.key === "V") && !mod) {
+        e.preventDefault();
+        const modes: Array<"markdown" | "html" | "iframe"> = ["markdown", "html", "iframe"];
+        const currentIndex = modes.indexOf(viewMode);
+        const nextIndex = (currentIndex + 1) % modes.length;
+        handleViewModeChange(modes[nextIndex]);
+        return;
+      }
+      // O — Open original URL
+      if ((e.key === "o" || e.key === "O") && !mod) {
+        e.preventDefault();
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      // , — Open settings popover
+      if (e.key === "," && !mod) {
+        e.preventDefault();
+        setSettingsOpen(true);
+        return;
+      }
+      // ⌘C — Copy page as markdown (only when no text is selected and not in input)
+      if (mod && (e.key === "c" || e.key === "C") && !e.shiftKey) {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed) {
+          e.preventDefault();
+          handleCopyPage();
+        }
+        return;
+      }
+      // ⌘⇧G — Open in ChatGPT (uses modifier to prevent accidental triggers)
+      if (mod && e.shiftKey && (e.key === "g" || e.key === "G")) {
+        e.preventDefault();
+        handleOpenInAI("chatgpt");
+        return;
+      }
+      // ⌘⇧A — Open in Claude (uses modifier to prevent accidental triggers)
+      if (mod && e.shiftKey && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        handleOpenInAI("claude");
+        return;
+      }
+      // ⇧S — Open Share modal (Shift+S must be before plain S)
+      if (e.shiftKey && (e.key === "s" || e.key === "S") && !mod) {
+        e.preventDefault();
+        setShareOpen(true);
+        return;
+      }
+      // S — Open Style Options popover
+      if ((e.key === "s" || e.key === "S") && !mod && !e.shiftKey) {
+        e.preventDefault();
+        setStyleOptionsOpen(true);
         return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarOpen, handleSidebarChange, handleNewChat]);
+  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -738,7 +624,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <header className="z-30 hidden md:flex h-14 shrink-0 items-center border-b border-border/40 bg-background px-4">
-          {/* Desktop Header - Logo */}
+          {/* Desktop Header - Minimal: Logo + Auth only */}
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/"
@@ -753,190 +639,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 priority
               />
             </Link>
-
-            {/* View Mode Pills */}
-            <div className="flex items-center p-1 bg-muted rounded-xl" role="group" aria-label="View mode">
-              <button
-                onClick={() => handleViewModeChange("markdown")}
-                aria-label="Reader view mode"
-                aria-pressed={viewMode === "markdown"}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
-                  viewMode === "markdown"
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                )}
-              >
-                reader
-              </button>
-              <button
-                onClick={() => handleViewModeChange("html")}
-                aria-label="Original HTML view mode"
-                aria-pressed={viewMode === "html"}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
-                  viewMode === "html"
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                )}
-              >
-                original
-              </button>
-              <button
-                onClick={() => handleViewModeChange("iframe")}
-                aria-label="Iframe view mode"
-                aria-pressed={viewMode === "iframe"}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
-                  viewMode === "iframe"
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                )}
-              >
-                iframe
-              </button>
-            </div>
           </div>
 
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-1.5">
-              {/* History sidebar toggle */}
-              <button
-                onClick={() => setHistoryOpen((prev) => !prev)}
-                className="h-9 px-3 text-sm rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-                title="Chat history (⌘⇧H)"
-              >
-                <HistoryIcon className="size-4" />
-                History
-              </button>
-
-              {/* Ask AI button - toggles sidebar */}
-              <button
-                onClick={() => handleSidebarChange(!sidebarOpen)}
-                className="relative h-9 pl-3 pr-12 text-sm border rounded-lg transition-colors cursor-pointer text-muted-foreground bg-muted/50 border-border hover:bg-muted hover:text-foreground"
-              >
-                <span className="mt-px">Ask AI</span>
-                <span className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <Kbd>⌘I</Kbd>
-                </span>
-              </button>
-
-              <ShareButton
-                url={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
-                originalUrl={url}
-                source={source || "smry-fast"}
-                viewMode={viewMode || "markdown"}
-                sidebarOpen={sidebarOpen}
-                articleTitle={articleTitle}
-              />
-
-              {/* User Section */}
-              <AuthBar variant="compact" showUpgrade={false} className="ml-1" />
-
-              {/* Overflow Menu for less common actions */}
-              <Menu>
-                <MenuTrigger
-                  id="proxy-more-options-menu"
-                  render={(props) => {
-                    const { key, ...rest } = props as typeof props & { key?: React.Key };
-                    return (
-                      <Button
-                        key={key}
-                        {...rest}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      >
-                        <MoreHorizontal className="size-4" aria-hidden="true" />
-                        <span className="sr-only">More options</span>
-                      </Button>
-                    );
-                  }}
-                />
-                <MenuPopup side="bottom" align="end" className="min-w-[220px]">
-                  {/* Copy & AI actions */}
-                  <MenuItem
-                    onClick={handleCopyPage}
-                    className="flex items-center gap-2 px-3"
-                  >
-                    {copied ? (
-                      <Check className="size-4 text-green-600" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )}
-                    <span className="flex-1">{copied ? "Copied!" : "Copy page"}</span>
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => handleOpenInAI("chatgpt")}
-                    className="flex items-center gap-2 px-3"
-                  >
-                    <OpenAIIcon className="size-4" />
-                    <span className="flex-1">Open in ChatGPT</span>
-                    <ArrowUpRight className="size-3 opacity-50 shrink-0" />
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => handleOpenInAI("claude")}
-                    className="flex items-center gap-2 px-3"
-                  >
-                    <ClaudeIcon className="size-4" />
-                    <span className="flex-1">Open in Claude</span>
-                    <ArrowUpRight className="size-3 opacity-50 shrink-0" />
-                  </MenuItem>
-                  <MenuSeparator />
-                  <HistoryMenuItem />
-                  <ThemeMenuItems />
-                  <LanguageMenuItems />
-                  <MenuSeparator />
-                  <MenuItem
-                    render={(props) => {
-                      const { key, className, ...rest } = props as typeof props & {
-                        key?: React.Key;
-                        className?: string;
-                      };
-                      return (
-                        <a
-                          key={key}
-                          {...rest}
-                          href="https://smryai.userjot.com/"
-                          target="_blank"
-                          rel="noreferrer"
-                          className={cn(className, "flex items-center gap-2 w-full px-3")}
-                        >
-                          <BugIcon className="size-4" />
-                          <span className="flex-1">Report Bug</span>
-                          <ExternalLink className="size-3 opacity-50 shrink-0" />
-                        </a>
-                      );
-                    }}
-                  />
-                  <MenuItem
-                    render={(props) => {
-                      const { key, className, ...rest } = props as typeof props & {
-                        key?: React.Key;
-                        className?: string;
-                      };
-                      return (
-                        <a
-                          key={key}
-                          {...rest}
-                          href="https://smryai.userjot.com/"
-                          target="_blank"
-                          rel="noreferrer"
-                          className={cn(className, "flex items-center gap-2 w-full px-3")}
-                        >
-                          <FeedbackIcon className="size-4" />
-                          <span className="flex-1">Send Feedback</span>
-                          <ExternalLink className="size-3 opacity-50 shrink-0" />
-                        </a>
-                      );
-                    }}
-                  />
-                </MenuPopup>
-              </Menu>
-          </div>
+          {/* Right: Auth */}
+          <AuthBar variant="compact" showUpgrade={false} />
         </header>
 
         {/* Content Area - conditionally render desktop or mobile layout */}
@@ -949,56 +658,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             // Desktop: Resizable panels with sidebars
             <div className="h-full relative">
               <ResizablePanelGroup direction="horizontal" className="h-full">
-                {/* Left sidebar panel - Chat history */}
-                <ResizablePanel
-                  ref={historyPanelRef}
-                  defaultSize={historyOpen ? 18 : 0}
-                  minSize={15}
-                  maxSize={25}
-                  collapsible
-                  collapsedSize={0}
-                  className="bg-sidebar"
-                  onCollapse={() => {
-                    if (historyOpen) setHistoryOpen(false);
-                  }}
-                  onExpand={() => {
-                    if (!historyOpen) setHistoryOpen(true);
-                  }}
-                >
-                  <ChatSidebar
-                    isOpen={historyOpen}
-                    onOpenChange={setHistoryOpen}
-                    onNewChat={handleNewChat}
-                    onSelectThread={handleSelectThread}
-                    activeThreadId={currentThreadId}
-                    isPremium={isPremium}
-                    threads={threads}
-                    onDeleteThread={deleteThread}
-                    onTogglePin={togglePin}
-                    onRenameThread={renameThread}
-                    groupedThreads={groupedThreads}
-                    hasMore={hasMore}
-                    isLoadingMore={isLoadingMore}
-                    onLoadMore={loadMore}
-                    searchThreads={searchThreads}
-                  />
-                </ResizablePanel>
-
-                {/* Left resize handle */}
-                <ResizableHandle
-                  withToggle
-                  isCollapsed={!historyOpen}
-                  onToggle={() => setHistoryOpen(!historyOpen)}
-                  panelPosition="left"
-                  className={cn(
-                    "transition-opacity duration-150",
-                    !historyOpen && "opacity-0 hover:opacity-100"
-                  )}
-                />
-
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
                   <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-card scrollbar-hide">
+                    {/* Content container - prose width controlled by CSS variables */}
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
                         data={articleQuery.data}
@@ -1034,7 +697,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 />
 
-                {/* Summary sidebar panel */}
+                {/* Tabbed sidebar panel - Chat + History */}
                 <ResizablePanel
                   ref={summaryPanelRef}
                   defaultSize={sidebarOpen ? 25 : 0}
@@ -1051,13 +714,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   }}
                 >
                   <div className="h-full">
-                    <ArticleChat
-                      ref={articleChatRef}
+                    <TabbedSidebar
+                      ref={tabbedSidebarRef}
                       articleContent={articleTextContent || ""}
                       articleTitle={articleTitle}
                       isOpen={sidebarOpen}
                       onOpenChange={handleSidebarChange}
-                      variant="sidebar"
                       isPremium={isPremium}
                       initialMessages={threadInitialMessages}
                       onMessagesChange={isPremium ? handleMessagesChange : undefined}
@@ -1068,6 +730,19 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       microAd={!isPremium ? microAd : null}
                       onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
                       onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}
+                      threads={threads}
+                      activeThreadId={currentThreadId}
+                      onNewChat={handleNewChat}
+                      onSelectThread={handleSelectThread}
+                      onDeleteThread={deleteThread}
+                      onTogglePin={togglePin}
+                      onRenameThread={renameThread}
+                      groupedThreads={groupedThreads}
+                      hasMore={hasMore}
+                      isLoadingMore={isLoadingMore}
+                      onLoadMore={loadMore}
+                      searchThreads={searchThreads}
+                      onTabChange={setSidebarActiveTab}
                     />
                   </div>
                 </ResizablePanel>
@@ -1088,6 +763,56 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   />
                 </div>
               )}
+
+              {/* Floating Toolbar - Desktop only */}
+              <FloatingToolbar
+                viewMode={viewMode}
+                onViewModeChange={handleViewModeChange}
+                originalUrl={url}
+                shareUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
+                articleTitle={articleTitle}
+                articleTextContent={articleTextContent}
+                source={source || "smry-fast"}
+                sidebarOpen={sidebarOpen}
+                sidebarActiveTab={sidebarActiveTab}
+                onSidebarToggle={() => {
+                  if (sidebarOpen && sidebarActiveTab === "chat") {
+                    // Already on chat tab, close sidebar
+                    handleSidebarChange(false);
+                  } else {
+                    // Open sidebar and switch to chat tab
+                    if (!sidebarOpen) {
+                      handleSidebarChange(true);
+                    }
+                    tabbedSidebarRef.current?.setActiveTab("chat");
+                    setSidebarActiveTab("chat");
+                  }
+                }}
+                onHistoryToggle={() => {
+                  if (sidebarOpen && sidebarActiveTab === "history") {
+                    // Already on history tab, close sidebar
+                    handleSidebarChange(false);
+                  } else {
+                    // Open sidebar and switch to history tab
+                    if (!sidebarOpen) {
+                      handleSidebarChange(true);
+                    }
+                    tabbedSidebarRef.current?.setActiveTab("history");
+                    setSidebarActiveTab("history");
+                  }
+                }}
+                onOpenSettings={() => setSettingsOpen(true)}
+                styleOptionsOpen={styleOptionsOpen}
+                onStyleOptionsOpenChange={setStyleOptionsOpen}
+                shareOpen={shareOpen}
+                onShareOpenChange={setShareOpen}
+              />
+
+              {/* Settings Popover - Desktop dialog, Mobile drawer */}
+              <SettingsPopover
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+              />
             </div>
           ) : (
             // Mobile: Clean article-first layout with bottom bar
@@ -1143,20 +868,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       >
                         <ChatGpt className="size-5" />
                       </button>
-                      <SettingsDrawer
-                        ref={settingsDrawerRef}
-                        viewMode={viewMode}
-                        onViewModeChange={handleViewModeChange}
-                      />
                     </div>
                   </header>
                 </div>
 
-                <div className={cn(
-                  viewMode === "html"
-                    ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
-                    : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
-                )}>
+                <div
+                  className={cn(
+                    viewMode === "html"
+                      ? "min-h-full px-2 pt-2" // Near-fullscreen with small margins for HTML mode
+                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4 min-h-full" // Padded for reader mode
+                  )}
+                >
                   {/* Article content */}
                   <ArticleContent
                     data={articleQuery.data}
@@ -1233,7 +955,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 smryUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                 originalUrl={url}
                 articleTitle={articleTitle}
-                onOpenSettings={() => settingsDrawerRef.current?.open()}
+                onOpenSettings={() => mobileSettingsRef.current?.open()}
+              />
+
+              {/* Mobile Settings Drawer - native iOS style */}
+              <SettingsDrawer
+                ref={mobileSettingsRef}
+                viewMode={viewMode || "markdown"}
+                onViewModeChange={handleViewModeChange}
               />
             </div>
           )}

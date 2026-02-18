@@ -24,6 +24,7 @@ export const APP_ROUTES = [
   "/changelog",
   "/guide",
   "/auth",
+  "/chat",
 ];
 
 /**
@@ -151,8 +152,10 @@ export function buildProxyRedirectUrl(
       : `https://${externalUrlRaw}`;
   }
 
-  // Build the redirect URL: /proxy?url=externalUrl&smryParam1=value1
-  const redirectUrl = new URL("/proxy", origin);
+  // Build the redirect URL: /en/proxy?url=externalUrl&smryParam1=value1
+  // Note: We use /en/proxy because the proxy page is at app/[locale]/proxy/page.tsx
+  // and the rewrite bypasses i18n middleware. Using /en ensures the page is found.
+  const redirectUrl = new URL("/en/proxy", origin);
   redirectUrl.searchParams.set("url", normalizedExternalUrl);
 
   // Add SMRY params back

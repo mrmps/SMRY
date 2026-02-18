@@ -14,8 +14,15 @@ interface KeyboardShortcutsDialogProps {
 }
 
 const shortcuts = [
-  { keys: ["⌘", "I"], description: "Toggle AI chat" },
-  { keys: ["⌘", "⇧", "H"], description: "Toggle history sidebar" },
+  { keys: ["V"], description: "Cycle view mode" },
+  { keys: ["O"], description: "Open original URL" },
+  { keys: ["⌘", "C"], description: "Copy page" },
+  { keys: ["⌘", "⇧", "G"], description: "Open in ChatGPT" },
+  { keys: ["⌘", "⇧", "A"], description: "Open in Claude" },
+  { keys: ["S"], description: "Style Options" },
+  { keys: [","], description: "Open settings" },
+  { keys: ["⌘", "I"], description: "Toggle chat tab" },
+  { keys: ["⌘", "⇧", "H"], description: "Toggle history tab" },
   { keys: ["⌘", "⇧", "N"], description: "New chat thread" },
   { keys: ["⌘", "⇧", "C"], description: "Copy last AI response" },
   { keys: ["Esc"], description: "Stop AI generation" },

@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Novo:",
-    "message": "Pergunte à IA qualquer coisa sobre os artigos que você lê",
+    "message": "Barra flutuante, 8 paletas de temas e configurações móveis redesenhadas",
     "changelog": "Registro de alterações"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "Atualizar"
   },
   "changelogEntries": {
+    "entrySidebar_date": "18 de fevereiro de 2026",
+    "entrySidebar_change1_text": "Barra de ferramentas flutuante",
+    "entrySidebar_change1_detail": "Acesse modos de visualização, chat com IA, opções de estilo e compartilhamento em uma barra persistente — sem procurar em menus.",
+    "entrySidebar_change2_text": "Barra lateral com abas",
+    "entrySidebar_change2_detail": "Alterne entre chat e histórico em um só lugar. Sua conversa permanece intacta enquanto você navega.",
+    "entrySidebar_change3_text": "Configurações móveis redesenhadas",
+    "entrySidebar_change3_detail": "Navegação com gavetas nativas e áreas de toque maiores. Personalize tudo sem sair do seu artigo.",
+    "entrySidebar_change4_text": "Personalização do leitor",
+    "entrySidebar_change4_detail": "7 fontes incluindo OpenDyslexic, tamanho, espaçamento e largura ajustáveis. Preferências salvas automaticamente.",
+    "entrySidebar_change5_text": "8 novas paletas de temas",
+    "entrySidebar_change5_detail": "Opções claras: Branco, Sépia, Papel, Aurora. Opções escuras: Carbono, Preto, Inverno, Floresta.",
     "entryDesign_date": "17 de fevereiro de 2026",
     "entryDesign_change1_text": "Tema claro Papel Quente",
     "entryDesign_change1_detail": "Novo tema claro padrão projetado para leitura prolongada. Fundos creme suaves com texto em tons sépia quentes que parecem papel de livro de qualidade — confortável por horas sem cansaço visual.",

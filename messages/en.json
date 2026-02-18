@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "New:",
-    "message": "Warm Paper theme — easier on the eyes for extended reading",
+    "message": "Floating toolbar, 8 theme palettes, and redesigned mobile settings",
     "changelog": "Changelog"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entrySidebar_date": "Feb 18, 2026",
+    "entrySidebar_change1_text": "Floating toolbar",
+    "entrySidebar_change1_detail": "Access view modes, AI chat, style options, and sharing from a persistent toolbar — no more hunting through menus.",
+    "entrySidebar_change2_text": "Tabbed sidebar",
+    "entrySidebar_change2_detail": "Switch between chat and history in one place. Your conversation stays intact as you browse.",
+    "entrySidebar_change3_text": "Redesigned mobile settings",
+    "entrySidebar_change3_detail": "Native-feeling drawer navigation with larger touch targets. Customize everything without leaving your article.",
+    "entrySidebar_change4_text": "Reader customization",
+    "entrySidebar_change4_detail": "7 fonts including OpenDyslexic, adjustable size, spacing, and width. Preferences save automatically.",
+    "entrySidebar_change5_text": "8 new theme palettes",
+    "entrySidebar_change5_detail": "Light options: White, Sepia, Paper, Dawn. Dark options: Carbon, Black, Winter, Forest.",
     "entryDesign_date": "Feb 17, 2026",
     "entryDesign_change1_text": "Warm Paper light theme",
     "entryDesign_change1_detail": "New default light theme designed for extended reading. Soft cream backgrounds with warm sepia-toned text feel like quality book paper — comfortable for hours without eye strain.",

@@ -3,7 +3,7 @@ import { ReactScan } from "@/components/shared/react-scan";
 import { ReactGrab } from "@/components/shared/react-grab";
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
-import { Syne, Literata } from "next/font/google";
+import { Syne, Literata, Atkinson_Hyperlegible, Merriweather } from "next/font/google";
 import "./globals.css";
 import "streamdown/styles.css";
 
@@ -17,6 +17,22 @@ const syne = Syne({
 const literata = Literata({
   subsets: ["latin"],
   variable: "--font-literata",
+  display: "swap",
+});
+
+// Atkinson Hyperlegible - Optimized for visual clarity and accessibility
+const atkinson = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-atkinson",
+  display: "swap",
+});
+
+// Merriweather - Elegant screen-optimized serif
+const merriweather = Merriweather({
+  subsets: ["latin"],
+  weight: ["300", "400", "700"],
+  variable: "--font-merriweather",
   display: "swap",
 });
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -87,7 +103,7 @@ export default async function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <body
-          className={`${GeistSans.className} ${syne.variable} ${literata.variable} bg-background text-foreground`}
+          className={`${GeistSans.className} ${GeistSans.variable} ${syne.variable} ${literata.variable} ${atkinson.variable} ${merriweather.variable} bg-background text-foreground`}
         >
           <Databuddy
             clientId="638f8e5f-f436-4d00-a459-66dee9152e3c"
@@ -104,7 +120,7 @@ export default async function RootLayout({
             attribute="class"
             defaultTheme="system"
             enableSystem
-            themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "system"]}
+            themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "carbon", "black", "winter", "forest", "dawn", "system"]}
             disableTransitionOnChange
           >
             <GoogleAnalytics gaId="G-RFC55FX414" />

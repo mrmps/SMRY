@@ -6,7 +6,7 @@
  * Multi-theme support
  * Themes: light, pure-light, dark, magic-blue, classic-dark
  */
-@custom-variant dark (&:is(.dark *, .magic-blue *, .classic-dark *));
+@custom-variant dark (&:is(.dark *, .magic-blue *, .classic-dark *, .carbon *, .black *, .forest *));
 
 @theme inline {
   /* Core semantic colors */
@@ -94,6 +94,17 @@
  * Soft cream background with warm brown-black text for extended reading
  * =============================================================================
  */
+/* =============================================================================
+ * READER TYPOGRAPHY CSS VARIABLES
+ * These can be overridden by JavaScript for user preferences
+ * ============================================================================= */
+:root {
+  --reader-font-family: system-ui, -apple-system, "BlinkMacSystemFont", "Segoe UI", "Roboto", sans-serif;
+  --reader-font-size: 18px;
+  --reader-line-height: 1.8;
+  --reader-content-width: 740px;
+}
+
 :root,
 .light {
   --radius: 0.625rem;
@@ -478,6 +489,416 @@
   --chart-5: #0091ff;
 }
 
+/*
+ * =============================================================================
+ * THEME: Carbon
+ * High contrast dark mode - maximum readability
+ * Based on Matter Reader's carbon theme
+ * =============================================================================
+ */
+.carbon {
+  --background: #181a1b;
+  --foreground: #fffffff2;
+
+  --foreground-muted: #ffffffbf;
+  --foreground-faint: #ffffff87;
+
+  /* Layered surfaces for depth */
+  --surface-1: #1f2023;
+  --surface-2: #2e2f33;
+  --surface-3: #44454b;
+
+  --card: #1f2023;
+  --card-foreground: #fffffff2;
+  --popover: #1f2023;
+  --popover-foreground: #fffffff2;
+
+  --primary: #fffffff2;
+  --primary-foreground: #181a1b;
+
+  --secondary: #2e2f33;
+  --secondary-foreground: #fffffff2;
+
+  --muted: #1f2023;
+  --muted-foreground: #ffffffbf;
+
+  --accent: #2e2f33;
+  --accent-foreground: #fffffff2;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #ffffff26;
+  --input: #ffffff26;
+  --ring: #009efa;
+
+  --glow: #6d7eec;
+  --glow-muted: #009efa;
+
+  /* Link colors - Same as text, distinguished by underline only */
+  --link-color: #fffffff2;
+  --link-underline: rgba(255, 255, 255, 0.35);
+
+  /* Article text - Soft off-white for comfortable reading */
+  --article-text: #fffffff2;
+  --article-text-muted: #ffffffbf;
+
+  /* Sidebar - Same as background for clean look */
+  --sidebar: #181a1b;
+  --sidebar-foreground: #fffffff2;
+  --sidebar-primary: #24aeff;
+  --sidebar-primary-foreground: #fffffff2;
+  --sidebar-accent: #2e2f33;
+  --sidebar-accent-foreground: #fffffff2;
+  --sidebar-border: #ffffff26;
+  --sidebar-ring: #009efa;
+
+  --success: #62d348;
+  --success-foreground: #181a1b;
+  --warning: #facc15;
+  --warning-foreground: #181a1b;
+  --info: #009efa;
+  --info-foreground: #181a1b;
+
+  --chart-1: #009efa;
+  --chart-2: #62d348;
+  --chart-3: #ef4444;
+  --chart-4: #facc15;
+  --chart-5: #6d7eec;
+}
+
+/*
+ * =============================================================================
+ * THEME: Black (OLED)
+ * True black for OLED displays - maximum battery savings
+ * =============================================================================
+ */
+.black {
+  --background: #000000;
+  --foreground: #e0e0e0;
+
+  --foreground-muted: #9a9a9a;
+  --foreground-faint: #666666;
+
+  --surface-1: #000000;
+  --surface-2: #0a0a0a;
+  --surface-3: #141414;
+
+  --card: #050505;
+  --card-foreground: #e0e0e0;
+  --popover: #0a0a0a;
+  --popover-foreground: #e0e0e0;
+
+  --primary: #e0e0e0;
+  --primary-foreground: #000000;
+
+  --secondary: #141414;
+  --secondary-foreground: #e0e0e0;
+
+  --muted: #0a0a0a;
+  --muted-foreground: #9a9a9a;
+
+  --accent: #141414;
+  --accent-foreground: #e0e0e0;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #1f1f1f;
+  --input: #1f1f1f;
+  --ring: #404040;
+
+  --glow: #737373;
+  --glow-muted: #525252;
+
+  --link-color: #e0e0e0;
+  --link-underline: rgba(224, 224, 224, 0.35);
+
+  --article-text: #d4d4d4;
+  --article-text-muted: #9a9a9a;
+
+  --sidebar: #000000;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #737373;
+  --sidebar-primary-foreground: #e0e0e0;
+  --sidebar-accent: #0f0f0f;
+  --sidebar-accent-foreground: #e0e0e0;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: #404040;
+
+  --success: #22c55e;
+  --success-foreground: #000000;
+  --warning: #eab308;
+  --warning-foreground: #000000;
+  --info: #3b82f6;
+  --info-foreground: #000000;
+
+  --chart-1: #737373;
+  --chart-2: #22c55e;
+  --chart-3: #dc2626;
+  --chart-4: #eab308;
+  --chart-5: #3b82f6;
+}
+
+/*
+ * =============================================================================
+ * THEME: Winter
+ * Cool blue-tinted light theme - crisp and clean
+ * =============================================================================
+ */
+.winter {
+  --background: #e2e8f0;
+  --foreground: #1e293b;
+
+  --foreground-muted: #64748b;
+  --foreground-faint: #94a3b8;
+
+  --surface-1: #cbd5e1;
+  --surface-2: #94a3b8;
+  --surface-3: #64748b;
+
+  --card: #eef2f7;
+  --card-foreground: #1e293b;
+  --popover: #eef2f7;
+  --popover-foreground: #1e293b;
+
+  --primary: #1e293b;
+  --primary-foreground: #f8fafc;
+
+  --secondary: #e2e8f0;
+  --secondary-foreground: #1e293b;
+
+  --muted: #e2e8f0;
+  --muted-foreground: #64748b;
+
+  --accent: #cbd5e1;
+  --accent-foreground: #1e293b;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #cbd5e1;
+  --input: #cbd5e1;
+  --ring: #6366f1;
+
+  --glow: #6366f1;
+  --glow-muted: #a5b4fc;
+
+  --link-color: #1e293b;
+  --link-underline: rgba(30, 41, 59, 0.4);
+
+  --article-text: #334155;
+  --article-text-muted: #64748b;
+
+  --sidebar: #e2e8f0;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #1e293b;
+  --sidebar-primary-foreground: #f8fafc;
+  --sidebar-accent: #cbd5e1;
+  --sidebar-accent-foreground: #1e293b;
+  --sidebar-border: #94a3b8;
+  --sidebar-ring: #6366f1;
+
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #1e293b;
+  --info: #0ea5e9;
+  --info-foreground: #ffffff;
+
+  --chart-1: #6366f1;
+  --chart-2: #22c55e;
+  --chart-3: #ef4444;
+  --chart-4: #f59e0b;
+  --chart-5: #0ea5e9;
+}
+
+/* Winter/Paper theme - set Tailwind v4 semantic color tokens directly */
+/* In Tailwind v4, bg-card uses --color-card, so we must set it here */
+.winter {
+  --color-card: #eef2f7;
+  --color-card-foreground: #1e293b;
+  --color-background: #e2e8f0;
+  --color-popover: #eef2f7;
+  --color-popover-foreground: #1e293b;
+}
+
+/* Force card background color for winter theme on all viewports */
+/* This ensures the color applies even if CSS variable cascade fails */
+.winter .bg-card,
+:root.winter .bg-card,
+html.winter .bg-card {
+  background-color: #eef2f7 !important;
+}
+
+/* Target the specific mobile scroll container */
+.winter [class*="overflow-y-auto"].bg-card {
+  background-color: #eef2f7 !important;
+}
+
+/*
+ * =============================================================================
+ * THEME: Forest
+ * Warm brown-tinted dark theme - earthy and comfortable
+ * Based on Matter Reader's forest theme
+ * =============================================================================
+ */
+.forest {
+  --background: #171512;
+  --foreground: #f0f4f2;
+
+  --foreground-muted: #f0f4ffbf;
+  --foreground-faint: #f0f4ff87;
+
+  --surface-1: #1f1c18;
+  --surface-2: #292520;
+  --surface-3: #302b26;
+
+  --card: #1f1c18;
+  --card-foreground: #f0f4f2;
+  --popover: #1f1c18;
+  --popover-foreground: #f0f4f2;
+
+  --primary: #f0f4f2;
+  --primary-foreground: #171512;
+
+  --secondary: #292520;
+  --secondary-foreground: #f0f4f2;
+
+  --muted: #1f1c18;
+  --muted-foreground: #f0f4ffbf;
+
+  --accent: #292520;
+  --accent-foreground: #f0f4f2;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #3a3530;
+  --input: #3a3530;
+  --ring: #62d348;
+
+  --glow: #62d348;
+  --glow-muted: #4ade80;
+
+  --link-color: #f0f4f2;
+  --link-underline: rgba(240, 244, 242, 0.35);
+
+  --article-text: #f0f4f2;
+  --article-text-muted: #f0f4ffbf;
+
+  --sidebar: #171512;
+  --sidebar-foreground: #f0f4f2;
+  --sidebar-primary: #62d348;
+  --sidebar-primary-foreground: #f0f4f2;
+  --sidebar-accent: #292520;
+  --sidebar-accent-foreground: #f0f4f2;
+  --sidebar-border: #3a3530;
+  --sidebar-ring: #62d348;
+
+  --success: #62d348;
+  --success-foreground: #171512;
+  --warning: #facc15;
+  --warning-foreground: #171512;
+  --info: #38bdf8;
+  --info-foreground: #171512;
+
+  --chart-1: #62d348;
+  --chart-2: #4ade80;
+  --chart-3: #ef4444;
+  --chart-4: #facc15;
+  --chart-5: #38bdf8;
+}
+
+/*
+ * =============================================================================
+ * THEME: Dawn
+ * Warm peachy/rose light theme - soft and gentle for morning reading
+ * =============================================================================
+ */
+.dawn {
+  --background: #fdf8f6;
+  --foreground: #44403c;
+
+  --foreground-muted: #78716c;
+  --foreground-faint: #a8a29e;
+
+  --surface-1: #faf5f3;
+  --surface-2: #f5ebe8;
+  --surface-3: #ede4e0;
+
+  --card: #fffaf8;
+  --card-foreground: #44403c;
+  --popover: #fffaf8;
+  --popover-foreground: #44403c;
+
+  --primary: #44403c;
+  --primary-foreground: #fdf8f6;
+
+  --secondary: #f5ebe8;
+  --secondary-foreground: #44403c;
+
+  --muted: #f5ebe8;
+  --muted-foreground: #78716c;
+
+  --accent: #ede4e0;
+  --accent-foreground: #44403c;
+
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+
+  --border: #e7ddd9;
+  --input: #e7ddd9;
+  --ring: #b45309;
+
+  --glow: #d97706;
+  --glow-muted: #fbbf24;
+
+  --link-color: #44403c;
+  --link-underline: rgba(68, 64, 60, 0.4);
+
+  --article-text: #4a4541;
+  --article-text-muted: #78716c;
+
+  --sidebar: #f5ebe8;
+  --sidebar-foreground: #44403c;
+  --sidebar-primary: #44403c;
+  --sidebar-primary-foreground: #fdf8f6;
+  --sidebar-accent: #ede4e0;
+  --sidebar-accent-foreground: #44403c;
+  --sidebar-border: #e0d6d2;
+  --sidebar-ring: #b45309;
+
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #44403c;
+  --info: #0ea5e9;
+  --info-foreground: #ffffff;
+
+  --chart-1: #d97706;
+  --chart-2: #22c55e;
+  --chart-3: #ef4444;
+  --chart-4: #f59e0b;
+  --chart-5: #0ea5e9;
+}
+
+/* Dawn theme - set Tailwind v4 semantic color tokens directly */
+.dawn {
+  --color-card: #fffaf8;
+  --color-card-foreground: #44403c;
+  --color-background: #fdf8f6;
+  --color-popover: #fffaf8;
+  --color-popover-foreground: #44403c;
+}
+
+/* Force card background color for dawn theme on all viewports */
+.dawn .bg-card,
+:root.dawn .bg-card,
+html.dawn .bg-card {
+  background-color: #fffaf8 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -577,7 +998,7 @@
 }
 
 /* Dark mode - slightly brighter for visibility */
-:is(.dark, .magic-blue, .classic-dark) .skeleton-shimmer {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .skeleton-shimmer {
   opacity: 0.12;
 }
 
@@ -635,7 +1056,7 @@
     animation: none;
     opacity: 0.1;
   }
-  :is(.dark, .magic-blue, .classic-dark) .skeleton-shimmer {
+  :is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .skeleton-shimmer {
     opacity: 0.15;
   }
 
@@ -647,21 +1068,55 @@
   }
 }
 
-/* Chat thinking indicator - shimmer text */
-.thinking-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 4px 0;
+/* Pulsing dot - thinking indicator */
+.thinking-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--muted-foreground);
+  animation: pulse-breathe 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.thinking-indicator svg {
-  flex-shrink: 0;
-  opacity: 0.4;
-  color: var(--muted-foreground);
+@keyframes pulse-breathe {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
 }
 
+/* Streaming content - smooth rendering */
+[data-streamdown] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Streaming cursor - gentle pulse */
+[data-streamdown] *:last-child::after {
+  animation: cursor-fade 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes cursor-fade {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.3; }
+}
+
+/* Mobile: reduce motion for smoother experience */
+@media (prefers-reduced-motion: reduce) {
+  .thinking-pulse {
+    animation: none;
+    opacity: 0.5;
+  }
+  [data-streamdown] *:last-child::after {
+    animation: none;
+  }
+}
+
+/* Legacy: Keep shimmer text for backwards compatibility */
 .thinking-text {
   font-size: 14px;
   line-height: 20px;
@@ -691,14 +1146,20 @@
  * This MUST be outside @layer to override Tailwind Typography plugin defaults
  * ============================================================================= */
 
-/* Base prose - Light mode */
+/* Article header - Uses reader content width */
+.article-header {
+  max-width: var(--reader-content-width, 740px);
+}
+
+/* Base prose - Uses reader preferences CSS variables */
 .prose {
-  /* Literata font for premium reading */
-  font-family: var(--font-literata), Georgia, "Times New Roman", serif !important;
-  font-size: 18px !important;
-  line-height: 1.8 !important;
+  /* Reader typography - customizable via CSS variables */
+  font-family: var(--reader-font-family) !important;
+  font-size: var(--reader-font-size) !important;
+  line-height: var(--reader-line-height) !important;
   letter-spacing: 0.01em !important;
   color: var(--article-text, #37352f) !important;
+  max-width: var(--reader-content-width, 740px) !important;
 }
 
 /* Prose text elements - Light mode */
@@ -756,43 +1217,43 @@
 }
 
 /* Dark mode prose overrides - using :is() for proper specificity */
-:is(.dark, .magic-blue, .classic-dark) .prose {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose {
   color: var(--foreground) !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark) .prose p,
-:is(.dark, .magic-blue, .classic-dark) .prose li,
-:is(.dark, .magic-blue, .classic-dark) .prose blockquote,
-:is(.dark, .magic-blue, .classic-dark) .prose td,
-:is(.dark, .magic-blue, .classic-dark) .prose th {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose p,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose li,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose blockquote,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose td,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose th {
   color: var(--foreground) !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark) .prose h1,
-:is(.dark, .magic-blue, .classic-dark) .prose h2,
-:is(.dark, .magic-blue, .classic-dark) .prose h3,
-:is(.dark, .magic-blue, .classic-dark) .prose h4,
-:is(.dark, .magic-blue, .classic-dark) .prose h5,
-:is(.dark, .magic-blue, .classic-dark) .prose h6 {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose h1,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose h2,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose h3,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose h4,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose h5,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose h6 {
   color: #e0dedb !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark) .prose a:not(h1 a):not(h2 a):not(h3 a):not(h4 a):not(h5 a):not(h6 a) {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a) {
   color: var(--link-color) !important;
   text-decoration-color: var(--link-underline) !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark) .prose strong,
-:is(.dark, .magic-blue, .classic-dark) .prose b {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose strong,
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose b {
   color: var(--foreground) !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark) .prose code {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose code {
   color: var(--foreground) !important;
   background: var(--surface-1) !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark) .prose blockquote {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose blockquote {
   border-left-color: var(--glow) !important;
   color: var(--foreground-muted) !important;
 }
@@ -813,6 +1274,14 @@
   /* Paragraph spacing for readability */
   .prose p {
     margin-bottom: 1.5em;
+  }
+
+  /* Hide empty list items - fallback CSS for any remaining empty elements */
+  /* Primary cleanup is done via JavaScript regex in content.tsx */
+  .prose li:empty,
+  .prose ul:empty,
+  .prose ol:empty {
+    display: none !important;
   }
 
   /* Remove all SVGs in article content */
@@ -1071,7 +1540,7 @@
   --p3-gold: #fbbf24;
 }
 
-.dark, .magic-blue, .classic-dark {
+.dark, .magic-blue, .classic-dark, .carbon, .black, .forest {
   --p3-emerald: #34d399;
   --p3-gold: #fcd34d;
 }
@@ -1082,7 +1551,7 @@
     --p3-gold: color(display-p3 1 0.82 0.35);
   }
 
-  .dark, .magic-blue, .classic-dark {
+  .dark, .magic-blue, .classic-dark, .carbon, .black, .forest {
     --p3-emerald: color(display-p3 0.2 0.85 0.5);
     --p3-gold: color(display-p3 1 0.85 0.4);
   }
