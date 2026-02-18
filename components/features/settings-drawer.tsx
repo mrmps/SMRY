@@ -437,7 +437,7 @@ function StyleOptionsSection() {
                             "active:scale-[0.97]",
                             getPaletteBg(palette.id),
                             isDark ? "text-white" : "text-zinc-900",
-                            isSelected && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
+                            isSelected && "ring-2 ring-ring ring-offset-2 ring-offset-background"
                           )}
                         >
                           {palette.label}
