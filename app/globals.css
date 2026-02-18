@@ -1088,24 +1088,67 @@ html.dawn .bg-card {
   }
 }
 
-/* Streaming content - smooth rendering */
+/* =============================================================================
+ * STREAMING CONTENT - SMOOTH, PREMIUM RENDERING
+ * Elegant word-by-word streaming animation for a polished AI chat experience
+ * ============================================================================= */
+
 [data-streamdown] {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-/* Streaming cursor - gentle pulse */
+/* GPU acceleration for streaming container */
+.will-change-contents {
+  will-change: contents;
+  contain: layout style;
+}
+
+/* Streamdown animation - smooth GPU-accelerated fade */
+[data-streamdown] [data-animated] {
+  /* GPU compositing for smooth animations */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Streaming cursor - elegant breathing pulse */
 [data-streamdown] *:last-child::after {
-  animation: cursor-fade 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: cursor-breathe 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes cursor-fade {
-  0%, 100% { opacity: 0.9; }
-  50% { opacity: 0.3; }
+@keyframes cursor-breathe {
+  0%, 100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scaleY(0.95);
+  }
 }
 
-/* Mobile: reduce motion for smoother experience */
+/* Mobile streaming - same premium experience, optimized for touch */
+@media (max-width: 767px) {
+  /* Slightly slower cursor animation on mobile for elegance */
+  [data-streamdown] *:last-child::after {
+    animation: cursor-breathe 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /* Use content-visibility for very long responses - improves scroll performance */
+  [data-streamdown] > *:nth-child(n+15) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 80px;
+  }
+
+  /* Smooth touch scrolling for streaming content */
+  .scroll-container [data-streamdown] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .thinking-pulse {
     animation: none;
@@ -1113,6 +1156,11 @@ html.dawn .bg-card {
   }
   [data-streamdown] *:last-child::after {
     animation: none;
+    opacity: 0.7;
+  }
+  [data-streamdown] [data-animated] {
+    transition: none !important;
+    animation: none !important;
   }
 }
 

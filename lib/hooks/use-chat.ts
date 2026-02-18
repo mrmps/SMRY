@@ -4,6 +4,7 @@ import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useState, useRef, useMemo, useEffect, useId } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface UsageData {
   remaining: number;
@@ -30,6 +31,7 @@ export function useArticleChat({
   initialMessages,
 }: UseArticleChatOptions) {
   const { getToken } = useAuth();
+  const isMobile = useIsMobile();
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [input, setInput] = useState("");
   const onUsageUpdateRef = useRef(onUsageUpdate);
@@ -107,11 +109,15 @@ export function useArticleChat({
   );
   /* eslint-enable react-hooks/refs */
 
+  // Lower throttle for smooth, gradual streaming on both platforms
+  // This creates a premium "typing" feel as words appear one by one
+  const throttleMs = isMobile ? 40 : 35;
+
   const chat = useAIChat({
     id: chatId,
     messages: initialMessages ?? [],
     transport,
-    experimental_throttle: 50, // Throttle updates to 50ms for smooth token-level streaming
+    experimental_throttle: throttleMs,
     onError: (error: Error) => {
       console.error("Chat error:", error);
     },

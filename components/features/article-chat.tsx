@@ -293,20 +293,28 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     return () => container.removeEventListener("scroll", handleScroll);
   }, [floatingInput]);
 
-  // During streaming: auto-scroll when at bottom, show arrow button when scrolled up
+  // During streaming: smooth auto-scroll when at bottom, show arrow button when scrolled up
   useEffect(() => {
     if (!isLoading) return;
     const threshold = floatingInput ? 150 : 80;
-    const tick = () => {
-      const container = scrollContainerRef.current;
-      if (container) {
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        const isAtBottom = scrollHeight - scrollTop - clientHeight <= threshold;
-        if (isAtBottom && !isUserScrolledUpRef.current) {
-          container.scrollTop = scrollHeight - clientHeight;
-        } else {
-          // Content is growing below the viewport — show the arrow
-          setShowScrollButton(true);
+    let lastScrollTime = 0;
+    // Smooth scroll updates - 60fps feel
+    const scrollThrottleMs = 50;
+
+    const tick = (timestamp: number) => {
+      // Throttle scroll updates for smooth performance
+      if (timestamp - lastScrollTime >= scrollThrottleMs) {
+        lastScrollTime = timestamp;
+        const container = scrollContainerRef.current;
+        if (container) {
+          const { scrollTop, scrollHeight, clientHeight } = container;
+          const isAtBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+          if (isAtBottom && !isUserScrolledUpRef.current) {
+            container.scrollTop = scrollHeight - clientHeight;
+          } else {
+            // Content is growing below the viewport — show the arrow
+            setShowScrollButton(true);
+          }
         }
       }
       rafIdRef.current = requestAnimationFrame(tick);

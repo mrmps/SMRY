@@ -18,7 +18,7 @@
 
 import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   Streamdown,
   defaultRehypePlugins,
@@ -26,6 +26,7 @@ import {
 } from 'streamdown';
 import { code } from '@streamdown/code';
 import { harden } from 'rehype-harden';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
@@ -208,10 +209,38 @@ export const Response = memo(
     lang,
     ...props
   }: ResponseProps) => {
+    const isMobile = useIsMobile();
+
+    // Smooth, premium streaming animation for both mobile and desktop
+    // Words fade in gracefully one by one for a polished AI chat experience
+    const animatedConfig = useMemo(() => {
+      if (!isAnimating) return false;
+
+      if (isMobile) {
+        // Mobile: smooth word-by-word with longer duration for elegant feel
+        return {
+          animation: 'fadeIn' as const,
+          duration: 120, // Slower fade for smooth appearance
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)', // Smooth ease-in-out
+          sep: 'word' as const,
+        };
+      }
+
+      // Desktop: slightly faster but still smooth word-by-word
+      return {
+        animation: 'fadeIn' as const,
+        duration: 100,
+        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        sep: 'word' as const,
+      };
+    }, [isAnimating, isMobile]);
+
     return (
       <div
         className={cn(
           'size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
+          // GPU acceleration hints for smooth streaming
+          isAnimating && 'will-change-contents',
           className
         )}
         dir={dir}
@@ -223,8 +252,8 @@ export const Response = memo(
           isAnimating={isAnimating}
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
-          animated={isAnimating ? { animation: 'fadeIn', duration: 60, easing: 'ease', sep: 'word' } : false}
-          caret={isAnimating ? 'block' : undefined}
+          animated={animatedConfig}
+          caret={isAnimating ? 'block' : undefined} // Show caret on both mobile and desktop
           plugins={{ code }}
           rehypePlugins={[
             defaultRehypePlugins.raw,
