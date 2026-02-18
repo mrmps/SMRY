@@ -51,6 +51,8 @@ interface ShareButtonDataProps {
 interface ShareButtonProps extends ShareButtonDataProps {
   triggerVariant?: "text" | "icon";
   triggerClassName?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // Check for native share support once at module level
@@ -241,13 +243,20 @@ const ShareButton: React.FC<ShareButtonProps> = React.memo(
   function ShareButton({
     triggerVariant = "text",
     triggerClassName,
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
     ...shareProps
   }) {
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+
+    // Support both controlled and uncontrolled modes
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen;
 
     const handleClose = React.useCallback(() => {
       setOpen(false);
-    }, []);
+    }, [setOpen]);
 
     const trigger = React.useMemo(
       () => (

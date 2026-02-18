@@ -145,6 +145,8 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [styleOptionsOpen, setStyleOptionsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<"chat" | "history">("chat");
 
@@ -577,10 +579,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         setSettingsOpen(true);
         return;
       }
-      // ⌘C — Copy page as markdown (only when not in input)
+      // ⌘C — Copy page as markdown (only when no text is selected and not in input)
       if (mod && (e.key === "c" || e.key === "C") && !e.shiftKey) {
-        e.preventDefault();
-        handleCopyPage();
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed) {
+          e.preventDefault();
+          handleCopyPage();
+        }
         return;
       }
       // G — Open in ChatGPT
@@ -593,6 +598,18 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       if ((e.key === "a" || e.key === "A") && !mod) {
         e.preventDefault();
         handleOpenInAI("claude");
+        return;
+      }
+      // ⇧S — Open Share modal (Shift+S must be before plain S)
+      if (e.shiftKey && (e.key === "s" || e.key === "S") && !mod) {
+        e.preventDefault();
+        setShareOpen(true);
+        return;
+      }
+      // S — Open Style Options popover
+      if ((e.key === "s" || e.key === "S") && !mod && !e.shiftKey) {
+        e.preventDefault();
+        setStyleOptionsOpen(true);
         return;
       }
     };
@@ -787,6 +804,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   }
                 }}
                 onOpenSettings={() => setSettingsOpen(true)}
+                styleOptionsOpen={styleOptionsOpen}
+                onStyleOptionsOpenChange={setStyleOptionsOpen}
+                shareOpen={shareOpen}
+                onShareOpenChange={setShareOpen}
               />
 
               {/* Settings Popover - Desktop dialog, Mobile drawer */}

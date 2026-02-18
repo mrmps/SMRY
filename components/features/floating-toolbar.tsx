@@ -132,6 +132,10 @@ interface FloatingToolbarProps {
   onSidebarToggle: () => void;
   onHistoryToggle: () => void;
   onOpenSettings: () => void;
+  styleOptionsOpen?: boolean;
+  onStyleOptionsOpenChange?: (open: boolean) => void;
+  shareOpen?: boolean;
+  onShareOpenChange?: (open: boolean) => void;
 }
 
 export function FloatingToolbar({
@@ -147,6 +151,10 @@ export function FloatingToolbar({
   onSidebarToggle,
   onHistoryToggle,
   onOpenSettings,
+  styleOptionsOpen,
+  onStyleOptionsOpenChange,
+  shareOpen,
+  onShareOpenChange,
 }: FloatingToolbarProps) {
   const [copied, setCopied] = React.useState(false);
 
@@ -234,7 +242,7 @@ export function FloatingToolbar({
       />
 
       {/* Share - using custom wrapper since ShareButton has its own trigger */}
-      <Tooltip label="Share">
+      <Tooltip label="Share" shortcut="⇧S">
         <div className="size-10 flex items-center justify-center">
           <ShareButton
             url={shareUrl}
@@ -244,6 +252,8 @@ export function FloatingToolbar({
             sidebarOpen={sidebarOpen}
             articleTitle={articleTitle}
             triggerVariant="icon"
+            open={shareOpen}
+            onOpenChange={onShareOpenChange}
           />
         </div>
       </Tooltip>
@@ -273,7 +283,12 @@ export function FloatingToolbar({
       {/* Style Options/Reader Settings Popover */}
       <Tooltip label="Style Options" shortcut="S">
         <div>
-          <ReaderSettingsPopover side="right" align="center" />
+          <ReaderSettingsPopover
+            side="right"
+            align="center"
+            open={styleOptionsOpen}
+            onOpenChange={onStyleOptionsOpenChange}
+          />
         </div>
       </Tooltip>
 

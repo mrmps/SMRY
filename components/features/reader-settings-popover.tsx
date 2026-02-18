@@ -176,7 +176,7 @@ function PaletteButton({
         "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all border",
         getBgClass(),
         isDark ? "text-white" : "text-zinc-900",
-        selected && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
+        selected && "ring-2 ring-ring ring-offset-2 ring-offset-background"
       )}
     >
       {label}
@@ -454,11 +454,15 @@ function WidthStepper() {
 interface ReaderSettingsPopoverProps {
   side?: "right" | "left" | "top" | "bottom";
   align?: "start" | "center" | "end";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ReaderSettingsPopover({
   side = "right",
   align = "center",
+  open,
+  onOpenChange,
 }: ReaderSettingsPopoverProps) {
   const { theme, setTheme } = useTheme();
   const {
@@ -495,7 +499,7 @@ export function ReaderSettingsPopover({
   };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
         className={cn(
           "size-10 flex items-center justify-center rounded-lg transition-all duration-150",

@@ -109,7 +109,7 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
     useImperativeHandle(ref, () => ({
       clearMessages: () => chatRef.current?.clearMessages(),
       setMessages: (messages: UIMessage[]) => chatRef.current?.setMessages(messages),
-      hasMessages: chatRef.current?.hasMessages ?? false,
+      get hasMessages() { return chatRef.current?.hasMessages ?? false; },
       focusInput: () => chatRef.current?.focusInput(),
       stopGeneration: () => chatRef.current?.stopGeneration(),
       copyLastResponse: () => chatRef.current?.copyLastResponse(),

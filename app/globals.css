@@ -824,10 +824,10 @@
 
   --border: #e7ddd9;
   --input: #e7ddd9;
-  --ring: #f472b6;
+  --ring: #b45309;
 
-  --glow: #f472b6;
-  --glow-muted: #f9a8d4;
+  --glow: #d97706;
+  --glow-muted: #fbbf24;
 
   --link-color: #44403c;
   --link-underline: rgba(68, 64, 60, 0.4);
@@ -842,7 +842,7 @@
   --sidebar-accent: #ede4e0;
   --sidebar-accent-foreground: #44403c;
   --sidebar-border: #e0d6d2;
-  --sidebar-ring: #f472b6;
+  --sidebar-ring: #b45309;
 
   --success: #22c55e;
   --success-foreground: #ffffff;
@@ -851,7 +851,7 @@
   --info: #0ea5e9;
   --info-foreground: #ffffff;
 
-  --chart-1: #f472b6;
+  --chart-1: #d97706;
   --chart-2: #22c55e;
   --chart-3: #ef4444;
   --chart-4: #f59e0b;
