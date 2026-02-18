@@ -38,6 +38,8 @@ interface ChatSidebarProps {
   onLoadMore?: () => void;
   // Search
   searchThreads?: (query: string) => Promise<ChatThread[]>;
+  // Hide header when used inside tabbed sidebar
+  hideHeader?: boolean;
 }
 
 function ThreadItem({
@@ -321,6 +323,7 @@ export function ChatSidebar({
   isLoadingMore,
   onLoadMore,
   searchThreads,
+  hideHeader = false,
 }: ChatSidebarProps) {
   const { isSignedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -401,43 +404,71 @@ export function ChatSidebar({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
-        <h2 className="text-[13px] font-semibold text-foreground">History</h2>
-        <div className="flex items-center gap-0.5">
-          {isPremium && (
-            <>
-              <button
-                onClick={() => { setShowSearch(!showSearch); if (showSearch) { setSearchQuery(""); setSearchResults(null); } }}
-                className={cn(
-                  "p-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                  showSearch
-                    ? "text-foreground bg-accent/50"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                )}
-                aria-label="Search threads"
-                aria-expanded={showSearch}
-              >
-                <Search className="size-3.5" aria-hidden="true" />
-              </button>
-              <button
-                onClick={onNewChat}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                aria-label="New chat"
-              >
-                <Plus className="size-3.5" aria-hidden="true" />
-              </button>
-            </>
-          )}
+      {/* Header - hidden when used inside tabbed sidebar */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
+          <h2 className="text-[13px] font-semibold text-foreground">History</h2>
+          <div className="flex items-center gap-0.5">
+            {isPremium && (
+              <>
+                <button
+                  onClick={() => { setShowSearch(!showSearch); if (showSearch) { setSearchQuery(""); setSearchResults(null); } }}
+                  className={cn(
+                    "p-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                    showSearch
+                      ? "text-foreground bg-accent/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                  aria-label="Search threads"
+                  aria-expanded={showSearch}
+                >
+                  <Search className="size-3.5" aria-hidden="true" />
+                </button>
+                <button
+                  onClick={onNewChat}
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  aria-label="New chat"
+                >
+                  <Plus className="size-3.5" aria-hidden="true" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Close sidebar"
+            >
+              <PanelLeftClose className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Compact toolbar when header is hidden (tabbed mode) */}
+      {hideHeader && isPremium && (
+        <div className="flex items-center gap-1 px-3 py-2 border-b border-border/30">
           <button
-            onClick={() => onOpenChange(false)}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            aria-label="Close sidebar"
+            onClick={() => { setShowSearch(!showSearch); if (showSearch) { setSearchQuery(""); setSearchResults(null); } }}
+            className={cn(
+              "p-1.5 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+              showSearch
+                ? "text-foreground bg-accent/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+            aria-label="Search threads"
+            aria-expanded={showSearch}
           >
-            <PanelLeftClose className="size-3.5" aria-hidden="true" />
+            <Search className="size-3.5" aria-hidden="true" />
+          </button>
+          <button
+            onClick={onNewChat}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="New chat"
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
           </button>
         </div>
-      </div>
+      )}
 
       {/* Search - toggleable */}
       {isPremium && showSearch && (

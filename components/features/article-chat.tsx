@@ -3,14 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { LANGUAGES } from "@/types/api";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
-import useLocalStorage from "@/lib/hooks/use-local-storage";
+import { useChatLanguage } from "@/lib/hooks/use-chat-language";
 import { useArticleChat, UsageData } from "@/lib/hooks/use-chat";
 import { Response } from "../ai/response";
 import { isTextUIPart, UIMessage } from "ai";
@@ -25,7 +18,6 @@ import {
   Check,
   ReloadIcon,
 } from "@/components/ui/icons";
-import { LanguageIcon } from "@/components/ui/custom-icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -92,8 +84,6 @@ interface ArticleChatProps {
   onOpenChange: (open: boolean) => void;
   variant?: "inline" | "sidebar";
   hideHeader?: boolean;
-  language?: string;
-  onLanguageChange?: (language: string) => void;
   onHasMessagesChange?: (hasMessages: boolean) => void;
   isPremium?: boolean;
   onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
@@ -126,8 +116,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onOpenChange,
   variant = "inline",
   hideHeader = false,
-  language: languageProp,
-  onLanguageChange,
   onHasMessagesChange,
   isPremium: isPremiumProp = false,
   onMessagesChange,
@@ -163,14 +151,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const showUsageCounter = usageData?.limit != null && usageData.limit > 0;
   const isLimitReached = !isPremium && usageData?.remaining === 0;
 
-  const [storedLanguage, setStoredLanguage] = useLocalStorage(
-    "chat-language",
-    "en",
-  );
-
-  // Use prop if provided, otherwise use localStorage
-  const preferredLanguage = languageProp ?? storedLanguage;
-  const setPreferredLanguage = onLanguageChange ?? setStoredLanguage;
+  const { language: preferredLanguage } = useChatLanguage();
 
   const {
     messages,
@@ -352,13 +333,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     }
   }, [isOpen, isMobile]);
 
-  const handleLanguageChange = useCallback(
-    (newLang: string | null) => {
-      if (newLang) setPreferredLanguage(newLang);
-    },
-    [setPreferredLanguage],
-  );
-
   // Don't render if closed in sidebar mode
   if (!isOpen && variant === "sidebar") {
     return null;
@@ -416,26 +390,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 <Trash className="size-4" />
               </button>
             )}
-
-            <Select
-              value={preferredLanguage}
-              onValueChange={handleLanguageChange}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="h-6 w-auto min-w-0 gap-1 rounded-md border-0 bg-muted/50 px-2 text-[11px] font-medium shadow-none hover:bg-muted/70 transition-colors">
-                <LanguageIcon className="size-2.5" />
-                <span className="truncate text-muted-foreground">
-                  {LANGUAGES.find((l) => l.code === preferredLanguage)?.name || "Lang"}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
             <button
               type="button"
@@ -814,40 +768,16 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         >
           <div className="flex items-center gap-2 text-[11px] font-mono tracking-tight text-muted-foreground/50">
             {/* Controls for sidebar variant */}
-            {variant === "sidebar" && (
+            {variant === "sidebar" && messages.length > 0 && (
               <div className="flex items-center gap-0.5 mr-auto">
-                {messages.length > 0 && (
-                  <button
-                    onClick={clearMessages}
-                    className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
-                    aria-label="Clear chat"
-                    title="Clear chat"
-                  >
-                    <Trash className="size-3" />
-                  </button>
-                )}
-                <Select
-                  value={preferredLanguage}
-                  onValueChange={handleLanguageChange}
-                  disabled={isLoading}
+                <button
+                  onClick={clearMessages}
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                  aria-label="Clear chat"
+                  title="Clear chat"
                 >
-                  <SelectTrigger
-                    className="h-6 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1.5 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                    title="Response language"
-                  >
-                    <LanguageIcon className="size-3" />
-                    <span className="text-[11px] font-sans">
-                      {LANGUAGES.find((l) => l.code === preferredLanguage)?.code.toUpperCase() || "EN"}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Trash className="size-3" />
+                </button>
               </div>
             )}
 

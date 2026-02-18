@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Neu:",
-    "message": "Fragen Sie die KI alles über gelesene Artikel",
+    "message": "Schwebende Symbolleiste, 8 Farbpaletten und überarbeitete mobile Einstellungen",
     "changelog": "Änderungsprotokoll"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entrySidebar_date": "18. Februar 2026",
+    "entrySidebar_change1_text": "Schwebende Symbolleiste",
+    "entrySidebar_change1_detail": "Zugriff auf Ansichtsmodi, KI-Chat, Stiloptionen und Teilen über eine feste Leiste — kein Suchen in Menüs mehr.",
+    "entrySidebar_change2_text": "Seitenleiste mit Tabs",
+    "entrySidebar_change2_detail": "Wechseln Sie zwischen Chat und Verlauf an einem Ort. Ihre Unterhaltung bleibt beim Durchsuchen erhalten.",
+    "entrySidebar_change3_text": "Überarbeitete mobile Einstellungen",
+    "entrySidebar_change3_detail": "Native Drawer-Navigation mit größeren Touch-Bereichen. Passen Sie alles an, ohne Ihren Artikel zu verlassen.",
+    "entrySidebar_change4_text": "Leser-Anpassung",
+    "entrySidebar_change4_detail": "7 Schriftarten inkl. OpenDyslexic, einstellbare Größe, Abstand und Breite. Einstellungen werden automatisch gespeichert.",
+    "entrySidebar_change5_text": "8 neue Farbpaletten",
+    "entrySidebar_change5_detail": "Helle Optionen: Weiß, Sepia, Papier, Morgendämmerung. Dunkle Optionen: Carbon, Schwarz, Winter, Wald.",
     "entryDesign_date": "17. Februar 2026",
     "entryDesign_change1_text": "Warmes Papier Hellmodus",
     "entryDesign_change1_detail": "Neues Standard-Hell-Theme für langes Lesen. Sanfte cremefarbene Hintergründe mit warmem sepiafarbenem Text fühlen sich an wie hochwertiges Buchpapier — stundenlang komfortabel ohne Augenbelastung.",

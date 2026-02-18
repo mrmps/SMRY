@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "Nieuw:",
-    "message": "Vraag AI alles over artikelen die je leest",
+    "message": "Zwevende werkbalk, 8 themapaletten en vernieuwde mobiele instellingen",
     "changelog": "Wijzigingslogboek"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entrySidebar_date": "18 februari 2026",
+    "entrySidebar_change1_text": "Zwevende werkbalk",
+    "entrySidebar_change1_detail": "Toegang tot weergavemodi, AI-chat, stijlopties en delen via een vaste balk — geen zoeken in menu's meer.",
+    "entrySidebar_change2_text": "Zijbalk met tabbladen",
+    "entrySidebar_change2_detail": "Schakel tussen chat en geschiedenis op één plek. Je gesprek blijft intact terwijl je bladert.",
+    "entrySidebar_change3_text": "Vernieuwde mobiele instellingen",
+    "entrySidebar_change3_detail": "Native drawer-navigatie met grotere aanraakgebieden. Pas alles aan zonder je artikel te verlaten.",
+    "entrySidebar_change4_text": "Lezer-aanpassing",
+    "entrySidebar_change4_detail": "7 lettertypen incl. OpenDyslexic, aanpasbare grootte, regelafstand en breedte. Voorkeuren worden automatisch opgeslagen.",
+    "entrySidebar_change5_text": "8 nieuwe themapaletten",
+    "entrySidebar_change5_detail": "Lichte opties: Wit, Sepia, Papier, Dageraad. Donkere opties: Carbon, Zwart, Winter, Bos.",
     "entryDesign_date": "17 februari 2026",
     "entryDesign_change1_text": "Warm Papier licht thema",
     "entryDesign_change1_detail": "Nieuw standaard licht thema ontworpen voor langdurig lezen. Zachte crèmekleurige achtergronden met warme sepiatinten tekst voelen als kwaliteits boekpapier — urenlang comfortabel zonder oogvermoeidheid.",
