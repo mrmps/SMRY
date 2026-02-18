@@ -29,6 +29,13 @@ const app = new Elysia({ adapter: node() })
     credentials: true,
     exposeHeaders: ["X-Usage-Remaining", "X-Usage-Limit", "X-Is-Premium", "X-Model"],
   }))
+  // Security headers to prevent clickjacking and other attacks
+  .onBeforeHandle(({ set }) => {
+    set.headers["X-Frame-Options"] = "DENY";
+    set.headers["Content-Security-Policy"] = "frame-ancestors 'none'";
+    set.headers["X-Content-Type-Options"] = "nosniff";
+    set.headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+  })
   .use(
     cron({
       name: "error-rate-alerting",
