@@ -99,7 +99,7 @@
  * These can be overridden by JavaScript for user preferences
  * ============================================================================= */
 :root {
-  --reader-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --reader-font-family: system-ui, -apple-system, "BlinkMacSystemFont", "Segoe UI", "Roboto", sans-serif;
   --reader-font-size: 18px;
   --reader-line-height: 1.8;
   --reader-content-width: 740px;
@@ -1163,7 +1163,7 @@
   color: #e0dedb !important;
 }
 
-:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose a:not(h1 a):not(h2 a):not(h3 a):not(h4 a):not(h5 a):not(h6 a) {
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) .prose a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a) {
   color: var(--link-color) !important;
   text-decoration-color: var(--link-underline) !important;
 }
@@ -1222,7 +1222,7 @@
   }
 
   /* Hide list items that have no visible text content (only whitespace) */
-  .prose li:not(:has(img)):not(:has(video)):not(:has(iframe)):not(:has(svg)):not(:has(picture)) {
+  .prose li:not(:has(img, video, iframe, svg, picture)) {
     &:has(> a:only-child:not([href*="http"])):has(> a:empty) {
       display: none !important;
     }

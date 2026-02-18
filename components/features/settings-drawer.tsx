@@ -304,13 +304,21 @@ function StyleOptionsSection() {
   };
 
   // Check if theme is customized
-  const hasCustomTheme = mounted && theme !== DEFAULT_THEME && theme !== undefined;
+  // Note: "system" is the initial value from next-themes, but our app default is "carbon"
+  // We consider theme customized if it's different from DEFAULT_THEME AND not undefined/system on initial load
+  const hasCustomTheme = mounted && theme !== undefined && theme !== "system" && theme !== DEFAULT_THEME;
   const hasAnyCustomization = hasCustomPreferences || hasCustomTheme || themeChanged;
 
   // Handle theme change and track it
+  // Only set themeChanged if the new theme differs from the default
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
-    setThemeChanged(true);
+    // Clear themeChanged flag if selecting the default theme
+    if (newTheme === DEFAULT_THEME) {
+      setThemeChanged(false);
+    } else {
+      setThemeChanged(true);
+    }
   };
 
   // Reset ALL - theme + reader preferences
@@ -407,6 +415,8 @@ function StyleOptionsSection() {
                   {/* Theme dropdown */}
                   <Card className="relative overflow-hidden">
                     <select
+                      id="theme-select"
+                      aria-label="Select theme"
                       value={getDropdownValue()}
                       onChange={(e) => handleThemeChange(e.target.value)}
                       style={{ touchAction: "manipulation" }}
@@ -642,8 +652,8 @@ function StyleOptionsSection() {
   );
 }
 
-// Language selector - opens a nested drawer with list view
-function LanguageSection({ onClose }: { onClose?: () => void }) {
+// Inner component that uses searchParams - must be wrapped in Suspense
+function LanguageSectionInner({ onClose }: { onClose?: () => void }) {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const rawPathname = usePathname();
@@ -726,6 +736,30 @@ function LanguageSection({ onClose }: { onClose?: () => void }) {
         </DrawerContent>
       </Drawer>
     </>
+  );
+}
+
+// Language selector - wraps inner component in Suspense for useSearchParams
+function LanguageSection({ onClose }: { onClose?: () => void }) {
+  return (
+    <React.Suspense fallback={
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between w-full px-4 py-3.5 min-h-[52px]">
+          <span className="flex items-center gap-3">
+            <span className="text-muted-foreground">
+              <LanguageIcon className="size-5" />
+            </span>
+            <span className="font-medium">Language</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="text-sm">...</span>
+            <ChevronRight className="size-4" />
+          </span>
+        </div>
+      </Card>
+    }>
+      <LanguageSectionInner onClose={onClose} />
+    </React.Suspense>
   );
 }
 
