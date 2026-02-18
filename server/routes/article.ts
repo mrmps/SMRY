@@ -110,9 +110,13 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
   }
 }
 
-async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
+async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSignal): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
+  // Combine internal timeout with external cancellation signal
+  const signal = externalSignal
+    ? AbortSignal.any([controller.signal, externalSignal])
+    : controller.signal;
   const hostname = (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })();
   const memTracker = startMemoryTrack("article-fetch-smry-fast", { url_host: hostname });
 
@@ -129,7 +133,7 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
         "Cache-Control": "no-cache",
       },
       redirect: "follow",
-      signal: controller.signal,
+      signal,
     });
 
     if (!response.ok) {
@@ -205,13 +209,18 @@ async function fetchArticleWithSmryFast(url: string): Promise<{ article: CachedA
   }
 }
 
-async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: string): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
+async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: string, externalSignal?: AbortSignal): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   const hostname = (() => { try { return new URL(urlWithSource).hostname; } catch { return "unknown"; } })();
   const memTracker = startMemoryTrack(`article-fetch-${source}`, { url_host: hostname, source });
 
   try {
+    // Early exit if already aborted
+    if (externalSignal?.aborted) {
+      memTracker.end({ success: false, reason: "aborted_before_start" });
+      return { error: createNetworkError("Request cancelled (race loser)", urlWithSource, 499) };
+    }
     logger.info({ source, hostname }, "Fetching article with Diffbot");
-    const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source);
+    const diffbotResult = await fetchArticleWithDiffbot(urlWithSource, source, externalSignal);
     if (diffbotResult.isErr()) {
       memTracker.end({ success: false, reason: "diffbot_error", error: diffbotResult.error.message });
       return { error: diffbotResult.error };
@@ -462,16 +471,23 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         }
       }
 
-      // OPTIMIZED: "First success wins" pattern
-      // Returns immediately when first source succeeds, others continue in background for caching
+      // OPTIMIZED: "First success wins" pattern with abort cancellation
+      // Returns immediately when first source succeeds, aborts losers to free memory
       const fetchStart = Date.now();
 
       type FetchResult = { source: typeof SOURCES[number]; article: CachedArticle; cacheURL: string };
 
+      // Create abort controllers for each source so losers can be cancelled
+      const abortControllers = {
+        "smry-fast": new AbortController(),
+        "smry-slow": new AbortController(),
+        "wayback": new AbortController(),
+      };
+
       const fetchPromises: Promise<FetchResult | null>[] = [
-        fetchArticleWithSmryFast(url).then(r => "article" in r ? { source: "smry-fast" as const, ...r } : null),
-        fetchArticleWithDiffbotWrapper(url, "smry-slow").then(r => "article" in r ? { source: "smry-slow" as const, ...r } : null),
-        fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback").then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
+        fetchArticleWithSmryFast(url, abortControllers["smry-fast"].signal).then(r => "article" in r ? { source: "smry-fast" as const, ...r } : null),
+        fetchArticleWithDiffbotWrapper(url, "smry-slow", abortControllers["smry-slow"].signal).then(r => "article" in r ? { source: "smry-slow" as const, ...r } : null),
+        fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback", abortControllers["wayback"].signal).then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
       ];
 
       // Track cached sources to prevent duplicate writes
@@ -515,8 +531,25 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 // Cache winner immediately
                 cacheResult(result);
 
-                // Let other fetches continue and cache in background (winner excluded)
-                Promise.allSettled(fetchPromises).then(cacheAllInBackground);
+                // Give losers a 10s grace period to complete and cache (for /article/enhanced),
+                // then abort them to free memory. Without this, losers run for up to 45s.
+                const LOSER_GRACE_MS = 10_000;
+                const graceTimeout = setTimeout(() => {
+                  for (const [source, controller] of Object.entries(abortControllers)) {
+                    if (source !== result.source && !cachedSources.has(source)) {
+                      controller.abort();
+                    }
+                  }
+                  logger.info({ winning_source: result.source, grace_ms: LOSER_GRACE_MS }, "Aborted remaining losers after grace period");
+                }, LOSER_GRACE_MS);
+
+                // If losers finish within grace period, cache them and clear the timeout
+                Promise.allSettled(fetchPromises).then(() => {
+                  clearTimeout(graceTimeout);
+                  cacheAllInBackground();
+                });
+
+                logger.info({ winning_source: result.source }, "Race winner found, losers have 10s grace period");
 
                 resolve(result);
               }

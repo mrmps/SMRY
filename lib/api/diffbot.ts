@@ -444,7 +444,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
  * Fetch structured article data using Diffbot API (no fallback)
  * Returns title, html, text, and siteName with comprehensive debug information
  */
-export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow'): ResultAsync<DiffbotArticle, AppError> {
+export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow', externalSignal?: AbortSignal): ResultAsync<DiffbotArticle, AppError> {
   const debugContext = createDebugContext(url, source);
 
   logger.info({ hostname: new URL(url).hostname }, 'Attempting Diffbot article extraction');
@@ -452,8 +452,16 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
 
   return ResultAsync.fromPromise(
     new Promise<DiffbotArticle>(async (resolve, reject) => {
+      // Early exit if already aborted by race winner
+      if (externalSignal?.aborted) {
+        reject(new Error("Request cancelled (race loser)"));
+        return;
+      }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for Diffbot
+      // Abort on external cancellation (race loser)
+      const onExternalAbort = () => controller.abort();
+      externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
       const hostname = new URL(url).hostname;
       const memTracker = startMemoryTrack("diffbot-api-call", { url_host: hostname, source });
 
@@ -786,6 +794,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         }
       } finally {
         clearTimeout(timeoutId);
+        externalSignal?.removeEventListener("abort", onExternalAbort);
       }
     }),
     (error) => {
