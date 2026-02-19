@@ -42,11 +42,9 @@ function FeatureVisual({ children, className }: { children: React.ReactNode; cla
   return (
     <div className={clsx(
       "relative flex h-[280px] sm:h-[320px] lg:h-[340px] items-center justify-center overflow-hidden rounded-2xl",
-      "bg-gradient-to-br from-surface-1 via-surface-2 to-surface-3",
+      "bg-muted",
       className
     )}>
-      {/* Subtle radial glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-background/40 via-transparent to-transparent dark:from-white/[0.03]" />
       {children}
     </div>
   );

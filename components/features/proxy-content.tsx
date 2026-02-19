@@ -626,7 +626,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
           {isDesktop === null ? (
             // SSR/hydration: render nothing to avoid layout shift
             // The layout will render on client after hydration
-            <div className="h-full bg-card" />
+            <div className="h-full bg-background" />
           ) : isDesktop ? (
             // Desktop: Resizable panels with sidebars
             <div className="h-full relative">
@@ -641,7 +641,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
-                  <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-card scrollbar-hide">
+                  <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-background scrollbar-hide">
                     {/* Content container - prose width controlled by CSS variables */}
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                       <ArticleContent
@@ -802,7 +802,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               <div
                 ref={mobileScrollRef}
                 className={cn(
-                  "h-full overflow-y-auto bg-card touch-pan-y",
+                  "h-full overflow-y-auto bg-background touch-pan-y",
                   !isPremium && sidebarAd && !mobileAdDismissed ? "pb-36" : "pb-16"
                 )}
               >
