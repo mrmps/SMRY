@@ -657,7 +657,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               )}
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 {/* Main content panel */}
-                <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
+                <ResizablePanel defaultSize={sidebarOpen ? 70 : 100} minSize={50}>
                   <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-background scrollbar-hide">
                     {/* Content container - prose width controlled by CSS variables */}
                     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
@@ -698,12 +698,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 {/* Tabbed sidebar panel - Chat + History */}
                 <ResizablePanel
                   ref={summaryPanelRef}
-                  defaultSize={sidebarOpen ? 25 : 0}
-                  minSize={20}
-                  maxSize={35}
+                  defaultSize={sidebarOpen ? 30 : 0}
+                  minSize={25}
+                  maxSize={40}
                   collapsible
                   collapsedSize={0}
                   className="bg-sidebar"
+                  style={{ minWidth: sidebarOpen ? 439 : 0 }}
                   onCollapse={() => {
                     if (sidebarOpen) handleSidebarChange(false);
                   }}

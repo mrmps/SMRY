@@ -61,6 +61,17 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Strip characters that can't be rendered by Latin fonts (Inter/Syne).
+  // Non-Latin chars (CJK, Arabic, Hebrew, etc.) cause "Cannot convert argument
+  // to a ByteString" crash in ImageResponse. Replace them with a space.
+  title = title.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F\u2070-\u209F\u20A0-\u20CF\u2100-\u214F]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim() || "Read articles without paywalls";
+
+  // Also sanitize siteName and hostname for the same reason
+  siteName = siteName.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F]/g, ' ').replace(/\s{2,}/g, ' ').trim() || "smry.ai";
+  hostname = hostname.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
   // Truncate title if too long
   if (title.length > 80) {
     title = title.substring(0, 77) + "...";

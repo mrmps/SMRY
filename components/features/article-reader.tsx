@@ -237,7 +237,7 @@ export function ArticleReader({
               >
                 {source.favicon ? (
                   <div
-                    className="h-6 w-6 flex-shrink-0 rounded-full bg-cover bg-center ring-1 ring-border transition-all duration-200 group-hover:ring-foreground-faint"
+                    className="h-6 w-6 flex-shrink-0 rounded-full bg-white bg-cover bg-center ring-1 ring-border transition-all duration-200 group-hover:ring-foreground-faint"
                     style={{ backgroundImage: `url(${source.favicon})` }}
                     role="img"
                     aria-hidden="true"

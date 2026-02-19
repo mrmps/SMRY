@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 export function FaviconImage({
   domain,
   className,
@@ -10,7 +12,7 @@ export function FaviconImage({
     <img
       src={`/api/favicon?domain=${domain}`}
       alt=""
-      className={className}
+      className={cn("bg-white", className)}
       loading="lazy"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = "none";

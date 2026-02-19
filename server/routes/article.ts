@@ -57,6 +57,8 @@ function getUrlWithSource(source: string, url: string): string {
 }
 
 const HTML_PREVIEW_LIMIT = 50 * 1024; // 50KB preview for bypass detection
+const CONTENT_MAX_SIZE = 500 * 1024; // 500KB max for cleaned article HTML (content field)
+const TEXT_CONTENT_MAX_SIZE = 200 * 1024; // 200KB max for plain text
 
 /**
  * Build a response article object, stripping full htmlContent and adding a preview.
@@ -68,8 +70,13 @@ function buildArticleResponse(article: CachedArticle) {
     byline: article.byline || null,
     dir: article.dir || getTextDirection(article.lang, article.textContent),
     lang: article.lang || "",
-    content: article.content,
-    textContent: article.textContent,
+    // Cap content fields to prevent 6-8MB JSON responses (e.g. CNN pages)
+    content: article.content.length > CONTENT_MAX_SIZE
+      ? article.content.slice(0, CONTENT_MAX_SIZE)
+      : article.content,
+    textContent: article.textContent.length > TEXT_CONTENT_MAX_SIZE
+      ? article.textContent.slice(0, TEXT_CONTENT_MAX_SIZE)
+      : article.textContent,
     length: article.length,
     siteName: article.siteName,
     publishedTime: article.publishedTime || null,
@@ -86,15 +93,24 @@ function buildArticleResponse(article: CachedArticle) {
 /**
  * Cache htmlContent separately in Redis to avoid carrying 200KB-2MB through
  * the entire request lifecycle and compression pipeline.
+ *
+ * IMPORTANT: This runs as a detached promise. The caller passes the HTML string
+ * and should NOT hold its own reference. This function guarantees the string is
+ * released after completion (success or failure) via the finally block.
  */
 async function cacheHtmlContentSeparately(source: string, url: string, htmlContent: string | undefined): Promise<void> {
   if (!htmlContent) return;
+  let html: string | null = htmlContent;
   try {
     const htmlKey = `html:${source}:${url}`;
-    const compressed = await compressAsync(htmlContent);
+    const compressed = await compressAsync(html);
+    html = null; // Release the 2MB string — compressed copy is much smaller
     await redis.set(htmlKey, compressed);
-  } catch {
-    // Fire-and-forget — don't block the response
+  } catch (err) {
+    logger.warn({ source, url_host: (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })(), error: String(err) }, "Failed to cache htmlContent separately");
+  } finally {
+    // Guarantee the large string is released even if compressAsync or redis.set throws
+    html = null;
   }
 }
 
@@ -213,7 +229,7 @@ async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSigna
     const htmlLang = document.documentElement.getAttribute("lang") || parsed.lang || null;
     const textDir = getTextDirection(htmlLang, parsed.textContent);
 
-    const articleCandidate: CachedArticle = {
+    let articleCandidate: CachedArticle | null = {
       title: parsed.title || document.title || "Untitled",
       content: parsed.content,
       textContent: parsed.textContent,
@@ -231,17 +247,24 @@ async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSigna
     html = "";
 
     const validation = CachedArticleSchema.safeParse(articleCandidate);
+    // Release candidate — validation.data has its own copy
+    articleCandidate = null;
+
     if (!validation.success) {
       memTracker.end({ success: false, reason: "validation_failed" });
       return { error: createParseError(`Invalid article: ${fromError(validation.error).toString()}`, "smry-fast") };
     }
 
-    // Cache full htmlContent separately, then keep only a 50KB preview for bypass detection
-    cacheHtmlContentSeparately("smry-fast", url, validation.data.htmlContent);
+    // Extract full HTML for separate Redis cache, then build response with 50KB preview only
+    const fullHtml = validation.data.htmlContent;
     const article = {
       ...validation.data,
       htmlContent: validation.data.htmlContent?.slice(0, HTML_PREVIEW_LIMIT),
     };
+    // Schedule Redis cache — cacheHtmlContentSeparately nulls the string in its finally block
+    if (fullHtml) {
+      cacheHtmlContentSeparately("smry-fast", url, fullHtml).catch(() => {});
+    }
 
     memTracker.end({ success: true, article_length: article.length });
     return { article, cacheURL: url };
@@ -324,7 +347,7 @@ async function fetchArticleWithWaybackDirect(url: string, externalSignal?: Abort
     const htmlLang = document.documentElement.getAttribute("lang") || parsed.lang || null;
     const textDir = getTextDirection(htmlLang, parsed.textContent);
 
-    const articleCandidate: CachedArticle = {
+    let articleCandidate: CachedArticle | null = {
       title: parsed.title || document.title || "Untitled",
       content: parsed.content,
       textContent: parsed.textContent,
@@ -341,16 +364,21 @@ async function fetchArticleWithWaybackDirect(url: string, externalSignal?: Abort
     html = "";
 
     const validation = CachedArticleSchema.safeParse(articleCandidate);
+    articleCandidate = null;
+
     if (!validation.success) {
       memTracker.end({ success: false, reason: "validation_failed" });
       return { error: createParseError(`Invalid article from Wayback: ${fromError(validation.error).toString()}`, "wayback") };
     }
 
-    cacheHtmlContentSeparately("wayback", url, validation.data.htmlContent);
+    const fullHtml = validation.data.htmlContent;
     const article = {
       ...validation.data,
       htmlContent: validation.data.htmlContent?.slice(0, HTML_PREVIEW_LIMIT),
     };
+    if (fullHtml) {
+      cacheHtmlContentSeparately("wayback", url, fullHtml).catch(() => {});
+    }
 
     memTracker.end({ success: true, article_length: article.length });
     return { article, cacheURL: waybackUrl };
@@ -402,7 +430,10 @@ async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: str
     const originalUrl = source === "wayback"
       ? (urlWithSource.match(/web\.archive\.org\/web\/[^/]+\/(.+)/)?.[1] || urlWithSource)
       : urlWithSource;
-    cacheHtmlContentSeparately(source, originalUrl, va.htmlContent);
+    const fullHtml = va.htmlContent;
+    if (fullHtml) {
+      cacheHtmlContentSeparately(source, originalUrl, fullHtml).catch(() => {});
+    }
 
     const article: CachedArticle = {
       title: va.title, content: va.html, textContent: va.text, length: va.text.length,

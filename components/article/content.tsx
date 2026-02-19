@@ -507,7 +507,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                 <img
                   src={`/api/favicon?domain=${new URL(url).hostname}`}
                   alt=""
-                  className="size-5 rounded-sm"
+                  className="size-5 rounded-sm bg-white"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = "none";

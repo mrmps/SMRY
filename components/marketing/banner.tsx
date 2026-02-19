@@ -256,7 +256,7 @@ const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
           src={logoUrl}
           width={48}
           height={48}
-          className="size-12 rounded-full"
+          className="size-12 rounded-full bg-white"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.style.display = "none";

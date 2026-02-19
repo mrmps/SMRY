@@ -73,7 +73,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(normalizedUrl)}`,
       {
         signal: controller.signal,
-        next: { revalidate: 3600 },
+        // IMPORTANT: Do NOT use next: { revalidate } here.
+        // Article responses are 2-8MB — Next.js allocates the full body in memory
+        // to try caching, then fails (>2MB limit), leaking the allocation.
+        // The article is already cached in Redis on the Elysia side.
+        cache: 'no-store',
       }
     );
 
