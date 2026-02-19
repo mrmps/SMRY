@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
-import { ArrowLeft } from "@/components/ui/icons";
-import { AiMagic } from "@/components/ui/icons";
+import { ArrowLeft, AiMagic } from "@/components/ui/icons";
+import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
 import { ArticleContent } from "@/components/article/content";
@@ -638,6 +638,23 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               >
                 <ArrowLeft className="size-5" />
               </button>
+
+              {/* Ask AI Chat - top right, hidden when sidebar is open */}
+              {!sidebarOpen && (
+                <button
+                  onClick={() => {
+                    handleSidebarChange(true);
+                    tabbedSidebarRef.current?.setActiveTab("chat");
+                    setSidebarActiveTab("chat");
+                  }}
+                  className="absolute top-4 right-4 z-50 flex items-center gap-2.5 h-10 pl-3.5 pr-3 rounded-xl border border-border/60 bg-background/80 backdrop-blur-md shadow-sm text-foreground hover:bg-muted/80 transition-colors"
+                  aria-label="Ask AI (⌘I)"
+                >
+                  <AiMagic className="size-4" />
+                  <span className="text-sm font-medium">AI Chat</span>
+                  <Kbd className="ml-0.5 text-[10px] px-1.5 py-0.5 bg-muted/80">⌘I</Kbd>
+                </button>
+              )}
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 {/* Main content panel */}
                 <ResizablePanel defaultSize={sidebarOpen ? 75 : 100} minSize={50}>
@@ -755,33 +772,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 articleTextContent={articleTextContent}
                 source={source || "smry-fast"}
                 sidebarOpen={sidebarOpen}
-                sidebarActiveTab={sidebarActiveTab}
-                onSidebarToggle={() => {
-                  if (sidebarOpen && sidebarActiveTab === "chat") {
-                    // Already on chat tab, close sidebar
-                    handleSidebarChange(false);
-                  } else {
-                    // Open sidebar and switch to chat tab
-                    if (!sidebarOpen) {
-                      handleSidebarChange(true);
-                    }
-                    tabbedSidebarRef.current?.setActiveTab("chat");
-                    setSidebarActiveTab("chat");
-                  }
-                }}
-                onHistoryToggle={() => {
-                  if (sidebarOpen && sidebarActiveTab === "history") {
-                    // Already on history tab, close sidebar
-                    handleSidebarChange(false);
-                  } else {
-                    // Open sidebar and switch to history tab
-                    if (!sidebarOpen) {
-                      handleSidebarChange(true);
-                    }
-                    tabbedSidebarRef.current?.setActiveTab("history");
-                    setSidebarActiveTab("history");
-                  }
-                }}
                 onOpenSettings={() => setSettingsOpen(true)}
                 styleOptionsOpen={styleOptionsOpen}
                 onStyleOptionsOpenChange={setStyleOptionsOpen}

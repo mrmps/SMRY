@@ -7,7 +7,6 @@ import {
   FileText,
   MonitorPlay,
   Navigation04,
-  AiMagic,
   History,
   Settings,
   MoreHorizontal,
@@ -129,9 +128,6 @@ interface FloatingToolbarProps {
   articleTextContent?: string;
   source: Source;
   sidebarOpen: boolean;
-  sidebarActiveTab?: "chat" | "history";
-  onSidebarToggle: () => void;
-  onHistoryToggle: () => void;
   onOpenSettings: () => void;
   styleOptionsOpen?: boolean;
   onStyleOptionsOpenChange?: (open: boolean) => void;
@@ -148,9 +144,6 @@ export function FloatingToolbar({
   articleTextContent,
   source,
   sidebarOpen,
-  sidebarActiveTab,
-  onSidebarToggle,
-  onHistoryToggle,
   onOpenSettings,
   styleOptionsOpen,
   onStyleOptionsOpenChange,
@@ -262,23 +255,25 @@ export function FloatingToolbar({
 
       <div className="h-px bg-border/50 my-1" />
 
-      {/* AI Chat - opens sidebar */}
-      <ToolbarButton
-        icon={<AiMagic className="size-5" />}
-        label="Ask AI"
-        shortcut="⌘I"
-        onClick={onSidebarToggle}
-        isActive={sidebarOpen && sidebarActiveTab === "chat"}
-      />
-
-      {/* History - opens sidebar and switches to history tab */}
-      <ToolbarButton
-        icon={<History className="size-5" />}
-        label="Chat history"
-        shortcut="⌘⇧H"
-        onClick={onHistoryToggle}
-        isActive={sidebarOpen && sidebarActiveTab === "history"}
-      />
+      {/* Reading History - direct link */}
+      <Tooltip label="Reading History">
+        <Link
+          href="/history"
+          className={cn(
+            "size-10 flex items-center justify-center rounded-lg transition-all duration-150",
+            "hover:bg-accent hover:text-accent-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "active:scale-95",
+            "text-muted-foreground"
+          )}
+          aria-label="Reading History"
+        >
+          <History className="size-5" />
+          {!isPremium && (
+            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-amber-500" />
+          )}
+        </Link>
+      </Tooltip>
 
       <div className="h-px bg-border/50 my-1" />
 
@@ -357,31 +352,6 @@ export function FloatingToolbar({
             <Kbd className="text-[10px] px-1.5 py-0.5">⌘⇧A</Kbd>
             <ArrowUpRight className="size-3 opacity-50 shrink-0" />
           </MenuItem>
-          <MenuSeparator />
-          <MenuItem
-            render={(props) => {
-              const { key, className, ...rest } = props as typeof props & {
-                key?: React.Key;
-                className?: string;
-              };
-              return (
-                <Link
-                  key={key}
-                  {...rest}
-                  href="/history"
-                  className={cn(className, "flex items-center gap-2 w-full px-3")}
-                >
-                  <History className="size-4" />
-                  <span className="flex-1">Reading History</span>
-                  {!isPremium && (
-                    <span className="flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
-                      PRO
-                    </span>
-                  )}
-                </Link>
-              );
-            }}
-          />
           <MenuSeparator />
           <MenuItem
             render={(props) => {

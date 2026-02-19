@@ -160,11 +160,19 @@ async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSigna
 
     const response = await fetch(url, {
       headers: {
-        // Use a browser-like User-Agent to avoid bot detection (sites like Medium block bots)
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        // Use a current browser UA — outdated UAs get blocked by sites like NYTimes
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
         "Cache-Control": "no-cache",
+        // Google Referer bypasses metered paywalls (NYT, WaPo, etc. allow Google referral traffic)
+        "Referer": "https://www.google.com/",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
       },
       redirect: "follow",
       signal,
@@ -253,6 +261,115 @@ async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSigna
   }
 }
 
+/**
+ * Direct Wayback Machine fetch — fetches the cached page from archive.org directly
+ * instead of going through Diffbot. Archive.org doesn't block server-side requests,
+ * so this reliably works for paywalled sites like NYTimes where Diffbot gets 403'd.
+ */
+async function fetchArticleWithWaybackDirect(url: string, externalSignal?: AbortSignal): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
+  const waybackUrl = `https://web.archive.org/web/2/${url}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for Wayback
+  const signal = externalSignal
+    ? AbortSignal.any([controller.signal, externalSignal])
+    : controller.signal;
+  const hostname = (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })();
+  const memTracker = startMemoryTrack("article-fetch-wayback-direct", { url_host: hostname });
+
+  try {
+    logger.info({ source: "wayback", hostname }, "Fetching article directly from Wayback Machine");
+
+    const response = await fetch(waybackUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+      },
+      redirect: "follow",
+      signal,
+    });
+
+    if (!response.ok) {
+      logger.error({ source: "wayback", status: response.status }, "Wayback direct fetch HTTP error");
+      memTracker.end({ success: false, status: response.status });
+      return { error: createNetworkError(`HTTP ${response.status} error from Wayback`, waybackUrl, response.status) };
+    }
+
+    memTracker.checkpoint("response-received");
+    let html = await safeText(response, 2 * 1024 * 1024); // 2MB cap
+
+    if (!html) {
+      memTracker.end({ success: false, reason: "empty_html" });
+      return { error: createParseError("Received empty HTML from Wayback", "wayback") };
+    }
+
+    const htmlBytes = html.length;
+    if (htmlBytes > 500_000) {
+      logLargeAllocation("wayback-html-parse", htmlBytes, { url_host: hostname, source: "wayback" });
+    }
+
+    // Remove Wayback Machine toolbar/banner injection
+    html = html.replace(/<!-- BEGIN WAYBACK TOOLBAR INSERT -->[\s\S]*?<!-- END WAYBACK TOOLBAR INSERT -->/gi, "");
+
+    const { document } = parseHTML(html);
+    const reader = new Readability(document);
+    const parsed = reader.parse();
+
+    if (!parsed || !parsed.content || !parsed.textContent) {
+      memTracker.end({ success: false, reason: "readability_failed" });
+      return { error: createParseError("Failed to extract article content from Wayback", "wayback") };
+    }
+
+    const htmlLang = document.documentElement.getAttribute("lang") || parsed.lang || null;
+    const textDir = getTextDirection(htmlLang, parsed.textContent);
+
+    const articleCandidate: CachedArticle = {
+      title: parsed.title || document.title || "Untitled",
+      content: parsed.content,
+      textContent: parsed.textContent,
+      length: parsed.textContent.length,
+      siteName: hostname,
+      byline: parsed.byline,
+      publishedTime: extractDateFromDom(document) || null,
+      image: extractImageFromDom(document) || null,
+      htmlContent: html,
+      lang: htmlLang,
+      dir: textDir,
+    };
+
+    html = "";
+
+    const validation = CachedArticleSchema.safeParse(articleCandidate);
+    if (!validation.success) {
+      memTracker.end({ success: false, reason: "validation_failed" });
+      return { error: createParseError(`Invalid article from Wayback: ${fromError(validation.error).toString()}`, "wayback") };
+    }
+
+    cacheHtmlContentSeparately("wayback", url, validation.data.htmlContent);
+    const article = {
+      ...validation.data,
+      htmlContent: validation.data.htmlContent?.slice(0, HTML_PREVIEW_LIMIT),
+    };
+
+    memTracker.end({ success: true, article_length: article.length });
+    return { article, cacheURL: waybackUrl };
+  } catch (error) {
+    if (error instanceof ResponseTooLargeError) {
+      memTracker.end({ success: false, reason: "response_too_large" });
+      return { error: createNetworkError("Response too large", waybackUrl, 413) };
+    }
+    if (error instanceof Error && error.name === "AbortError") {
+      memTracker.end({ success: false, reason: "timeout" });
+      return { error: createNetworkError("Wayback request timed out", waybackUrl, 408) };
+    }
+    memTracker.end({ success: false, reason: "fetch_error", error: String(error) });
+    return { error: createNetworkError("Failed to fetch article from Wayback", waybackUrl) };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: string, externalSignal?: AbortSignal): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   const hostname = (() => { try { return new URL(urlWithSource).hostname; } catch { return "unknown"; } })();
   const memTracker = startMemoryTrack(`article-fetch-${source}`, { url_host: hostname, source });
@@ -304,8 +421,12 @@ async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: str
 async function fetchArticle(urlWithSource: string, source: string): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   switch (source) {
     case "smry-fast": return fetchArticleWithSmryFast(urlWithSource);
-    case "smry-slow":
-    case "wayback": return fetchArticleWithDiffbotWrapper(urlWithSource, source);
+    case "smry-slow": return fetchArticleWithDiffbotWrapper(urlWithSource, source);
+    case "wayback": {
+      // Extract original URL from wayback format for direct fetch
+      const originalUrl = urlWithSource.match(/web\.archive\.org\/web\/[^/]+\/(.+)/)?.[1] || urlWithSource;
+      return fetchArticleWithWaybackDirect(originalUrl);
+    }
     default: return { error: createParseError(`Unsupported source: ${source}`, source) };
   }
 }
@@ -535,7 +656,9 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
       const fetchPromises: Promise<FetchResult | null>[] = [
         fetchArticleWithSmryFast(url, abortControllers["smry-fast"].signal).then(r => "article" in r ? { source: "smry-fast" as const, ...r } : null),
         fetchArticleWithDiffbotWrapper(url, "smry-slow", abortControllers["smry-slow"].signal).then(r => "article" in r ? { source: "smry-slow" as const, ...r } : null),
-        fetchArticleWithDiffbotWrapper(getUrlWithSource("wayback", url), "wayback", abortControllers["wayback"].signal).then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
+        // Use direct Wayback fetch instead of Diffbot — archive.org doesn't block direct requests,
+        // whereas Diffbot's crawlers get 403'd by archive.org for paywalled sites like NYTimes
+        fetchArticleWithWaybackDirect(url, abortControllers["wayback"].signal).then(r => "article" in r ? { source: "wayback" as const, ...r } : null),
       ];
 
       // Track cached sources to prevent duplicate writes
