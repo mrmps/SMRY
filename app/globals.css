@@ -497,74 +497,96 @@
  * =============================================================================
  */
 .carbon {
-  --background: #181a1b;
-  --foreground: #fffffff2;
+  --background: #111111;
+  --foreground: #dcdcdc;
 
-  --foreground-muted: #ffffffbf;
-  --foreground-faint: #ffffff87;
+  --foreground-muted: #8e8e8e;
+  --foreground-faint: #525252;
 
   /* Layered surfaces for depth */
-  --surface-1: #1f2023;
-  --surface-2: #2e2f33;
-  --surface-3: #44454b;
+  --surface-1: #1a1a1a;
+  --surface-2: #2a2a2a;
+  --surface-3: #3a3a3a;
 
-  --card: #1f2023;
-  --card-foreground: #fffffff2;
-  --popover: #1f2023;
-  --popover-foreground: #fffffff2;
+  --card: #1a1a1a;
+  --card-foreground: #dcdcdc;
+  --popover: #1a1a1a;
+  --popover-foreground: #dcdcdc;
 
-  --primary: #fffffff2;
-  --primary-foreground: #181a1b;
+  --primary: #e4e4e4;
+  --primary-foreground: #111111;
 
-  --secondary: #2e2f33;
-  --secondary-foreground: #fffffff2;
+  --secondary: #2a2a2a;
+  --secondary-foreground: #e4e4e4;
 
-  --muted: #1f2023;
-  --muted-foreground: #ffffffbf;
+  --muted: #1d1d1d;
+  --muted-foreground: #8e8e8e;
 
-  --accent: #2e2f33;
-  --accent-foreground: #fffffff2;
+  --accent: #2a2a2a;
+  --accent-foreground: #e4e4e4;
 
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  --destructive: #450a0a;
+  --destructive-foreground: #e4e4e4;
 
-  --border: #ffffff26;
-  --input: #ffffff26;
-  --ring: #009efa;
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #8e8e8e;
 
-  --glow: #6d7eec;
-  --glow-muted: #009efa;
+  --glow: #8e8e8e;
+  --glow-muted: #525252;
 
   /* Link colors - Same as text, distinguished by underline only */
-  --link-color: #fffffff2;
-  --link-underline: rgba(255, 255, 255, 0.35);
+  --link-color: #dcdcdc;
+  --link-underline: rgba(220, 220, 220, 0.35);
 
   /* Article text - Soft off-white for comfortable reading */
-  --article-text: #fffffff2;
-  --article-text-muted: #ffffffbf;
+  --article-text: #dcdcdc;
+  --article-text-muted: #8e8e8e;
 
-  /* Sidebar - Same as background for clean look */
-  --sidebar: #181a1b;
-  --sidebar-foreground: #fffffff2;
-  --sidebar-primary: #24aeff;
-  --sidebar-primary-foreground: #fffffff2;
-  --sidebar-accent: #2e2f33;
-  --sidebar-accent-foreground: #fffffff2;
-  --sidebar-border: #ffffff26;
-  --sidebar-ring: #009efa;
+  /* Sidebar */
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: #8e8e8e;
+  --sidebar-primary: #e4e4e4;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #1d1d1d;
+  --sidebar-accent-foreground: #e4e4e4;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #8e8e8e;
 
   --success: #62d348;
-  --success-foreground: #181a1b;
+  --success-foreground: #111111;
   --warning: #facc15;
-  --warning-foreground: #181a1b;
-  --info: #009efa;
-  --info-foreground: #181a1b;
+  --warning-foreground: #111111;
+  --info: #8e8e8e;
+  --info-foreground: #111111;
 
-  --chart-1: #009efa;
-  --chart-2: #62d348;
-  --chart-3: #ef4444;
-  --chart-4: #facc15;
-  --chart-5: #6d7eec;
+  --chart-1: #e4e4e4;
+  --chart-2: #a3a3a3;
+  --chart-3: #737373;
+  --chart-4: #525252;
+  --chart-5: #262626;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-serif: 'Charter', 'Bitstream Charter', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 0.3rem;
+
+  --shadow-x: 0px;
+  --shadow-y: 15px;
+  --shadow-blur: 30px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.5;
+  --shadow-color: 0, 0, 0;
+  --shadow-2xs: 0px 15px 30px 0px hsl(0, 0, 0 / 0.25);
+  --shadow-xs: 0px 15px 30px 0px hsl(0, 0, 0 / 0.25);
+  --shadow-sm: 0px 15px 30px 0px hsl(0, 0, 0 / 0.50), 0px 1px 2px -1px hsl(0, 0, 0 / 0.50);
+  --shadow: 0px 15px 30px 0px hsl(0, 0, 0 / 0.50), 0px 1px 2px -1px hsl(0, 0, 0 / 0.50);
+  --shadow-md: 0px 15px 30px 0px hsl(0, 0, 0 / 0.50), 0px 2px 4px -1px hsl(0, 0, 0 / 0.50);
+  --shadow-lg: 0px 15px 30px 0px hsl(0, 0, 0 / 0.50), 0px 4px 6px -1px hsl(0, 0, 0 / 0.50);
+  --shadow-xl: 0px 15px 30px 0px hsl(0, 0, 0 / 0.50), 0px 8px 10px -1px hsl(0, 0, 0 / 0.50);
+  --shadow-2xl: 0px 15px 30px 0px hsl(0, 0, 0 / 1.25);
+
+  --tracking-normal: -0.01em;
 }
 
 /*

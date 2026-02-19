@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, memo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,7 +17,7 @@ import { Skeleton } from "../ui/skeleton";
 import { ArticleResponse, Source } from "@/types/api";
 import { ErrorDisplay } from "../shared/error-display";
 import { DebugPanel } from "../shared/debug-panel";
-import { ArticleFetchError } from "@/lib/api/client";
+import { ArticleFetchError, articleAPI } from "@/lib/api/client";
 import { UpgradeCTA } from "@/components/marketing/upgrade-cta";
 import { Newspaper } from "@/components/ui/icons";
 import { GravityAd } from "@/components/ads/gravity-ad";
@@ -461,10 +461,36 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
     }
   }, [dataCacheURL, source, url]);
 
-  const preparedHtmlContent = useMemo(
-    () => data?.article?.htmlContent ?? null,
-    [data?.article?.htmlContent]
-  );
+  // Lazy-load full HTML content only when user switches to "html" view mode
+  // State: null = not started, "loading" = fetching, string = result (empty string = failed)
+  const [lazyHtmlContent, setLazyHtmlContent] = useState<string | null>(null);
+  const htmlFetchStartedRef = useRef(false);
+
+  // If the article already has htmlContent inline, use it directly (legacy fallback)
+  const inlineHtmlContent = data?.article?.htmlContent || null;
+
+  useEffect(() => {
+    if (viewMode !== "html" || !data?.article || inlineHtmlContent || htmlFetchStartedRef.current) return;
+
+    htmlFetchStartedRef.current = true;
+    let cancelled = false;
+
+    articleAPI.getArticleHtml(url, source).then((result) => {
+      if (!cancelled) {
+        setLazyHtmlContent(result?.htmlContent ?? "");
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setLazyHtmlContent("");
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [viewMode, data?.article, url, source, inlineHtmlContent]);
+
+  // Loading = we need to fetch but haven't got a result yet
+  const isLoadingHtml = viewMode === "html" && !!data?.article && !inlineHtmlContent && lazyHtmlContent === null;
+  const preparedHtmlContent = inlineHtmlContent || lazyHtmlContent;
 
   return (
     <div className={viewMode === "markdown" ? "mt-2" : "-mt-2"}>
@@ -695,7 +721,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
               )}
 
               {viewMode === "html" ? (
-                preparedHtmlContent ? (
+                isLoadingHtml ? (
+                  <div className="mt-6 flex flex-col items-center justify-center py-16 space-y-3">
+                    <div className="size-8 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Loading original HTML...</p>
+                  </div>
+                ) : preparedHtmlContent ? (
                   <div
                     className={
                       isFullScreen

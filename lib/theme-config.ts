@@ -43,7 +43,7 @@ export const DARK_PALETTES: PaletteConfig[] = [
     id: "carbon",
     label: "Carbon",
     theme: "carbon",
-    colors: { bg: "#181a1b", border: "#2e2f33", text: "#ffffff" },
+    colors: { bg: "#111111", border: "#2a2a2a", text: "#dcdcdc" },
   },
   {
     id: "black",
@@ -175,7 +175,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
     value: "carbon",
     label: "Carbon",
     description: "High contrast dark mode",
-    preview: { bg: "#181a1b", text: "#fffffff2", accent: "#6d7eec" },
+    preview: { bg: "#111111", text: "#dcdcdc", accent: "#8e8e8e" },
   },
   {
     value: "black",
@@ -240,7 +240,7 @@ export function getPaletteStyle(paletteId: string, isDark: boolean): React.CSSPr
 
   // Fallback
   return isDark
-    ? { backgroundColor: "#181a1b", borderColor: "#2e2f33" }
+    ? { backgroundColor: "#111111", borderColor: "#2a2a2a" }
     : { backgroundColor: "#ffffff", borderColor: "#d1d5db" };
 }
 

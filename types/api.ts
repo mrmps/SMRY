@@ -47,10 +47,17 @@ export const ArticleSchema = z.object({
   publishedTime: z.string().nullable().optional(),
   image: z.string().nullable().optional(), // Preview image URL
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
+  htmlContentPreview: z.string().optional(), // First 50KB of HTML (for bypass detection)
   // Bypass detection (cached with article for instant results on reload)
   bypassStatus: BypassStatusSchema.optional(),
 });
 export type Article = z.infer<typeof ArticleSchema>;
+
+// Response for /article/html endpoint (lazy-loaded HTML content)
+export const ArticleHtmlResponseSchema = z.object({
+  htmlContent: z.string(),
+});
+export type ArticleHtmlResponse = z.infer<typeof ArticleHtmlResponseSchema>;
 
 // API Request schema
 export const ArticleRequestSchema = z.object({

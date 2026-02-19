@@ -18,10 +18,15 @@ import { premiumRoutes } from "./routes/premium";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
 import { startCacheStatsLogger, getAllCacheStats } from "../lib/memory-tracker";
 import { checkErrorRateAndAlert } from "../lib/alerting";
+import { configureFetchLimiter } from "../lib/article-concurrency";
 import { env } from "./env";
 
 startMemoryMonitor();
 startCacheStatsLogger();
+configureFetchLimiter({
+  maxConcurrent: env.MAX_CONCURRENT_ARTICLE_FETCHES,
+  slotTimeout: env.ARTICLE_FETCH_SLOT_TIMEOUT_MS,
+});
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const app = new Elysia({ adapter: node() })

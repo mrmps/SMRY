@@ -458,7 +458,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         return;
       }
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for Diffbot
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for Diffbot (reduced from 45s)
       // Abort on external cancellation (race loser)
       const onExternalAbort = () => controller.abort();
       externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
@@ -478,7 +478,16 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
 
         const response = await fetch(apiUrl.toString(), { signal: controller.signal });
         memTracker.checkpoint("diffbot-response-received");
-        
+
+        // Check abort before reading body — if race winner was found during fetch,
+        // skip the expensive body read + JSON parse entirely
+        if (externalSignal?.aborted) {
+          await response.body?.cancel();
+          memTracker.end({ success: false, reason: "aborted_after_response" });
+          reject(new Error("Request cancelled (race loser)"));
+          return;
+        }
+
         if (!response.ok) {
           const errorText = await safeText(response, 1024 * 1024); // 1MB limit for error responses
           logger.error({ status: response.status, errorText }, 'Diffbot HTTP error');
@@ -488,8 +497,16 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           return;
         }
 
-        const rawData = await safeJson(response);
+        let rawData = await safeJson(response);
         memTracker.checkpoint("diffbot-json-parsed");
+
+        // Check abort after JSON parse — if race was won during body read,
+        // bail before expensive DOM extraction and Readability parsing
+        if (externalSignal?.aborted) {
+          memTracker.end({ success: false, reason: "aborted_after_parse" });
+          reject(new Error("Request cancelled (race loser)"));
+          return;
+        }
         
         // Validate Diffbot API response structure
         const responseValidation = DiffbotArticleResponseSchema.safeParse(rawData);
@@ -512,6 +529,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         }
         
         const data = responseValidation.data;
+        rawData = null; // Release raw JSON — validated copy is in `data`
 
         // Handle error responses
         if (data.errorCode || data.error) {
@@ -573,7 +591,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             }
             
             // If no date/image from Diffbot, try to extract from DOM if available
-            if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback)) {
+            // Skip expensive DOM parsing if we've been aborted (race loser)
+            if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback) && !externalSignal?.aborted) {
                try {
                  const domToUse = (obj.dom || domForFallback) as string;
                  const { document: doc } = parseHTML(domToUse);
@@ -622,6 +641,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
                 extractedTextLength: validatedArticle.text.length,
                 extractedHtmlLength: validatedArticle.html.length,
               });
+              domForFallback = null; // Release DOM — no longer needed
               memTracker.end({ success: true, text_length: validatedArticle.text.length, html_length: validatedArticle.html.length, method: "diffbot" });
               resolve(validatedArticle);
               return;
@@ -659,7 +679,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           }
           
           // If no date/image from Diffbot, try to extract from DOM
-          if ((!extractedDate || !extractedImage) && dom) {
+          // Skip expensive DOM parsing if aborted (race loser)
+          if ((!extractedDate || !extractedImage) && dom && !externalSignal?.aborted) {
              try {
                const { document: doc } = parseHTML(dom);
                if (!extractedDate) extractedDate = extractDateFromDom(doc);
@@ -724,6 +745,14 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           addDebugStep(debugContext, 'diffbot_extraction', 'warning', 'Diffbot response structure unexpected');
         }
 
+        // Bail if aborted before expensive Readability fallback
+        if (externalSignal?.aborted) {
+          domForFallback = null; // Release DOM reference
+          memTracker.end({ success: false, reason: "aborted_before_readability" });
+          reject(new Error("Request cancelled (race loser)"));
+          return;
+        }
+
         // Fallback to Readability if we have DOM
         if (domForFallback) {
           logger.info({ hostname: new URL(url).hostname, domLength: domForFallback.length }, 'Using Readability fallback on DOM');
@@ -732,6 +761,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           });
           
           const readabilityResult = extractWithReadability(domForFallback, url, debugContext);
+          domForFallback = null; // Release DOM — consumed by Readability
           if (readabilityResult) {
             // Validate Readability result
             const readabilityValidation = DiffbotArticleSchema.safeParse(readabilityResult);
@@ -780,8 +810,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
       } catch (error) {
         // Handle timeout/abort errors specifically
         if (error instanceof Error && error.name === 'AbortError') {
-          logger.error({ url }, 'Diffbot request timed out after 45s');
-          addDebugStep(debugContext, 'diffbot_timeout', 'error', 'Request timed out after 45s');
+          logger.error({ url }, 'Diffbot request timed out after 15s');
+          addDebugStep(debugContext, 'diffbot_timeout', 'error', 'Request timed out after 15s');
           memTracker.end({ success: false, reason: "timeout" });
           reject(new Error('Request timeout'));
         } else {

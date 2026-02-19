@@ -249,21 +249,24 @@ describe("Article Route Integration", () => {
       expect(body.article.content).toBeDefined();
       expect(body.article.textContent).toBeDefined();
       expect(body.article.length).toBeGreaterThan(0);
-      expect(body.article.htmlContent).toBeDefined(); // Original HTML for "Original" tab
+      expect(body.article.htmlContentPreview).toBeDefined(); // Preview for bypass detection
+      expect(body.article.htmlContent).toBeUndefined(); // Full HTML no longer in response
     }
   });
 
-  it("should return article with htmlContent for Original tab", async () => {
+  it("should return article with htmlContentPreview for bypass detection", async () => {
     const response = await app.handle(
       new Request("http://localhost/api/article?url=https://httpbin.org/html&source=smry-fast")
     );
 
     if (response.status === 200) {
       const body = await response.json();
-      // The Original tab requires htmlContent to render
-      expect(body.article.htmlContent).toBeDefined();
-      expect(typeof body.article.htmlContent).toBe("string");
-      expect(body.article.htmlContent.length).toBeGreaterThan(0);
+      // Bypass detection uses htmlContentPreview (50KB max)
+      expect(body.article.htmlContentPreview).toBeDefined();
+      expect(typeof body.article.htmlContentPreview).toBe("string");
+      expect(body.article.htmlContentPreview.length).toBeGreaterThan(0);
+      // Full htmlContent should NOT be in response (lazy-loaded via /article/html)
+      expect(body.article.htmlContent).toBeUndefined();
     }
   });
 });
@@ -275,7 +278,7 @@ describe("HTML Content for Original View", () => {
     app = createTestApp();
   });
 
-  it("should return htmlContent for smry-fast source", async () => {
+  it("should return htmlContentPreview instead of full htmlContent", async () => {
     const response = await app.handle(
       new Request("http://localhost/api/article?url=https://httpbin.org/html&source=smry-fast")
     );
@@ -285,38 +288,43 @@ describe("HTML Content for Original View", () => {
 
     expect(body.status).toBe("success");
     expect(body.article).toBeDefined();
-    expect(body.article.htmlContent).toBeDefined();
-    expect(typeof body.article.htmlContent).toBe("string");
-    expect(body.article.htmlContent.length).toBeGreaterThan(0);
-    // Should contain HTML structure
-    expect(body.article.htmlContent).toContain("<!DOCTYPE html>");
-    expect(body.article.htmlContent).toContain("<html");
-    expect(body.article.htmlContent).toContain("</html>");
+    // Full htmlContent should NOT be in response
+    expect(body.article.htmlContent).toBeUndefined();
+    // Preview should be present
+    expect(body.article.htmlContentPreview).toBeDefined();
+    expect(typeof body.article.htmlContentPreview).toBe("string");
+    expect(body.article.htmlContentPreview.length).toBeGreaterThan(0);
+    // Preview should contain HTML structure
+    expect(body.article.htmlContentPreview).toContain("<html");
   });
 
-  it("should return htmlContent with complete HTML structure", async () => {
-    // htmlContent should contain the original HTML
-    const response = await app.handle(
+  it("should return full htmlContent via /article/html endpoint", async () => {
+    // First, fetch article to populate cache
+    await app.handle(
       new Request("http://localhost/api/article?url=https://httpbin.org/html&source=smry-fast")
+    );
+
+    // Then fetch full HTML via lazy-load endpoint
+    const response = await app.handle(
+      new Request("http://localhost/api/article/html?url=https://httpbin.org/html&source=smry-fast")
     );
 
     expect(response.status).toBe(200);
     const body = await response.json();
 
-    // httpbin.org/html returns a simple HTML page with body content
-    expect(body.article?.htmlContent).toBeDefined();
-    expect(body.article.htmlContent).toContain("<body");
-    expect(body.article.htmlContent).toContain("</body>");
-    expect(body.article.htmlContent).toContain("</html>");
+    expect(body.htmlContent).toBeDefined();
+    expect(body.htmlContent).toContain("<body");
+    expect(body.htmlContent).toContain("</body>");
+    expect(body.htmlContent).toContain("</html>");
   });
 
-  it("should include htmlContent in cache hit response", async () => {
+  it("should include htmlContentPreview in cache hit response", async () => {
     // First request to populate cache
     await app.handle(
       new Request("http://localhost/api/article?url=https://httpbin.org/html&source=smry-fast")
     );
 
-    // Second request should hit cache and still include htmlContent
+    // Second request should hit cache and include preview
     const response = await app.handle(
       new Request("http://localhost/api/article?url=https://httpbin.org/html&source=smry-fast")
     );
@@ -325,8 +333,9 @@ describe("HTML Content for Original View", () => {
     const body = await response.json();
 
     expect(body.article).toBeDefined();
-    expect(body.article.htmlContent).toBeDefined();
-    expect(body.article.htmlContent.length).toBeGreaterThan(0);
+    expect(body.article.htmlContent).toBeUndefined();
+    expect(body.article.htmlContentPreview).toBeDefined();
+    expect(body.article.htmlContentPreview.length).toBeGreaterThan(0);
   });
 });
 

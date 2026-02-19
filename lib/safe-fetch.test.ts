@@ -113,6 +113,36 @@ describe("safeText", () => {
     const text = await safeText(res);
     expect(text).toBe("");
   });
+
+  it("handles large streaming response (100 x 10KB chunks)", async () => {
+    const chunkContent = "abcdefghij".repeat(1024); // 10KB per chunk
+    const chunks = Array.from({ length: 100 }, () => chunkContent);
+    const res = makeStreamingResponse(chunks);
+    const text = await safeText(res, 2 * 1024 * 1024); // 2MB limit
+    expect(text.length).toBe(100 * 10240);
+    expect(text.startsWith("abcdefghij")).toBe(true);
+  });
+
+  it("handles multi-byte UTF-8 split across chunk boundaries", async () => {
+    // "世" is 3 bytes in UTF-8: 0xE4 0xB8 0x96
+    const encoder = new TextEncoder();
+    const fullBytes = encoder.encode("Hello世界End");
+    // Split in the middle of "世" (after first byte of the 3-byte sequence)
+    const splitPoint = 5 + 1; // "Hello" = 5 bytes, then 1 byte of "世"
+    const chunk1 = fullBytes.slice(0, splitPoint);
+    const chunk2 = fullBytes.slice(splitPoint);
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(chunk1);
+        controller.enqueue(chunk2);
+        controller.close();
+      },
+    });
+    const res = new Response(stream);
+    const text = await safeText(res);
+    expect(text).toBe("Hello世界End");
+  });
 });
 
 describe("safeJson", () => {

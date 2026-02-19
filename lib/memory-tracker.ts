@@ -20,6 +20,7 @@ import { createLogger } from "./logger";
 import { getZeroClickCacheStats } from "./zeroclick";
 import { getBufferStats } from "./clickhouse";
 import { abuseRateLimiter } from "./rate-limit-memory";
+import { getFetchSlotStats } from "./article-concurrency";
 
 const logger = createLogger("memory-tracker");
 
@@ -61,6 +62,8 @@ export function getAllCacheStats(): Record<string, unknown> {
     const zeroClick = getZeroClickCacheStats();
     const clickhouse = getBufferStats();
 
+    const fetchSlots = getFetchSlotStats();
+
     return {
       zeroclick_client_cache: zeroClick.clientCacheSize,
       zeroclick_session_failures: zeroClick.sessionFailuresSize,
@@ -72,6 +75,9 @@ export function getAllCacheStats(): Record<string, unknown> {
       clickhouse_queued_queries: clickhouse.queuedQueries,
       rate_limiter_ips: abuseRateLimiter.size,
       active_operations: activeOperations.size,
+      article_active_fetches: fetchSlots.activeFetches,
+      article_queued_fetches: fetchSlots.queuedFetches,
+      article_max_concurrent: fetchSlots.maxConcurrentFetches,
     };
   } catch {
     return { error: "Failed to get cache stats" };

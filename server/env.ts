@@ -49,6 +49,8 @@ export const env = createEnv({
     // Server config
     CORS_ORIGIN: z.string().min(1),
     API_PORT: z.coerce.number().default(3001),
+    MAX_CONCURRENT_ARTICLE_FETCHES: z.coerce.number().default(20),
+    ARTICLE_FETCH_SLOT_TIMEOUT_MS: z.coerce.number().default(30000),
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal"])
       .default("info"),

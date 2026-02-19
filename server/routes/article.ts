@@ -18,6 +18,7 @@ import { createRequestContext, extractClientIp } from "../../lib/request-context
 import { getTextDirection } from "../../lib/rtl";
 import { abuseRateLimiter } from "../../lib/rate-limit-memory";
 import { startMemoryTrack, trackFetchResponse, logLargeAllocation } from "../../lib/memory-tracker";
+import { acquireFetchSlot, releaseFetchSlot, FetchSlotTimeoutError } from "../../lib/article-concurrency";
 
 const logger = createLogger("api:article");
 
@@ -55,7 +56,47 @@ function getUrlWithSource(source: string, url: string): string {
   return source === "wayback" ? `https://web.archive.org/web/2/${url}` : url;
 }
 
+const HTML_PREVIEW_LIMIT = 50 * 1024; // 50KB preview for bypass detection
+
+/**
+ * Build a response article object, stripping full htmlContent and adding a preview.
+ * Full htmlContent stays in Redis cache — only the preview goes over the wire.
+ */
+function buildArticleResponse(article: CachedArticle) {
+  return {
+    title: article.title,
+    byline: article.byline || null,
+    dir: article.dir || getTextDirection(article.lang, article.textContent),
+    lang: article.lang || "",
+    content: article.content,
+    textContent: article.textContent,
+    length: article.length,
+    siteName: article.siteName,
+    publishedTime: article.publishedTime || null,
+    image: article.image || null,
+    // Strip full htmlContent — available via /article/html on demand
+    htmlContentPreview: article.htmlContent
+      ? article.htmlContent.slice(0, HTML_PREVIEW_LIMIT)
+      : undefined,
+  };
+}
+
 // No truncation - we need the full HTML for the "original" view
+
+/**
+ * Cache htmlContent separately in Redis to avoid carrying 200KB-2MB through
+ * the entire request lifecycle and compression pipeline.
+ */
+async function cacheHtmlContentSeparately(source: string, url: string, htmlContent: string | undefined): Promise<void> {
+  if (!htmlContent) return;
+  try {
+    const htmlKey = `html:${source}:${url}`;
+    const compressed = await compressAsync(htmlContent);
+    await redis.set(htmlKey, compressed);
+  } catch {
+    // Fire-and-forget — don't block the response
+  }
+}
 
 async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle, existing?: CachedArticle | null): Promise<CachedArticle> {
   try {
@@ -67,7 +108,12 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
     const saveToCache = async (article: CachedArticle) => {
       const metaKey = `meta:${key}`;
       const metadata = { title: article.title, siteName: article.siteName, length: article.length, byline: article.byline, publishedTime: article.publishedTime, image: article.image };
-      const compressed = await compressAsync(article);
+      // Keep only the 50KB preview in main cache — full htmlContent is cached separately
+      const articleForCache = {
+        ...article,
+        htmlContent: article.htmlContent?.slice(0, HTML_PREVIEW_LIMIT),
+      };
+      const compressed = await compressAsync(articleForCache);
       await Promise.all([redis.set(key, compressed), redis.set(metaKey, metadata)]);
     };
 
@@ -84,18 +130,6 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
         return validated;
       }
       const existingArticle = existingValidation.data;
-      // Prefer article with htmlContent over one without
-      if (!existingArticle.htmlContent && validated.htmlContent) {
-        await saveToCache(validated);
-        return validated;
-      }
-      // Prefer article with longer htmlContent (fixes old truncated cache entries)
-      const existingHtmlLen = existingArticle.htmlContent?.length || 0;
-      const newHtmlLen = validated.htmlContent?.length || 0;
-      if (newHtmlLen > existingHtmlLen) {
-        await saveToCache(validated);
-        return validated;
-      }
       // Prefer article with longer text content
       if (validated.length > existingArticle.length) {
         await saveToCache(validated);
@@ -112,7 +146,7 @@ async function saveOrReturnLongerArticle(key: string, newArticle: CachedArticle,
 
 async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSignal): Promise<{ article: CachedArticle; cacheURL: string } | { error: AppError }> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout for direct fetch
   // Combine internal timeout with external cancellation signal
   const signal = externalSignal
     ? AbortSignal.any([controller.signal, externalSignal])
@@ -143,7 +177,7 @@ async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSigna
     }
 
     memTracker.checkpoint("response-received");
-    const html = await safeText(response);
+    let html = await safeText(response, 2 * 1024 * 1024); // 2MB cap — real articles are 200KB-2MB
     const htmlBytes = html?.length || 0;
 
     // Track fetch response for memory analysis
@@ -185,14 +219,24 @@ async function fetchArticleWithSmryFast(url: string, externalSignal?: AbortSigna
       dir: textDir,
     };
 
+    // Release original HTML — it's now stored in articleCandidate.htmlContent
+    html = "";
+
     const validation = CachedArticleSchema.safeParse(articleCandidate);
     if (!validation.success) {
       memTracker.end({ success: false, reason: "validation_failed" });
       return { error: createParseError(`Invalid article: ${fromError(validation.error).toString()}`, "smry-fast") };
     }
 
-    memTracker.end({ success: true, article_length: validation.data.length, html_content_length: validation.data.htmlContent?.length || 0 });
-    return { article: validation.data, cacheURL: url };
+    // Cache full htmlContent separately, then keep only a 50KB preview for bypass detection
+    cacheHtmlContentSeparately("smry-fast", url, validation.data.htmlContent);
+    const article = {
+      ...validation.data,
+      htmlContent: validation.data.htmlContent?.slice(0, HTML_PREVIEW_LIMIT),
+    };
+
+    memTracker.end({ success: true, article_length: article.length });
+    return { article, cacheURL: url };
   } catch (error) {
     if (error instanceof ResponseTooLargeError) {
       memTracker.end({ success: false, reason: "response_too_large" });
@@ -235,13 +279,21 @@ async function fetchArticleWithDiffbotWrapper(urlWithSource: string, source: str
 
     const va = validation.data;
     const textDir = getTextDirection(va.lang, va.text);
+
+    // Cache full htmlContent separately, then keep only a 50KB preview for bypass detection
+    // Extract base URL from wayback format for consistent cache keys
+    const originalUrl = source === "wayback"
+      ? (urlWithSource.match(/web\.archive\.org\/web\/[^/]+\/(.+)/)?.[1] || urlWithSource)
+      : urlWithSource;
+    cacheHtmlContentSeparately(source, originalUrl, va.htmlContent);
+
     const article: CachedArticle = {
       title: va.title, content: va.html, textContent: va.text, length: va.text.length,
       siteName: va.siteName, byline: va.byline, publishedTime: va.publishedTime,
-      image: va.image, htmlContent: va.htmlContent, lang: va.lang, dir: textDir,
+      image: va.image, htmlContent: va.htmlContent?.slice(0, HTML_PREVIEW_LIMIT), lang: va.lang, dir: textDir,
     };
 
-    memTracker.end({ success: true, article_length: article.length, html_content_length: article.htmlContent?.length || 0 });
+    memTracker.end({ success: true, article_length: article.length });
     return { article, cacheURL: urlWithSource };
   } catch (error) {
     memTracker.end({ success: false, reason: "exception", error: String(error) });
@@ -315,25 +367,14 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           if (validation.success) {
             const article = validation.data;
             existingCachedArticle = article;
-            // Cache hit if: article has good content AND htmlContent is not truncated
-            // Old truncated cache entries had htmlContent capped at exactly 50KB (51200 bytes)
-            // Treat entries at exactly 51200 bytes as truncated and refresh them
-            const OLD_TRUNCATION_LIMIT = 51200;
-            const htmlContentComplete = article.htmlContent && article.htmlContent.length !== OLD_TRUNCATION_LIMIT;
-            if (article.length > 4000 && htmlContentComplete) {
+            // Cache hit if article has good content (htmlContent is now cached separately)
+            if (article.length > 4000) {
               cacheStatus = "hit";
               ctx.merge({ cache_hit: true, article_length: article.length, status_code: 200 });
               ctx.success();
               return {
                 source, cacheURL: urlWithSource,
-                article: {
-                  title: article.title, byline: article.byline || null,
-                  dir: article.dir || getTextDirection(article.lang, article.textContent),
-                  lang: article.lang || "", content: article.content, textContent: article.textContent,
-                  length: article.length, siteName: article.siteName,
-                  publishedTime: article.publishedTime || null, image: article.image || null,
-                  htmlContent: article.htmlContent,
-                },
+                article: buildArticleResponse(article),
                 status: "success",
               };
             }
@@ -343,53 +384,55 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
 
       ctx.set("cache_status", cacheStatus);
 
-      const fetchStart = Date.now();
-      const result = await fetchArticle(urlWithSource, source);
-      ctx.set("fetch_ms", Date.now() - fetchStart);
-
-      if ("error" in result) {
-        ctx.error(result.error.message, { error_type: result.error.type, status_code: 500 });
-        set.status = 500;
-        return { error: result.error.message, type: result.error.type };
+      try {
+        await acquireFetchSlot();
+      } catch (err) {
+        if (err instanceof FetchSlotTimeoutError) {
+          ctx.error("Fetch slot timeout", { error_type: "OVERLOADED", status_code: 503 });
+          set.status = 503;
+          set.headers["retry-after"] = "2";
+          return { error: "Server is busy, please retry", type: "OVERLOADED" };
+        }
+        throw err;
       }
 
-      const { article, cacheURL } = result;
-
       try {
-        const cacheStart = Date.now();
-        const savedArticle = await saveOrReturnLongerArticle(cacheKey, article, existingCachedArticle);
-        ctx.set("cache_save_ms", Date.now() - cacheStart);
-        ctx.merge({ cache_hit: false, article_length: savedArticle.length, status_code: 200 });
-        ctx.success();
+        const fetchStart = Date.now();
+        const result = await fetchArticle(urlWithSource, source);
+        ctx.set("fetch_ms", Date.now() - fetchStart);
 
-        return {
-          source, cacheURL,
-          article: {
-            title: savedArticle.title, byline: savedArticle.byline || null,
-            dir: savedArticle.dir || getTextDirection(savedArticle.lang, savedArticle.textContent),
-            lang: savedArticle.lang || "", content: savedArticle.content, textContent: savedArticle.textContent,
-            length: savedArticle.length, siteName: savedArticle.siteName,
-            publishedTime: savedArticle.publishedTime || null, image: savedArticle.image || null,
-            htmlContent: savedArticle.htmlContent,
-          },
-          status: "success",
-        };
-      } catch {
-        ctx.merge({ cache_save_error: true, article_length: article.length, status_code: 200 });
-        ctx.success();
+        if ("error" in result) {
+          ctx.error(result.error.message, { error_type: result.error.type, status_code: 500 });
+          set.status = 500;
+          return { error: result.error.message, type: result.error.type };
+        }
 
-        return {
-          source, cacheURL,
-          article: {
-            title: article.title, byline: article.byline || null,
-            dir: article.dir || getTextDirection(article.lang, article.textContent),
-            lang: article.lang || "", content: article.content, textContent: article.textContent,
-            length: article.length, siteName: article.siteName,
-            publishedTime: article.publishedTime || null, image: article.image || null,
-            htmlContent: article.htmlContent,
-          },
-          status: "success",
-        };
+        const { article, cacheURL } = result;
+
+        try {
+          const cacheStart = Date.now();
+          const savedArticle = await saveOrReturnLongerArticle(cacheKey, article, existingCachedArticle);
+          ctx.set("cache_save_ms", Date.now() - cacheStart);
+          ctx.merge({ cache_hit: false, article_length: savedArticle.length, status_code: 200 });
+          ctx.success();
+
+          return {
+            source, cacheURL,
+            article: buildArticleResponse(savedArticle),
+            status: "success",
+          };
+        } catch {
+          ctx.merge({ cache_save_error: true, article_length: article.length, status_code: 200 });
+          ctx.success();
+
+          return {
+            source, cacheURL,
+            article: buildArticleResponse(article),
+            status: "success",
+          };
+        }
+      } finally {
+        releaseFetchSlot();
       }
     } catch (error) {
       ctx.error(error instanceof Error ? error : String(error), { error_type: "UNKNOWN_ERROR", status_code: 500 });
@@ -445,22 +488,14 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
             const validation = CachedArticleSchema.safeParse(cachedArticle);
             if (validation.success) {
               const article = validation.data;
-              const OLD_TRUNCATION_LIMIT = 51200;
-              const htmlContentComplete = article.htmlContent && article.htmlContent.length !== OLD_TRUNCATION_LIMIT;
-              if (article.length > 4000 && htmlContentComplete) {
+              // Cache hit if article has good content (htmlContent is now cached separately)
+              if (article.length > 4000) {
                 ctx.merge({ cache_hit: true, cache_source: source, article_length: article.length, status_code: 200 });
                 ctx.success();
                 return {
                   source,
                   cacheURL: getUrlWithSource(source, url),
-                  article: {
-                    title: article.title, byline: article.byline || null,
-                    dir: article.dir || getTextDirection(article.lang, article.textContent),
-                    lang: article.lang || "", content: article.content, textContent: article.textContent,
-                    length: article.length, siteName: article.siteName,
-                    publishedTime: article.publishedTime || null, image: article.image || null,
-                    htmlContent: article.htmlContent,
-                  },
+                  article: buildArticleResponse(article),
                   status: "success",
                 };
               }
@@ -469,6 +504,19 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         } catch {
           // Continue to next source on cache error
         }
+      }
+
+      // Acquire a concurrency slot before starting the race
+      try {
+        await acquireFetchSlot();
+      } catch (err) {
+        if (err instanceof FetchSlotTimeoutError) {
+          ctx.error("Fetch slot timeout", { error_type: "OVERLOADED", status_code: 503 });
+          set.status = 503;
+          set.headers["retry-after"] = "2";
+          return { error: "Server is busy, please retry", type: "OVERLOADED" };
+        }
+        throw err;
       }
 
       // OPTIMIZED: "First success wins" pattern with abort cancellation
@@ -497,10 +545,18 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         if (cachedSources.has(result.source)) return; // Already cached
         cachedSources.add(result.source);
         const cacheKey = `${result.source}:${url}`;
-        saveOrReturnLongerArticle(cacheKey, result.article).catch(() => {});
+        // Direct compress + save — skip decompression comparison during race
+        // to avoid doubling memory. Each source gets its own cache key anyway.
+        const metaKey = `meta:${cacheKey}`;
+        const metadata = { title: result.article.title, siteName: result.article.siteName, length: result.article.length, byline: result.article.byline, publishedTime: result.article.publishedTime, image: result.article.image };
+        // htmlContent is already truncated to 50KB preview by the fetch functions
+        // Full htmlContent was cached separately via cacheHtmlContentSeparately in the fetchers
+        compressAsync({ ...result.article, htmlContent: undefined })
+          .then(compressed => Promise.all([redis.set(cacheKey, compressed), redis.set(metaKey, metadata)]))
+          .catch(() => {});
       };
 
-      // Helper: race for first quality result, but don't cancel others
+      // Helper: race for first quality result, abort losers immediately on winner
       const raceForFirstSuccess = async (): Promise<FetchResult | null> => {
         return new Promise((resolve) => {
           let resolved = false;
@@ -508,17 +564,25 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           const results: (FetchResult | null)[] = [];
           let winningSource: string | null = null;
 
-          // Cache all results in background after race completes (excluding winner if specified)
-          const cacheAllInBackground = () => {
-            results.forEach((r) => {
-              // Skip if already cached as winner
-              if (r && r.source !== winningSource) cacheResult(r);
-            });
+          const abortLosers = (winnerSource: string) => {
+            for (const [source, controller] of Object.entries(abortControllers)) {
+              if (source !== winnerSource) {
+                controller.abort();
+              }
+            }
+            logger.info({ winning_source: winnerSource }, "Aborted losers immediately after winner found");
           };
 
           fetchPromises.forEach((promise, index) => {
             promise.then((result) => {
               completedCount++;
+
+              // If race already resolved, cache this late result then release reference
+              if (resolved && result) {
+                cacheResult(result);
+                return;
+              }
+
               results[index] = result;
 
               // If we have a quality result and haven't resolved yet, resolve immediately
@@ -531,27 +595,18 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 // Cache winner immediately
                 cacheResult(result);
 
-                // Give losers a 10s grace period to complete and cache (for /article/enhanced),
-                // then abort them to free memory. Without this, losers run for up to 45s.
-                const LOSER_GRACE_MS = 10_000;
-                const graceTimeout = setTimeout(() => {
-                  for (const [source, controller] of Object.entries(abortControllers)) {
-                    if (source !== result.source && !cachedSources.has(source)) {
-                      controller.abort();
-                    }
-                  }
-                  logger.info({ winning_source: result.source, grace_ms: LOSER_GRACE_MS }, "Aborted remaining losers after grace period");
-                }, LOSER_GRACE_MS);
+                // Abort losers immediately to free memory — no grace period.
+                // The /article/enhanced endpoint fetches independently if needed.
+                abortLosers(result.source);
 
-                // If losers finish within grace period, cache them and clear the timeout
-                Promise.allSettled(fetchPromises).then(() => {
-                  clearTimeout(graceTimeout);
-                  cacheAllInBackground();
-                });
-
-                logger.info({ winning_source: result.source }, "Race winner found, losers have 10s grace period");
+                logger.info({ winning_source: result.source }, "Race winner found, losers aborted immediately");
 
                 resolve(result);
+
+                // Null out results array references to allow GC of large article objects
+                for (let i = 0; i < results.length; i++) {
+                  if (i !== index) results[i] = null;
+                }
               }
 
               // If all completed and we still haven't resolved, use best available or null
@@ -560,7 +615,9 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 ctx.set("fetch_ms", Date.now() - fetchStart);
 
                 // Cache all successful results
-                cacheAllInBackground();
+                results.forEach((r) => {
+                  if (r && r.source !== winningSource) cacheResult(r);
+                });
 
                 // Return best available
                 resolve(results.find(r => r !== null) ?? null);
@@ -580,34 +637,31 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
         });
       };
 
-      const bestResult = await raceForFirstSuccess();
+      try {
+        const bestResult = await raceForFirstSuccess();
 
-      // Return best result
-      if (bestResult) {
-        ctx.merge({ cache_hit: false, result_source: bestResult.source, article_length: bestResult.article.length, status_code: 200 });
-        ctx.success();
-        return {
-          source: bestResult.source,
-          cacheURL: bestResult.cacheURL,
-          article: {
-            title: bestResult.article.title, byline: bestResult.article.byline || null,
-            dir: bestResult.article.dir || getTextDirection(bestResult.article.lang, bestResult.article.textContent),
-            lang: bestResult.article.lang || "", content: bestResult.article.content, textContent: bestResult.article.textContent,
-            length: bestResult.article.length, siteName: bestResult.article.siteName,
-            publishedTime: bestResult.article.publishedTime || null, image: bestResult.article.image || null,
-            htmlContent: bestResult.article.htmlContent,
-          },
-          status: "success",
-          // Flag to indicate other sources may have longer content
-          // Client should poll /article/enhanced after a few seconds
-          mayHaveEnhanced: bestResult.source === "smry-fast",
-        };
+        // Return best result
+        if (bestResult) {
+          ctx.merge({ cache_hit: false, result_source: bestResult.source, article_length: bestResult.article.length, status_code: 200 });
+          ctx.success();
+          return {
+            source: bestResult.source,
+            cacheURL: bestResult.cacheURL,
+            article: buildArticleResponse(bestResult.article),
+            status: "success",
+            // Flag to indicate other sources may have longer content
+            // Client should poll /article/enhanced after a few seconds
+            mayHaveEnhanced: bestResult.source === "smry-fast",
+          };
+        }
+
+        // All failed
+        ctx.error("All sources failed", { error_type: "ALL_SOURCES_FAILED", status_code: 500 });
+        set.status = 500;
+        return { error: "Failed to fetch from all sources", type: "ALL_SOURCES_FAILED" };
+      } finally {
+        releaseFetchSlot();
       }
-
-      // All failed
-      ctx.error("All sources failed", { error_type: "ALL_SOURCES_FAILED", status_code: 500 });
-      set.status = 500;
-      return { error: "Failed to fetch from all sources", type: "ALL_SOURCES_FAILED" };
     } catch (error) {
       ctx.error(error instanceof Error ? error : String(error), { error_type: "UNKNOWN_ERROR", status_code: 500 });
       set.status = 500;
@@ -672,14 +726,7 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           enhanced: true,
           source: bestArticle.source,
           cacheURL: bestArticle.cacheURL,
-          article: {
-            title: bestArticle.article.title, byline: bestArticle.article.byline || null,
-            dir: bestArticle.article.dir || getTextDirection(bestArticle.article.lang, bestArticle.article.textContent),
-            lang: bestArticle.article.lang || "", content: bestArticle.article.content, textContent: bestArticle.article.textContent,
-            length: bestArticle.article.length, siteName: bestArticle.article.siteName,
-            publishedTime: bestArticle.article.publishedTime || null, image: bestArticle.article.image || null,
-            htmlContent: bestArticle.article.htmlContent,
-          },
+          article: buildArticleResponse(bestArticle.article),
         };
       }
 
@@ -694,4 +741,35 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
     }
   },
   { query: t.Object({ url: t.String(), currentLength: t.String(), currentSource: t.String() }) }
+).get(
+  "/article/html",
+  async ({ query, set }) => {
+    try {
+      const { url, source } = query;
+
+      // Check separate html cache key first (new format)
+      const htmlKey = `html:${source}:${url}`;
+      const rawHtml = await redis.get(htmlKey);
+      const htmlContent = await decompressAsync(rawHtml);
+      if (htmlContent && typeof htmlContent === "string") {
+        return { htmlContent };
+      }
+
+      // Fall back to main cache key (legacy entries that still have htmlContent inline)
+      const cacheKey = `${source}:${url}`;
+      const rawCached = await redis.get(cacheKey);
+      const cached = await decompressAsync(rawCached);
+
+      if (!cached || typeof cached !== "object" || !("htmlContent" in cached) || !cached.htmlContent) {
+        set.status = 404;
+        return { error: "HTML content not found in cache" };
+      }
+
+      return { htmlContent: (cached as CachedArticle).htmlContent };
+    } catch {
+      set.status = 500;
+      return { error: "Failed to retrieve HTML content" };
+    }
+  },
+  { query: t.Object({ url: t.String(), source: t.String() }) }
 );
