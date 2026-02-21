@@ -554,7 +554,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
 
                       {/* Inline ad after last assistant message */}
                       {isLastMessage && !isLoading && ad && variant === "sidebar" && (
-                        <div className="mt-3">
+                        <div className="my-5">
                           <GravityAd
                             ad={ad}
                             variant="inline-chat"

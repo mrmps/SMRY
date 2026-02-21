@@ -164,7 +164,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
       {/* Mid-article ad */}
       {inlineAd && (
-        <div className="my-10 sm:my-8">
+        <div className="my-14 sm:my-10">
           <GravityAd
             ad={inlineAd}
             variant="inline"

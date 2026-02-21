@@ -23,6 +23,10 @@ interface MobileChatDrawerProps {
   onChatAdVisible?: () => void;
   onChatAdClick?: () => void;
   onChatAdDismiss?: () => void;
+  /** Ad shown inline after AI responses */
+  inlineChatAd?: GravityAdType | null;
+  onInlineChatAdVisible?: () => void;
+  onInlineChatAdClick?: () => void;
   // Thread/history props
   isPremium?: boolean;
   initialMessages?: UIMessage[];
@@ -169,6 +173,9 @@ export const MobileChatDrawer = forwardRef<MobileChatDrawerHandle, MobileChatDra
   onChatAdVisible,
   onChatAdClick,
   onChatAdDismiss: _onChatAdDismiss,
+  inlineChatAd,
+  onInlineChatAdVisible,
+  onInlineChatAdClick,
   isPremium = false,
   initialMessages: initialMessagesProp,
   threads = [],
@@ -428,6 +435,9 @@ export const MobileChatDrawer = forwardRef<MobileChatDrawerHandle, MobileChatDra
                   headerAd={chatAd}
                   onHeaderAdVisible={onChatAdVisible}
                   onHeaderAdClick={onChatAdClick}
+                  ad={inlineChatAd}
+                  onAdVisible={onInlineChatAdVisible}
+                  onAdClick={onInlineChatAdClick}
                 />
               </div>
             </div>

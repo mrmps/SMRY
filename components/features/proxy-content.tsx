@@ -875,9 +875,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       headerAd={!isPremium ? chatAd : null}
                       onHeaderAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onHeaderAdClick={chatAd ? () => fireClick(chatAd) : undefined}
-                      ad={null}
-                      onAdVisible={undefined}
-                      onAdClick={undefined}
+                      ad={!isPremium ? (inlineAd ?? footerAd) : null}
+                      onAdVisible={inlineAd ? () => fireImpression(inlineAd) : footerAd ? () => fireImpression(footerAd) : undefined}
+                      onAdClick={inlineAd ? () => fireClick(inlineAd) : footerAd ? () => fireClick(footerAd) : undefined}
                       microAd={!isPremium ? microAd : null}
                       onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
                       onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}
@@ -1014,6 +1014,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 chatAd={!isPremium ? mobileChatAd : null}
                 onChatAdVisible={mobileChatAd ? () => fireImpression(mobileChatAd) : undefined}
                 onChatAdClick={mobileChatAd ? () => fireClick(mobileChatAd) : undefined}
+                inlineChatAd={!isPremium ? (inlineAd ?? footerAd) : null}
+                onInlineChatAdVisible={inlineAd ? () => fireImpression(inlineAd) : footerAd ? () => fireImpression(footerAd) : undefined}
+                onInlineChatAdClick={inlineAd ? () => fireClick(inlineAd) : footerAd ? () => fireClick(footerAd) : undefined}
                 isPremium={isPremium}
                 initialMessages={threadInitialMessages}
                 onMessagesChange={isPremium ? handleMessagesChange : undefined}
