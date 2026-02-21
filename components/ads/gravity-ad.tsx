@@ -125,6 +125,7 @@ function AdFavicon({
 
 export function GravityAd({ ad, onVisible, onDismiss, onClick, className, variant = "default" }: GravityAdProps) {
   const adRef = useRef<HTMLAnchorElement>(null);
+  const adWrapperRef = useRef<HTMLDivElement>(null);
   const [hasTrackedImpression, setHasTrackedImpression] = useState(false);
 
   // Reset on ad change
@@ -134,10 +135,12 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   }, [ad.impUrl]);
 
   // Impression tracking - useLayoutEffect ensures ref is available after DOM mount
+  // Uses adWrapperRef (for inline-chat which has separate mobile/desktop elements)
+  // or adRef (for all other single-element variants).
   useLayoutEffect(() => {
     if (hasTrackedImpression) return;
 
-    const element = adRef.current;
+    const element = adWrapperRef.current || adRef.current;
     if (!element) return;
 
     const observer = new IntersectionObserver(
@@ -350,15 +353,16 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
 
   // ============================================
   // INLINE-CHAT VARIANT - Native recommendation after AI response
-  // Mobile: compact row | Desktop: card with CTA
+  // Mobile: compact card | Desktop: card with CTA
+  // Note: ref is on the outer wrapper (not individual <a> elements)
+  // so IntersectionObserver fires correctly on both mobile and desktop.
   // ============================================
   if (variant === "inline-chat") {
     return (
-      <>
+      <div ref={adWrapperRef}>
         {/* Mobile: compact card */}
         <div className={cn("sm:hidden rounded-xl bg-muted/20 border border-border/20 overflow-hidden", className)}>
           <a
-            ref={adRef}
             href={ad.clickUrl}
             target="_blank"
             rel="sponsored noopener"
@@ -390,7 +394,6 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           )}
         >
           <a
-            ref={adRef}
             href={ad.clickUrl}
             target="_blank"
             rel="sponsored noopener"
@@ -415,7 +418,7 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
             </div>
           </a>
         </div>
-      </>
+      </div>
     );
   }
 
