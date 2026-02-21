@@ -915,7 +915,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                   <UpgradeCTA dismissable="mobile-only" />
                   {/* Footer ad - appears below the subscription card */}
                   {footerAd && (
-                    <div className="mt-6 mb-10 sm:mt-4 sm:mb-8">
+                    <div className="mt-6 mb-4 sm:mt-4 sm:mb-6">
                       <GravityAd
                         ad={footerAd}
                         variant="inline"
