@@ -858,7 +858,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                           : "h-[calc(100vh-12rem)] md:h-[85vh] w-full rounded-lg border border-border bg-white"
                       }
                       title="Original article"
-                      sandbox="allow-scripts allow-popups allow-forms"
+                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                       loading="lazy"
                     />
                   </div>
