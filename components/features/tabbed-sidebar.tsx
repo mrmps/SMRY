@@ -30,6 +30,9 @@ interface TabbedSidebarProps {
   headerAd?: GravityAdType | null;
   onHeaderAdVisible?: () => void;
   onHeaderAdClick?: () => void;
+  ad?: GravityAdType | null;
+  onAdVisible?: () => void;
+  onAdClick?: () => void;
   microAd?: GravityAdType | null;
   onMicroAdVisible?: () => void;
   onMicroAdClick?: () => void;
@@ -67,6 +70,9 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
       headerAd,
       onHeaderAdVisible,
       onHeaderAdClick,
+      ad,
+      onAdVisible,
+      onAdClick,
       microAd,
       onMicroAdVisible,
       onMicroAdClick,
@@ -199,6 +205,9 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
               headerAd={headerAd}
               onHeaderAdVisible={onHeaderAdVisible}
               onHeaderAdClick={onHeaderAdClick}
+              ad={ad}
+              onAdVisible={onAdVisible}
+              onAdClick={onAdClick}
               microAd={microAd}
               onMicroAdVisible={onMicroAdVisible}
               onMicroAdClick={onMicroAdClick}

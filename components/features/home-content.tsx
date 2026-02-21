@@ -505,24 +505,17 @@ export const HomeContent = memo(function HomeContent() {
             </p>
           )}
 
-          {/* Trust bar + ad - single muted line */}
-          <div className="mt-4 flex flex-col items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground/40">
-            <p className="flex items-center gap-1.5">
-              <span>{t("trustNoSignup")}</span>
-              <span aria-hidden="true">·</span>
-              <span className="hidden sm:inline">{t("trustWorksWith")}</span>
-              <span aria-hidden="true" className="hidden sm:inline">·</span>
-              <span>{t("trustFree")}</span>
-            </p>
-            {!isPremium && !isPremiumLoading && ad && (
+          {/* Ad below input */}
+          {!isPremium && !isPremiumLoading && ad && (
+            <div className="mt-4 flex justify-center">
               <GravityAd
                 ad={ad}
                 variant="micro"
                 onVisible={() => fireImpression(ad)}
                 onClick={() => fireClick(ad)}
               />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Continue Reading card */}
           <ContinueReadingCard t={t} />

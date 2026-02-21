@@ -128,12 +128,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const onFooterAdVisible = useCallback(() => { if (footerAd) fireImpression(footerAd); }, [footerAd, fireImpression]);
   const onFooterAdClick = useCallback(() => { if (footerAd) fireClick(footerAd); }, [footerAd, fireClick]);
 
-  // Debug: Log how many unique ads we received and from which provider
-  if (typeof window !== 'undefined' && gravityAds.length > 0) {
-    const providers = [...new Set(gravityAds.map(a => a.ad_provider || 'gravity'))];
-    console.log(`[Ads] Received ${gravityAds.length} ads (${providers.join(' + ')}):`,
-      gravityAds.map((a, i) => `[${i}] ${a.brandName} (${a.ad_provider || 'gravity'})`).join(', '));
-  }
+  // Debug: Log only when ads actually change
+  const prevAdKeyRef = useRef("");
+  useEffect(() => {
+    const adKey = gravityAds.map(a => a.brandName).join(",");
+    if (adKey && adKey !== prevAdKeyRef.current) {
+      prevAdKeyRef.current = adKey;
+      const providers = [...new Set(gravityAds.map(a => a.ad_provider || 'gravity'))];
+      console.log(`[Ads] New rotation (${providers.join(' + ')}):`,
+        gravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(', '));
+    }
+  }, [gravityAds]);
 
   // Handle article load: save to history
   useEffect(() => {
@@ -836,6 +841,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       headerAd={!isPremium ? chatAd : null}
                       onHeaderAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onHeaderAdClick={chatAd ? () => fireClick(chatAd) : undefined}
+                      ad={!isPremium ? chatAd : null}
+                      onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
+                      onAdClick={chatAd ? () => fireClick(chatAd) : undefined}
                       microAd={!isPremium ? microAd : null}
                       onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
                       onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}

@@ -22,7 +22,7 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat";
+  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat" | "chat-prompt";
 }
 
 // Dismiss button - consistent across all variants
@@ -281,33 +281,103 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
   }
 
   // ============================================
-  // INLINE-CHAT VARIANT - Elegant sponsored suggestion
+  // CHAT-PROMPT VARIANT - Minimal native ad above chat input
+  // Designed to feel like a subtle suggestion, not a card
+  // ============================================
+  if (variant === "chat-prompt") {
+    return (
+      <div className={cn("flex items-center gap-2 px-1 py-1", className)}>
+        <a
+          ref={adRef}
+          href={ad.clickUrl}
+          target="_blank"
+          rel="sponsored noopener"
+          onClick={onClick}
+          className="flex-1 flex items-center gap-2 min-w-0 group rounded-lg px-2 py-1.5 -mx-1 hover:bg-muted/40 transition-colors"
+        >
+          <div className="size-6 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={24} />
+          </div>
+          <p className="flex-1 min-w-0 text-[12px] text-muted-foreground/70 leading-snug line-clamp-1 group-hover:text-muted-foreground transition-colors">
+            <span className="font-medium text-foreground/60 group-hover:text-foreground/80">{ad.brandName}</span>
+            <span className="text-muted-foreground/30"> · </span>
+            {valueProp}
+          </p>
+        </a>
+        <span className="shrink-0 text-[10px] text-muted-foreground/30">Ad</span>
+        <DismissButton onDismiss={onDismiss} className="size-5" />
+      </div>
+    );
+  }
+
+  // ============================================
+  // INLINE-CHAT VARIANT - Native recommendation after AI response
+  // Mobile: compact row | Desktop: card with CTA
   // ============================================
   if (variant === "inline-chat") {
     return (
-      <a
-        ref={adRef}
-        href={ad.clickUrl}
-        target="_blank"
-        rel="sponsored noopener"
-        onClick={onClick}
-        className={cn(
-          "group block pl-3 border-l-2 border-border/40 hover:border-primary/40 transition-colors",
-          className
-        )}
-      >
-        <p className="text-[12px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">
-          <span className="font-medium text-foreground/70 group-hover:text-foreground/90">{ad.brandName}</span>
-          {" — "}
-          {valueProp}
-          {" "}
-          <span className="inline-flex items-center gap-0.5 font-medium text-primary/60 group-hover:text-primary transition-colors whitespace-nowrap">
-            {ctaText}
-            <span className="text-[11px]">↗</span>
-          </span>
-        </p>
-        <span className="text-[11px] text-muted-foreground/30 mt-0.5 block">Sponsored</span>
-      </a>
+      <>
+        {/* Mobile: compact card */}
+        <div className={cn("sm:hidden rounded-xl bg-muted/20 border border-border/20 overflow-hidden", className)}>
+          <a
+            ref={adRef}
+            href={ad.clickUrl}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={onClick}
+            className="block px-3 py-2.5 active:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="size-5 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/15">
+                <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={20} />
+              </div>
+              <span className="text-[11px] font-semibold text-foreground/70">{ad.brandName}</span>
+              <span className="text-[2px] text-muted-foreground/20">ad</span>
+            </div>
+            <p className="text-[12px] leading-[1.45] text-muted-foreground/55 line-clamp-2">
+              {valueProp}
+            </p>
+            <span className="mt-1.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-primary/70 active:text-primary">
+              {ctaText}<span className="text-[10px]">↗</span>
+            </span>
+          </a>
+        </div>
+
+        {/* Desktop: card layout */}
+        <div
+          className={cn(
+            "hidden sm:block group rounded-2xl overflow-hidden transition-all duration-200",
+            "bg-muted/25 border border-border/25 hover:border-border/40",
+            className
+          )}
+        >
+          <a
+            ref={adRef}
+            href={ad.clickUrl}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={onClick}
+            className="flex items-start gap-3 p-3"
+          >
+            <div className="size-10 rounded-xl overflow-hidden bg-white shrink-0 shadow-sm ring-1 ring-black/[0.06]">
+              <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={40} />
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[13px] font-semibold text-foreground/85 truncate">{ad.brandName}</span>
+                <span className="shrink-0 rounded-full bg-muted/60 px-1.5 py-px text-[9px] font-medium text-muted-foreground/45 uppercase tracking-wider">Ad</span>
+              </div>
+              <p className="text-[12.5px] leading-[1.5] text-muted-foreground/60 group-hover:text-muted-foreground/75 transition-colors line-clamp-2">
+                {valueProp}
+              </p>
+              <span className="mt-2 inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary/80 transition-colors group-hover:bg-primary/15 group-hover:text-primary">
+                {ctaText}
+                <span className="text-[10px] transition-transform duration-200 group-hover:translate-x-0.5">↗</span>
+              </span>
+            </div>
+          </a>
+        </div>
+      </>
     );
   }
 

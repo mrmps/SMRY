@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import {
   X,
@@ -267,6 +267,7 @@ export function MobileAnnotationsDrawer({
   } = useHighlightsContext();
 
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredHighlights = useMemo(() => {
     const filtered = filterColor
@@ -281,12 +282,17 @@ export function MobileAnnotationsDrawer({
 
   const handleScrollTo = useCallback(
     (id: string) => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       setActiveHighlightId(id);
       onOpenChange(false);
-      setTimeout(() => setActiveHighlightId(null), 2000);
+      scrollTimeoutRef.current = setTimeout(() => setActiveHighlightId(null), 2000);
     },
     [setActiveHighlightId, onOpenChange]
   );
+
+  useEffect(() => () => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+  }, []);
 
   const handleChangeColor = useCallback(
     (id: string, color: string) => {
@@ -302,7 +308,6 @@ export function MobileAnnotationsDrawer({
       direction="bottom"
       shouldScaleBackground={false}
       modal={true}
-      handleOnly={true}
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
@@ -313,7 +318,7 @@ export function MobileAnnotationsDrawer({
           className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-background border-t border-border rounded-t-2xl"
           style={{ height: "70dvh" }}
         >
-          {/* Drag handle — large touch area */}
+          {/* Drag handle — thin bar visual indicator */}
           <div className="flex justify-center pt-3 pb-1">
             <div className="h-1 w-10 rounded-full bg-muted-foreground/25" />
           </div>

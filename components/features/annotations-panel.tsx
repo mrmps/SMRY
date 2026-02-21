@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Trash2, Highlighter } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { useHighlightsContext } from "@/lib/contexts/highlights-context";
@@ -26,6 +26,7 @@ export function AnnotationsPanel({
   } = useHighlightsContext();
 
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredHighlights = useMemo(() => {
     const filtered = filterColor
@@ -38,11 +39,16 @@ export function AnnotationsPanel({
 
   const handleScrollTo = useCallback(
     (id: string) => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       setActiveHighlightId(id);
-      setTimeout(() => setActiveHighlightId(null), 2000);
+      scrollTimeoutRef.current = setTimeout(() => setActiveHighlightId(null), 2000);
     },
     [setActiveHighlightId]
   );
+
+  useEffect(() => () => {
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+  }, []);
 
   const handleChangeColor = useCallback(
     (id: string, color: string) => {

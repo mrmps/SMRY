@@ -164,7 +164,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
       {/* Mid-article ad */}
       {inlineAd && (
-        <div className="my-8">
+        <div className="my-10 sm:my-8">
           <GravityAd
             ad={inlineAd}
             variant="inline"
@@ -397,6 +397,14 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   // Avoids re-registering the click handler every time highlights array changes
   const highlightsRef = useRef(highlights);
   useEffect(() => { highlightsRef.current = highlights; });
+
+  // Timeout ref for clearing active highlight after scroll-to
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup highlight timeout on unmount
+  useEffect(() => () => {
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+  }, []);
 
   // Highlight action popover state (shown when clicking a mark)
   const [clickedHighlight, setClickedHighlight] = useState<{
@@ -870,8 +878,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                       }}
                       onAddNote={(id) => {
                         setClickedHighlight(null);
+                        if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
                         setActiveHighlightId(id);
-                        setTimeout(() => setActiveHighlightId(null), 2000);
+                        highlightTimeoutRef.current = setTimeout(() => setActiveHighlightId(null), 2000);
                       }}
                       onDelete={(id) => {
                         deleteHighlight(id);
@@ -902,7 +911,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                   <UpgradeCTA dismissable="mobile-only" />
                   {/* Footer ad - appears below the subscription card */}
                   {footerAd && (
-                    <div className="mt-4 mb-8">
+                    <div className="mt-6 mb-10 sm:mt-4 sm:mb-8">
                       <GravityAd
                         ad={footerAd}
                         variant="inline"

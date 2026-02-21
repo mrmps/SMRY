@@ -7,7 +7,6 @@ import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Sma
 import { cn } from "@/lib/utils";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
-import { GravityAd } from "@/components/ads/gravity-ad";
 import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import type { UIMessage } from "ai";
@@ -307,7 +306,6 @@ export function MobileChatDrawer({
       shouldScaleBackground={false}
       modal={true}
       repositionInputs={false}
-      handleOnly={true}
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
@@ -326,7 +324,7 @@ export function MobileChatDrawer({
           )}
           style={{ height: "100dvh" }}
         >
-          {/* Fullscreen header — swipe-down here to dismiss */}
+          {/* Fullscreen header — drag down to dismiss */}
           {/* Touch targets: 44px minimum per iOS HIG / WCAG 2.2 */}
           <div className="shrink-0 border-b border-border/30">
             <div className="flex items-center justify-between px-2 py-2">
@@ -398,18 +396,6 @@ export function MobileChatDrawer({
             </div>
           </div>
 
-          {/* Header ad banner - visible immediately when chat opens */}
-          {chatAd && activeView === "chat" && (
-            <div className="shrink-0 border-b border-border/30 px-3 py-1.5">
-              <GravityAd
-                ad={chatAd}
-                variant="compact"
-                onVisible={onChatAdVisible ?? (() => {})}
-                onClick={onChatAdClick}
-              />
-            </div>
-          )}
-
           {/* View container — both views stay mounted so refs work; hidden via display:none */}
           {/* touch-action:pan-y overrides vaul-base's touch-action:none on [data-vaul-drawer] */}
           <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag style={{ touchAction: "pan-y" }}>
@@ -429,6 +415,9 @@ export function MobileChatDrawer({
                   inputContainerRef={inputContainerRef}
                   onMessagesChange={onMessagesChange}
                   isKeyboardOpen={isKeyboardOpen}
+                  headerAd={chatAd}
+                  onHeaderAdVisible={onChatAdVisible}
+                  onHeaderAdClick={onChatAdClick}
                   ad={chatAd}
                   onAdVisible={onChatAdVisible}
                   onAdClick={onChatAdClick}

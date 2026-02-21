@@ -81,10 +81,11 @@ interface ArticleChatProps {
   isPremium?: boolean;
   onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
   initialMessages?: import("ai").UIMessage[];
-  // Header ad (compact variant - shows at top of chat on desktop)
+  // Header ad (above prompt input)
   headerAd?: GravityAdType | null;
   onHeaderAdVisible?: () => void;
   onHeaderAdClick?: () => void;
+  onHeaderAdDismiss?: () => void;
   // Inline ad after messages
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
@@ -116,6 +117,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   headerAd,
   onHeaderAdVisible,
   onHeaderAdClick,
+  onHeaderAdDismiss,
   ad,
   onAdVisible,
   onAdClick,
@@ -132,6 +134,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const floatingInput = isMobile && variant === "sidebar";
+  const [headerAdDismissed, setHeaderAdDismissed] = useState(false);
   // Track whether user has manually scrolled away from the bottom
   const isUserScrolledUpRef = useRef(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -323,6 +326,23 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     return () => cancelAnimationFrame(rafIdRef.current);
   }, [isLoading, floatingInput]);
 
+  // Post-stream scroll: after streaming ends, content like the inline ad renders.
+  // Do a final scroll-to-bottom so the ad is visible without manual scrolling.
+  const prevIsLoadingRef = useRef(false);
+  useEffect(() => {
+    if (prevIsLoadingRef.current && !isLoading && !isUserScrolledUpRef.current) {
+      // Small delay so the ad DOM has rendered
+      const timer = setTimeout(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading]);
+
   // Auto-focus textarea when chat opens
   useEffect(() => {
     if (isOpen && !isMobile) {
@@ -408,18 +428,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
       )}
 
-      {/* Header ad - desktop sidebar only (mobile has its own header ad in drawer) */}
-      {headerAd && variant === "sidebar" && !isMobile && (
-        <div className="shrink-0 border-b border-border/30 px-3 py-1.5">
-          <GravityAd
-            ad={headerAd}
-            variant="compact"
-            onVisible={onHeaderAdVisible ?? (() => {})}
-            onClick={onHeaderAdClick}
-          />
-        </div>
-      )}
-
       {/* Messages - Mobile-first conversation container */}
       <div className="relative flex-1 min-h-0 overflow-hidden bg-background">
         <div
@@ -434,8 +442,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           <div className={cn(
             "flex h-full flex-col px-3 sm:px-4",
             isKeyboardOpen && isMobile ? "py-2" : "py-4 sm:py-6",
-            !(isMobile && variant === "sidebar") && "min-h-[200px]",
-            floatingInput && "pb-12"
+            !(isMobile && variant === "sidebar") && "min-h-[200px]"
           )}>
             {/* Logo/branding - hidden when keyboard is open on mobile to maximize space */}
             {!(isKeyboardOpen && isMobile) && (
@@ -450,11 +457,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
             {isKeyboardOpen && isMobile && <div className="flex-1" />}
-            <ChatSuggestions
-              suggestions={DEFAULT_SUGGESTIONS}
-              onSuggestionClick={handleSuggestionClick}
-              variant="default"
-            />
           </div>
         ) : (
           <div className="px-3 py-1 sm:px-4 sm:py-2 space-y-2 overflow-x-hidden">
@@ -534,7 +536,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         </div>
                       )}
 
-                      {/* Inline ad after last assistant message - elegant sponsored suggestion */}
+                      {/* Inline ad after last assistant message */}
                       {isLastMessage && !isLoading && ad && variant === "sidebar" && (
                         <div className="mt-3">
                           <GravityAd
@@ -582,7 +584,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
             <div ref={messagesEndRef} data-messages-end />
-            {floatingInput && <div className="h-8" aria-hidden="true" />}
+            {floatingInput && <div className={headerAd && !headerAdDismissed ? "h-16" : "h-8"} aria-hidden="true" />}
           </div>
         )}
         </div>
@@ -637,6 +639,32 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           )}
           data-vaul-no-drag
         >
+          {/* Suggestions above input - only on empty state */}
+          {messages.length === 0 && (
+            <div className="pb-2">
+              <ChatSuggestions
+                suggestions={DEFAULT_SUGGESTIONS}
+                onSuggestionClick={handleSuggestionClick}
+                variant="default"
+              />
+            </div>
+          )}
+          {/* Ad above input */}
+          {headerAd && variant === "sidebar" && !headerAdDismissed && (
+            <div className="mt-1 mb-1">
+              <GravityAd
+                ad={headerAd}
+                variant="chat-prompt"
+                onVisible={onHeaderAdVisible ?? (() => {})}
+                onClick={onHeaderAdClick}
+                onDismiss={() => {
+                  setHeaderAdDismissed(true);
+                  onHeaderAdDismiss?.();
+                }}
+              />
+            </div>
+          )}
+
           {/* Input container */}
           <div
             className="relative rounded-2xl border border-border overflow-hidden bg-background"
@@ -743,17 +771,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             </div>
           </div>
 
-          {/* Micro ad below input - subtle text ad (desktop sidebar only) */}
-          {microAd && variant === "sidebar" && (
-            <div className="pt-1 px-1">
-              <GravityAd
-                ad={microAd}
-                variant="micro"
-                onVisible={onMicroAdVisible ?? (() => {})}
-                onClick={onMicroAdClick}
-              />
-            </div>
-          )}
         </div>
       </div>
 
