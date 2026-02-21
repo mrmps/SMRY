@@ -337,7 +337,7 @@
   },
   "updateBanner": {
     "new": "New:",
-    "message": "Your reading experience just got a major upgrade — new toolbar, themes, and fonts",
+    "message": "Highlight, annotate, and export — your articles are now truly yours",
     "changelog": "Changelog"
   },
   "changelog": {
@@ -350,6 +350,17 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryHighlights_date": "Feb 21, 2026",
+    "entryHighlights_change1_text": "Highlight & annotate any article",
+    "entryHighlights_change1_detail": "Select any text to instantly highlight it in one of 5 colors. Add notes, change colors, or delete — your highlights stay exactly where you left them, even after you close the page.",
+    "entryHighlights_change2_text": "Annotations sidebar & mobile drawer",
+    "entryHighlights_change2_detail": "All your highlights in one place. Filter by color, tap any highlight to jump straight to it in the article, and manage everything from a clean sidebar on desktop or a native-feeling bottom sheet on mobile.",
+    "entryHighlights_change3_text": "Export to Notion, Obsidian & more",
+    "entryHighlights_change3_detail": "Take your highlights anywhere. One-click export to Notion, Obsidian, Roam Research, Markdown, or JSON — formatted and ready to use in your workflow.",
+    "entryHighlights_change4_text": "Ask AI about highlighted text",
+    "entryHighlights_change4_detail": "Highlight a passage and tap \"Ask AI\" to instantly start a conversation about it. Get explanations, summaries, or deeper analysis without leaving the article.",
+    "entryHighlights_change5_text": "Cloud-synced highlights",
+    "entryHighlights_change5_detail": "Your highlights sync automatically across all your devices. Start reading on your phone, pick up on your laptop — every highlight and note is right where you left it.",
     "entrySidebar_date": "Feb 18, 2026",
     "entrySidebar_change1_text": "Floating toolbar",
     "entrySidebar_change1_detail": "Access view modes, AI chat, style options, and sharing from a persistent toolbar — no more hunting through menus.",

@@ -1,13 +1,12 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect, useMemo } from "react";
+import { useRef, useCallback, useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { useMobileKeyboard } from "@/lib/hooks/use-mobile-keyboard";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
-import { GravityAd } from "@/components/ads/gravity-ad";
 import { type ChatThread, formatRelativeTime } from "@/lib/hooks/use-chat-threads";
 import Link from "next/link";
 import type { UIMessage } from "ai";
@@ -24,6 +23,10 @@ interface MobileChatDrawerProps {
   onChatAdVisible?: () => void;
   onChatAdClick?: () => void;
   onChatAdDismiss?: () => void;
+  /** Ad shown inline after AI responses */
+  inlineChatAd?: GravityAdType | null;
+  onInlineChatAdVisible?: () => void;
+  onInlineChatAdClick?: () => void;
   // Thread/history props
   isPremium?: boolean;
   initialMessages?: UIMessage[];
@@ -156,7 +159,12 @@ function MobilePremiumGate() {
 
 const MOBILE_KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"]);
 
-export function MobileChatDrawer({
+export interface MobileChatDrawerHandle {
+  setQuotedText: (text: string | null) => void;
+  focusInput: () => void;
+}
+
+export const MobileChatDrawer = forwardRef<MobileChatDrawerHandle, MobileChatDrawerProps>(function MobileChatDrawer({
   open,
   onOpenChange,
   articleContent,
@@ -165,6 +173,9 @@ export function MobileChatDrawer({
   onChatAdVisible,
   onChatAdClick,
   onChatAdDismiss: _onChatAdDismiss,
+  inlineChatAd,
+  onInlineChatAdVisible,
+  onInlineChatAdClick,
   isPremium = false,
   initialMessages: initialMessagesProp,
   threads = [],
@@ -179,11 +190,16 @@ export function MobileChatDrawer({
   onLoadMore,
   searchThreads,
   getThreadWithMessages,
-}: MobileChatDrawerProps) {
+}, ref) {
   const chatRef = useRef<ArticleChatHandle>(null);
   const drawerContentRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    setQuotedText: (text: string | null) => chatRef.current?.setQuotedText(text),
+    focusInput: () => chatRef.current?.focusInput(),
+  }));
   const { isOpen: isKeyboardOpen } = useMobileKeyboard();
   const [activeView, setActiveView] = useState<DrawerView>("chat");
   const [searchQuery, setSearchQuery] = useState("");
@@ -325,7 +341,7 @@ export function MobileChatDrawer({
           )}
           style={{ height: "100dvh" }}
         >
-          {/* Fullscreen header — swipe-down here to dismiss */}
+          {/* Fullscreen header — drag down to dismiss */}
           {/* Touch targets: 44px minimum per iOS HIG / WCAG 2.2 */}
           <div className="shrink-0 border-b border-border/30">
             <div className="flex items-center justify-between px-2 py-2">
@@ -397,20 +413,9 @@ export function MobileChatDrawer({
             </div>
           </div>
 
-          {/* Header ad banner - visible immediately when chat opens */}
-          {chatAd && activeView === "chat" && (
-            <div className="shrink-0 border-b border-border/30 px-3 py-1.5">
-              <GravityAd
-                ad={chatAd}
-                variant="compact"
-                onVisible={onChatAdVisible ?? (() => {})}
-                onClick={onChatAdClick}
-              />
-            </div>
-          )}
-
           {/* View container — both views stay mounted so refs work; hidden via display:none */}
-          <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag>
+          {/* touch-action:pan-y overrides vaul-base's touch-action:none on [data-vaul-drawer] */}
+          <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag style={{ touchAction: "pan-y" }}>
             {/* Chat view */}
             <div className={cn("h-full", activeView !== "chat" && "hidden")}>
               <div className="h-full mx-auto max-w-lg">
@@ -427,9 +432,12 @@ export function MobileChatDrawer({
                   inputContainerRef={inputContainerRef}
                   onMessagesChange={onMessagesChange}
                   isKeyboardOpen={isKeyboardOpen}
-                  ad={chatAd}
-                  onAdVisible={onChatAdVisible}
-                  onAdClick={onChatAdClick}
+                  headerAd={chatAd}
+                  onHeaderAdVisible={onChatAdVisible}
+                  onHeaderAdClick={onChatAdClick}
+                  ad={inlineChatAd}
+                  onAdVisible={onInlineChatAdVisible}
+                  onAdClick={onInlineChatAdClick}
                 />
               </div>
             </div>
@@ -437,7 +445,7 @@ export function MobileChatDrawer({
             {/* History view */}
             <div className={cn("h-full bg-background", activeView !== "history" && "hidden")}>
               {isPremium ? (
-                <div className="h-full flex flex-col bg-background" style={{ overscrollBehavior: "contain" }}>
+                <div className="h-full flex flex-col bg-background" style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}>
                   {/* Search */}
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
                     <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />
@@ -553,4 +561,4 @@ export function MobileChatDrawer({
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
   );
-}
+});

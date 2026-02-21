@@ -4,13 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
-import { ArrowLeft, AiMagic } from "@/components/ui/icons";
+import { ArrowLeft, AiMagic, Highlighter } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
 import { ArticleContent } from "@/components/article/content";
 import { TabbedSidebar, TabbedSidebarHandle } from "@/components/features/tabbed-sidebar";
-import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { FloatingToolbar } from "@/components/features/floating-toolbar";
 import { SettingsPopover } from "@/components/features/settings-popover";
@@ -30,13 +29,16 @@ import {
 import { Source } from "@/types/api";
 import { saveReadingProgress } from "@/lib/hooks/use-reading-progress";
 import { isTextUIPart, type UIMessage } from "ai";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { ImperativePanelHandle } from "react-resizable-panels";
 import { KeyboardShortcutsDialog } from "@/components/features/keyboard-shortcuts-dialog";
+import { HighlightsProvider } from "@/lib/contexts/highlights-context";
+import { AnnotationsSidebar } from "@/components/features/annotations-sidebar";
+import { MobileChatDrawer, type MobileChatDrawerHandle } from "@/components/features/mobile-chat-drawer";
+import { MobileAnnotationsDrawer } from "@/components/features/mobile-annotations-drawer";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 // Check if the user is typing in an input/textarea/contentEditable
 function isTypingInInput(e: KeyboardEvent): boolean {
@@ -120,12 +122,23 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   // so we can reuse inlineAd/footerAd as fallback if chatAd is unavailable
   const mobileChatAd = chatAd ?? inlineAd ?? footerAd ?? null;
 
-  // Debug: Log how many unique ads we received and from which provider
-  if (typeof window !== 'undefined' && gravityAds.length > 0) {
-    const providers = [...new Set(gravityAds.map(a => a.ad_provider || 'gravity'))];
-    console.log(`[Ads] Received ${gravityAds.length} ads (${providers.join(' + ')}):`,
-      gravityAds.map((a, i) => `[${i}] ${a.brandName} (${a.ad_provider || 'gravity'})`).join(', '));
-  }
+  // Stable ad callbacks for ArticleContent (prevents breaking its React.memo on sidebar toggle)
+  const onInlineAdVisible = useCallback(() => { if (inlineAd) fireImpression(inlineAd); }, [inlineAd, fireImpression]);
+  const onInlineAdClick = useCallback(() => { if (inlineAd) fireClick(inlineAd); }, [inlineAd, fireClick]);
+  const onFooterAdVisible = useCallback(() => { if (footerAd) fireImpression(footerAd); }, [footerAd, fireImpression]);
+  const onFooterAdClick = useCallback(() => { if (footerAd) fireClick(footerAd); }, [footerAd, fireClick]);
+
+  // Debug: Log only when ads actually change
+  const prevAdKeyRef = useRef("");
+  useEffect(() => {
+    const adKey = gravityAds.map(a => a.brandName).join(",");
+    if (adKey && adKey !== prevAdKeyRef.current) {
+      prevAdKeyRef.current = adKey;
+      const providers = [...new Set(gravityAds.map(a => a.ad_provider || 'gravity'))];
+      console.log(`[Ads] New rotation (${providers.join(' + ')}):`,
+        gravityAds.map((a, i) => `[${i}] ${a.brandName}`).join(', '));
+    }
+  }, [gravityAds]);
 
   // Handle article load: save to history
   useEffect(() => {
@@ -137,7 +150,18 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     addArticleToHistory(url, firstSuccessfulArticle.title || "Untitled Article");
   }, [firstSuccessfulArticle, url]);
 
-  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  // TTS (Text-to-Speech) dictation
+
+  const [mobileSummaryOpen, setMobileSummaryOpenRaw] = useState(false);
+  const [mobileAnnotationsOpen, setMobileAnnotationsOpenRaw] = useState(false);
+  const setMobileSummaryOpen = React.useCallback((val: boolean) => {
+    setMobileSummaryOpenRaw(val);
+    if (val) setMobileAnnotationsOpenRaw(false);
+  }, []);
+  const setMobileAnnotationsOpen = React.useCallback((val: boolean) => {
+    setMobileAnnotationsOpenRaw(val);
+    if (val) setMobileSummaryOpenRaw(false);
+  }, []);
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -146,10 +170,24 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [styleOptionsOpen, setStyleOptionsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<"chat" | "history">("chat");
+  const [annotationsSidebarOpen, setAnnotationsSidebarOpenRaw] = useState(false);
+  const annotationsSidebarOpenRef = useRef(annotationsSidebarOpen);
+  useEffect(() => { annotationsSidebarOpenRef.current = annotationsSidebarOpen; }, [annotationsSidebarOpen]);
+  const setAnnotationsSidebarOpen = React.useCallback(
+    (value: boolean | ((prev: boolean) => boolean)) => {
+      const next = typeof value === "function" ? value(annotationsSidebarOpenRef.current) : value;
+      setAnnotationsSidebarOpenRaw(next);
+      // Close chat sidebar when opening annotations
+      if (next) setQuery({ sidebar: null });
+    },
+    [setQuery]
+  );
 
   const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);
+  const mobileChatDrawerRef = useRef<MobileChatDrawerHandle>(null);
   const mobileSettingsRef = useRef<SettingsDrawerHandle>(null);
   const creatingThreadRef = useRef(false);
+  const askAiTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     threads,
     activeThread: _activeThread,
@@ -186,8 +224,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const handleSidebarChange = React.useCallback(
     (next: boolean) => {
       setQuery({ sidebar: next ? true : null });
+      // Close annotations sidebar when opening chat sidebar
+      if (next) setAnnotationsSidebarOpen(false);
     },
-    [setQuery]
+    [setQuery, setAnnotationsSidebarOpen]
   );
 
   // Copy page as markdown (used by ⌘C keyboard shortcut)
@@ -204,6 +244,37 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       console.error("Failed to copy:", error);
     }
   }, [articleTitle, articleTextContent, url]);
+
+  // Handle Ask AI from highlight toolbar
+  const handleAskAI = React.useCallback((text: string) => {
+    if (askAiTimeoutRef.current) clearTimeout(askAiTimeoutRef.current);
+    if (isDesktop) {
+      // Desktop: open sidebar → set chat tab → set quoted text + focus
+      if (!sidebarOpen) {
+        handleSidebarChange(true);
+      }
+      tabbedSidebarRef.current?.setActiveTab("chat");
+      setSidebarActiveTab("chat");
+      // Small delay for sidebar to open/tab to switch
+      askAiTimeoutRef.current = setTimeout(() => {
+        tabbedSidebarRef.current?.setQuotedText(text);
+        tabbedSidebarRef.current?.focusInput();
+      }, 100);
+    } else {
+      // Mobile: open drawer → set quoted text + focus
+      setMobileSummaryOpen(true);
+      // Delay for drawer animation
+      askAiTimeoutRef.current = setTimeout(() => {
+        mobileChatDrawerRef.current?.setQuotedText(text);
+        mobileChatDrawerRef.current?.focusInput();
+      }, 300);
+    }
+  }, [isDesktop, sidebarOpen, handleSidebarChange, setMobileSummaryOpen]);
+
+  // Cleanup Ask AI timeout on unmount
+  useEffect(() => () => {
+    if (askAiTimeoutRef.current) clearTimeout(askAiTimeoutRef.current);
+  }, []);
 
   // Open in external AI service
   const handleOpenInAI = React.useCallback((service: "chatgpt" | "claude") => {
@@ -339,24 +410,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     scrollEl.addEventListener("scroll", handleScroll, { passive: true });
     return () => scrollEl.removeEventListener("scroll", handleScroll);
   }, [isDesktop]);
-
-  // Resizable panel ref
-  const summaryPanelRef = useRef<ImperativePanelHandle>(null);
-
-  // Sync panel with sidebarOpen state
-  useEffect(() => {
-    const panel = summaryPanelRef.current;
-    if (!panel) return;
-
-    const isExpanded = panel.getSize() > 0;
-    if (sidebarOpen === isExpanded) return;
-
-    if (sidebarOpen) {
-      panel.expand(25);
-    } else {
-      panel.collapse();
-    }
-  }, [sidebarOpen]);
 
   // Handle new chat from history sidebar
   const handleNewChat = React.useCallback(() => {
@@ -602,6 +655,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         setShareOpen(true);
         return;
       }
+      // A — Toggle annotations sidebar
+      if ((e.key === "a" || e.key === "A") && !mod && !e.shiftKey) {
+        e.preventDefault();
+        setAnnotationsSidebarOpen((prev) => !prev);
+        return;
+      }
       // S — Open Style Options popover
       if ((e.key === "s" || e.key === "S") && !mod && !e.shiftKey) {
         e.preventDefault();
@@ -612,7 +671,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI]);
+  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI, setAnnotationsSidebarOpen]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -623,95 +682,185 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       <div className="flex-1 overflow-hidden flex flex-col">
         {/* Content Area - conditionally render desktop or mobile layout */}
         <main className="flex-1 overflow-hidden">
+        <HighlightsProvider articleUrl={url} articleTitle={articleTitle}>
           {isDesktop === null ? (
             // SSR/hydration: render nothing to avoid layout shift
             // The layout will render on client after hydration
             <div className="h-full bg-background" />
           ) : isDesktop ? (
-            // Desktop: Resizable panels with sidebars
-            <div className="h-full relative">
-              {/* Back arrow - top left */}
-              <button
-                onClick={() => window.history.back()}
-                className="absolute top-4 left-4 z-50 size-10 flex items-center justify-center rounded-xl border border-border/60 bg-background/60 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="size-5" />
-              </button>
-
-              {/* Ask AI Chat - top right, hidden when sidebar is open */}
-              {!sidebarOpen && (
+            // Desktop: Sidebar layout — content shifts left when chat opens
+            <SidebarProvider
+              open={sidebarOpen}
+              onOpenChange={handleSidebarChange}
+              className="h-full min-h-0!"
+              style={{ "--sidebar-width": "440px" } as React.CSSProperties}
+            >
+              {/* Main content area — flex-1 shrinks when sidebar gap appears */}
+              <div className="flex-1 min-w-0 relative h-full">
+                {/* Back arrow - top left */}
                 <button
-                  onClick={() => {
-                    handleSidebarChange(true);
-                    tabbedSidebarRef.current?.setActiveTab("chat");
-                    setSidebarActiveTab("chat");
-                  }}
-                  className="absolute top-4 right-4 z-50 flex items-center gap-2.5 h-10 pl-3.5 pr-3 rounded-xl border border-border/60 bg-background/80 backdrop-blur-md shadow-sm text-foreground hover:bg-muted/80 transition-colors"
-                  aria-label="Ask AI (⌘I)"
+                  onClick={() => window.history.back()}
+                  className="absolute top-4 left-4 z-50 size-10 flex items-center justify-center rounded-xl border border-border/60 bg-background/60 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  aria-label="Go back"
                 >
-                  <AiMagic className="size-4" />
-                  <span className="text-sm font-medium">AI Chat</span>
-                  <Kbd className="ml-0.5 text-[10px] px-1.5 py-0.5 bg-muted/80">⌘I</Kbd>
+                  <ArrowLeft className="size-5" />
                 </button>
-              )}
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                {/* Main content panel */}
-                <ResizablePanel defaultSize={sidebarOpen ? 70 : 100} minSize={50}>
-                  <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-background scrollbar-hide">
-                    {/* Content container - prose width controlled by CSS variables */}
-                    <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
-                      <ArticleContent
-                        data={articleQuery.data}
-                        isLoading={articleQuery.isLoading}
-                        isError={articleQuery.isError}
-                        error={articleQuery.error}
-                        source={source}
-                        url={url}
-                        viewMode={viewMode}
-                        isFullScreen={isFullScreen}
-                        onFullScreenChange={setIsFullScreen}
-                        inlineAd={!isPremium ? inlineAd : null}
-                        onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
-                        onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
-                        showInlineAd={!isPremium}
-                        footerAd={!isPremium ? footerAd : null}
-                        onFooterAdVisible={footerAd ? () => fireImpression(footerAd) : undefined}
-                        onFooterAdClick={footerAd ? () => fireClick(footerAd) : undefined}
-                      />
-                    </div>
-                  </div>
-                </ResizablePanel>
 
-                {/* Right resize handle with toggle button */}
-                <ResizableHandle
-                  withToggle
-                  isCollapsed={!sidebarOpen}
-                  onToggle={() => handleSidebarChange(!sidebarOpen)}
-                  panelPosition="right"
-                  className={cn(
-                    "transition-opacity duration-150",
-                    !sidebarOpen && "opacity-0 hover:opacity-100"
+                {/* Top-right action buttons — AI Chat + Annotations */}
+                <div
+                  className="absolute top-4 z-50 flex flex-col gap-2 transition-[right] duration-200 ease-linear"
+                  style={{ right: annotationsSidebarOpen ? 'calc(320px + 1rem)' : '1rem' }}
+                >
+                  {/* AI Chat toggle */}
+                  {(sidebarOpen || annotationsSidebarOpen) ? (
+                    <div className="relative group">
+                      <button
+                        onClick={() => {
+                          if (sidebarOpen) {
+                            handleSidebarChange(false);
+                          } else {
+                            handleSidebarChange(true);
+                            tabbedSidebarRef.current?.setActiveTab("chat");
+                            setSidebarActiveTab("chat");
+                          }
+                        }}
+                        className={cn(
+                          "size-10 flex items-center justify-center rounded-xl border backdrop-blur-md shadow-sm transition-colors",
+                          sidebarOpen
+                            ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                            : "border-border/60 bg-background/80 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                        )}
+                        aria-label={sidebarOpen ? "Close AI Chat (⌘I)" : "Open AI Chat (⌘I)"}
+                      >
+                        <AiMagic className="size-4" />
+                      </button>
+                      <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md border shadow-sm">
+                        {sidebarOpen ? "Close" : "Open"} AI Chat <Kbd className="ml-1 text-[10px] px-1 py-0.5">⌘I</Kbd>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleSidebarChange(true);
+                        tabbedSidebarRef.current?.setActiveTab("chat");
+                        setSidebarActiveTab("chat");
+                      }}
+                      className="flex items-center gap-2.5 h-10 pl-3.5 pr-3 rounded-xl border border-border/60 bg-background/80 backdrop-blur-md shadow-sm text-foreground hover:bg-muted/80 transition-colors"
+                      aria-label="Ask AI (⌘I)"
+                    >
+                      <AiMagic className="size-4" />
+                      <span className="text-sm font-medium">AI Chat</span>
+                      <Kbd className="ml-0.5 text-[10px] px-1.5 py-0.5 bg-muted/80">⌘I</Kbd>
+                    </button>
                   )}
+
+                  {/* Annotations toggle */}
+                  {(sidebarOpen || annotationsSidebarOpen) ? (
+                    <div className="relative group">
+                      <button
+                        onClick={() => setAnnotationsSidebarOpen((prev) => !prev)}
+                        className={cn(
+                          "size-10 flex items-center justify-center rounded-xl border backdrop-blur-md shadow-sm transition-colors",
+                          annotationsSidebarOpen
+                            ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                            : "border-border/60 bg-background/80 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                        )}
+                        aria-label="Toggle Annotations (A)"
+                      >
+                        <Highlighter className="size-4" />
+                      </button>
+                      <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-popover text-popover-foreground text-xs px-2 py-1 rounded-md border shadow-sm">
+                        {annotationsSidebarOpen ? "Close" : "Open"} Annotations <Kbd className="ml-1 text-[10px] px-1 py-0.5">A</Kbd>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setAnnotationsSidebarOpen(true)}
+                      className="flex items-center gap-2.5 h-10 pl-3.5 pr-3 rounded-xl border border-border/60 bg-background/80 backdrop-blur-md shadow-sm text-foreground hover:bg-muted/80 transition-colors"
+                      aria-label="Annotations (A)"
+                    >
+                      <Highlighter className="size-4" />
+                      <span className="text-sm font-medium">Annotations</span>
+                      <Kbd className="ml-0.5 text-[10px] px-1.5 py-0.5 bg-muted/80">A</Kbd>
+                    </button>
+                  )}
+                </div>
+
+                <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-background scrollbar-hide">
+                  <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
+                    <ArticleContent
+                      data={articleQuery.data}
+                      isLoading={articleQuery.isLoading}
+                      isError={articleQuery.isError}
+                      error={articleQuery.error}
+                      source={source}
+                      url={url}
+                      viewMode={viewMode}
+                      isFullScreen={isFullScreen}
+                      onFullScreenChange={setIsFullScreen}
+                      inlineAd={!isPremium ? inlineAd : null}
+                      onInlineAdVisible={inlineAd ? onInlineAdVisible : undefined}
+                      onInlineAdClick={inlineAd ? onInlineAdClick : undefined}
+                      showInlineAd={!isPremium}
+                      footerAd={!isPremium ? footerAd : null}
+                      onFooterAdVisible={footerAd ? onFooterAdVisible : undefined}
+                      onFooterAdClick={footerAd ? onFooterAdClick : undefined}
+                      onAskAI={handleAskAI}
+                    />
+                  </div>
+                </div>
+
+                {/* Fixed bottom-right ad when sidebar is closed */}
+                {!sidebarOpen && !isPremium && sidebarAd && !desktopAdDismissed && (
+                  <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
+                    <GravityAd
+                      ad={sidebarAd}
+                      onVisible={() => fireImpression(sidebarAd)}
+                      onClick={() => fireClick(sidebarAd)}
+                      onDismiss={() => {
+                        fireDismiss(sidebarAd);
+                        setDesktopAdDismissed(true);
+                      }}
+                      variant={sidebarOpen ? "compact" : "default"}
+                    />
+                  </div>
+                )}
+
+                {/* Floating Toolbar - Desktop only */}
+                <FloatingToolbar
+                  viewMode={viewMode}
+                  onViewModeChange={handleViewModeChange}
+                  originalUrl={url}
+                  shareUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
+                  articleTitle={articleTitle}
+                  articleTextContent={articleTextContent}
+                  source={source || "smry-fast"}
+                  sidebarOpen={sidebarOpen}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                  styleOptionsOpen={styleOptionsOpen}
+                  onStyleOptionsOpenChange={setStyleOptionsOpen}
+                  shareOpen={shareOpen}
+                  onShareOpenChange={setShareOpen}
                 />
 
-                {/* Tabbed sidebar panel - Chat + History */}
-                <ResizablePanel
-                  ref={summaryPanelRef}
-                  defaultSize={sidebarOpen ? 30 : 0}
-                  minSize={25}
-                  maxSize={40}
-                  collapsible
-                  collapsedSize={0}
-                  className="bg-sidebar"
-                  style={{ minWidth: sidebarOpen ? 439 : 0 }}
-                  onCollapse={() => {
-                    if (sidebarOpen) handleSidebarChange(false);
-                  }}
-                  onExpand={() => {
-                    if (!sidebarOpen) handleSidebarChange(true);
-                  }}
-                >
+                {/* Settings Popover - Desktop dialog, Mobile drawer */}
+                <SettingsPopover
+                  open={settingsOpen}
+                  onOpenChange={setSettingsOpen}
+                />
+
+                {/* Annotations Sidebar — slides from right as overlay */}
+                <AnnotationsSidebar
+                  open={annotationsSidebarOpen}
+                  onOpenChange={setAnnotationsSidebarOpen}
+                  articleUrl={url}
+                  articleTitle={articleTitle}
+                />
+              </div>
+
+              {/* Chat Sidebar — pushes content left when open */}
+              <Sidebar side="right" collapsible="offcanvas">
+                <SidebarContent className="overflow-hidden">
                   <div className="h-full">
                     <TabbedSidebar
                       ref={tabbedSidebarRef}
@@ -726,6 +875,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       headerAd={!isPremium ? chatAd : null}
                       onHeaderAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onHeaderAdClick={chatAd ? () => fireClick(chatAd) : undefined}
+                      ad={!isPremium ? (inlineAd ?? footerAd) : null}
+                      onAdVisible={inlineAd ? () => fireImpression(inlineAd) : footerAd ? () => fireImpression(footerAd) : undefined}
+                      onAdClick={inlineAd ? () => fireClick(inlineAd) : footerAd ? () => fireClick(footerAd) : undefined}
                       microAd={!isPremium ? microAd : null}
                       onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
                       onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}
@@ -744,48 +896,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       onTabChange={setSidebarActiveTab}
                     />
                   </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
-
-              {/* Fixed bottom-right ad when sidebar is closed */}
-              {!sidebarOpen && !isPremium && sidebarAd && !desktopAdDismissed && (
-                <div className="fixed bottom-4 right-4 z-40 w-[280px] lg:w-[320px] xl:w-[360px] max-w-[calc(100vw-2rem)]">
-                  <GravityAd
-                    ad={sidebarAd}
-                    onVisible={() => fireImpression(sidebarAd)}
-                    onClick={() => fireClick(sidebarAd)}
-                    onDismiss={() => {
-                      fireDismiss(sidebarAd);
-                      setDesktopAdDismissed(true);
-                    }}
-                    variant={sidebarOpen ? "compact" : "default"}
-                  />
-                </div>
-              )}
-
-              {/* Floating Toolbar - Desktop only */}
-              <FloatingToolbar
-                viewMode={viewMode}
-                onViewModeChange={handleViewModeChange}
-                originalUrl={url}
-                shareUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
-                articleTitle={articleTitle}
-                articleTextContent={articleTextContent}
-                source={source || "smry-fast"}
-                sidebarOpen={sidebarOpen}
-                onOpenSettings={() => setSettingsOpen(true)}
-                styleOptionsOpen={styleOptionsOpen}
-                onStyleOptionsOpenChange={setStyleOptionsOpen}
-                shareOpen={shareOpen}
-                onShareOpenChange={setShareOpen}
-              />
-
-              {/* Settings Popover - Desktop dialog, Mobile drawer */}
-              <SettingsPopover
-                open={settingsOpen}
-                onOpenChange={setSettingsOpen}
-              />
-            </div>
+                </SidebarContent>
+              </Sidebar>
+            </SidebarProvider>
           ) : (
             // Mobile: Clean article-first layout with bottom bar
             <div className="h-full relative">
@@ -831,8 +944,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       </span>
                     </div>
 
-                    {/* AI chat button - right */}
+                    {/* Right buttons: annotations + AI chat */}
                     <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setMobileAnnotationsOpen(true)}
+                        className={cn(
+                          "size-9 flex items-center justify-center rounded-full transition-colors",
+                          mobileAnnotationsOpen
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                        aria-label="Open annotations"
+                      >
+                        <Highlighter className="size-5" />
+                      </button>
                       <button
                         onClick={() => setMobileSummaryOpen(true)}
                         className={cn(
@@ -868,20 +993,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     isFullScreen={isFullScreen}
                     onFullScreenChange={setIsFullScreen}
                     inlineAd={!isPremium ? inlineAd : null}
-                    onInlineAdVisible={inlineAd ? () => fireImpression(inlineAd) : undefined}
-                    onInlineAdClick={inlineAd ? () => fireClick(inlineAd) : undefined}
+                    onInlineAdVisible={inlineAd ? onInlineAdVisible : undefined}
+                    onInlineAdClick={inlineAd ? onInlineAdClick : undefined}
                     showInlineAd={!isPremium}
                     footerAd={!isPremium ? footerAd : null}
-                    onFooterAdVisible={footerAd ? () => fireImpression(footerAd) : undefined}
-                    onFooterAdClick={footerAd ? () => fireClick(footerAd) : undefined}
+                    onFooterAdVisible={footerAd ? onFooterAdVisible : undefined}
+                    onFooterAdClick={footerAd ? onFooterAdClick : undefined}
+                    onAskAI={handleAskAI}
                   />
                 </div>
               </div>
 
-              {/* Elements below are OUTSIDE scroll container to prevent Vaul scroll lock interference */}
-
-              {/* Mobile Chat Drawer */}
+              {/* Mobile Chat Drawer — fullscreen vaul drawer */}
               <MobileChatDrawer
+                ref={mobileChatDrawerRef}
                 open={mobileSummaryOpen}
                 onOpenChange={setMobileSummaryOpen}
                 articleContent={articleTextContent || ""}
@@ -889,21 +1014,31 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 chatAd={!isPremium ? mobileChatAd : null}
                 onChatAdVisible={mobileChatAd ? () => fireImpression(mobileChatAd) : undefined}
                 onChatAdClick={mobileChatAd ? () => fireClick(mobileChatAd) : undefined}
-                onChatAdDismiss={mobileChatAd ? () => fireDismiss(mobileChatAd) : undefined}
+                inlineChatAd={!isPremium ? (inlineAd ?? footerAd) : null}
+                onInlineChatAdVisible={inlineAd ? () => fireImpression(inlineAd) : footerAd ? () => fireImpression(footerAd) : undefined}
+                onInlineChatAdClick={inlineAd ? () => fireClick(inlineAd) : footerAd ? () => fireClick(footerAd) : undefined}
                 isPremium={isPremium}
                 initialMessages={threadInitialMessages}
+                onMessagesChange={isPremium ? handleMessagesChange : undefined}
                 threads={threads}
                 activeThreadId={currentThreadId}
                 onSelectThread={handleSelectThread}
                 onNewChat={handleNewChat}
                 onDeleteThread={deleteThread}
                 groupedThreads={groupedThreads}
-                onMessagesChange={isPremium ? handleMessagesChange : undefined}
                 hasMore={hasMore}
                 isLoadingMore={isLoadingMore}
                 onLoadMore={loadMore}
                 searchThreads={searchThreads}
                 getThreadWithMessages={getThreadWithMessages}
+              />
+
+              {/* Mobile Annotations Drawer — bottom sheet */}
+              <MobileAnnotationsDrawer
+                open={mobileAnnotationsOpen}
+                onOpenChange={setMobileAnnotationsOpen}
+                articleUrl={url}
+                articleTitle={articleTitle}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}
@@ -943,12 +1078,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               />
             </div>
           )}
+        </HighlightsProvider>
         </main>
       </div>
       <KeyboardShortcutsDialog
         open={shortcutsDialogOpen}
         onOpenChange={setShortcutsDialogOpen}
       />
+
     </div>
   );
 }

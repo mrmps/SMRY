@@ -103,6 +103,14 @@
   --reader-font-size: 18px;
   --reader-line-height: 1.8;
   --reader-content-width: 740px;
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 :root,
@@ -941,8 +949,14 @@ html.dawn .bg-card {
 }
 
 [data-vaul-no-drag] {
-  touch-action: pan-y;
+  touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Allow scrollable children inside vaul drawers to scroll */
+[data-vaul-drawer] [data-vaul-no-drag] {
+  touch-action: pan-y !important;
 }
 
 /* =============================================================================
@@ -1334,7 +1348,6 @@ html.dawn .bg-card {
   color: var(--foreground) !important;
   text-decoration: none !important;
 }
-
 
 /* =============================================================================
  * PROSE COMPONENT STYLES - In @layer for proper cascade
@@ -1894,4 +1907,49 @@ div[style*="position: fixed"][style*="inset: 0"] > div:last-child,
   100% {
     background-position: 100% 50%;
   }
+}
+
+/* =============================================================================
+ * INLINE HIGHLIGHT MARKS
+ * Colored highlight marks for annotated text in articles
+ * ============================================================================= */
+
+mark[data-highlight-color="yellow"] { background-color: rgb(254 240 138 / 0.7); }
+mark[data-highlight-color="green"] { background-color: rgb(187 247 208 / 0.7); }
+mark[data-highlight-color="blue"] { background-color: rgb(191 219 254 / 0.7); }
+mark[data-highlight-color="pink"] { background-color: rgb(251 207 232 / 0.7); }
+mark[data-highlight-color="orange"] { background-color: rgb(253 186 116 / 0.7); }
+
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="yellow"] { background-color: rgb(234 179 8 / 0.3); }
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="green"] { background-color: rgb(34 197 94 / 0.3); }
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="blue"] { background-color: rgb(59 130 246 / 0.3); }
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="pink"] { background-color: rgb(236 72 153 / 0.3); }
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="orange"] { background-color: rgb(249 115 22 / 0.3); }
+
+mark[data-highlight-id] {
+  cursor: pointer;
+  border-radius: 2px;
+  transition: outline 0.15s ease;
+  padding: 1px 0;
+}
+
+mark[data-highlight-id]:hover {
+  outline: 2px solid var(--glow-muted);
+  outline-offset: 1px;
+}
+
+mark[data-highlight-active="true"] {
+  outline: 2px solid var(--glow);
+  outline-offset: 1px;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% { outline-color: var(--glow); }
+  50% { outline-color: transparent; }
+}
+
+mark[data-highlight-pulse="true"] {
+  outline: 2px solid var(--glow);
+  outline-offset: 1px;
+  animation: highlight-pulse 0.6s ease-in-out 2;
 }

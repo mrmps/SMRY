@@ -350,6 +350,17 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entryHighlights_date": "21 februari 2026",
+    "entryHighlights_change1_text": "Elk artikel markeren en annoteren",
+    "entryHighlights_change1_detail": "Selecteer willekeurige tekst om deze direct te markeren in een van 5 kleuren. Voeg notities toe, wijzig kleuren of verwijder — je markeringen blijven precies waar je ze achterliet, ook na het sluiten van de pagina.",
+    "entryHighlights_change2_text": "Annotatie-zijbalk en mobiele lade",
+    "entryHighlights_change2_detail": "Al je markeringen op één plek. Filter op kleur, tik op een markering om er direct naartoe te springen in het artikel, en beheer alles vanuit een overzichtelijke zijbalk op desktop of een native aanvoelend menu op mobiel.",
+    "entryHighlights_change3_text": "Exporteren naar Notion, Obsidian en meer",
+    "entryHighlights_change3_detail": "Neem je markeringen overal mee naartoe. Eén-klik export naar Notion, Obsidian, Roam Research, Markdown of JSON — opgemaakt en klaar voor gebruik in je workflow.",
+    "entryHighlights_change4_text": "Vraag AI over gemarkeerde tekst",
+    "entryHighlights_change4_detail": "Markeer een passage en tik op \"Vraag AI\" om direct een gesprek te starten. Krijg uitleg, samenvattingen of diepere analyses zonder het artikel te verlaten.",
+    "entryHighlights_change5_text": "Cloud-gesynchroniseerde markeringen",
+    "entryHighlights_change5_detail": "Je markeringen worden automatisch gesynchroniseerd op al je apparaten. Begin te lezen op je telefoon, ga verder op je laptop — elke markering en notitie staat precies waar je deze achterliet.",
     "entrySidebar_date": "18 februari 2026",
     "entrySidebar_change1_text": "Zwevende werkbalk",
     "entrySidebar_change1_detail": "Toegang tot weergavemodi, AI-chat, stijlopties en delen via een vaste balk — geen zoeken in menu's meer.",

@@ -350,6 +350,17 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entryHighlights_date": "2026年2月21日",
+    "entryHighlights_change1_text": "高亮和注释任何文章",
+    "entryHighlights_change1_detail": "选择任意文本即可用5种颜色之一即时高亮。添加笔记、更改颜色或删除——即使关闭页面后，高亮也会保留在原处。",
+    "entryHighlights_change2_text": "注释侧边栏和移动端抽屉",
+    "entryHighlights_change2_detail": "所有高亮集中在一处。按颜色筛选，点击任意高亮直接跳转到文章对应位置，桌面端使用简洁的侧边栏，移动端使用原生风格的底部面板来管理一切。",
+    "entryHighlights_change3_text": "导出到 Notion、Obsidian 等",
+    "entryHighlights_change3_detail": "将高亮带到任何地方。一键导出到 Notion、Obsidian、Roam Research、Markdown 或 JSON——格式化后即可在你的工作流程中使用。",
+    "entryHighlights_change4_text": "向 AI 询问高亮文本",
+    "entryHighlights_change4_detail": "高亮一段文字并点击\"询问 AI\"即可立即开始对话。无需离开文章即可获得解释、摘要或更深入的分析。",
+    "entryHighlights_change5_text": "云同步高亮",
+    "entryHighlights_change5_detail": "高亮会自动在所有设备间同步。在手机上开始阅读，在笔记本上继续——每个高亮和笔记都在你离开的地方。",
     "entrySidebar_date": "2026年2月18日",
     "entrySidebar_change1_text": "浮动工具栏",
     "entrySidebar_change1_detail": "通过固定工具栏访问视图模式、AI聊天、样式选项和分享功能——无需在菜单中寻找。",

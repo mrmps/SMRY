@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiUrl } from '@/lib/api/config';
 
 export interface Highlight {
   id: string;
   text: string;
   note?: string;
-  color: 'yellow' | 'green' | 'blue' | 'pink';
+  color: 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
   createdAt: string;
   // Position info for re-rendering
   startOffset?: number;
@@ -67,7 +67,7 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
       return response.json();
     },
     enabled: !!isSignedIn,
-    staleTime: 0,
+    staleTime: 30_000,
   });
 
   // Local state for highlights - initialize from localStorage
@@ -91,48 +91,113 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
     [isSignedIn, serverData?.highlights, localHighlights]
   );
 
-  // Save mutation for server
-  const saveMutation = useMutation({
-    mutationFn: async (newHighlights: Highlight[]) => {
-      const token = await getToken();
-      if (!token) return false;
+  // Debounced save to server — ensures rapid mutations batch into a single POST
+  // with the latest state, preventing out-of-order overwrites and data loss.
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSavingRef = useRef(false);
+  const pendingSaveRef = useRef<Highlight[] | null>(null);
 
+  const saveToServer = useCallback(async (highlights: Highlight[]) => {
+    const token = await getToken();
+    if (!token) return;
+
+    isSavingRef.current = true;
+    try {
       const response = await fetch(getApiUrl(`/api/highlights/${articleHash}`), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          articleUrl,
-          articleTitle,
-          highlights: newHighlights,
-        }),
+        body: JSON.stringify({ articleUrl, articleTitle, highlights }),
       });
 
-      return response.ok;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: highlightKeys.byArticle(articleHash) });
-    },
-  });
-
-  // Save to localStorage (for anonymous users)
-  const saveToLocal = useCallback((newHighlights: Highlight[]) => {
-    const data: ArticleHighlights = {
-      articleUrl,
-      articleTitle,
-      highlights: newHighlights,
-      updatedAt: new Date().toISOString(),
-    };
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(data));
-    } catch {
-      // Ignore storage errors
+      if (response.ok) {
+        // Only invalidate if no newer save is pending — avoids refetch that
+        // would overwrite a more recent optimistic update
+        if (!pendingSaveRef.current) {
+          queryClient.invalidateQueries({ queryKey: highlightKeys.byArticle(articleHash) });
+        }
+      }
+    } finally {
+      isSavingRef.current = false;
+      // If a newer save queued while we were in-flight, flush it now
+      if (pendingSaveRef.current) {
+        const next = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        saveToServer(next);
+      }
     }
+  }, [getToken, articleHash, articleUrl, articleTitle, queryClient]);
+
+  const debouncedSave = useCallback((highlights: Highlight[]) => {
+    // Clear any pending debounce timer — we always want the latest state
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    // If a save is currently in-flight, queue this as pending (will flush after)
+    if (isSavingRef.current) {
+      pendingSaveRef.current = highlights;
+      return;
+    }
+
+    // Debounce 300ms — batches rapid mutations (e.g. add + color change) into one POST
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      saveToServer(highlights);
+    }, 300);
+  }, [saveToServer]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  }, []);
+
+  // Helper: persist highlights for signed-in users via optimistic update + debounced save
+  // Uses functional updater inside setQueryData to guarantee sequential reads
+  // (avoids lost mutations when two calls are batched in the same event handler)
+  const persistSignedIn = useCallback((updater: (prev: Highlight[]) => Highlight[]) => {
+    let next: Highlight[] = [];
+    queryClient.setQueryData<ArticleHighlights | null>(
+      highlightKeys.byArticle(articleHash),
+      (old) => {
+        const prevHighlights = old?.highlights ?? [];
+        next = updater(prevHighlights);
+        return old ? { ...old, highlights: next, updatedAt: new Date().toISOString() } : {
+          articleUrl,
+          articleTitle,
+          highlights: next,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    );
+    debouncedSave(next);
+    return next;
+  }, [queryClient, articleHash, articleUrl, articleTitle, debouncedSave]);
+
+  // Helper: persist highlights for anonymous users
+  const persistLocal = useCallback((updater: (prev: Highlight[]) => Highlight[]) => {
+    let next: Highlight[] = [];
+    setLocalHighlights(prev => {
+      next = updater(prev);
+      // Write to localStorage synchronously inside the updater to avoid race conditions
+      // where rapid mutations could cause localStorage to diverge from React state
+      const data: ArticleHighlights = {
+        articleUrl,
+        articleTitle,
+        highlights: next,
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      } catch {
+        // Ignore storage errors
+      }
+      return next;
+    });
+    return next;
   }, [articleUrl, articleTitle, storageKey]);
 
-  // Add highlight
+  // Add highlight — stable reference (no dependency on highlights)
   const addHighlight = useCallback((highlight: Omit<Highlight, 'id' | 'createdAt'>) => {
     const newHighlight: Highlight = {
       ...highlight,
@@ -140,48 +205,54 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
       createdAt: new Date().toISOString(),
     };
 
-    const newHighlights = [...highlights, newHighlight];
+    const updater = (prev: Highlight[]) => [...prev, newHighlight];
 
     if (isSignedIn) {
-      saveMutation.mutate(newHighlights);
+      persistSignedIn(updater);
     } else {
-      setLocalHighlights(newHighlights);
-      saveToLocal(newHighlights);
+      persistLocal(updater);
     }
 
     return newHighlight;
-  }, [highlights, isSignedIn, saveMutation, saveToLocal]);
+  }, [isSignedIn, persistSignedIn, persistLocal]);
 
-  // Update highlight (e.g., add note)
+  // Update highlight (e.g., add note) — stable reference
   const updateHighlight = useCallback((id: string, updates: Partial<Highlight>) => {
-    const newHighlights = highlights.map(h =>
+    const updater = (prev: Highlight[]) => prev.map(h =>
       h.id === id ? { ...h, ...updates } : h
     );
 
     if (isSignedIn) {
-      saveMutation.mutate(newHighlights);
+      persistSignedIn(updater);
     } else {
-      setLocalHighlights(newHighlights);
-      saveToLocal(newHighlights);
+      persistLocal(updater);
     }
-  }, [highlights, isSignedIn, saveMutation, saveToLocal]);
+  }, [isSignedIn, persistSignedIn, persistLocal]);
 
-  // Delete highlight
+  // Delete highlight — stable reference
   const deleteHighlight = useCallback((id: string) => {
-    const newHighlights = highlights.filter(h => h.id !== id);
+    const updater = (prev: Highlight[]) => prev.filter(h => h.id !== id);
 
     if (isSignedIn) {
-      saveMutation.mutate(newHighlights);
+      persistSignedIn(updater);
     } else {
-      setLocalHighlights(newHighlights);
-      saveToLocal(newHighlights);
+      persistLocal(updater);
     }
-  }, [highlights, isSignedIn, saveMutation, saveToLocal]);
+  }, [isSignedIn, persistSignedIn, persistLocal]);
 
   // Clear all highlights
   const clearHighlights = useCallback(() => {
     if (isSignedIn) {
-      saveMutation.mutate([]);
+      // Cancel any pending debounced save — we're clearing everything
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      pendingSaveRef.current = null;
+      // Optimistic update so UI clears immediately
+      queryClient.setQueryData<ArticleHighlights | null>(
+        highlightKeys.byArticle(articleHash),
+        (old) => old ? { ...old, highlights: [], updatedAt: new Date().toISOString() } : null
+      );
+      // Save immediately — no debounce needed for clear
+      saveToServer([]);
     } else {
       setLocalHighlights([]);
       try {
@@ -190,7 +261,7 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
         // Ignore
       }
     }
-  }, [isSignedIn, saveMutation, storageKey]);
+  }, [isSignedIn, saveToServer, storageKey, queryClient, articleHash]);
 
   return {
     highlights,

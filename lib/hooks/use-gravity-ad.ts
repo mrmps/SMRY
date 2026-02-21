@@ -143,8 +143,13 @@ export interface UseGravityAdResult {
   fireDismiss: (ad?: ContextAd) => void;
 }
 
-// Ad refresh interval in milliseconds (45 seconds)
-const AD_REFRESH_INTERVAL_MS = 45_000;
+// Ad refresh interval — keep ads visible long enough for users to engage.
+// 90s balances revenue (impression value) with user experience (not too stale).
+const AD_REFRESH_INTERVAL_MS = 90_000;
+
+// Fetch counter for debugging — tracks total ad requests in this session
+let adFetchCount = 0;
+let lastFetchTime = 0;
 
 // SSR-safe store subscriptions for immediate client-side values
 const emptySubscribe = () => () => {};
@@ -207,6 +212,20 @@ export function useGravityAd({
   const query = useQuery({
     queryKey: ["context", url, sessionId, title, prompt],
     queryFn: async (): Promise<ContextAd[] | null> => {
+      adFetchCount++;
+      const now = Date.now();
+      const timeSinceLastFetch = lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 0;
+      lastFetchTime = now;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[useGravityAd] fetch #${adFetchCount}`,
+          `| gap: ${timeSinceLastFetch}s`,
+          `| url: ${url.slice(0, 60)}`,
+          `| title: ${(title || "").slice(0, 40)}`
+        );
+      }
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -257,22 +276,34 @@ export function useGravityAd({
 
       // Log the response status for debugging
       if (data.status !== "filled") {
-        console.log("[useGravityAd] No ad:", data.status, data.debug);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[useGravityAd] No ad:", data.status, data.debug);
+        }
       }
 
       // Only return ads if status is "filled"
       if (data.status !== "filled") return null;
       // Prefer the ads array, fall back to single ad
-      if (data.ads && data.ads.length > 0) return data.ads;
-      if (data.ad) return [data.ad];
-      return null;
+      const ads = (data.ads && data.ads.length > 0) ? data.ads : data.ad ? [data.ad] : null;
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[useGravityAd] fetch #${adFetchCount} result`,
+          `| status: ${data.status}`,
+          `| ads: ${ads?.length ?? 0}`,
+          `| brands: ${ads?.map(a => a.brandName).join(", ") ?? "none"}`
+        );
+      }
+      return ads;
     },
-    // Never cache - always fetch fresh ads
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
+    // Keep ads stable for the full refresh interval — prevents duplicate fetches
+    // from component remounts, drawer open/close, tab switches, etc.
+    // On full page reload: cache is wiped → always fetches fresh.
+    // Within same session: reuses cached ad until refetchInterval triggers rotation.
+    staleTime: AD_REFRESH_INTERVAL_MS,
+    gcTime: AD_REFRESH_INTERVAL_MS * 2,
+    refetchOnMount: true, // Respects staleTime — only refetches if data is stale
     refetchOnWindowFocus: false,
-    // Refresh ads every 45 seconds for users who stay on the page
+    // Rotate ads on schedule for users who stay on the page
     refetchInterval: AD_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false, // Don't refresh when tab is hidden
     // Only fetch when we have session info, article content, and user is not premium

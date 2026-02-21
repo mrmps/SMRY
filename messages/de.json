@@ -350,6 +350,17 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryHighlights_date": "21. Februar 2026",
+    "entryHighlights_change1_text": "Jeden Artikel hervorheben und annotieren",
+    "entryHighlights_change1_detail": "Wählen Sie beliebigen Text aus, um ihn sofort in einer von 5 Farben hervorzuheben. Fügen Sie Notizen hinzu, ändern Sie Farben oder löschen Sie — Ihre Hervorhebungen bleiben genau dort, wo Sie sie hinterlassen haben, auch nach dem Schließen der Seite.",
+    "entryHighlights_change2_text": "Anmerkungs-Seitenleiste und mobile Schublade",
+    "entryHighlights_change2_detail": "Alle Ihre Hervorhebungen an einem Ort. Filtern Sie nach Farbe, tippen Sie auf eine Hervorhebung, um direkt im Artikel dorthin zu springen, und verwalten Sie alles über eine übersichtliche Seitenleiste auf dem Desktop oder ein natives Menü auf dem Handy.",
+    "entryHighlights_change3_text": "Export nach Notion, Obsidian und mehr",
+    "entryHighlights_change3_detail": "Nehmen Sie Ihre Hervorhebungen überallhin mit. Ein-Klick-Export nach Notion, Obsidian, Roam Research, Markdown oder JSON — formatiert und einsatzbereit für Ihren Workflow.",
+    "entryHighlights_change4_text": "KI zum hervorgehobenen Text befragen",
+    "entryHighlights_change4_detail": "Markieren Sie eine Passage und tippen Sie auf \u201EKI fragen\u201C, um sofort ein Gespräch darüber zu beginnen. Erhalten Sie Erklärungen, Zusammenfassungen oder tiefere Analysen, ohne den Artikel zu verlassen.",
+    "entryHighlights_change5_text": "Cloud-synchronisierte Hervorhebungen",
+    "entryHighlights_change5_detail": "Ihre Hervorhebungen werden automatisch auf allen Ihren Geräten synchronisiert. Beginnen Sie auf dem Handy zu lesen, machen Sie auf dem Laptop weiter — jede Hervorhebung und Notiz ist genau dort, wo Sie sie hinterlassen haben.",
     "entrySidebar_date": "18. Februar 2026",
     "entrySidebar_change1_text": "Schwebende Symbolleiste",
     "entrySidebar_change1_detail": "Zugriff auf Ansichtsmodi, KI-Chat, Stiloptionen und Teilen über eine feste Leiste — kein Suchen in Menüs mehr.",

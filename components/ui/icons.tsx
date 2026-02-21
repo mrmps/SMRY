@@ -19,6 +19,7 @@ import {
   ArrowUpRight01Icon,
   ArrowUpDownIcon,
   ArrowTurnBackwardIcon,
+  ArrowTurnForwardIcon,
 
   // UI Controls
   Cancel01Icon,
@@ -294,6 +295,7 @@ export const List = createIcon(Menu11Icon, "List");
 export const Calendar = createIcon(Calendar01Icon, "Calendar");
 export const Command = createIcon(CommandIcon, "Command");
 export const CornerDownLeft = createIcon(ArrowTurnBackwardIcon, "CornerDownLeft");
+export const CornerDownRight = createIcon(ArrowTurnForwardIcon, "CornerDownRight");
 
 // Status Icons
 export const TrendingUp = createIcon(Chart01Icon, "TrendingUp");
