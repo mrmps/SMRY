@@ -246,31 +246,31 @@ export function getPaletteStyle(paletteId: string, isDark: boolean): React.CSSPr
 
 /**
  * Map dropdown value to actual theme
- * - "system" -> "light" (our default, sepia)
+ * - "system" -> "light" (our default, sepia/warm paper)
+ * - "light" -> "pure-light" (clean white)
  * - "dark" -> "carbon"
- * - "light" -> "light" (sepia)
  */
 export function mapDropdownToTheme(dropdownValue: string): string {
   if (dropdownValue === "system") {
     return "light";
   }
+  if (dropdownValue === "light") {
+    return "pure-light";
+  }
   if (dropdownValue === "dark") {
     return "carbon";
-  }
-  if (dropdownValue === "light") {
-    return "light"; // sepia
   }
   return dropdownValue;
 }
 
 /**
  * Map theme to dropdown value for display
- * - "light" (sepia) -> "system" (show as Match System)
- * - light themes -> "light"
+ * - "light" (sepia) -> "system" (show as Match System / Auto)
+ * - "pure-light" and other light themes -> "light"
  * - dark themes -> "dark"
  */
 export function mapThemeToDropdown(theme: string | undefined): string {
-  if (!theme || theme === "system" || theme === "light") {
+  if (!theme || theme === "system" || theme === DEFAULT_THEME) {
     return "system";
   }
   if (LIGHT_THEMES.includes(theme as LightTheme)) {

@@ -170,11 +170,14 @@ export function MobileBottomBar({
   };
 
   // Separate handler for the mode segmented control
+  // Auto = sepia (warm paper, DEFAULT_THEME "light")
+  // Light = pure white ("pure-light")
+  // Dark = dark theme ("dark")
   const handleModeChange = (mode: string) => {
     if (mode === "system") {
-      setTheme("light");
+      setTheme(DEFAULT_THEME);
     } else if (mode === "light") {
-      setTheme("light");
+      setTheme("pure-light");
     } else if (mode === "dark") {
       setTheme("dark");
     }
@@ -183,7 +186,7 @@ export function MobileBottomBar({
 
   // Derive current mode for the segmented control
   const currentMode = (() => {
-    if (!theme || theme === "system" || theme === "carbon") return "system";
+    if (!theme || theme === "system" || theme === DEFAULT_THEME) return "system";
     if (LIGHT_PALETTES.some((p) => p.theme === theme)) return "light";
     return "dark";
   })();

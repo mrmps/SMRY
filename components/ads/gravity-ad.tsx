@@ -278,18 +278,18 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
         )}
       >
         {/* Top row: favicon + brand + sponsored + CTA */}
-        <div className="flex items-center gap-2">
-          <div className="size-5 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/15">
-            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={20} />
+        <div className="flex items-center gap-2.5">
+          <div className="size-6 rounded-lg overflow-hidden bg-white shrink-0 ring-1 ring-border/20">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={24} />
           </div>
-          <span className="text-[12px] font-medium text-muted-foreground/60">{ad.brandName}</span>
-          <span className="text-[8px] text-muted-foreground/25">ad</span>
-          <span className="ml-auto shrink-0 text-[11px] font-medium text-primary/50 group-hover:text-primary/75 transition-colors">
-            {ctaText}<span className="text-[9px] ml-0.5">↗</span>
+          <span className="text-[13px] font-semibold text-foreground/70">{ad.brandName}</span>
+          <span className="text-[7px] text-muted-foreground/40 font-medium">ad</span>
+          <span className="ml-auto shrink-0 text-[12px] font-semibold text-primary/70 group-hover:text-primary transition-colors">
+            {ctaText}<span className="text-[10px] ml-0.5">↗</span>
           </span>
         </div>
         {/* Description — full width, 2 lines max */}
-        <p className="mt-1.5 text-[12px] leading-[1.5] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors line-clamp-2 pl-7">
+        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground/70 group-hover:text-muted-foreground/90 transition-colors line-clamp-2 pl-[34px]">
           {valueProp}
         </p>
       </a>

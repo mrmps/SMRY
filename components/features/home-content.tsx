@@ -505,9 +505,9 @@ export const HomeContent = memo(function HomeContent() {
             </p>
           )}
 
-          {/* Ad below input */}
+          {/* Ad right below input — highest attention zone */}
           {!isPremium && !isPremiumLoading && ad && (
-            <div className="mt-5 px-4 sm:px-0">
+            <div className="mt-4 px-4 sm:px-0">
               <GravityAd
                 ad={ad}
                 variant="home"
@@ -522,8 +522,8 @@ export const HomeContent = memo(function HomeContent() {
 
         </div>
 
-        {/* Value prop - positioned near bottom */}
-        <div className="mt-auto pt-4 sm:pt-0 sm:absolute sm:bottom-28 sm:left-0 sm:right-0 mx-auto w-full max-w-[400px] px-2 sm:px-6">
+        {/* Value prop */}
+        <div className="mt-auto pt-4 sm:pt-8 mx-auto w-full max-w-[400px] px-2 sm:px-6">
           <div className="rounded-xl sm:rounded-2xl border border-border/30 bg-card/40 px-4 py-3.5 sm:px-6 sm:py-5 backdrop-blur-sm">
             <h2 className="text-center text-[14px] sm:text-[15px] font-medium text-foreground/80">
               {t("valuePropTitle")}
@@ -544,7 +544,7 @@ export const HomeContent = memo(function HomeContent() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="mt-2 pb-2 sm:absolute sm:bottom-6 sm:left-0 sm:right-0 sm:mt-0 sm:pb-0 mx-auto flex w-fit flex-col items-center">
+        <div className="mt-2 pb-4 sm:mt-4 sm:pb-6 mx-auto flex w-fit flex-col items-center">
           <button
             onClick={() => {
               document.getElementById("below-fold")?.scrollIntoView({ behavior: "smooth" });
