@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import type { Highlight } from "./use-highlights";
 
 const MARK_ATTR = "data-highlight-id";
@@ -269,7 +269,7 @@ function computeFingerprint(highlights: Highlight[]): string {
  * - Debounced MutationObserver (150ms) to batch external DOM changes
  */
 export function useInlineHighlights(
-  contentRef: React.RefObject<HTMLDivElement | null>,
+  contentRef: RefObject<HTMLDivElement | null>,
   highlights: Highlight[],
   activeHighlightId: string | null,
   content?: string | null

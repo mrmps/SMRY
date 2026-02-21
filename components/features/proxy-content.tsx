@@ -166,17 +166,16 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [shareOpen, setShareOpen] = useState(false);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<"chat" | "history">("chat");
   const [annotationsSidebarOpen, setAnnotationsSidebarOpenRaw] = useState(false);
+  const annotationsSidebarOpenRef = useRef(annotationsSidebarOpen);
+  useEffect(() => { annotationsSidebarOpenRef.current = annotationsSidebarOpen; }, [annotationsSidebarOpen]);
   const setAnnotationsSidebarOpen = React.useCallback(
     (value: boolean | ((prev: boolean) => boolean)) => {
-      setAnnotationsSidebarOpenRaw((prev) => {
-        const next = typeof value === "function" ? value(prev) : value;
-        return next;
-      });
-      // Side effect outside the state updater (React requires updaters to be pure)
-      const next = typeof value === "function" ? value(annotationsSidebarOpen) : value;
+      const next = typeof value === "function" ? value(annotationsSidebarOpenRef.current) : value;
+      setAnnotationsSidebarOpenRaw(next);
+      // Close chat sidebar when opening annotations
       if (next) setQuery({ sidebar: null });
     },
-    [setQuery, annotationsSidebarOpen]
+    [setQuery]
   );
 
   const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);

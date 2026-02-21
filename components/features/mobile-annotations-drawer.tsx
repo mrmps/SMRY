@@ -272,9 +272,11 @@ export function MobileAnnotationsDrawer({
     const filtered = filterColor
       ? highlights.filter((h) => h.color === filterColor)
       : highlights;
-    return [...filtered].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return [...filtered].sort((a, b) => {
+      const ta = new Date(b.createdAt).getTime() || 0;
+      const tb = new Date(a.createdAt).getTime() || 0;
+      return ta - tb;
+    });
   }, [highlights, filterColor]);
 
   const handleScrollTo = useCallback(
