@@ -359,6 +359,8 @@ interface ArticleContentProps {
   footerAd?: GravityAdType | null;
   onFooterAdVisible?: () => void;
   onFooterAdClick?: () => void;
+  // Ask AI - triggered from highlight toolbar
+  onAskAI?: (text: string) => void;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
@@ -378,6 +380,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   footerAd,
   onFooterAdVisible,
   onFooterAdClick,
+  onAskAI,
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
@@ -866,6 +869,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                   <HighlightToolbar
                     onHighlight={addHighlight}
                     containerRef={contentRef}
+                    onAskAI={onAskAI}
                   />
 
                   {/* Highlight action popover - appears on mark click */}

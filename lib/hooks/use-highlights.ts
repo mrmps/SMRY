@@ -118,18 +118,21 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
   });
 
   // Helper: persist highlights for signed-in users via optimistic update + mutation
+  // Uses functional updater inside setQueryData to guarantee sequential reads
+  // (avoids lost mutations when two calls are batched in the same event handler)
   const persistSignedIn = useCallback((updater: (prev: Highlight[]) => Highlight[]) => {
-    const prev = queryClient.getQueryData<ArticleHighlights | null>(highlightKeys.byArticle(articleHash));
-    const prevHighlights = prev?.highlights ?? [];
-    const next = updater(prevHighlights);
-    // Optimistic update so UI reflects immediately
+    let next: Highlight[] = [];
     queryClient.setQueryData<ArticleHighlights | null>(
       highlightKeys.byArticle(articleHash),
-      (old) => old ? { ...old, highlights: next, updatedAt: new Date().toISOString() } : {
-        articleUrl,
-        articleTitle,
-        highlights: next,
-        updatedAt: new Date().toISOString(),
+      (old) => {
+        const prevHighlights = old?.highlights ?? [];
+        next = updater(prevHighlights);
+        return old ? { ...old, highlights: next, updatedAt: new Date().toISOString() } : {
+          articleUrl,
+          articleTitle,
+          highlights: next,
+          updatedAt: new Date().toISOString(),
+        };
       }
     );
     saveMutation.mutate(next);

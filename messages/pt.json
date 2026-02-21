@@ -350,6 +350,17 @@
     "upgrade": "Atualizar"
   },
   "changelogEntries": {
+    "entryHighlights_date": "21 de fevereiro de 2026",
+    "entryHighlights_change1_text": "Destacar e anotar qualquer artigo",
+    "entryHighlights_change1_detail": "Selecione qualquer texto para destacá-lo instantaneamente em uma de 5 cores. Adicione notas, mude cores ou exclua — seus destaques permanecem exatamente onde você os deixou, mesmo após fechar a página.",
+    "entryHighlights_change2_text": "Barra lateral de anotações e gaveta móvel",
+    "entryHighlights_change2_detail": "Todos os seus destaques em um só lugar. Filtre por cor, toque em qualquer destaque para ir direto a ele no artigo, e gerencie tudo em uma barra lateral limpa no desktop ou uma folha inferior nativa no celular.",
+    "entryHighlights_change3_text": "Exportar para Notion, Obsidian e mais",
+    "entryHighlights_change3_detail": "Leve seus destaques para qualquer lugar. Exportação com um clique para Notion, Obsidian, Roam Research, Markdown ou JSON — formatados e prontos para usar no seu fluxo de trabalho.",
+    "entryHighlights_change4_text": "Pergunte à IA sobre o texto destacado",
+    "entryHighlights_change4_detail": "Destaque uma passagem e toque em \"Perguntar à IA\" para iniciar uma conversa instantaneamente. Obtenha explicações, resumos ou análises mais profundas sem sair do artigo.",
+    "entryHighlights_change5_text": "Destaques sincronizados na nuvem",
+    "entryHighlights_change5_detail": "Seus destaques são sincronizados automaticamente em todos os seus dispositivos. Comece a ler no celular, continue no notebook — cada destaque e nota está exatamente onde você deixou.",
     "entrySidebar_date": "18 de fevereiro de 2026",
     "entrySidebar_change1_text": "Barra de ferramentas flutuante",
     "entrySidebar_change1_detail": "Acesse modos de visualização, chat com IA, opções de estilo e compartilhamento em uma barra persistente — sem procurar em menus.",

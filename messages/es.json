@@ -350,6 +350,17 @@
     "upgrade": "Actualizar"
   },
   "changelogEntries": {
+    "entryHighlights_date": "21 de febrero de 2026",
+    "entryHighlights_change1_text": "Resaltar y anotar cualquier artículo",
+    "entryHighlights_change1_detail": "Selecciona cualquier texto para resaltarlo al instante en uno de 5 colores. Añade notas, cambia colores o elimina — tus resaltados se mantienen exactamente donde los dejaste, incluso después de cerrar la página.",
+    "entryHighlights_change2_text": "Barra lateral de anotaciones y cajón móvil",
+    "entryHighlights_change2_detail": "Todos tus resaltados en un solo lugar. Filtra por color, toca cualquier resaltado para ir directamente a él en el artículo, y gestiona todo desde una barra lateral limpia en escritorio o una hoja inferior nativa en móvil.",
+    "entryHighlights_change3_text": "Exportar a Notion, Obsidian y más",
+    "entryHighlights_change3_detail": "Lleva tus resaltados a cualquier lugar. Exportación con un clic a Notion, Obsidian, Roam Research, Markdown o JSON — formateados y listos para usar en tu flujo de trabajo.",
+    "entryHighlights_change4_text": "Pregunta a la IA sobre el texto resaltado",
+    "entryHighlights_change4_detail": "Resalta un pasaje y toca \"Preguntar a la IA\" para iniciar una conversación al instante. Obtén explicaciones, resúmenes o análisis más profundos sin salir del artículo.",
+    "entryHighlights_change5_text": "Resaltados sincronizados en la nube",
+    "entryHighlights_change5_detail": "Tus resaltados se sincronizan automáticamente en todos tus dispositivos. Empieza a leer en tu teléfono, continúa en tu portátil — cada resaltado y nota está justo donde lo dejaste.",
     "entrySidebar_date": "18 de febrero de 2026",
     "entrySidebar_change1_text": "Barra de herramientas flotante",
     "entrySidebar_change1_detail": "Accede a modos de vista, chat con IA, opciones de estilo y compartir desde una barra persistente — sin buscar en menús.",

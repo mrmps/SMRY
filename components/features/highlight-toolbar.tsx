@@ -23,6 +23,7 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
   } | null>(null);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [note, setNote] = useState("");
+  const [selectedColor, setSelectedColor] = useState<Highlight["color"]>("yellow");
   const [copied, setCopied] = useState(false);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const lastSelectedTextRef = useRef("");
@@ -123,8 +124,8 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
   }, [selection, onAskAI]);
 
   const handleSaveNote = useCallback(() => {
-    highlightWithColor("yellow");
-  }, [highlightWithColor]);
+    highlightWithColor(selectedColor);
+  }, [highlightWithColor, selectedColor]);
 
   const handleClose = useCallback(() => {
     setSelection(null);
@@ -136,15 +137,25 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
   return (
     <HighlightPopover anchorRect={selection.rect} onClose={handleClose}>
       <div className="bg-popover border border-border rounded-2xl shadow-2xl w-56 overflow-hidden">
-        {/* Color picker — click to highlight instantly */}
+        {/* Color picker — click to highlight instantly, or select color when note input is open */}
         <div className="flex items-center justify-center gap-2.5 px-4 pt-3.5 pb-2.5">
           {HIGHLIGHT_COLORS.map((color) => (
             <button
               key={color.name}
-              onClick={() => highlightWithColor(color.name as Highlight["color"])}
+              onClick={() => {
+                const colorName = color.name as Highlight["color"];
+                if (showNoteInput) {
+                  // When note input is open, just select the color
+                  setSelectedColor(colorName);
+                } else {
+                  // Instant highlight on color click
+                  highlightWithColor(colorName);
+                }
+              }}
               className={cn(
                 "size-8 rounded-full transition-transform hover:scale-110 active:scale-95",
-                color.solid
+                color.solid,
+                showNoteInput && selectedColor === color.name && "ring-2 ring-foreground/40 ring-offset-2 ring-offset-popover"
               )}
               title={`Highlight ${color.name}`}
             />

@@ -21,6 +21,37 @@ export interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    dateKey: "entryHighlights_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entryHighlights_change1_text",
+        detailKey: "entryHighlights_change1_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change2_text",
+        detailKey: "entryHighlights_change2_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change3_text",
+        detailKey: "entryHighlights_change3_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change4_text",
+        detailKey: "entryHighlights_change4_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change5_text",
+        detailKey: "entryHighlights_change5_detail",
+        premium: true,
+      },
+    ],
+  },
+  {
     dateKey: "entrySidebar_date",
     changes: [
       {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect, useMemo } from "react";
+import { useRef, useCallback, useState, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import { Drawer as DrawerPrimitive } from "vaul-base";
 import { ArticleChat, ArticleChatHandle } from "@/components/features/article-chat";
 import { ChevronLeft, Trash, History, Plus, Pin, Trash2, MessageSquare, Zap, Smartphone, Search, Loader2, X } from "@/components/ui/icons";
@@ -155,7 +155,12 @@ function MobilePremiumGate() {
 
 const MOBILE_KNOWN_LABELS = new Set(["Pinned", "This Article", "Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Older"]);
 
-export function MobileChatDrawer({
+export interface MobileChatDrawerHandle {
+  setQuotedText: (text: string | null) => void;
+  focusInput: () => void;
+}
+
+export const MobileChatDrawer = forwardRef<MobileChatDrawerHandle, MobileChatDrawerProps>(function MobileChatDrawer({
   open,
   onOpenChange,
   articleContent,
@@ -178,11 +183,16 @@ export function MobileChatDrawer({
   onLoadMore,
   searchThreads,
   getThreadWithMessages,
-}: MobileChatDrawerProps) {
+}, ref) {
   const chatRef = useRef<ArticleChatHandle>(null);
   const drawerContentRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement | null>(null);
   const [hasMessages, setHasMessages] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    setQuotedText: (text: string | null) => chatRef.current?.setQuotedText(text),
+    focusInput: () => chatRef.current?.focusInput(),
+  }));
   const { isOpen: isKeyboardOpen } = useMobileKeyboard();
   const [activeView, setActiveView] = useState<DrawerView>("chat");
   const [searchQuery, setSearchQuery] = useState("");
@@ -541,4 +551,4 @@ export function MobileChatDrawer({
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
   );
-}
+});

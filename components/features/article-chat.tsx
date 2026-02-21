@@ -17,6 +17,7 @@ import {
   Copy,
   Check,
   ReloadIcon,
+  CornerDownRight,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ export interface ArticleChatHandle {
   focusInput: () => void;
   stopGeneration: () => void;
   copyLastResponse: () => void;
+  setQuotedText: (text: string | null) => void;
 }
 
 interface ArticleChatProps {
@@ -122,9 +124,9 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onAdVisible,
   onAdClick,
   onAdDismiss: _onAdDismiss,
-  microAd,
-  onMicroAdVisible,
-  onMicroAdClick,
+  microAd: _microAd,
+  onMicroAdVisible: _onMicroAdVisible,
+  onMicroAdClick: _onMicroAdClick,
   inputContainerRef,
   activeThreadTitle: _activeThreadTitle,
   isKeyboardOpen = false,
@@ -135,6 +137,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const isMobile = useIsMobile();
   const floatingInput = isMobile && variant === "sidebar";
   const [headerAdDismissed, setHeaderAdDismissed] = useState(false);
+  const [quotedText, setQuotedText] = useState<string | null>(null);
   // Track whether user has manually scrolled away from the bottom
   const isUserScrolledUpRef = useRef(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -186,6 +189,18 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const handleReload = useCallback(() => {
     reload();
   }, [reload]);
+
+  // Wrap handleSubmit to prepend quoted text as context
+  const handleSubmitWithQuote = useCallback(() => {
+    if (quotedText && input.trim()) {
+      const messageWithQuote = `> ${quotedText.replace(/\n/g, "\n> ")}\n\n${input.trim()}`;
+      setQuotedText(null);
+      sendMessage(messageWithQuote);
+      setInput("");
+    } else {
+      handleSubmit();
+    }
+  }, [quotedText, input, sendMessage, setInput, handleSubmit]);
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
     sendMessage(suggestion);
@@ -257,6 +272,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         toast.success("Copied AI response to clipboard");
       });
     },
+    setQuotedText,
   }), [clearMessages, setMessages, messages.length]);
 
   // Notify parent when hasMessages changes
@@ -665,6 +681,23 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             </div>
           )}
 
+          {/* Quoted text block - shown when Ask AI is used from highlight toolbar */}
+          {quotedText && (
+            <div className="flex items-center gap-2.5 rounded-full border border-border/70 bg-muted/40 pl-3.5 pr-2 py-2 mb-2">
+              <CornerDownRight className="size-4 text-muted-foreground/60 shrink-0" />
+              <p className="flex-1 text-[13px] text-foreground/80 truncate">&ldquo;{quotedText}&rdquo;</p>
+              <button
+                type="button"
+                onClick={() => setQuotedText(null)}
+                className="shrink-0 flex size-7 items-center justify-center rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors"
+                style={{ touchAction: "manipulation" }}
+                aria-label="Dismiss quote"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
+
           {/* Input container */}
           <div
             className="relative rounded-2xl border border-border overflow-hidden bg-background"
@@ -691,7 +724,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 value={input}
                 onValueChange={setInput}
                 isLoading={isLoading}
-                onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
+                onSubmit={isSlashMenuOpen ? undefined : handleSubmitWithQuote}
                 disabled={isLimitReached}
                 className="rounded-none border-0 shadow-none bg-transparent"
                 maxHeight={isMobile ? 120 : 240}
@@ -751,7 +784,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           size="icon"
                           disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
                           onClick={() => {
-                            handleSubmit();
+                            handleSubmitWithQuote();
                             textareaRef.current?.focus();
                           }}
                           className={cn(

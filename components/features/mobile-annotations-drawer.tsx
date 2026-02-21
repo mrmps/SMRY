@@ -274,9 +274,9 @@ export function MobileAnnotationsDrawer({
       ? highlights.filter((h) => h.color === filterColor)
       : highlights;
     return [...filtered].sort((a, b) => {
-      const ta = new Date(b.createdAt).getTime() || 0;
-      const tb = new Date(a.createdAt).getTime() || 0;
-      return ta - tb;
+      const timeA = new Date(a.createdAt).getTime() || 0;
+      const timeB = new Date(b.createdAt).getTime() || 0;
+      return timeB - timeA;
     });
   }, [highlights, filterColor]);
 

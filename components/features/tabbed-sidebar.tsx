@@ -14,6 +14,7 @@ export type SidebarTab = "chat" | "history";
 export interface TabbedSidebarHandle extends ArticleChatHandle {
   setActiveTab: (tab: SidebarTab) => void;
   activeTab: SidebarTab;
+  setQuotedText: (text: string | null) => void;
 }
 
 interface TabbedSidebarProps {
@@ -119,6 +120,7 @@ export const TabbedSidebar = forwardRef<TabbedSidebarHandle, TabbedSidebarProps>
       focusInput: () => chatRef.current?.focusInput(),
       stopGeneration: () => chatRef.current?.stopGeneration(),
       copyLastResponse: () => chatRef.current?.copyLastResponse(),
+      setQuotedText: (text: string | null) => chatRef.current?.setQuotedText(text),
       setActiveTab,
       get activeTab() { return activeTabRef.current; },
     }));

@@ -32,7 +32,7 @@ import { isTextUIPart, type UIMessage } from "ai";
 import { KeyboardShortcutsDialog } from "@/components/features/keyboard-shortcuts-dialog";
 import { HighlightsProvider } from "@/lib/contexts/highlights-context";
 import { AnnotationsSidebar } from "@/components/features/annotations-sidebar";
-import { MobileChatDrawer } from "@/components/features/mobile-chat-drawer";
+import { MobileChatDrawer, type MobileChatDrawerHandle } from "@/components/features/mobile-chat-drawer";
 import { MobileAnnotationsDrawer } from "@/components/features/mobile-annotations-drawer";
 import {
   Sidebar,
@@ -184,6 +184,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   );
 
   const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);
+  const mobileChatDrawerRef = useRef<MobileChatDrawerHandle>(null);
   const mobileSettingsRef = useRef<SettingsDrawerHandle>(null);
   const creatingThreadRef = useRef(false);
   const {
@@ -242,6 +243,31 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       console.error("Failed to copy:", error);
     }
   }, [articleTitle, articleTextContent, url]);
+
+  // Handle Ask AI from highlight toolbar
+  const handleAskAI = React.useCallback((text: string) => {
+    if (isDesktop) {
+      // Desktop: open sidebar → set chat tab → set quoted text + focus
+      if (!sidebarOpen) {
+        handleSidebarChange(true);
+      }
+      tabbedSidebarRef.current?.setActiveTab("chat");
+      setSidebarActiveTab("chat");
+      // Small delay for sidebar to open/tab to switch
+      setTimeout(() => {
+        tabbedSidebarRef.current?.setQuotedText(text);
+        tabbedSidebarRef.current?.focusInput();
+      }, 100);
+    } else {
+      // Mobile: open drawer → set quoted text + focus
+      setMobileSummaryOpen(true);
+      // Delay for drawer animation
+      setTimeout(() => {
+        mobileChatDrawerRef.current?.setQuotedText(text);
+        mobileChatDrawerRef.current?.focusInput();
+      }, 300);
+    }
+  }, [isDesktop, sidebarOpen, handleSidebarChange, setMobileSummaryOpen]);
 
   // Open in external AI service
   const handleOpenInAI = React.useCallback((service: "chatgpt" | "claude") => {
@@ -772,6 +798,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       footerAd={!isPremium ? footerAd : null}
                       onFooterAdVisible={footerAd ? onFooterAdVisible : undefined}
                       onFooterAdClick={footerAd ? onFooterAdClick : undefined}
+                      onAskAI={handleAskAI}
                     />
                   </div>
                 </div>
@@ -841,9 +868,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       headerAd={!isPremium ? chatAd : null}
                       onHeaderAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
                       onHeaderAdClick={chatAd ? () => fireClick(chatAd) : undefined}
-                      ad={!isPremium ? chatAd : null}
-                      onAdVisible={chatAd ? () => fireImpression(chatAd) : undefined}
-                      onAdClick={chatAd ? () => fireClick(chatAd) : undefined}
+                      ad={null}
+                      onAdVisible={undefined}
+                      onAdClick={undefined}
                       microAd={!isPremium ? microAd : null}
                       onMicroAdVisible={microAd ? () => fireImpression(microAd) : undefined}
                       onMicroAdClick={microAd ? () => fireClick(microAd) : undefined}
@@ -965,12 +992,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     footerAd={!isPremium ? footerAd : null}
                     onFooterAdVisible={footerAd ? onFooterAdVisible : undefined}
                     onFooterAdClick={footerAd ? onFooterAdClick : undefined}
+                    onAskAI={handleAskAI}
                   />
                 </div>
               </div>
 
               {/* Mobile Chat Drawer — fullscreen vaul drawer */}
               <MobileChatDrawer
+                ref={mobileChatDrawerRef}
                 open={mobileSummaryOpen}
                 onOpenChange={setMobileSummaryOpen}
                 articleContent={articleTextContent || ""}
