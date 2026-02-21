@@ -92,13 +92,21 @@ function MobileAnnotationCard({
       )}
     >
       {/* Tappable quote area — min 48px touch target */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         className={cn(
           "w-full text-left px-3.5 py-3 transition-colors active:bg-foreground/5",
           bgClass,
         )}
         onClick={() => {
           onScrollTo(highlight.id);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onScrollTo(highlight.id);
+          }
         }}
       >
         <p
@@ -120,7 +128,7 @@ function MobileAnnotationCard({
             {expanded ? "Show less" : "Show more"}
           </button>
         )}
-      </button>
+      </div>
 
       {/* Note display */}
       {!editingNote && highlight.note && (

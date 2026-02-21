@@ -18,9 +18,9 @@ export type Theme = LightTheme | DarkTheme | "system";
 // DEFAULT THEME
 // =============================================================================
 
-// Carbon is our app's default theme
-// "Match System" in dropdown maps to carbon
-export const DEFAULT_THEME = "carbon";
+// Sepia (warm paper) is our app's default theme
+// "Match System" in dropdown maps to light (sepia palette)
+export const DEFAULT_THEME = "light";
 
 // =============================================================================
 // PALETTE CONFIGURATION
@@ -205,8 +205,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
  * Check if a theme is a dark theme
  */
 export function isDarkTheme(theme: string | undefined): boolean {
-  if (!theme || theme === "system" || theme === "carbon") {
-    return true; // Default to dark
+  if (!theme || theme === "system") {
+    return false; // Default is sepia (light)
   }
   return DARK_THEMES.includes(theme as DarkTheme);
 }
@@ -215,8 +215,8 @@ export function isDarkTheme(theme: string | undefined): boolean {
  * Get the palette ID for a given theme
  */
 export function getPaletteForTheme(theme: string | undefined, isDark: boolean): string {
-  if (!theme || theme === "system" || theme === "carbon") {
-    return "carbon";
+  if (!theme || theme === "system") {
+    return "sepia";
   }
   if (isDark) {
     return THEME_TO_DARK_PALETTE[theme] || "carbon";
@@ -246,12 +246,15 @@ export function getPaletteStyle(paletteId: string, isDark: boolean): React.CSSPr
 
 /**
  * Map dropdown value to actual theme
- * - "system" -> "carbon" (our default)
+ * - "system" -> "light" (our default, sepia)
  * - "dark" -> "carbon"
  * - "light" -> "light" (sepia)
  */
 export function mapDropdownToTheme(dropdownValue: string): string {
-  if (dropdownValue === "system" || dropdownValue === "dark") {
+  if (dropdownValue === "system") {
+    return "light";
+  }
+  if (dropdownValue === "dark") {
     return "carbon";
   }
   if (dropdownValue === "light") {
@@ -262,12 +265,12 @@ export function mapDropdownToTheme(dropdownValue: string): string {
 
 /**
  * Map theme to dropdown value for display
- * - "carbon" -> "system" (show as Match System)
+ * - "light" (sepia) -> "system" (show as Match System)
  * - light themes -> "light"
  * - dark themes -> "dark"
  */
 export function mapThemeToDropdown(theme: string | undefined): string {
-  if (!theme || theme === "system" || theme === "carbon") {
+  if (!theme || theme === "system" || theme === "light") {
     return "system";
   }
   if (LIGHT_THEMES.includes(theme as LightTheme)) {

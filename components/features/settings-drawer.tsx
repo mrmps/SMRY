@@ -244,11 +244,11 @@ function StyleOptionsSection() {
     setMounted(true);
   }, []);
 
-  // Migrate "system" theme to "carbon" on mount
+  // Migrate "system" theme to sepia (light) on mount
   // This ensures the actual theme class is applied, not OS preference
   React.useEffect(() => {
     if (mounted && (theme === "system" || !theme)) {
-      setTheme("carbon");
+      setTheme("light");
     }
   }, [mounted, theme, setTheme]);
 

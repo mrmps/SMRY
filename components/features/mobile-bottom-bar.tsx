@@ -150,7 +150,7 @@ export function MobileBottomBar({
 
   React.useEffect(() => {
     if (mounted && (theme === "system" || !theme)) {
-      setTheme("carbon");
+      setTheme("light");
     }
   }, [mounted, theme, setTheme]);
 
@@ -170,10 +170,9 @@ export function MobileBottomBar({
   };
 
   // Separate handler for the mode segmented control
-  // "dark" should set the actual "dark" theme (not "carbon", which is "auto")
   const handleModeChange = (mode: string) => {
     if (mode === "system") {
-      setTheme("carbon");
+      setTheme("light");
     } else if (mode === "light") {
       setTheme("light");
     } else if (mode === "dark") {

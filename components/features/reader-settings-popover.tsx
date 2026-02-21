@@ -249,7 +249,7 @@ function ThemeSection({ onThemeChange }: { onThemeChange?: (theme: string) => vo
 
   React.useEffect(() => {
     if (mounted && (theme === "system" || !theme)) {
-      setTheme("carbon");
+      setTheme("light");
     }
   }, [mounted, theme, setTheme]);
 

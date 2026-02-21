@@ -55,6 +55,13 @@ export function HighlightPopover({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  // Close on scroll — fixed positioning drifts when content scrolls
+  useEffect(() => {
+    const handleScroll = () => onClose();
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [onClose]);
+
   const style: React.CSSProperties = {
     position: "fixed",
     left: `${anchorRect.left + anchorRect.width / 2}px`,

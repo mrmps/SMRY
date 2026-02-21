@@ -187,6 +187,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const mobileChatDrawerRef = useRef<MobileChatDrawerHandle>(null);
   const mobileSettingsRef = useRef<SettingsDrawerHandle>(null);
   const creatingThreadRef = useRef(false);
+  const askAiTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     threads,
     activeThread: _activeThread,
@@ -246,6 +247,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
   // Handle Ask AI from highlight toolbar
   const handleAskAI = React.useCallback((text: string) => {
+    if (askAiTimeoutRef.current) clearTimeout(askAiTimeoutRef.current);
     if (isDesktop) {
       // Desktop: open sidebar → set chat tab → set quoted text + focus
       if (!sidebarOpen) {
@@ -254,7 +256,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       tabbedSidebarRef.current?.setActiveTab("chat");
       setSidebarActiveTab("chat");
       // Small delay for sidebar to open/tab to switch
-      setTimeout(() => {
+      askAiTimeoutRef.current = setTimeout(() => {
         tabbedSidebarRef.current?.setQuotedText(text);
         tabbedSidebarRef.current?.focusInput();
       }, 100);
@@ -262,12 +264,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
       // Mobile: open drawer → set quoted text + focus
       setMobileSummaryOpen(true);
       // Delay for drawer animation
-      setTimeout(() => {
+      askAiTimeoutRef.current = setTimeout(() => {
         mobileChatDrawerRef.current?.setQuotedText(text);
         mobileChatDrawerRef.current?.focusInput();
       }, 300);
     }
   }, [isDesktop, sidebarOpen, handleSidebarChange, setMobileSummaryOpen]);
+
+  // Cleanup Ask AI timeout on unmount
+  useEffect(() => () => {
+    if (askAiTimeoutRef.current) clearTimeout(askAiTimeoutRef.current);
+  }, []);
 
   // Open in external AI service
   const handleOpenInAI = React.useCallback((service: "chatgpt" | "claude") => {
