@@ -507,10 +507,10 @@ export const HomeContent = memo(function HomeContent() {
 
           {/* Ad below input */}
           {!isPremium && !isPremiumLoading && ad && (
-            <div className="mt-4 flex justify-center">
+            <div className="mt-5 px-4 sm:px-0">
               <GravityAd
                 ad={ad}
-                variant="micro"
+                variant="home"
                 onVisible={() => fireImpression(ad)}
                 onClick={() => fireClick(ad)}
               />

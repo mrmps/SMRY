@@ -22,7 +22,7 @@ interface GravityAdProps {
   onDismiss?: () => void;
   onClick?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat" | "chat-prompt";
+  variant?: "default" | "compact" | "sidebar" | "mobile" | "inline" | "micro" | "inline-chat" | "chat-prompt" | "home";
 }
 
 // Dismiss button - consistent across all variants
@@ -252,6 +252,44 @@ export function GravityAd({ ad, onVisible, onDismiss, onClick, className, varian
           </div>
         </a>
       </div>
+    );
+  }
+
+  // ============================================
+  // HOME VARIANT - Subtle landing page recommendation
+  // No heavy card — blends naturally between input and content.
+  // Two rows: brand + CTA on top, full description below.
+  // ============================================
+  if (variant === "home") {
+    return (
+      <a
+        ref={adRef}
+        href={ad.clickUrl}
+        target="_blank"
+        rel="sponsored noopener"
+        onClick={onClick}
+        className={cn(
+          "group block max-w-md mx-auto w-full",
+          "rounded-xl px-4 py-3 transition-colors hover:bg-muted/25",
+          className
+        )}
+      >
+        {/* Top row: favicon + brand + sponsored + CTA */}
+        <div className="flex items-center gap-2">
+          <div className="size-5 rounded-md overflow-hidden bg-white shrink-0 ring-1 ring-border/15">
+            <AdFavicon src={ad.favicon} fallbackUrl={ad.url} brandName={ad.brandName} size={20} />
+          </div>
+          <span className="text-[12px] font-medium text-muted-foreground/60">{ad.brandName}</span>
+          <span className="text-[8px] text-muted-foreground/25">ad</span>
+          <span className="ml-auto shrink-0 text-[11px] font-medium text-primary/50 group-hover:text-primary/75 transition-colors">
+            {ctaText}<span className="text-[9px] ml-0.5">↗</span>
+          </span>
+        </div>
+        {/* Description — full width, 2 lines max */}
+        <p className="mt-1.5 text-[12px] leading-[1.5] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors line-clamp-2 pl-7">
+          {valueProp}
+        </p>
+      </a>
     );
   }
 
