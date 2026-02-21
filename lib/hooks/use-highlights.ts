@@ -9,7 +9,7 @@ export interface Highlight {
   id: string;
   text: string;
   note?: string;
-  color: 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
+  color: 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
   createdAt: string;
   // Position info for re-rendering
   startOffset?: number;
@@ -141,11 +141,8 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
     let next: Highlight[] = [];
     setLocalHighlights(prev => {
       next = updater(prev);
-      return next;
-    });
-    // saveToLocal needs the actual array — read from the updater result
-    // Use a microtask to ensure state has settled
-    queueMicrotask(() => {
+      // Write to localStorage synchronously inside the updater to avoid race conditions
+      // where rapid mutations could cause localStorage to diverge from React state
       const data: ArticleHighlights = {
         articleUrl,
         articleTitle,
@@ -157,6 +154,7 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
       } catch {
         // Ignore storage errors
       }
+      return next;
     });
     return next;
   }, [articleUrl, articleTitle, storageKey]);
@@ -207,6 +205,11 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
   // Clear all highlights
   const clearHighlights = useCallback(() => {
     if (isSignedIn) {
+      // Optimistic update so UI clears immediately
+      queryClient.setQueryData<ArticleHighlights | null>(
+        highlightKeys.byArticle(articleHash),
+        (old) => old ? { ...old, highlights: [], updatedAt: new Date().toISOString() } : null
+      );
       saveMutation.mutate([]);
     } else {
       setLocalHighlights([]);
@@ -216,7 +219,7 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
         // Ignore
       }
     }
-  }, [isSignedIn, saveMutation, storageKey]);
+  }, [isSignedIn, saveMutation, storageKey, queryClient, articleHash]);
 
   return {
     highlights,

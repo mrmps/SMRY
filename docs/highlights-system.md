@@ -77,8 +77,9 @@ HighlightsContext (React context, shared state)
 
 | File | What it does |
 |------|-------------|
-| `components/features/proxy-content.tsx` | Wraps `ArticleContent` + `AnnotationsSidebar` in `HighlightsProvider`. Handles mobile drawer state. Keyboard shortcut `A` toggles sidebar |
+| `components/features/proxy-content.tsx` | Wraps `ArticleContent` + `AnnotationsSidebar` in `HighlightsProvider`. Uses `SidebarProvider` from `components/ui/sidebar.tsx` for the chat sidebar (pushes content left) and a separate `AnnotationsSidebar` overlay from the right. Handles mobile drawer state. Keyboard shortcut `A` toggles annotations sidebar |
 | `components/article/content.tsx` | `ArticleContent` component: calls `useInlineHighlights` to render marks, handles click-on-mark to show action popover, passes `onHighlight` to toolbar |
+| `components/ui/sidebar.tsx` | Shadcn-style Sidebar component used for the chat sidebar. Supports controlled open/close via `SidebarProvider` with `open`/`onOpenChange` props |
 
 ---
 
@@ -89,7 +90,7 @@ interface Highlight {
   id: string;           // "hl-{timestamp}-{random}"
   text: string;         // The highlighted text
   note?: string;        // User's annotation
-  color: 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
+  color: 'yellow' | 'green' | 'blue' | 'pink' | 'orange';
   createdAt: string;    // ISO timestamp
   contextBefore?: string;  // ~30 chars before selection (for matching)
   contextAfter?: string;   // ~30 chars after selection (for matching)
@@ -139,6 +140,8 @@ When highlights need to be rendered on the article DOM:
 - **Charmap**: Per-text-node entries (~100-500) instead of per-character (~100K). Uses `Uint32Array` for the position mapping — no GC pressure.
 - **Binary search**: Text node lookup is O(log M) instead of linear scan.
 - **Stable callbacks**: All CRUD functions use functional state updates so they don't close over the `highlights` array. This prevents cascading re-renders.
+- **Optimistic updates**: For signed-in users, all mutations (add, update, delete, clear) update the React Query cache immediately before the server round-trip, so the UI reflects changes instantly.
+- **Synchronous localStorage writes**: For anonymous users, localStorage is written synchronously inside the React state updater to prevent race conditions where rapid mutations could cause localStorage to diverge from React state.
 - **Memoized context**: The context value is wrapped in `useMemo` — consumers only re-render when actual data changes.
 - **React.memo on AnnotationCard**: Custom comparator skips re-render when nothing meaningful changed.
 - **Fingerprint dep**: The main rendering effect uses a string fingerprint (`id:color` pairs) instead of the highlights array reference.
@@ -163,6 +166,8 @@ Mark colors are defined in `app/globals.css` with separate rules for light and d
 
 1. Add the color to the `Highlight['color']` union type in `lib/hooks/use-highlights.ts`
 2. Add an entry to `HIGHLIGHT_COLORS` in `components/features/highlight-popover.tsx`
-3. Add `COLOR_BG` mapping in `components/features/annotation-card.tsx`
+3. Add `COLOR_BG` mapping in `components/features/annotation-card.tsx` and `components/features/mobile-annotations-drawer.tsx`
 4. Add `mark[data-highlight-color="newcolor"]` CSS rules in `app/globals.css` (both light and dark)
 5. Add the Tailwind class to `getHighlightClass()` in `highlight-toolbar.tsx`
+
+**Note:** Per AGENTS.md, never use purple in the UI. The available colors are yellow, green, blue, pink, and orange.

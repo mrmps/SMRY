@@ -143,7 +143,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
     return (
       <div
         ref={contentRef}
-        className="mt-6 wrap-break-word prose px-4 sm:px-0"
+        className="mt-6 wrap-break-word prose"
         dir={dir}
         lang={lang}
         dangerouslySetInnerHTML={{ __html: beforeAd }}
@@ -153,7 +153,7 @@ const ArticleWithInlineAd = memo(function ArticleWithInlineAd({
 
   // Render with inline ad (inlineAd is guaranteed non-null here since afterAd exists)
   return (
-    <div ref={contentRef} className="mt-6 px-4 sm:px-0">
+    <div ref={contentRef} className="mt-6">
       {/* First part of article */}
       <div
         className="wrap-break-word prose"
@@ -532,7 +532,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   const preparedHtmlContent = useMemo(() => {
     if (!rawHtmlContent) return rawHtmlContent;
     try {
-      const baseTag = `<base href="${new URL(url).origin}/" />`;
+      const baseTag = `<base href="${new URL(url).origin.replace(/"/g, '&quot;')}/" />`;
       // Insert after <head> if present, otherwise prepend
       if (rawHtmlContent.includes("<head>")) {
         return rawHtmlContent.replace("<head>", `<head>${baseTag}`);
@@ -811,7 +811,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                           : "h-[calc(100vh-12rem)] md:h-[85vh] w-full rounded-lg border border-border bg-white"
                       }
                       title="Original article content"
-                      sandbox="allow-same-origin allow-scripts allow-popups"
+                      sandbox="allow-same-origin"
                       loading="lazy"
                     />
                   </div>

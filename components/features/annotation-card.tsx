@@ -14,7 +14,7 @@ const COLOR_BG: Record<string, string> = {
   yellow: "bg-yellow-200/70 dark:bg-yellow-500/30",
   green: "bg-green-200/70 dark:bg-green-500/30",
   pink: "bg-pink-200/70 dark:bg-pink-500/30",
-  purple: "bg-purple-200/70 dark:bg-purple-500/30",
+  orange: "bg-orange-200/70 dark:bg-orange-500/30",
   blue: "bg-blue-200/70 dark:bg-blue-500/30",
 };
 

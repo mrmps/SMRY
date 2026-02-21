@@ -1918,13 +1918,13 @@ mark[data-highlight-color="yellow"] { background-color: rgb(254 240 138 / 0.7); 
 mark[data-highlight-color="green"] { background-color: rgb(187 247 208 / 0.7); }
 mark[data-highlight-color="blue"] { background-color: rgb(191 219 254 / 0.7); }
 mark[data-highlight-color="pink"] { background-color: rgb(251 207 232 / 0.7); }
-mark[data-highlight-color="purple"] { background-color: rgb(216 180 254 / 0.7); }
+mark[data-highlight-color="orange"] { background-color: rgb(253 186 116 / 0.7); }
 
 :is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="yellow"] { background-color: rgb(234 179 8 / 0.3); }
 :is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="green"] { background-color: rgb(34 197 94 / 0.3); }
 :is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="blue"] { background-color: rgb(59 130 246 / 0.3); }
 :is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="pink"] { background-color: rgb(236 72 153 / 0.3); }
-:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="purple"] { background-color: rgb(168 85 247 / 0.3); }
+:is(.dark, .magic-blue, .classic-dark, .carbon, .black, .forest) mark[data-highlight-color="orange"] { background-color: rgb(249 115 22 / 0.3); }
 
 mark[data-highlight-id] {
   cursor: pointer;

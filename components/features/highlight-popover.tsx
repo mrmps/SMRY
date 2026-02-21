@@ -82,6 +82,6 @@ export const HIGHLIGHT_COLORS = [
   { name: "yellow", bg: "bg-yellow-200/70 dark:bg-yellow-500/30", border: "border-yellow-400", solid: "bg-yellow-400" },
   { name: "green", bg: "bg-green-200/70 dark:bg-green-500/30", border: "border-green-400", solid: "bg-green-400" },
   { name: "pink", bg: "bg-pink-200/70 dark:bg-pink-500/30", border: "border-pink-400", solid: "bg-pink-400" },
-  { name: "purple", bg: "bg-purple-200/70 dark:bg-purple-500/30", border: "border-purple-400", solid: "bg-purple-400" },
+  { name: "orange", bg: "bg-orange-200/70 dark:bg-orange-500/30", border: "border-orange-400", solid: "bg-orange-400" },
   { name: "blue", bg: "bg-blue-200/70 dark:bg-blue-500/30", border: "border-blue-400", solid: "bg-blue-400" },
 ] as const;

@@ -173,10 +173,9 @@ function ViewModeSelector({
             "animate-in fade-in-0 slide-in-from-left-2 duration-150"
           )}
         >
-          {modes.map((mode, i) => {
+          {modes.map((mode) => {
             const Icon = viewModeIcons[mode];
             const isActive = viewMode === mode;
-            const _shortcut = String(i + 1);
             return (
               <button
                 key={mode}
