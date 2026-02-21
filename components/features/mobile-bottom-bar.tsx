@@ -14,6 +14,8 @@ import {
   TextFont,
   ChevronRight,
   Check,
+  VolumeHigh,
+  Loader2,
 } from "@/components/ui/icons";
 import {
   Drawer,
@@ -115,6 +117,9 @@ interface MobileBottomBarProps {
   originalUrl: string;
   articleTitle?: string;
   onOpenSettings?: () => void;
+  onTTSToggle?: () => void;
+  isTTSActive?: boolean;
+  isTTSLoading?: boolean;
   className?: string;
 }
 
@@ -123,6 +128,9 @@ export function MobileBottomBar({
   originalUrl,
   articleTitle,
   onOpenSettings,
+  onTTSToggle,
+  isTTSActive,
+  isTTSLoading,
   className,
 }: MobileBottomBarProps) {
   const [shareDrawerOpen, setShareDrawerOpen] = React.useState(false);
@@ -397,6 +405,27 @@ export function MobileBottomBar({
             </div>
           </DrawerContent>
         </Drawer>
+
+        {/* Listen (TTS) */}
+        <button
+          onClick={onTTSToggle}
+          style={{ touchAction: "manipulation" }}
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] py-1.5 transition-colors active:scale-[0.97] active:opacity-80",
+            isTTSActive
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {isTTSLoading ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <VolumeHigh className="size-5" />
+          )}
+          <span className="text-[11px] font-medium">
+            {isTTSActive ? "Stop" : "Listen"}
+          </span>
+        </button>
 
         {/* Settings */}
         <button

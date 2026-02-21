@@ -130,6 +130,16 @@ import {
 
   // Typography
   TextFontIcon,
+
+  // Audio/TTS
+  VolumeHighIcon,
+  PlayIcon,
+  PauseIcon,
+  StopIcon,
+  Forward01Icon,
+  Backward01Icon,
+  DashboardSpeed01Icon,
+  HeadphonesIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
@@ -324,6 +334,16 @@ export const InfoIcon = createIcon(InformationCircleIcon, "InfoIcon");
 
 // Typography Icons
 export const TextFont = createIcon(TextFontIcon, "TextFont");
+
+// Audio/TTS Icons
+export const VolumeHigh = createIcon(VolumeHighIcon, "VolumeHigh");
+export const Play = createIcon(PlayIcon, "Play");
+export const Pause = createIcon(PauseIcon, "Pause");
+export const Stop = createIcon(StopIcon, "Stop");
+export const Forward = createIcon(Forward01Icon, "Forward");
+export const Backward = createIcon(Backward01Icon, "Backward");
+export const Speed = createIcon(DashboardSpeed01Icon, "Speed");
+export const Headphones = createIcon(HeadphonesIcon, "Headphones");
 
 // Type export for Lucide compatibility
 export type LucideIcon = FC<IconProps>;

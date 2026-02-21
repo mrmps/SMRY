@@ -34,6 +34,9 @@ import { HighlightsProvider } from "@/lib/contexts/highlights-context";
 import { AnnotationsSidebar } from "@/components/features/annotations-sidebar";
 import { MobileChatDrawer, type MobileChatDrawerHandle } from "@/components/features/mobile-chat-drawer";
 import { MobileAnnotationsDrawer } from "@/components/features/mobile-annotations-drawer";
+import { useTTS } from "@/lib/hooks/use-tts";
+import { TTSPlayer } from "@/components/features/tts-player";
+import { TTSHighlight } from "@/components/features/tts-highlight";
 import {
   Sidebar,
   SidebarContent,
@@ -151,6 +154,23 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   }, [firstSuccessfulArticle, url]);
 
   // TTS (Text-to-Speech) dictation
+  const [ttsOpen, setTTSOpen] = useState(false);
+  const tts = useTTS(articleTextContent, url, isPremium);
+
+  const handleTTSToggle = React.useCallback(() => {
+    if (tts.isPlaying || tts.isPaused || tts.isLoading) {
+      tts.stop();
+      setTTSOpen(false);
+    } else {
+      setTTSOpen(true);
+      tts.play();
+    }
+  }, [tts]);
+
+  const handleTTSClose = React.useCallback(() => {
+    tts.stop();
+    setTTSOpen(false);
+  }, [tts]);
 
   const [mobileSummaryOpen, setMobileSummaryOpenRaw] = useState(false);
   const [mobileAnnotationsOpen, setMobileAnnotationsOpenRaw] = useState(false);
@@ -667,11 +687,17 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         setStyleOptionsOpen(true);
         return;
       }
+      // L — Toggle TTS (Listen)
+      if ((e.key === "l" || e.key === "L") && !mod && !e.shiftKey) {
+        e.preventDefault();
+        handleTTSToggle();
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI, setAnnotationsSidebarOpen]);
+  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI, setAnnotationsSidebarOpen, handleTTSToggle]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -786,7 +812,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   )}
                 </div>
 
-                <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-background scrollbar-hide">
+                <div ref={desktopScrollRef} data-desktop-scroll className="h-full overflow-y-auto bg-background scrollbar-hide">
                   <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
                     <ArticleContent
                       data={articleQuery.data}
@@ -841,6 +867,43 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   onStyleOptionsOpenChange={setStyleOptionsOpen}
                   shareOpen={shareOpen}
                   onShareOpenChange={setShareOpen}
+                  onTTSToggle={handleTTSToggle}
+                  isTTSActive={tts.isPlaying || tts.isPaused || tts.isLoading}
+                  isTTSLoading={tts.isLoading}
+                />
+
+                {/* TTS Player — fixed bottom-left when active */}
+                {ttsOpen && (
+                  <div className="fixed bottom-4 left-4 z-40 w-[320px]">
+                    <TTSPlayer
+                      isPlaying={tts.isPlaying}
+                      isPaused={tts.isPaused}
+                      isLoading={tts.isLoading}
+                      progress={tts.progress}
+                      currentTime={tts.currentTime}
+                      duration={tts.duration}
+                      rate={tts.rate}
+                      currentWord={tts.currentWord}
+                      canUse={tts.canUse}
+                      usageCount={tts.usageCount}
+                      error={tts.error}
+                      onPlay={tts.play}
+                      onPause={tts.pause}
+                      onResume={tts.resume}
+                      onStop={tts.stop}
+                      onSkipForward={tts.skipForward}
+                      onSkipBackward={tts.skipBackward}
+                      onRateChange={tts.setRate}
+                      onClose={handleTTSClose}
+                    />
+                  </div>
+                )}
+
+                {/* TTS Word Highlighting */}
+                <TTSHighlight
+                  currentWord={tts.currentWord}
+                  currentWordIndex={tts.currentWordIndex}
+                  isActive={tts.isPlaying}
                 />
 
                 {/* Settings Popover - Desktop dialog, Mobile drawer */}
@@ -905,6 +968,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
               {/* Scrollable content area */}
               <div
                 ref={mobileScrollRef}
+                data-mobile-scroll
                 className={cn(
                   "h-full overflow-y-auto bg-background touch-pan-y",
                   !isPremium && sidebarAd && !mobileAdDismissed ? "pb-36" : "pb-16"
@@ -1060,6 +1124,43 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 </div>
               )}
 
+              {/* TTS Player — above bottom bar on mobile */}
+              {ttsOpen && (
+                <div
+                  className="fixed left-2 right-2 z-40"
+                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+                >
+                  <TTSPlayer
+                    isPlaying={tts.isPlaying}
+                    isPaused={tts.isPaused}
+                    isLoading={tts.isLoading}
+                    progress={tts.progress}
+                    currentTime={tts.currentTime}
+                    duration={tts.duration}
+                    rate={tts.rate}
+                    currentWord={tts.currentWord}
+                    canUse={tts.canUse}
+                    usageCount={tts.usageCount}
+                    error={tts.error}
+                    onPlay={tts.play}
+                    onPause={tts.pause}
+                    onResume={tts.resume}
+                    onStop={tts.stop}
+                    onSkipForward={tts.skipForward}
+                    onSkipBackward={tts.skipBackward}
+                    onRateChange={tts.setRate}
+                    onClose={handleTTSClose}
+                  />
+                </div>
+              )}
+
+              {/* TTS Word Highlighting (mobile) */}
+              <TTSHighlight
+                currentWord={tts.currentWord}
+                currentWordIndex={tts.currentWordIndex}
+                isActive={tts.isPlaying}
+              />
+
               {/* Mobile Bottom Bar */}
               <MobileBottomBar
                 viewMode={viewMode || "markdown"}
@@ -1068,6 +1169,9 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 originalUrl={url}
                 articleTitle={articleTitle}
                 onOpenSettings={() => mobileSettingsRef.current?.open()}
+                onTTSToggle={handleTTSToggle}
+                isTTSActive={tts.isPlaying || tts.isPaused || tts.isLoading}
+                isTTSLoading={tts.isLoading}
               />
 
               {/* Mobile Settings Drawer - native iOS style */}
