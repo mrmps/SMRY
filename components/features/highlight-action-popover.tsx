@@ -72,7 +72,9 @@ export function HighlightActionPopover({
           <button
             onClick={() => {
               onAddNote(highlight.id);
-              onClose();
+              // Don't call onClose() here — it would set activeHighlightId to null,
+              // overriding the setActiveHighlightId(id) from onAddNote (React batches both).
+              // The popover will dismiss naturally since clickedHighlight is cleared by onAddNote.
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-foreground/10 transition-colors"
           >

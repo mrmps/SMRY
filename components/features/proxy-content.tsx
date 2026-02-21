@@ -170,12 +170,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     (value: boolean | ((prev: boolean) => boolean)) => {
       setAnnotationsSidebarOpenRaw((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        // Close chat sidebar when opening annotations
-        if (next) setQuery({ sidebar: null });
         return next;
       });
+      // Side effect outside the state updater (React requires updaters to be pure)
+      const next = typeof value === "function" ? value(annotationsSidebarOpen) : value;
+      if (next) setQuery({ sidebar: null });
     },
-    [setQuery]
+    [setQuery, annotationsSidebarOpen]
   );
 
   const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);
@@ -654,7 +655,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
             <SidebarProvider
               open={sidebarOpen}
               onOpenChange={handleSidebarChange}
-              className="h-full !min-h-0"
+              className="h-full min-h-0!"
               style={{ "--sidebar-width": "440px" } as React.CSSProperties}
             >
               {/* Main content area — flex-1 shrinks when sidebar gap appears */}

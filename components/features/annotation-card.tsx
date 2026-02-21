@@ -105,9 +105,11 @@ export const AnnotationCard = React.memo(function AnnotationCard({
   const [expanded, setExpanded] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(highlight.text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(highlight.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard unavailable */ }
   }, [highlight.text]);
 
   const handleSaveNote = useCallback(() => {

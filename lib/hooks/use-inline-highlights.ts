@@ -281,6 +281,7 @@ export function useInlineHighlights(
   const appliedIdsRef = useRef<Set<string>>(new Set());
   const appliedColorsRef = useRef<Map<string, string>>(new Map());
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   // Stable applyMarks function stored in ref so MutationObserver doesn't need to re-subscribe
   const applyMarksRef = useRef<(container: HTMLElement, hl: Highlight[]) => void>(null!);
@@ -326,8 +327,10 @@ export function useInlineHighlights(
       // Add new highlights only
       const toAdd = hl.filter((h) => !prevIds.has(h.id));
       if (toAdd.length > 0) {
-        const charMap = buildCharMap(container);
         for (const highlight of toAdd) {
+          // Rebuild charmap before each wrap because wrapRangeInMark modifies
+          // the DOM text nodes, invalidating the previous charmap
+          const charMap = buildCharMap(container);
           const range = findTextRange(charMap, highlight);
           if (range) {
             wrapRangeInMark(range, highlight.id, highlight.color);
@@ -337,8 +340,10 @@ export function useInlineHighlights(
     } else {
       // Full re-application (content was replaced)
       clearMarks(container);
-      const charMap = buildCharMap(container);
       for (const highlight of hl) {
+        // Rebuild charmap before each wrap because wrapRangeInMark modifies
+        // the DOM text nodes, invalidating the previous charmap
+        const charMap = buildCharMap(container);
         const range = findTextRange(charMap, highlight);
         if (range) {
           wrapRangeInMark(range, highlight.id, highlight.color);
@@ -380,7 +385,8 @@ export function useInlineHighlights(
         if (!hasMarks && highlightsRef.current.length > 0) {
           appliedIdsRef.current.clear();
           appliedColorsRef.current.clear();
-          requestAnimationFrame(() => {
+          rafIdRef.current = requestAnimationFrame(() => {
+            rafIdRef.current = null;
             applyMarksRef.current(container, highlightsRef.current);
           });
         }
@@ -394,6 +400,10 @@ export function useInlineHighlights(
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
+      }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
     };
   }, [contentRef, fingerprint, content]);
@@ -424,5 +434,5 @@ export function useInlineHighlights(
       mark.removeAttribute(MARK_ACTIVE_ATTR);
       mark.removeAttribute(MARK_PULSE_ATTR);
     };
-  }, [activeHighlightId, contentRef]);
+  }, [activeHighlightId, contentRef, fingerprint]);
 }

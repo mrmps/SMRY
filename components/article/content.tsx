@@ -869,6 +869,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                         updateHighlight(id, { color });
                       }}
                       onAddNote={(id) => {
+                        setClickedHighlight(null);
                         setActiveHighlightId(id);
                         setTimeout(() => setActiveHighlightId(null), 2000);
                       }}
