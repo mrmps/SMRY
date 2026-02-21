@@ -307,6 +307,7 @@ export function MobileChatDrawer({
       shouldScaleBackground={false}
       modal={true}
       repositionInputs={false}
+      handleOnly={true}
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
@@ -410,7 +411,8 @@ export function MobileChatDrawer({
           )}
 
           {/* View container — both views stay mounted so refs work; hidden via display:none */}
-          <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag>
+          {/* touch-action:pan-y overrides vaul-base's touch-action:none on [data-vaul-drawer] */}
+          <div className="flex-1 min-h-0 overflow-hidden" data-vaul-no-drag style={{ touchAction: "pan-y" }}>
             {/* Chat view */}
             <div className={cn("h-full", activeView !== "chat" && "hidden")}>
               <div className="h-full mx-auto max-w-lg">
@@ -437,7 +439,7 @@ export function MobileChatDrawer({
             {/* History view */}
             <div className={cn("h-full bg-background", activeView !== "history" && "hidden")}>
               {isPremium ? (
-                <div className="h-full flex flex-col bg-background" style={{ overscrollBehavior: "contain" }}>
+                <div className="h-full flex flex-col bg-background" style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}>
                   {/* Search */}
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 shrink-0">
                     <Search className="size-3.5 text-muted-foreground/50 shrink-0" aria-hidden="true" />

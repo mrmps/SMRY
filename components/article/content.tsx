@@ -23,8 +23,9 @@ import { Newspaper } from "@/components/ui/icons";
 import { GravityAd } from "@/components/ads/gravity-ad";
 import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 import { HighlightToolbar } from "@/components/features/highlight-toolbar";
-import { HighlightsPanel } from "@/components/features/highlights-panel";
-import { useHighlights } from "@/lib/hooks/use-highlights";
+import { HighlightActionPopover } from "@/components/features/highlight-action-popover";
+import { useHighlightsContext } from "@/lib/contexts/highlights-context";
+import { useInlineHighlights } from "@/lib/hooks/use-inline-highlights";
 import { ImageLightbox, type LightboxImage } from "@/components/ui/image-lightbox";
 
 export type { Source };
@@ -381,15 +382,30 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
   const sanitizedArticleContent = useSanitizedHtml(articleContent);
-  const articleTitle = data?.article?.title;
 
-  // Highlights functionality
+  // Highlights functionality - from shared context
   const {
     highlights,
     addHighlight,
     updateHighlight,
     deleteHighlight,
-  } = useHighlights(url, articleTitle);
+    activeHighlightId,
+    setActiveHighlightId,
+  } = useHighlightsContext();
+
+  // Stable ref for highlights (advanced-event-handler-refs pattern)
+  // Avoids re-registering the click handler every time highlights array changes
+  const highlightsRef = useRef(highlights);
+  useEffect(() => { highlightsRef.current = highlights; });
+
+  // Highlight action popover state (shown when clicking a mark)
+  const [clickedHighlight, setClickedHighlight] = useState<{
+    highlight: (typeof highlights)[number];
+    rect: DOMRect;
+  } | null>(null);
+
+  // Render inline highlights on article DOM (pass sanitized content so marks reapply after async load)
+  useInlineHighlights(contentRef, highlights, activeHighlightId, sanitizedArticleContent);
 
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -416,6 +432,24 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
     if (!container || !sanitizedArticleContent) return;
 
     const handleClick = (e: MouseEvent) => {
+      // Handle highlight mark clicks — show action popover
+      const mark = (e.target as HTMLElement).closest?.("mark[data-highlight-id]");
+      if (mark) {
+        e.preventDefault();
+        e.stopPropagation();
+        const highlightId = mark.getAttribute("data-highlight-id");
+        if (highlightId) {
+          // Read from ref to avoid stale closure (advanced-event-handler-refs)
+          const hl = highlightsRef.current.find((h) => h.id === highlightId);
+          if (hl) {
+            const rect = mark.getBoundingClientRect();
+            setClickedHighlight({ highlight: hl, rect });
+            setActiveHighlightId(highlightId);
+          }
+        }
+        return;
+      }
+
       const img = (e.target as HTMLElement).closest?.("img");
       if (!img || !isExpandable(img)) return;
 
@@ -440,7 +474,8 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
 
     container.addEventListener("click", handleClick);
     return () => container.removeEventListener("click", handleClick);
-  }, [sanitizedArticleContent, isExpandable]);
+    // highlights accessed via highlightsRef — no need as dep (advanced-event-handler-refs)
+  }, [sanitizedArticleContent, isExpandable, setActiveHighlightId]);
 
   const debugContext = useMemo(() =>
     error instanceof ArticleFetchError ? error.debugContext : data?.debugContext,
@@ -490,7 +525,26 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
 
   // Loading = we need to fetch but haven't got a result yet
   const isLoadingHtml = viewMode === "html" && !!data?.article && !inlineHtmlContent && lazyHtmlContent === null;
-  const preparedHtmlContent = inlineHtmlContent || lazyHtmlContent;
+  const rawHtmlContent = inlineHtmlContent || lazyHtmlContent;
+
+  // Inject <base> tag into cached HTML so relative URLs (CSS, images, fonts) resolve
+  // against the original article's domain instead of about:srcdoc
+  const preparedHtmlContent = useMemo(() => {
+    if (!rawHtmlContent) return rawHtmlContent;
+    try {
+      const baseTag = `<base href="${new URL(url).origin}/" />`;
+      // Insert after <head> if present, otherwise prepend
+      if (rawHtmlContent.includes("<head>")) {
+        return rawHtmlContent.replace("<head>", `<head>${baseTag}`);
+      }
+      if (rawHtmlContent.includes("<head ")) {
+        return rawHtmlContent.replace(/<head\s[^>]*>/, `$&${baseTag}`);
+      }
+      return baseTag + rawHtmlContent;
+    } catch {
+      return rawHtmlContent;
+    }
+  }, [rawHtmlContent, url]);
 
   return (
     <div className={viewMode === "markdown" ? "mt-2" : "-mt-2"}>
@@ -757,35 +811,45 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                           : "h-[calc(100vh-12rem)] md:h-[85vh] w-full rounded-lg border border-border bg-white"
                       }
                       title="Original article content"
-                      sandbox="allow-same-origin"
+                      sandbox="allow-same-origin allow-scripts allow-popups"
                       loading="lazy"
                     />
                   </div>
                 ) : (
-                  <div className="mt-6 flex items-center space-x-2">
-                    <p className="text-gray-600">
-                      Original HTML not available for this source.
-                    </p>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <QuestionMarkCircleIcon
-                            className="-ml-2 mb-3 inline-block cursor-help rounded-full"
-                            height={18}
-                            width={18}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            The {source} source does not provide original HTML.
-                          </p>
-                          <p>
-                            Try using a different source or the Markdown/Iframe
-                            tabs.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  // Fallback: load the original URL directly when cached HTML isn't available
+                  <div
+                    className={
+                      isFullScreen
+                        ? "fixed inset-0 z-50 flex flex-col bg-background p-2 sm:p-4"
+                        : "relative w-full"
+                    }
+                  >
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-4 top-4 z-10 bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background"
+                      onClick={() => onFullScreenChange?.(!isFullScreen)}
+                      title={
+                        isFullScreen ? "Exit Full Screen" : "Enter Full Screen"
+                      }
+                    >
+                      {isFullScreen ? (
+                        <ArrowsPointingInIcon className="size-4" />
+                      ) : (
+                        <ArrowsPointingOutIcon className="size-4" />
+                      )}
+                    </Button>
+                    <iframe
+                      src={url}
+                      className={
+                        isFullScreen
+                          ? "size-full flex-1 rounded-lg border border-border bg-white"
+                          : "h-[calc(100vh-12rem)] md:h-[85vh] w-full rounded-lg border border-border bg-white"
+                      }
+                      title="Original article"
+                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                      loading="lazy"
+                    />
                   </div>
                 )
               ) : sanitizedArticleContent ? (
@@ -795,6 +859,33 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                     onHighlight={addHighlight}
                     containerRef={contentRef}
                   />
+
+                  {/* Highlight action popover - appears on mark click */}
+                  {clickedHighlight && (
+                    <HighlightActionPopover
+                      highlight={clickedHighlight.highlight}
+                      anchorRect={clickedHighlight.rect}
+                      onChangeColor={(id, color) => {
+                        updateHighlight(id, { color });
+                      }}
+                      onAddNote={(id) => {
+                        setActiveHighlightId(id);
+                        setTimeout(() => setActiveHighlightId(null), 2000);
+                      }}
+                      onDelete={(id) => {
+                        deleteHighlight(id);
+                      }}
+                      onShare={async (text) => {
+                        try {
+                          await navigator.clipboard.writeText(text);
+                        } catch { /* ignore */ }
+                      }}
+                      onClose={() => {
+                        setClickedHighlight(null);
+                        setActiveHighlightId(null);
+                      }}
+                    />
+                  )}
 
                   {/* Article content with optional mid-article ad */}
                   <ArticleWithInlineAd
@@ -806,18 +897,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                     onInlineAdVisible={onInlineAdVisible}
                     onInlineAdClick={onInlineAdClick}
                   />
-
-                  {/* Highlights panel - shows saved highlights */}
-                  {highlights.length > 0 && (
-                    <HighlightsPanel
-                      highlights={highlights}
-                      articleUrl={url}
-                      articleTitle={articleTitle}
-                      onDelete={deleteHighlight}
-                      onUpdateNote={updateHighlight}
-                      className="mt-8"
-                    />
-                  )}
 
                   <UpgradeCTA dismissable="mobile-only" />
                   {/* Footer ad - appears below the subscription card */}

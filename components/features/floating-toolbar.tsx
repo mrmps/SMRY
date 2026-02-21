@@ -116,8 +116,96 @@ const viewModeIcons = {
 const viewModeLabels = {
   markdown: "Reader",
   html: "Original",
-  iframe: "Frame",
+  iframe: "iFrame",
 } as const;
+
+type ViewMode = "markdown" | "html" | "iframe";
+
+function ViewModeSelector({
+  viewMode,
+  onViewModeChange,
+}: {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modes = ["markdown", "html", "iframe"] as const;
+
+  const handleEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setHovered(true);
+  };
+
+  const handleLeave = () => {
+    timeoutRef.current = setTimeout(() => setHovered(false), 200);
+  };
+
+  const ActiveIcon = viewModeIcons[viewMode];
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      {/* Active mode button */}
+      <button
+        className={cn(
+          "size-10 flex items-center justify-center rounded-lg transition-all duration-150",
+          "hover:bg-accent hover:text-accent-foreground",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "active:scale-95",
+          "text-foreground"
+        )}
+        aria-label={`Current view: ${viewModeLabels[viewMode]}`}
+      >
+        <ActiveIcon className="size-5" />
+      </button>
+
+      {/* Expanded options on hover */}
+      {hovered && (
+        <div
+          className={cn(
+            "absolute left-full ml-2 top-0 z-50",
+            "flex flex-col gap-0.5 p-1 rounded-lg",
+            "bg-background/80 backdrop-blur-xl border border-border/50 shadow-lg",
+            "animate-in fade-in-0 slide-in-from-left-2 duration-150"
+          )}
+        >
+          {modes.map((mode, i) => {
+            const Icon = viewModeIcons[mode];
+            const isActive = viewMode === mode;
+            const _shortcut = String(i + 1);
+            return (
+              <button
+                key={mode}
+                onClick={() => {
+                  onViewModeChange(mode);
+                  setHovered(false);
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-all duration-150",
+                  "text-xs font-medium whitespace-nowrap",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  "active:scale-95",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground"
+                )}
+                aria-label={viewModeLabels[mode]}
+              >
+                <Icon className="size-3.5" />
+                <span className="flex-1">{viewModeLabels[mode]}</span>
+                <Kbd className="text-[10px] px-1.5 py-0.5 ml-3">V</Kbd>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface FloatingToolbarProps {
   viewMode: "markdown" | "html" | "iframe";
@@ -152,14 +240,6 @@ export function FloatingToolbar({
 }: FloatingToolbarProps) {
   const [copied, setCopied] = React.useState(false);
   const { isPremium } = usePremium();
-
-  // Cycle through view modes
-  const cycleViewMode = () => {
-    const modes: Array<"markdown" | "html" | "iframe"> = ["markdown", "html", "iframe"];
-    const currentIndex = modes.indexOf(viewMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    onViewModeChange(modes[nextIndex]);
-  };
 
   // Open original URL
   const openOriginal = () => {
@@ -201,8 +281,6 @@ export function FloatingToolbar({
     window.open(aiUrl, "_blank", "noopener,noreferrer");
   };
 
-  const ViewModeIcon = viewModeIcons[viewMode];
-
   return (
     <div
       className={cn(
@@ -211,22 +289,8 @@ export function FloatingToolbar({
         "top-1/2 -translate-y-1/2 left-4"
       )}
     >
-      {/* View Mode */}
-      <Tooltip label={`View: ${viewModeLabels[viewMode]}`} shortcut="V">
-        <button
-          onClick={cycleViewMode}
-          className={cn(
-            "size-10 flex items-center justify-center rounded-lg transition-all duration-150",
-            "hover:bg-accent hover:text-accent-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            "active:scale-95",
-            "text-foreground"
-          )}
-          aria-label={`Current view: ${viewModeLabels[viewMode]}. Press to cycle.`}
-        >
-          <ViewModeIcon className="size-5" />
-        </button>
-      </Tooltip>
+      {/* View Mode — hover to expand */}
+      <ViewModeSelector viewMode={viewMode} onViewModeChange={onViewModeChange} />
 
       {/* Open Original */}
       <ToolbarButton
