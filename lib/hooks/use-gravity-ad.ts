@@ -217,12 +217,14 @@ export function useGravityAd({
       const timeSinceLastFetch = lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 0;
       lastFetchTime = now;
 
-      console.log(
-        `[useGravityAd] fetch #${adFetchCount}`,
-        `| gap: ${timeSinceLastFetch}s`,
-        `| url: ${url.slice(0, 60)}`,
-        `| title: ${(title || "").slice(0, 40)}`
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[useGravityAd] fetch #${adFetchCount}`,
+          `| gap: ${timeSinceLastFetch}s`,
+          `| url: ${url.slice(0, 60)}`,
+          `| title: ${(title || "").slice(0, 40)}`
+        );
+      }
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -274,19 +276,23 @@ export function useGravityAd({
 
       // Log the response status for debugging
       if (data.status !== "filled") {
-        console.log("[useGravityAd] No ad:", data.status, data.debug);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[useGravityAd] No ad:", data.status, data.debug);
+        }
       }
 
       // Only return ads if status is "filled"
       if (data.status !== "filled") return null;
       // Prefer the ads array, fall back to single ad
       const ads = (data.ads && data.ads.length > 0) ? data.ads : data.ad ? [data.ad] : null;
-      console.log(
-        `[useGravityAd] fetch #${adFetchCount} result`,
-        `| status: ${data.status}`,
-        `| ads: ${ads?.length ?? 0}`,
-        `| brands: ${ads?.map(a => a.brandName).join(", ") ?? "none"}`
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[useGravityAd] fetch #${adFetchCount} result`,
+          `| status: ${data.status}`,
+          `| ads: ${ads?.length ?? 0}`,
+          `| brands: ${ads?.map(a => a.brandName).join(", ") ?? "none"}`
+        );
+      }
       return ads;
     },
     // Keep ads stable for the full refresh interval — prevents duplicate fetches
