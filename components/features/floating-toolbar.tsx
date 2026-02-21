@@ -14,6 +14,8 @@ import {
   Check,
   Bug,
   ArrowUpRight,
+  VolumeHigh,
+  Loader2,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
 import { usePremium } from "@/lib/hooks/use-premium";
@@ -220,6 +222,9 @@ interface FloatingToolbarProps {
   onStyleOptionsOpenChange?: (open: boolean) => void;
   shareOpen?: boolean;
   onShareOpenChange?: (open: boolean) => void;
+  onTTSToggle?: () => void;
+  isTTSActive?: boolean;
+  isTTSLoading?: boolean;
 }
 
 export function FloatingToolbar({
@@ -236,6 +241,9 @@ export function FloatingToolbar({
   onStyleOptionsOpenChange,
   shareOpen,
   onShareOpenChange,
+  onTTSToggle,
+  isTTSActive,
+  isTTSLoading,
 }: FloatingToolbarProps) {
   const [copied, setCopied] = React.useState(false);
   const { isPremium } = usePremium();
@@ -315,6 +323,18 @@ export function FloatingToolbar({
           />
         </div>
       </Tooltip>
+
+      {/* Listen (TTS) */}
+      <ToolbarButton
+        icon={isTTSLoading
+          ? <Loader2 className="size-5 animate-spin" />
+          : <VolumeHigh className="size-5" />
+        }
+        label={isTTSActive ? "Stop listening" : "Listen"}
+        shortcut="L"
+        onClick={onTTSToggle}
+        isActive={isTTSActive}
+      />
 
       <div className="h-px bg-border/50 my-1" />
 
