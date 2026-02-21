@@ -418,9 +418,6 @@ export function MobileChatDrawer({
                   headerAd={chatAd}
                   onHeaderAdVisible={onChatAdVisible}
                   onHeaderAdClick={onChatAdClick}
-                  ad={chatAd}
-                  onAdVisible={onChatAdVisible}
-                  onAdClick={onChatAdClick}
                 />
               </div>
             </div>
