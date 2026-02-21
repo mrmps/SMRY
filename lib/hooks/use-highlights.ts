@@ -245,14 +245,19 @@ export function useHighlights(articleUrl: string, articleTitle?: string) {
     if (isSignedIn) {
       // Cancel any pending debounced save — we're clearing everything
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      pendingSaveRef.current = null;
+      saveTimerRef.current = null;
       // Optimistic update so UI clears immediately
       queryClient.setQueryData<ArticleHighlights | null>(
         highlightKeys.byArticle(articleHash),
         (old) => old ? { ...old, highlights: [], updatedAt: new Date().toISOString() } : null
       );
-      // Save immediately — no debounce needed for clear
-      saveToServer([]);
+      // If a save is in-flight, queue the clear as pending so it flushes
+      // after the current save completes (prevents out-of-order POSTs)
+      if (isSavingRef.current) {
+        pendingSaveRef.current = [];
+      } else {
+        saveToServer([]);
+      }
     } else {
       setLocalHighlights([]);
       try {
