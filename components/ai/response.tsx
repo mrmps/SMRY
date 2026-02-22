@@ -31,6 +31,8 @@ export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
   /** Whether the content is currently streaming (enables animation) */
   isAnimating?: boolean;
+  /** Whether rendering on a mobile device (uses lighter animation) */
+  isMobile?: boolean;
   /** Text direction for RTL language support */
   dir?: 'rtl' | 'ltr';
   /** Language code for the content */
@@ -204,13 +206,24 @@ export const Response = memo(
     className,
     children,
     isAnimating = false,
+    isMobile = false,
     dir,
     lang,
     ...props
   }: ResponseProps) => {
-    // Smooth streaming animation - balanced speed and readability
+    // Mobile: fadeIn (opacity only, no GPU blur) — prevents freeze/jump on low-end devices
+    // Desktop: blurIn (blur+opacity) — visually richer on capable hardware
     const animatedConfig = useMemo(() => {
       if (!isAnimating) return false;
+
+      if (isMobile) {
+        return {
+          animation: 'fadeIn' as const,
+          duration: 150,
+          easing: 'ease-out',
+          sep: 'word' as const,
+        };
+      }
 
       return {
         animation: 'blurIn' as const,
@@ -218,7 +231,7 @@ export const Response = memo(
         easing: 'ease-out',
         sep: 'word' as const,
       };
-    }, [isAnimating]);
+    }, [isAnimating, isMobile]);
 
     return (
       <div

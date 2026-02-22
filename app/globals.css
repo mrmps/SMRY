@@ -1135,10 +1135,18 @@ html.dawn .bg-card {
   text-rendering: optimizeLegibility;
 }
 
-/* GPU acceleration for streaming container */
+/* GPU acceleration for streaming container - desktop only */
 .will-change-contents {
   will-change: contents;
   contain: style;
+}
+
+/* On mobile, will-change: contents creates extra compositing layers that compete
+   with CSS animations — remove it to free up GPU memory */
+@media (max-width: 767px) {
+  .will-change-contents {
+    will-change: auto;
+  }
 }
 
 /* Streamdown animation - smooth GPU-accelerated fade */

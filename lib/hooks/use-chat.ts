@@ -107,8 +107,9 @@ export function useArticleChat({
   );
   /* eslint-enable react-hooks/refs */
 
-  // Throttle for smooth streaming - 50ms = 20 updates/second
-  const throttleMs = 50;
+  // Mobile needs a higher throttle to reduce React renders per second.
+  // 50ms (20/sec) is too aggressive for mobile CPUs during animation.
+  const throttleMs = typeof window !== 'undefined' && window.innerWidth < 768 ? 100 : 50;
 
   const chat = useAIChat({
     id: chatId,
