@@ -118,7 +118,7 @@ export default async function RootLayout({
           <ReactGrab />
           <ThemeProvider
             attribute="class"
-            defaultTheme="carbon"
+            defaultTheme="light"
             themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "carbon", "black", "winter", "forest", "dawn"]}
             disableTransitionOnChange
           >

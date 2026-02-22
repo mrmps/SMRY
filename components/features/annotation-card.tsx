@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Trash2, Copy, Check, Pencil } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { HIGHLIGHT_COLORS } from "@/components/features/highlight-popover";
 import type { Highlight } from "@/lib/hooks/use-highlights";
 
@@ -84,6 +85,7 @@ function ColorPickerPopover({
 interface AnnotationCardProps {
   highlight: Highlight;
   isActive: boolean;
+  noteEditId?: string | null;
   onScrollTo: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdateNote: (id: string, updates: Partial<Highlight>) => void;
@@ -93,6 +95,7 @@ interface AnnotationCardProps {
 export const AnnotationCard = React.memo(function AnnotationCard({
   highlight,
   isActive,
+  noteEditId,
   onScrollTo,
   onDelete,
   onUpdateNote,
@@ -100,6 +103,17 @@ export const AnnotationCard = React.memo(function AnnotationCard({
 }: AnnotationCardProps) {
   const [editingNote, setEditingNote] = useState(false);
   const [noteText, setNoteText] = useState(highlight.note || "");
+
+  // Auto-open note editor when triggered from highlight action popover
+  // Uses render-time state adjustment (no effect) to avoid cascading renders
+  const [prevNoteEditId, setPrevNoteEditId] = useState<string | null | undefined>(noteEditId);
+  if (prevNoteEditId !== noteEditId) {
+    setPrevNoteEditId(noteEditId);
+    if (noteEditId === highlight.id) {
+      setNoteText(highlight.note || "");
+      setEditingNote(true);
+    }
+  }
   const [copied, setCopied] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -109,7 +123,10 @@ export const AnnotationCard = React.memo(function AnnotationCard({
       await navigator.clipboard.writeText(highlight.text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch { /* clipboard unavailable */ }
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
   }, [highlight.text]);
 
   const handleSaveNote = useCallback(() => {
@@ -165,7 +182,8 @@ export const AnnotationCard = React.memo(function AnnotationCard({
               <textarea
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                className="w-full text-xs p-2 border border-border rounded-md bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                style={{ fontSize: '16px' }}
+                className="w-full p-2 border border-border rounded-md bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                 rows={2}
                 placeholder="Write a note..."
                 autoFocus
@@ -279,6 +297,7 @@ export const AnnotationCard = React.memo(function AnnotationCard({
     prev.highlight.note === next.highlight.note &&
     prev.highlight.text === next.highlight.text &&
     prev.isActive === next.isActive &&
+    prev.noteEditId === next.noteEditId &&
     prev.onScrollTo === next.onScrollTo &&
     prev.onDelete === next.onDelete &&
     prev.onUpdateNote === next.onUpdateNote &&

@@ -22,6 +22,8 @@ export function AnnotationsSidebar({
   onOpenMobileChange,
   articleUrl,
   articleTitle,
+  noteEditId,
+  sidebarOffsetStyle,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,6 +31,8 @@ export function AnnotationsSidebar({
   onOpenMobileChange?: (open: boolean) => void;
   articleUrl?: string;
   articleTitle?: string;
+  noteEditId?: string | null;
+  sidebarOffsetStyle?: React.CSSProperties;
 }) {
   // Close handler works for both desktop (onOpenChange) and mobile (onOpenMobileChange)
   const handleClose = useCallback(() => {
@@ -49,6 +53,7 @@ export function AnnotationsSidebar({
         side="right"
         collapsible="offcanvas"
         className="pointer-events-auto"
+        style={sidebarOffsetStyle}
       >
         <SidebarHeader className="flex-row items-center justify-between px-3 py-2 border-b border-border/40">
           <div className="flex items-center gap-2">
@@ -68,6 +73,7 @@ export function AnnotationsSidebar({
           <AnnotationsPanel
             articleUrl={articleUrl}
             articleTitle={articleTitle}
+            noteEditId={noteEditId}
           />
         </SidebarContent>
       </Sidebar>

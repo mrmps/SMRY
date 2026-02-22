@@ -18,7 +18,7 @@
 
 import { cn } from '@/lib/utils';
 import type { ComponentProps, HTMLAttributes } from 'react';
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import {
   Streamdown,
   defaultRehypePlugins,
@@ -29,7 +29,7 @@ import { harden } from 'rehype-harden';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
-  /** Whether the content is currently streaming (enables animation) */
+  /** Whether the content is currently streaming */
   isAnimating?: boolean;
   /** Text direction for RTL language support */
   dir?: 'rtl' | 'ltr';
@@ -208,24 +208,13 @@ export const Response = memo(
     lang,
     ...props
   }: ResponseProps) => {
-    // Smooth streaming animation - balanced speed and readability
-    const animatedConfig = useMemo(() => {
-      if (!isAnimating) return false;
-
-      return {
-        animation: 'fadeIn' as const,
-        duration: 340, // Balanced: smooth but not sluggish
-        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
-        sep: 'word' as const,
-      };
-    }, [isAnimating]);
+    // fadeIn (opacity-only) per Streamdown docs — GPU-accelerated, safe on mobile.
+    // blurIn uses filter:blur which is CPU-bound on mobile → avoid.
 
     return (
       <div
         className={cn(
           'size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
-          // GPU acceleration hints for smooth streaming
-          isAnimating && 'will-change-contents',
           className
         )}
         dir={dir}
@@ -237,8 +226,7 @@ export const Response = memo(
           isAnimating={isAnimating}
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
-          animated={animatedConfig}
-          caret={isAnimating ? 'block' : undefined} // Show caret on both mobile and desktop
+          animated={isAnimating ? { animation: 'fadeIn', duration: 120, easing: 'ease-out', sep: 'word' } : false}
           plugins={{ code }}
           rehypePlugins={[
             defaultRehypePlugins.raw,

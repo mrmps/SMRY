@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Copy, StickyNote, AiMagic, Check } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { HighlightPopover, HIGHLIGHT_COLORS } from "@/components/features/highlight-popover";
 import type { Highlight } from "@/lib/hooks/use-highlights";
 
@@ -111,9 +112,14 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
 
   const handleCopy = useCallback(async () => {
     if (!selection) return;
-    await navigator.clipboard.writeText(selection.text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(selection.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
   }, [selection]);
 
   const handleAskAI = useCallback(() => {
@@ -210,7 +216,8 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Write a note..."
-            className="w-full text-sm bg-foreground/5 border border-border rounded-lg px-2.5 py-2 text-popover-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-foreground/20"
+            style={{ fontSize: '16px' }}
+            className="w-full bg-foreground/5 border border-border rounded-lg px-2.5 py-2 text-popover-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-foreground/20"
             rows={2}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

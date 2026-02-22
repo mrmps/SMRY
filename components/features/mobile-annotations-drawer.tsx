@@ -12,6 +12,7 @@ import {
   ChevronDown,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useHighlightsContext } from "@/lib/contexts/highlights-context";
 import { HIGHLIGHT_COLORS } from "@/components/features/highlight-popover";
 import { ExportHighlights } from "@/components/features/export-highlights";
@@ -48,6 +49,7 @@ function getRelativeTime(dateStr: string): string {
 interface MobileCardProps {
   highlight: Highlight;
   isActive: boolean;
+  noteEditId?: string | null;
   onScrollTo: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdateNote: (id: string, updates: Partial<Highlight>) => void;
@@ -57,16 +59,42 @@ interface MobileCardProps {
 function MobileAnnotationCard({
   highlight,
   isActive,
+  noteEditId,
   onScrollTo,
   onDelete,
   onUpdateNote,
   onChangeColor,
 }: MobileCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [editingNote, setEditingNote] = useState(false);
+  // Lazy init: if the drawer opens with this card already targeted, start in edit mode.
+  // vaul-base unmounts content on close (keepMounted=false), so there's no "previous"
+  // value to diff — we must derive initial state from the prop directly.
+  const [editingNote, setEditingNote] = useState(() => noteEditId === highlight.id);
   const [noteText, setNoteText] = useState(highlight.note || "");
   const [copied, setCopied] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const noteEditorRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Render-time derived state: detect noteEditId changes after mount.
+  // React-recommended pattern (no useEffect + setState cascade).
+  const [prevNoteEditId, setPrevNoteEditId] = useState(noteEditId);
+  if (prevNoteEditId !== noteEditId) {
+    setPrevNoteEditId(noteEditId);
+    if (noteEditId === highlight.id) {
+      setNoteText(highlight.note || "");
+      setEditingNote(true);
+    }
+  }
+
+  // Scroll note editor into view when it opens — let the drawer + keyboard settle first
+  useEffect(() => {
+    if (!editingNote || !noteEditorRef.current) return;
+    const timer = setTimeout(() => {
+      noteEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [editingNote]);
 
   const bgClass = COLOR_BG[highlight.color] || COLOR_BG.yellow;
 
@@ -76,7 +104,10 @@ function MobileAnnotationCard({
       await navigator.clipboard.writeText(highlight.text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch { /* clipboard unavailable */ }
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
   }, [highlight.text]);
 
   const handleSaveNote = useCallback(() => {
@@ -141,14 +172,16 @@ function MobileAnnotationCard({
 
       {/* Inline note editor */}
       {editingNote && (
-        <div className="px-3.5 py-2.5 bg-muted/20 border-t border-border/20">
+        <div ref={noteEditorRef} className="px-3.5 py-2.5 bg-muted/20 border-t border-border/20">
           <textarea
+            ref={textareaRef}
+            autoFocus
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
-            className="w-full text-[13px] p-2.5 border border-border rounded-lg bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+            style={{ fontSize: '16px' }}
+            className="w-full p-2.5 border border-border rounded-lg bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
             rows={3}
             placeholder="Write a note..."
-            autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 handleSaveNote();
@@ -197,6 +230,7 @@ function MobileAnnotationCard({
               setNoteText(highlight.note || "");
               setEditingNote(true);
               setShowActions(false);
+              // scrollIntoView handled by useEffect above
             }}
             className="flex-1 flex items-center justify-center gap-1.5 py-3 text-[12px] text-muted-foreground active:bg-foreground/5 transition-colors"
           >
@@ -257,6 +291,7 @@ interface MobileAnnotationsDrawerProps {
   onOpenChange: (open: boolean) => void;
   articleUrl?: string;
   articleTitle?: string;
+  noteEditId?: string | null;
 }
 
 export function MobileAnnotationsDrawer({
@@ -264,6 +299,7 @@ export function MobileAnnotationsDrawer({
   onOpenChange,
   articleUrl,
   articleTitle,
+  noteEditId,
 }: MobileAnnotationsDrawerProps) {
   const {
     highlights,
@@ -276,6 +312,27 @@ export function MobileAnnotationsDrawer({
 
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Visual Viewport API: lift drawer above virtual keyboard on iOS/Android.
+  // Only subscribe when the drawer is open; reset offset in cleanup (not in effect body).
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv || !open) return;
+
+    const update = () => {
+      const offset = Math.max(0, window.innerHeight - vv.offsetTop - vv.height);
+      setKeyboardOffset(offset);
+    };
+
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setKeyboardOffset(0);
+    };
+  }, [open]);
 
   const filteredHighlights = useMemo(() => {
     const filtered = filterColor
@@ -323,8 +380,12 @@ export function MobileAnnotationsDrawer({
         />
 
         <DrawerPrimitive.Content
-          className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-background border-t border-border rounded-t-2xl"
-          style={{ height: "70dvh" }}
+          className="fixed inset-x-0 z-50 flex flex-col bg-background border-t border-border rounded-t-2xl"
+          style={{
+            height: "70dvh",
+            bottom: `${keyboardOffset}px`,
+            transition: keyboardOffset > 0 ? "bottom 0.15s ease-out" : undefined,
+          }}
         >
           {/* Drag handle — thin bar visual indicator */}
           <div className="flex justify-center pt-3 pb-1">
@@ -414,12 +475,13 @@ export function MobileAnnotationsDrawer({
               </p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto pt-3 pb-safe" data-vaul-no-drag style={{ touchAction: "pan-y" }}>
+            <div className="flex-1 overflow-y-auto pt-3" data-vaul-no-drag style={{ touchAction: "pan-y", paddingBottom: `max(env(safe-area-inset-bottom, 12px), 12px)` }}>
               {filteredHighlights.map((hl) => (
                 <MobileAnnotationCard
                   key={hl.id}
                   highlight={hl}
                   isActive={activeHighlightId === hl.id}
+                  noteEditId={noteEditId === hl.id ? noteEditId : null}
                   onScrollTo={handleScrollTo}
                   onDelete={deleteHighlight}
                   onUpdateNote={updateHighlight}

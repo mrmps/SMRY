@@ -107,7 +107,8 @@ const app = new Elysia({ adapter: node() })
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
       const url = new URL(request.url);
-      const silentPaths = ["/favicon.ico", "/robots.txt", "/_next", "/__nextjs"];
+      // Also silence old/removed endpoints from stale browser caches
+      const silentPaths = ["/favicon.ico", "/robots.txt", "/_next", "/__nextjs", "/api/adtrack", "/api/gravity-ad", "/api/summarize", "/api/jina"];
       const isSilent = silentPaths.some(p => url.pathname.startsWith(p));
       if (!isSilent) {
         console.warn(`[elysia] 404: ${url.pathname}`);

@@ -188,7 +188,7 @@ export default async function ProxyPage({ params, searchParams }: Props) {
   // or fall back to searchParams (for direct /proxy?url=... access)
   const headersList = await headers();
   const headerUrl = headersList.get('x-proxy-article-url');
-  const articleUrl = headerUrl || searchParamUrl || null;
+  const articleUrl = (headerUrl ? decodeURIComponent(headerUrl) : null) || searchParamUrl || null;
 
 
   const initialSidebarOpen = sidebar === 'true';

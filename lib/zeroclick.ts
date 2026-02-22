@@ -466,6 +466,7 @@ export async function fetchZeroClickOffers(context: {
   sessionId?: string;
   userId?: string;
   origin?: string;
+  userLocale?: string;
 }): Promise<ZeroClickOffer[]> {
   const memTracker = startMemoryTrack("zeroclick-fetch-offers", {
     session_id: context.sessionId?.slice(-8),
@@ -483,6 +484,7 @@ export async function fetchZeroClickOffers(context: {
   if (context.sessionId) body.userSessionId = context.sessionId;
   if (context.userId) body.userId = context.userId;
   if (context.origin) body.origin = context.origin;
+  if (context.userLocale) body.userLocale = context.userLocale;
 
   logger.info({ query: context.query.slice(0, 80), limit: context.limit }, "Fetching ZeroClick offers");
 

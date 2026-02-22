@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { useLocale } from "next-intl";
-import { Link, useRouter, usePathname } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import {
   SignedIn,
   SignedOut,
@@ -22,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { buildUrlWithReturn, storeReturnUrl } from "@/lib/hooks/use-return-url";
 import { routing, languageNames, type Locale } from "@/i18n/routing";
-import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
+import { useSwitchLocale } from "@/lib/client-locale-provider";
 import { useChatLanguage, type ChatLanguageCode } from "@/lib/hooks/use-chat-language";
 import {
   Dialog,
@@ -53,19 +52,9 @@ const SECTIONS: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
 // COMPONENTS
 // =============================================================================
 
-// Inner component that uses useSearchParams - must be wrapped in Suspense
-function LanguageSectionInner() {
+function LanguageSection() {
   const locale = useLocale() as Locale;
-  const router = useRouter();
-  const rawPathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const switchLocale = (newLocale: Locale) => {
-    const pathname = stripLocaleFromPathname(rawPathname);
-    const search = searchParams.toString();
-    const fullPath = `${pathname}${search ? `?${search}` : ''}`;
-    router.replace(fullPath, { locale: newLocale });
-  };
+  const switchLocale = useSwitchLocale();
 
   return (
     <div className="space-y-4">
@@ -91,24 +80,6 @@ function LanguageSectionInner() {
         ))}
       </div>
     </div>
-  );
-}
-
-// Wrapper with Suspense boundary for useSearchParams
-function LanguageSection() {
-  return (
-    <React.Suspense fallback={
-      <div className="space-y-4">
-        <div className="h-5 w-48 bg-muted rounded animate-pulse" />
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[52px] rounded-xl bg-muted animate-pulse" />
-          ))}
-        </div>
-      </div>
-    }>
-      <LanguageSectionInner />
-    </React.Suspense>
   );
 }
 

@@ -62,7 +62,7 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
     // Pass article URL via request header because the route handler sees the
     // original request's searchParams, not the rewrite target's.
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-llm-article-url', articleUrl);
+    requestHeaders.set('x-llm-article-url', encodeURIComponent(articleUrl));
     return withLlmHeaders(NextResponse.rewrite(rewriteUrl, {
       request: { headers: requestHeaders },
     }));
@@ -75,7 +75,7 @@ export const proxy = clerkMiddleware(async (_auth, request: NextRequest) => {
     const articleUrl = redirectUrlObj.searchParams.get('url');
     const requestHeaders = new Headers(request.headers);
     if (articleUrl) {
-      requestHeaders.set('x-proxy-article-url', articleUrl);
+      requestHeaders.set('x-proxy-article-url', encodeURIComponent(articleUrl));
     }
     return withLlmHeaders(NextResponse.rewrite(redirectUrl, {
       request: { headers: requestHeaders },

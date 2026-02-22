@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
   // The article URL comes from searchParams when called directly, or from the
   // x-llm-article-url header when the middleware rewrites a URL slug request
   // (rewrite targets' searchParams aren't visible to route handlers).
+  const rawHeaderUrl = request.headers.get("x-llm-article-url");
   const articleUrl =
     request.nextUrl.searchParams.get("url") ||
-    request.headers.get("x-llm-article-url");
+    (rawHeaderUrl ? decodeURIComponent(rawHeaderUrl) : null);
 
   if (!articleUrl) {
     return new NextResponse("Missing url parameter", { status: 400 });

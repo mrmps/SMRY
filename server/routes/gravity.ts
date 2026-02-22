@@ -1,7 +1,7 @@
 /**
- * Gravity Routes - POST /api/context, POST /api/px
+ * Ad Routes - POST /api/context, POST /api/px
  *
- * /api/context - Fetches contextual ads from Gravity AI for free users.
+ * /api/context - Fetches contextual ads. ZeroClick is primary, Gravity is fallback.
  * /api/px - Unified tracking for impressions, clicks, dismissals.
  *           For impressions, wraps Gravity forwarding + ClickHouse logging atomically.
  *
@@ -296,147 +296,16 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         return { status: "premium_user" as const };
       }
 
-      // Build conversation context for Gravity with rich metadata
-      const metadataParts = [
-        `Title: ${title}`,
-        `URL: ${url}`,
-        byline && `Author: ${byline}`,
-        siteName && `Publisher: ${siteName}`,
-        publishedTime && `Published: ${publishedTime}`,
-        lang && `Language: ${lang}`,
-      ].filter(Boolean).join("\n");
-
-      const userContent = prompt
-        ? `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}\n\nAd instruction: ${prompt}`
-        : `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}`;
-
-      const messages: GravityMessage[] = [
-        { role: "user", content: userContent },
-      ];
-
       // Build device info with IP from request
       const clientIp = extractClientIp(request);
-      const gravityDevice: GravityDevice | undefined = device ? {
-        ip: clientIp,
-        os: device.os,
-        timezone: device.timezone,
-        locale: device.locale,
-        language: device.language,
-        ua: device.ua,
-        browser: device.browser,
-        device_type: device.deviceType,
-        screen_width: device.screenWidth,
-        screen_height: device.screenHeight,
-        viewport_width: device.viewportWidth,
-        viewport_height: device.viewportHeight,
-      } : undefined;
 
-      // Build user info - prefer authenticated user ID
-      const gravityUser: GravityUser | undefined = (userId || user) ? {
-        id: userId || user?.id,
-        email: user?.email,
-      } : undefined;
+      const TARGET_AD_COUNT = 5;
 
-      // Request ads from Gravity
-      // Note: Gravity may return duplicate ads if inventory is limited
-      // We deduplicate on our side before showing to users
-      // Number of ads returned = placements array length (per Gravity docs)
-      const gravityRequest: GravityRequest = {
-        messages,
-        sessionId,
-        placements: [
-          { placement: "right_response", placement_id: "smry-sidebar-right" },
-          { placement: "inline_response", placement_id: "smry-article-inline" },
-          { placement: "below_response", placement_id: "smry-footer-bottom" },
-          { placement: "above_response", placement_id: "smry-chat-header" },
-          { placement: "left_response", placement_id: "smry-input-micro" },
-        ],
-        ...(USE_TEST_ADS && { testAd: true }),
-        relevancy: 0,
-        device: gravityDevice,
-        user: gravityUser,
-      };
+      // --- ZeroClick (Primary) ---
+      let zcAds: ContextAd[] = [];
 
-      // Log the request being sent to Gravity
-      logger.info({
-        url,
-        sessionId,
-        titleLength: title?.length || 0,
-        articleContentLength: articleContent?.length || 0,
-        hasDevice: !!gravityDevice,
-        hasUser: !!gravityUser,
-        testAd: USE_TEST_ADS,
-      }, "Sending ad request to Gravity");
-
-      // Call Gravity API with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
-
-      try {
-        const response = await fetch(GRAVITY_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${env.GRAVITY_API_KEY}`,
-          },
-          body: JSON.stringify(gravityRequest),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // Parse Gravity response into ads array
-        let gravityAds: ContextAd[] = [];
-
-        if (response.status === 204) {
-          logger.info({ url, status: 204 }, "No matching ad from Gravity");
-        } else if (!response.ok) {
-          const errorBody = await response.text().catch(() => "");
-          logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
-          track("gravity_error", { gravityStatus: response.status, errorMessage: errorBody.slice(0, 200), userId });
-        } else {
-          const rawAds = (await response.json()) as GravityAdResponse[];
-          if (rawAds && rawAds.length > 0) {
-            const adSummary = rawAds.map((ad, i) => ({
-              index: i,
-              brandName: ad.brandName,
-              title: ad.title?.slice(0, 50),
-              impUrl: ad.impUrl?.slice(-20),
-            }));
-            logger.info({
-              url,
-              adCount: rawAds.length,
-              uniqueBrands: [...new Set(rawAds.map(a => a.brandName))].length,
-              uniqueImpUrls: [...new Set(rawAds.map(a => a.impUrl))].length,
-              ads: adSummary,
-            }, "Ad(s) received from Gravity");
-            // Tag Gravity ads with provider
-            gravityAds = rawAds.map((ad) => ({
-              ...ad,
-              ad_provider: "gravity" as const,
-            }));
-          } else {
-            logger.info({ url }, "Empty ad array from Gravity");
-          }
-        }
-
-        // Log Gravity response stats for revenue tracking
-        logger.info({
-          url_host: hostname,
-          gravity_ad_count: gravityAds.length,
-          gravity_status: response.status,
-          zeroclick_disabled: !!env.ZEROCLICK_DISABLED,
-        }, "ad_provider_stats");
-
-        // --- ZeroClick Waterfall ---
-        // If Gravity returned fewer than 5 ads, try ZeroClick for remaining slots
-        const TARGET_AD_COUNT = 5;
-        let allAds: ContextAd[] = [...gravityAds];
-
-        if (!env.ZEROCLICK_DISABLED && gravityAds.length < TARGET_AD_COUNT) {
-          const remaining = TARGET_AD_COUNT - gravityAds.length;
-          logger.info({ url, gravityCount: gravityAds.length, remaining }, "Trying ZeroClick for remaining slots");
-
+      if (!env.ZEROCLICK_DISABLED) {
+        try {
           // Fire signal in background (don't await — best-effort)
           broadcastArticleSignal({
             url, title, content: articleContent || "",
@@ -447,129 +316,205 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
             userAgent: device?.ua,
           }).catch(() => {});
 
+          logger.info({
+            url,
+            sessionId,
+            titleLength: title?.length || 0,
+            articleContentLength: articleContent?.length || 0,
+          }, "Sending ad request to ZeroClick (primary)");
+
           const zcOffers = await fetchZeroClickOffers({
-            query: `${title} ${articleContent || ""}`.slice(0, 500),
-            limit: remaining,
+            query: `${title} ${articleContent || ""}`.slice(0, 2000),
+            limit: TARGET_AD_COUNT,
             ipAddress: clientIp,
             userAgent: device?.ua,
             sessionId,
             userId: userId || user?.id,
             origin: url,
+            userLocale: device?.locale,
           });
 
           if (zcOffers.length > 0) {
-            const zcAds = zcOffers.map(mapZeroClickOfferToAd);
-            allAds = [...gravityAds, ...zcAds];
-            logger.info({ url, gravityCount: gravityAds.length, zcCount: zcAds.length, totalCount: allAds.length }, "Waterfall merged ads");
-          }
-        }
-
-        // Return combined results
-        if (allAds.length > 0) {
-          const primaryAd = allAds[0];
-          const gravityCount = gravityAds.length;
-          const zcCount = allAds.length - gravityCount;
-
-          // Log final waterfall result for revenue analysis
-          logger.info({
-            url_host: hostname,
-            gravity_count: gravityCount,
-            zeroclick_count: zcCount,
-            total_count: allAds.length,
-            primary_provider: primaryAd.ad_provider ?? "gravity",
-          }, "ad_waterfall_result");
-
-          track("filled", {
-            gravityStatus: response.ok ? 200 : response.status,
-            brandName: primaryAd.brandName,
-            adTitle: primaryAd.title,
-            adText: primaryAd.adText,
-            clickUrl: primaryAd.clickUrl,
-            impUrl: primaryAd.impUrl,
-            cta: primaryAd.cta,
-            favicon: primaryAd.favicon,
-            userId,
-            adCount: allAds.length,
-          });
-          memTracker.end({ status: "filled", ad_count: allAds.length, gravity_count: gravityCount, zeroclick_count: zcCount });
-          return {
-            status: "filled" as const,
-            ad: primaryAd,
-            ads: allAds,
-          };
-        }
-
-        // Nothing from either provider
-        track("no_fill", { gravityStatus: response.status, userId });
-        memTracker.end({ status: "no_fill", gravity_status: response.status });
-        return {
-          status: "no_fill" as const,
-          debug: { gravityStatus: response.status },
-        };
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        const errorMsg = String(fetchError);
-        const isTimeout = errorMsg.includes("abort");
-        logger.warn({ error: errorMsg, isTimeout }, "Gravity fetch error");
-
-        // Gravity failed entirely — try ZeroClick as full fallback (if enabled)
-        let zcAds: ContextAd[] = [];
-        if (!env.ZEROCLICK_DISABLED) {
-          try {
-            broadcastArticleSignal({
-              url, title, content: articleContent || "",
-              sessionId,
-              userId: userId || user?.id,
-              locale: device?.locale,
-              ip: clientIp,
-              userAgent: device?.ua,
-            }).catch(() => {});
-            const zcOffers = await fetchZeroClickOffers({
-              query: `${title} ${articleContent || ""}`.slice(0, 500),
-              limit: 5,
-              ipAddress: clientIp,
-              userAgent: device?.ua,
-              sessionId,
-              userId: userId || user?.id,
-              origin: url,
-            });
             zcAds = zcOffers.map(mapZeroClickOfferToAd);
-          } catch (zcError) {
-            logger.warn({ error: String(zcError) }, "ZeroClick fallback also failed");
+            logger.info({ url, zcCount: zcAds.length }, "Ad(s) received from ZeroClick");
+          } else {
+            logger.info({ url }, "No ads from ZeroClick");
           }
+        } catch (zcError) {
+          logger.warn({ error: String(zcError) }, "ZeroClick primary fetch error");
         }
+      }
 
-        if (zcAds.length > 0) {
-          const primaryAd = zcAds[0];
-          logger.info({ url, zcCount: zcAds.length }, "ZeroClick fallback filled after Gravity failure");
-          track("filled", {
-            errorMessage: `gravity_failed: ${errorMsg.slice(0, 100)}`,
-            brandName: primaryAd.brandName,
-            adTitle: primaryAd.title,
-            adText: primaryAd.adText,
-            clickUrl: primaryAd.clickUrl,
-            impUrl: primaryAd.impUrl,
-            cta: primaryAd.cta,
-            favicon: primaryAd.favicon,
-            userId,
-            adCount: zcAds.length,
+      // Log ZeroClick response stats
+      logger.info({
+        url_host: hostname,
+        zeroclick_ad_count: zcAds.length,
+        gravity_disabled: !env.GRAVITY_API_KEY,
+      }, "ad_provider_stats");
+
+      // --- Gravity Waterfall (Fallback) ---
+      // If ZeroClick returned fewer than 5 ads, try Gravity for remaining slots
+      let allAds: ContextAd[] = [...zcAds];
+
+      if (zcAds.length < TARGET_AD_COUNT && env.GRAVITY_API_KEY) {
+        const remaining = TARGET_AD_COUNT - zcAds.length;
+        logger.info({ url, zcCount: zcAds.length, remaining }, "Trying Gravity for remaining slots");
+
+        // Build conversation context for Gravity with rich metadata
+        const metadataParts = [
+          `Title: ${title}`,
+          `URL: ${url}`,
+          byline && `Author: ${byline}`,
+          siteName && `Publisher: ${siteName}`,
+          publishedTime && `Published: ${publishedTime}`,
+          lang && `Language: ${lang}`,
+        ].filter(Boolean).join("\n");
+
+        const userContent = prompt
+          ? `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}\n\nAd instruction: ${prompt}`
+          : `I'm reading this article:\n\n${metadataParts}\n\nArticle content:\n${articleContent}`;
+
+        const messages: GravityMessage[] = [
+          { role: "user", content: userContent },
+        ];
+
+        const gravityDevice: GravityDevice | undefined = device ? {
+          ip: clientIp,
+          os: device.os,
+          timezone: device.timezone,
+          locale: device.locale,
+          language: device.language,
+          ua: device.ua,
+          browser: device.browser,
+          device_type: device.deviceType,
+          screen_width: device.screenWidth,
+          screen_height: device.screenHeight,
+          viewport_width: device.viewportWidth,
+          viewport_height: device.viewportHeight,
+        } : undefined;
+
+        const gravityUser: GravityUser | undefined = (userId || user) ? {
+          id: userId || user?.id,
+          email: user?.email,
+        } : undefined;
+
+        // Only request as many placements as we need to fill
+        const allPlacements = [
+          { placement: "right_response" as const, placement_id: "smry-sidebar-right" },
+          { placement: "inline_response" as const, placement_id: "smry-article-inline" },
+          { placement: "below_response" as const, placement_id: "smry-footer-bottom" },
+          { placement: "above_response" as const, placement_id: "smry-chat-header" },
+          { placement: "left_response" as const, placement_id: "smry-input-micro" },
+        ];
+
+        const gravityRequest: GravityRequest = {
+          messages,
+          sessionId,
+          placements: allPlacements.slice(0, remaining),
+          ...(USE_TEST_ADS && { testAd: true }),
+          relevancy: 0,
+          device: gravityDevice,
+          user: gravityUser,
+        };
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), GRAVITY_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(GRAVITY_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${env.GRAVITY_API_KEY}`,
+            },
+            body: JSON.stringify(gravityRequest),
+            signal: controller.signal,
           });
-          memTracker.end({ status: "filled", ad_count: zcAds.length, provider: "zeroclick_fallback", gravity_error: true });
-          return {
-            status: "filled" as const,
-            ad: primaryAd,
-            ads: zcAds,
-          };
-        }
 
-        const status = isTimeout ? "timeout" : "gravity_error";
-        track(status, { errorMessage: errorMsg.slice(0, 200), userId });
-        memTracker.end({ status, is_timeout: isTimeout });
+          clearTimeout(timeoutId);
+
+          let gravityAds: ContextAd[] = [];
+
+          if (response.status === 204) {
+            logger.info({ url, status: 204 }, "No matching ad from Gravity");
+          } else if (!response.ok) {
+            const errorBody = await response.text().catch(() => "");
+            logger.warn({ url, status: response.status, error: errorBody }, "Gravity API error");
+          } else {
+            const rawAds = (await response.json()) as GravityAdResponse[];
+            if (rawAds && rawAds.length > 0) {
+              const adSummary = rawAds.map((ad, i) => ({
+                index: i,
+                brandName: ad.brandName,
+                title: ad.title?.slice(0, 50),
+                impUrl: ad.impUrl?.slice(-20),
+              }));
+              logger.info({
+                url,
+                adCount: rawAds.length,
+                uniqueBrands: [...new Set(rawAds.map(a => a.brandName))].length,
+                uniqueImpUrls: [...new Set(rawAds.map(a => a.impUrl))].length,
+                ads: adSummary,
+              }, "Ad(s) received from Gravity (fallback)");
+              gravityAds = rawAds.map((ad) => ({
+                ...ad,
+                ad_provider: "gravity" as const,
+              }));
+            }
+          }
+
+          if (gravityAds.length > 0) {
+            allAds = [...zcAds, ...gravityAds];
+            logger.info({ url, zcCount: zcAds.length, gravityCount: gravityAds.length, totalCount: allAds.length }, "Waterfall merged ads");
+          }
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          const errorMsg = String(fetchError);
+          const isTimeout = errorMsg.includes("abort");
+          logger.warn({ error: errorMsg, isTimeout }, "Gravity fallback fetch error");
+        }
+      }
+
+      // Return combined results
+      if (allAds.length > 0) {
+        const primaryAd = allAds[0];
+        const zcCount = zcAds.length;
+        const gravityCount = allAds.length - zcCount;
+
+        // Log final waterfall result for revenue analysis
+        logger.info({
+          url_host: hostname,
+          zeroclick_count: zcCount,
+          gravity_count: gravityCount,
+          total_count: allAds.length,
+          primary_provider: primaryAd.ad_provider ?? "zeroclick",
+        }, "ad_waterfall_result");
+
+        track("filled", {
+          brandName: primaryAd.brandName,
+          adTitle: primaryAd.title,
+          adText: primaryAd.adText,
+          clickUrl: primaryAd.clickUrl,
+          impUrl: primaryAd.impUrl,
+          cta: primaryAd.cta,
+          favicon: primaryAd.favicon,
+          userId,
+          adCount: allAds.length,
+        });
+        memTracker.end({ status: "filled", ad_count: allAds.length, zeroclick_count: zcCount, gravity_count: gravityCount });
         return {
-          status: status as "timeout" | "gravity_error",
-          debug: { errorMessage: errorMsg.slice(0, 200) },
+          status: "filled" as const,
+          ad: primaryAd,
+          ads: allAds,
         };
       }
+
+      // Nothing from either provider
+      track("no_fill", { userId });
+      memTracker.end({ status: "no_fill" });
+      return {
+        status: "no_fill" as const,
+      };
     } catch (error) {
       const errorMsg = String(error);
       logger.error({ error: errorMsg }, "Unexpected error in context route");

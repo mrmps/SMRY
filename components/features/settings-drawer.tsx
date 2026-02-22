@@ -4,8 +4,6 @@ import * as React from "react";
 import { Link } from "@/i18n/navigation";
 import { useTheme } from "next-themes";
 import { useLocale } from "next-intl";
-import { useRouter, usePathname } from "@/i18n/navigation";
-import { useSearchParams } from "next/navigation";
 import {
   SignedIn,
   SignedOut,
@@ -28,7 +26,7 @@ import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { buildUrlWithReturn, storeReturnUrl } from "@/lib/hooks/use-return-url";
 import { useReaderPreferences } from "@/lib/hooks/use-reader-preferences";
 import { routing, languageNames, type Locale } from "@/i18n/routing";
-import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
+import { useSwitchLocale } from "@/lib/client-locale-provider";
 import {
   type ReaderFont,
   type LineSpacingLevel,
@@ -263,10 +261,17 @@ function StyleOptionsSection() {
   const hasAnyCustomization = hasCustomPreferences || hasCustomTheme || themeChanged;
 
   // Handle theme change using shared mapper
+  // For the dropdown ("system"/"light"/"dark") — needs mapping to actual theme name
   const handleThemeChange = (newTheme: string) => {
     const actualTheme = mapDropdownToTheme(newTheme);
     setTheme(actualTheme);
     setThemeChanged(actualTheme !== DEFAULT_THEME);
+  };
+
+  // For palette buttons — theme value is already the actual theme name, no mapping needed
+  const handlePaletteChange = (paletteTheme: string) => {
+    setTheme(paletteTheme);
+    setThemeChanged(paletteTheme !== DEFAULT_THEME);
   };
 
   // Reset ALL - theme + reader preferences
@@ -388,7 +393,7 @@ function StyleOptionsSection() {
                       return (
                         <button
                           key={palette.id}
-                          onClick={() => handleThemeChange(palette.theme)}
+                          onClick={() => handlePaletteChange(palette.theme)}
                           style={{ touchAction: "manipulation", ...getPaletteStyle(palette.id, isDark) }}
                           className={cn(
                             "flex-1 py-2.5 px-2 rounded-lg text-xs font-medium transition-all border min-h-[44px]",
@@ -602,12 +607,10 @@ function StyleOptionsSection() {
   );
 }
 
-// Inner component that uses searchParams - must be wrapped in Suspense
+// Inner component for language selection
 function LanguageSectionInner() {
   const locale = useLocale() as Locale;
-  const router = useRouter();
-  const rawPathname = usePathname();
-  const searchParams = useSearchParams();
+  const switchLocaleInPlace = useSwitchLocale();
   const [languageDrawerOpen, setLanguageDrawerOpen] = React.useState(false);
   const [selectedLocale, setSelectedLocale] = React.useState<Locale | null>(null);
 
@@ -621,24 +624,16 @@ function LanguageSectionInner() {
     // Show selection immediately for visual feedback
     setSelectedLocale(newLocale);
 
-    // Build the path with query params preserved
-    const pathname = stripLocaleFromPathname(rawPathname);
-    const search = searchParams.toString();
-    const fullPath = `${pathname}${search ? `?${search}` : ''}`;
-
-    // Brief delay to show the selection before navigating
-    // This creates a premium feel - user sees their choice confirmed
+    // Brief delay to show the selection before closing
     setTimeout(() => {
       setLanguageDrawerOpen(false);
-
-      // Small delay after drawer starts closing for smooth animation
-      setTimeout(() => {
-        React.startTransition(() => {
-          router.replace(fullPath, { locale: newLocale });
-        });
-      }, 150);
+      // Reset disabled state before switching — component stays mounted so
+      // selectedLocale would otherwise permanently disable all buttons
+      setSelectedLocale(null);
+      // Swap locale in place — no navigation, so parent drawer stays open
+      switchLocaleInPlace(newLocale);
     }, 200);
-  }, [rawPathname, searchParams, router, locale]);
+  }, [locale, switchLocaleInPlace]);
 
   return (
     <>
@@ -721,7 +716,7 @@ function LanguageSectionInner() {
   );
 }
 
-// Language selector - wraps inner component in Suspense for useSearchParams
+// Language selector
 function LanguageSection() {
   return (
     <React.Suspense fallback={

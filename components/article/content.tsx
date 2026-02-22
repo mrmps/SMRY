@@ -362,6 +362,8 @@ interface ArticleContentProps {
   onFooterAdClick?: () => void;
   // Ask AI - triggered from highlight toolbar
   onAskAI?: (text: string) => void;
+  // Open note editor for a specific highlight in the sidebar/drawer
+  onOpenNoteEditor?: (id: string) => void;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = memo(function ArticleContent({
@@ -382,6 +384,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
   onFooterAdVisible,
   onFooterAdClick,
   onAskAI,
+  onOpenNoteEditor,
 }) {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const articleContent = data?.article?.content;
@@ -886,14 +889,10 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                         if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
                         setActiveHighlightId(id);
                         highlightTimeoutRef.current = setTimeout(() => setActiveHighlightId(null), 2000);
+                        onOpenNoteEditor?.(id);
                       }}
                       onDelete={(id) => {
                         deleteHighlight(id);
-                      }}
-                      onShare={async (text) => {
-                        try {
-                          await navigator.clipboard.writeText(text);
-                        } catch { /* ignore */ }
                       }}
                       onClose={() => {
                         setClickedHighlight(null);
