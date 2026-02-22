@@ -503,7 +503,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}
                           isAnimating={isLoading && isLastMessage}
-                          isMobile={isMobile}
                         >
                           {messageText}
                         </Response>
