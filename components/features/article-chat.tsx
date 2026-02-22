@@ -557,7 +557,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 </div>
               );
             })}
-            {/* Loading indicator - show when waiting for response or empty assistant message */}
+            {/* Loading indicator - show while waiting for first token */}
             {isLoading && messages.length > 0 && (
               messages[messages.length - 1]?.role === "user" ||
               (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))

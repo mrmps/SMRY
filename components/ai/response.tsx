@@ -226,7 +226,7 @@ export const Response = memo(
           isAnimating={isAnimating}
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
-          animated={isAnimating ? { animation: 'fadeIn', duration: 200, easing: 'ease-out', sep: 'word' } : false}
+          animated={isAnimating ? { animation: 'fadeIn', duration: 120, easing: 'ease-out', sep: 'word' } : false}
           plugins={{ code }}
           rehypePlugins={[
             defaultRehypePlugins.raw,
