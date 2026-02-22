@@ -1141,22 +1141,13 @@ html.dawn .bg-card {
   contain: style;
 }
 
-/* On mobile, will-change: contents creates extra compositing layers that compete
-   with CSS animations — remove it to free up GPU memory */
-@media (max-width: 767px) {
-  .will-change-contents {
-    will-change: auto;
-  }
-}
-
-/* Streamdown animation - smooth GPU-accelerated fade */
+/* Streamdown animation - GPU compositing (desktop only) */
 [data-streamdown] [data-animated] {
-  /* GPU compositing for smooth animations */
   transform: translateZ(0);
   backface-visibility: hidden;
 }
 
-/* Streaming cursor - elegant breathing pulse */
+/* Streaming cursor - desktop only */
 [data-streamdown] *:last-child::after {
   animation: cursor-breathe 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -1172,17 +1163,19 @@ html.dawn .bg-card {
   }
 }
 
-/* Mobile streaming - same premium experience, optimized for touch */
+/* Mobile: strip all streaming CSS effects — no animations, no compositing layers,
+   no will-change. Text renders directly as tokens arrive. */
 @media (max-width: 767px) {
-  /* Slightly slower cursor animation on mobile for elegance */
-  [data-streamdown] *:last-child::after {
-    animation: cursor-breathe 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  .will-change-contents {
+    will-change: auto;
+    contain: none;
   }
-
-  /* Smooth touch scrolling for streaming content */
-  .scroll-container [data-streamdown] {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+  [data-streamdown] [data-animated] {
+    transform: none;
+    backface-visibility: visible;
+  }
+  [data-streamdown] *:last-child::after {
+    animation: none;
   }
 }
 

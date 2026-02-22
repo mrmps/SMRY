@@ -211,19 +211,10 @@ export const Response = memo(
     lang,
     ...props
   }: ResponseProps) => {
-    // Mobile: fadeIn (opacity only, no GPU blur) — prevents freeze/jump on low-end devices
-    // Desktop: blurIn (blur+opacity) — visually richer on capable hardware
+    // Mobile: no animation — text appears instantly, zero CSS overhead, smoothest streaming
+    // Desktop: blurIn — visually richer on capable hardware
     const animatedConfig = useMemo(() => {
-      if (!isAnimating) return false;
-
-      if (isMobile) {
-        return {
-          animation: 'fadeIn' as const,
-          duration: 150,
-          easing: 'ease-out',
-          sep: 'word' as const,
-        };
-      }
+      if (!isAnimating || isMobile) return false;
 
       return {
         animation: 'blurIn' as const,
@@ -237,8 +228,7 @@ export const Response = memo(
       <div
         className={cn(
           'size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
-          // GPU acceleration hints for smooth streaming
-          isAnimating && 'will-change-contents',
+          isAnimating && !isMobile && 'will-change-contents',
           className
         )}
         dir={dir}

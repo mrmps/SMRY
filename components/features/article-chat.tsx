@@ -312,35 +312,27 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     return () => container.removeEventListener("scroll", handleScroll);
   }, [floatingInput]);
 
-  // During streaming: smooth auto-scroll when at bottom, show arrow button when scrolled up
+  // During streaming: scroll to bottom after each message update.
+  // Fires once per React commit (after paint) via a single RAF, avoiding the
+  // forced synchronous layout recalculations that a continuous 60fps loop causes
+  // on mobile — that was the root cause of the freeze-then-jump pattern.
   useEffect(() => {
     if (!isLoading) return;
     const threshold = floatingInput ? 150 : 80;
-    let lastScrollTime = 0;
-    // Smooth scroll updates - 60fps feel
-    const scrollThrottleMs = 50;
-
-    const tick = (timestamp: number) => {
-      // Throttle scroll updates for smooth performance
-      if (timestamp - lastScrollTime >= scrollThrottleMs) {
-        lastScrollTime = timestamp;
-        const container = scrollContainerRef.current;
-        if (container) {
-          const { scrollTop, scrollHeight, clientHeight } = container;
-          const isAtBottom = scrollHeight - scrollTop - clientHeight <= threshold;
-          if (isAtBottom && !isUserScrolledUpRef.current) {
-            container.scrollTop = scrollHeight - clientHeight;
-          } else {
-            // Content is growing below the viewport — show the arrow
-            setShowScrollButton(true);
-          }
-        }
+    const id = requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distFromBottom = scrollHeight - scrollTop - clientHeight;
+      if (distFromBottom <= threshold && !isUserScrolledUpRef.current) {
+        container.scrollTop = scrollHeight;
+      } else if (distFromBottom > threshold) {
+        setShowScrollButton(true);
       }
-      rafIdRef.current = requestAnimationFrame(tick);
-    };
-    rafIdRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafIdRef.current);
-  }, [isLoading, floatingInput]);
+    });
+    rafIdRef.current = id;
+    return () => cancelAnimationFrame(id);
+  }, [messages, isLoading, floatingInput]);
 
   // Post-stream scroll: after streaming ends, content like the inline ad renders.
   // Do a final scroll-to-bottom so the ad is visible without manual scrolling.

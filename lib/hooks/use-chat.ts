@@ -107,9 +107,9 @@ export function useArticleChat({
   );
   /* eslint-enable react-hooks/refs */
 
-  // Mobile needs a higher throttle to reduce React renders per second.
-  // 50ms (20/sec) is too aggressive for mobile CPUs during animation.
-  const throttleMs = typeof window !== 'undefined' && window.innerWidth < 768 ? 100 : 50;
+  // 50ms throttle = 20 React renders/sec. Balances smoothness with CPU cost.
+  // Do NOT increase for mobile — larger batches make chunking more visible.
+  const throttleMs = 50;
 
   const chat = useAIChat({
     id: chatId,
