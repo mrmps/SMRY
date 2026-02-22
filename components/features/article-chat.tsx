@@ -39,11 +39,12 @@ import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
-// Default suggestions for article chat - Cursor-style concise prompts
+// Short, bounded prompts relevant to article reading.
+// Avoid open-ended summary requests — they generate long responses prone to mid-stream hangs.
 const DEFAULT_SUGGESTIONS: Suggestion[] = [
-  { text: "Summarize this" },
-  { text: "Key takeaways" },
-  { text: "Important facts" },
+  { text: "What's the main argument?" },
+  { text: "Any surprising facts?" },
+  { text: "Is it worth reading fully?" },
 ];
 
 // Pulsing dot indicator (CSS in globals.css)
@@ -312,27 +313,23 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     return () => container.removeEventListener("scroll", handleScroll);
   }, [floatingInput]);
 
-  // During streaming: scroll to bottom after each message update.
-  // Fires once per React commit (after paint) via a single RAF, avoiding the
-  // forced synchronous layout recalculations that a continuous 60fps loop causes
-  // on mobile — that was the root cause of the freeze-then-jump pattern.
+  // During streaming: scroll to bottom after each message commit.
+  // No RAF — useEffect already fires after layout/paint so scrollHeight is accurate.
+  // RAF was the bug: on slow devices a frame takes >50ms, so the RAF got cancelled
+  // by the next messages update before it could fire → scroll never happened.
+  // Also: set isProgrammaticScrollRef around the scroll so the scroll event handler
+  // doesn't misread stale scrollTop and incorrectly mark isUserScrolledUpRef=true,
+  // which would silently stop all further auto-scrolling mid-stream.
   useEffect(() => {
-    if (!isLoading) return;
-    const threshold = floatingInput ? 150 : 80;
-    const id = requestAnimationFrame(() => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const distFromBottom = scrollHeight - scrollTop - clientHeight;
-      if (distFromBottom <= threshold && !isUserScrolledUpRef.current) {
-        container.scrollTop = scrollHeight;
-      } else if (distFromBottom > threshold) {
-        setShowScrollButton(true);
-      }
-    });
-    rafIdRef.current = id;
-    return () => cancelAnimationFrame(id);
-  }, [messages, isLoading, floatingInput]);
+    if (!isLoading || isUserScrolledUpRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    isProgrammaticScrollRef.current = true;
+    container.scrollTop = container.scrollHeight;
+    // Reset flag after any pending scroll events have fired (next task, not microtask)
+    const id = setTimeout(() => { isProgrammaticScrollRef.current = false; }, 0);
+    return () => { clearTimeout(id); isProgrammaticScrollRef.current = false; };
+  }, [messages, isLoading]);
 
   // Post-stream scroll: after streaming ends, content like the inline ad renders.
   // Do a final scroll-to-bottom so the ad is visible without manual scrolling.
@@ -654,7 +651,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               <ChatSuggestions
                 suggestions={DEFAULT_SUGGESTIONS}
                 onSuggestionClick={handleSuggestionClick}
-                variant="default"
               />
             </div>
           )}
