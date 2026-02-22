@@ -171,6 +171,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const [shareOpen, setShareOpen] = useState(false);
   const [sidebarActiveTab, setSidebarActiveTab] = useState<"chat" | "history">("chat");
   const [annotationsSidebarOpen, setAnnotationsSidebarOpenRaw] = useState(false);
+  const [noteEditHighlightId, setNoteEditHighlightId] = useState<string | null>(null);
   const annotationsSidebarOpenRef = useRef(annotationsSidebarOpen);
   useEffect(() => { annotationsSidebarOpenRef.current = annotationsSidebarOpen; }, [annotationsSidebarOpen]);
   const setAnnotationsSidebarOpen = React.useCallback(
@@ -182,6 +183,20 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     },
     [setQuery]
   );
+
+  // Handle "Add Note" from highlight action popover — open drawer/sidebar and focus note editor
+  const noteEditTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleOpenNoteEditor = React.useCallback((id: string) => {
+    setNoteEditHighlightId(id);
+    if (isDesktop) {
+      setAnnotationsSidebarOpen(true);
+    } else {
+      setMobileAnnotationsOpen(true);
+    }
+    // Reset after trigger so same highlight can be re-triggered later
+    if (noteEditTimeoutRef.current) clearTimeout(noteEditTimeoutRef.current);
+    noteEditTimeoutRef.current = setTimeout(() => setNoteEditHighlightId(null), 600);
+  }, [isDesktop, setAnnotationsSidebarOpen, setMobileAnnotationsOpen]);
 
   const tabbedSidebarRef = useRef<TabbedSidebarHandle>(null);
   const mobileChatDrawerRef = useRef<MobileChatDrawerHandle>(null);
@@ -673,11 +688,28 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI, setAnnotationsSidebarOpen]);
 
+  // Measure combined banner height so fixed sidebars can start below it
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const [bannerHeight, setBannerHeight] = useState(0);
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBannerHeight(el.offsetHeight));
+    ro.observe(el);
+    setBannerHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+  const sidebarOffsetStyle = bannerHeight > 0
+    ? { top: `${bannerHeight}px`, height: `calc(100svh - ${bannerHeight}px)` } as React.CSSProperties
+    : undefined;
+
   return (
     <div className="flex h-dvh flex-col bg-background">
       {/* Promo Banner - desktop/tablet */}
-      {showDesktopPromo && <PromoBanner />}
-      <UpdateBanner className="hidden md:block" />
+      <div ref={bannerRef}>
+        {showDesktopPromo && <PromoBanner />}
+        <UpdateBanner className="hidden md:block" />
+      </div>
 
       <div className="flex-1 overflow-hidden flex flex-col">
         {/* Content Area - conditionally render desktop or mobile layout */}
@@ -806,6 +838,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       onFooterAdVisible={footerAd ? onFooterAdVisible : undefined}
                       onFooterAdClick={footerAd ? onFooterAdClick : undefined}
                       onAskAI={handleAskAI}
+                      onOpenNoteEditor={handleOpenNoteEditor}
                     />
                   </div>
                 </div>
@@ -855,11 +888,13 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   onOpenChange={setAnnotationsSidebarOpen}
                   articleUrl={url}
                   articleTitle={articleTitle}
+                  noteEditId={noteEditHighlightId}
+                  sidebarOffsetStyle={sidebarOffsetStyle}
                 />
               </div>
 
               {/* Chat Sidebar — pushes content left when open */}
-              <Sidebar side="right" collapsible="offcanvas">
+              <Sidebar side="right" collapsible="offcanvas" style={sidebarOffsetStyle}>
                 <SidebarContent className="overflow-hidden">
                   <div className="h-full">
                     <TabbedSidebar
@@ -1000,6 +1035,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                     onFooterAdVisible={footerAd ? onFooterAdVisible : undefined}
                     onFooterAdClick={footerAd ? onFooterAdClick : undefined}
                     onAskAI={handleAskAI}
+                    onOpenNoteEditor={handleOpenNoteEditor}
                   />
                 </div>
               </div>
@@ -1039,6 +1075,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 onOpenChange={setMobileAnnotationsOpen}
                 articleUrl={url}
                 articleTitle={articleTitle}
+                noteEditId={noteEditHighlightId}
               />
 
               {/* Fixed ad above bottom bar - responsive CSS handles phone vs tablet sizing */}

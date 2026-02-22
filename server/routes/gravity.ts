@@ -324,13 +324,14 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           }, "Sending ad request to ZeroClick (primary)");
 
           const zcOffers = await fetchZeroClickOffers({
-            query: `${title} ${articleContent || ""}`.slice(0, 500),
+            query: `${title} ${articleContent || ""}`.slice(0, 2000),
             limit: TARGET_AD_COUNT,
             ipAddress: clientIp,
             userAgent: device?.ua,
             sessionId,
             userId: userId || user?.id,
             origin: url,
+            userLocale: device?.locale,
           });
 
           if (zcOffers.length > 0) {

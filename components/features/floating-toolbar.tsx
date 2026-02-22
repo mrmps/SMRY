@@ -35,26 +35,33 @@ interface TooltipProps {
   label: string;
   shortcut?: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }
 
-function Tooltip({ label, shortcut, children }: TooltipProps) {
+function Tooltip({ label, shortcut, children, disabled }: TooltipProps) {
   const [show, setShow] = React.useState(false);
+
+  React.useEffect(() => {
+    if (disabled) setShow(false);
+  }, [disabled]);
 
   return (
     <div
       className="relative"
-      onMouseEnter={() => setShow(true)}
+      onMouseEnter={() => { if (!disabled) setShow(true); }}
       onMouseLeave={() => setShow(false)}
+      onClick={() => setShow(false)}
     >
       {children}
-      {show && (
+      {show && !disabled && (
         <div
           className={cn(
             "absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50",
             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg",
             "bg-popover text-popover-foreground shadow-md border border-border/50",
             "text-xs font-medium whitespace-nowrap",
-            "animate-in fade-in-0 zoom-in-95 duration-100"
+            "animate-in fade-in-0 zoom-in-95 duration-100",
+            "pointer-events-none"
           )}
         >
           <span>{label}</span>
@@ -74,6 +81,7 @@ interface ToolbarButtonProps {
   onClick?: () => void;
   isActive?: boolean;
   className?: string;
+  tooltipDisabled?: boolean;
 }
 
 function ToolbarButton({
@@ -83,9 +91,10 @@ function ToolbarButton({
   onClick,
   isActive,
   className,
+  tooltipDisabled,
 }: ToolbarButtonProps) {
   return (
-    <Tooltip label={label} shortcut={shortcut}>
+    <Tooltip label={label} shortcut={shortcut} disabled={tooltipDisabled}>
       <button
         onClick={onClick}
         className={cn(
@@ -239,6 +248,7 @@ export function FloatingToolbar({
 }: FloatingToolbarProps) {
   const [copied, setCopied] = React.useState(false);
   const { isPremium } = usePremium();
+  const anyPanelOpen = !!(styleOptionsOpen || shareOpen);
 
   // Open original URL
   const openOriginal = () => {
@@ -297,10 +307,11 @@ export function FloatingToolbar({
         label="Open original"
         shortcut="O"
         onClick={openOriginal}
+        tooltipDisabled={anyPanelOpen}
       />
 
       {/* Share - using custom wrapper since ShareButton has its own trigger */}
-      <Tooltip label="Share" shortcut="⇧S">
+      <Tooltip label="Share" shortcut="⇧S" disabled={anyPanelOpen}>
         <div className="size-10 flex items-center justify-center">
           <ShareButton
             url={shareUrl}
@@ -319,7 +330,7 @@ export function FloatingToolbar({
       <div className="h-px bg-border/50 my-1" />
 
       {/* Reading History - direct link */}
-      <Tooltip label="Reading History">
+      <Tooltip label="Reading History" disabled={anyPanelOpen}>
         <Link
           href="/history"
           className={cn(
@@ -341,7 +352,7 @@ export function FloatingToolbar({
       <div className="h-px bg-border/50 my-1" />
 
       {/* Style Options/Reader Settings Popover */}
-      <Tooltip label="Style Options" shortcut="S">
+      <Tooltip label="Style Options" shortcut="S" disabled={anyPanelOpen}>
         <div>
           <ReaderSettingsPopover
             side="right"
@@ -358,6 +369,7 @@ export function FloatingToolbar({
         label="Settings"
         shortcut=","
         onClick={onOpenSettings}
+        tooltipDisabled={anyPanelOpen}
       />
 
       {/* More Menu */}
@@ -366,7 +378,7 @@ export function FloatingToolbar({
           render={(props) => {
             const { key, ...rest } = props as typeof props & { key?: React.Key };
             return (
-              <Tooltip label="More options" key={key}>
+              <Tooltip label="More options" key={key} disabled={anyPanelOpen}>
                 <button
                   {...rest}
                   className={cn(

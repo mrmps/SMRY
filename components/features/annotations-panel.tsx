@@ -12,9 +12,11 @@ import type { Highlight } from "@/lib/hooks/use-highlights";
 export function AnnotationsPanel({
   articleUrl,
   articleTitle,
+  noteEditId,
 }: {
   articleUrl?: string;
   articleTitle?: string;
+  noteEditId?: string | null;
 }) {
   const {
     highlights,
@@ -135,6 +137,7 @@ export function AnnotationsPanel({
             key={hl.id}
             highlight={hl}
             isActive={activeHighlightId === hl.id}
+            noteEditId={noteEditId === hl.id ? noteEditId : null}
             onScrollTo={handleScrollTo}
             onDelete={deleteHighlight}
             onUpdateNote={updateHighlight}

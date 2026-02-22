@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Share2, StickyNote, Trash2, X } from "@/components/ui/icons";
+import { Copy, StickyNote, Trash2, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { HighlightPopover, HIGHLIGHT_COLORS } from "@/components/features/highlight-popover";
 import type { Highlight } from "@/lib/hooks/use-highlights";
+import { toast } from "sonner";
 
 interface HighlightActionPopoverProps {
   highlight: Highlight;
@@ -12,7 +13,6 @@ interface HighlightActionPopoverProps {
   onChangeColor: (id: string, color: Highlight["color"]) => void;
   onAddNote: (id: string) => void;
   onDelete: (id: string) => void;
-  onShare: (text: string) => void;
   onClose: () => void;
 }
 
@@ -22,13 +22,17 @@ export function HighlightActionPopover({
   onChangeColor,
   onAddNote,
   onDelete,
-  onShare,
   onClose,
 }: HighlightActionPopoverProps) {
-  const handleShare = useCallback(() => {
-    onShare(highlight.text);
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(highlight.text);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
     onClose();
-  }, [highlight.text, onShare, onClose]);
+  }, [highlight.text, onClose]);
 
   return (
     <HighlightPopover anchorRect={anchorRect} onClose={onClose} deferOutsideClick>
@@ -62,11 +66,11 @@ export function HighlightActionPopover({
         {/* Actions */}
         <div className="py-1.5">
           <button
-            onClick={handleShare}
+            onClick={handleCopy}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-foreground/10 transition-colors"
           >
-            <Share2 className="size-5 text-muted-foreground" />
-            <span>Share</span>
+            <Copy className="size-5 text-muted-foreground" />
+            <span>Copy</span>
           </button>
 
           <button
