@@ -87,12 +87,15 @@ function MobileAnnotationCard({
     }
   }
 
-  // Scroll note editor into view when it opens — let the drawer + keyboard settle first
+  // Focus textarea and scroll into view when note editor opens.
+  // Explicit .focus() is needed because autoFocus is unreliable on iOS.
   useEffect(() => {
-    if (!editingNote || !noteEditorRef.current) return;
+    if (!editingNote) return;
+    // Short delay lets the drawer + keyboard settle first
     const timer = setTimeout(() => {
+      textareaRef.current?.focus();
       noteEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 300);
+    }, 150);
     return () => clearTimeout(timer);
   }, [editingNote]);
 
@@ -179,7 +182,7 @@ function MobileAnnotationCard({
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             style={{ fontSize: '16px' }}
-            className="w-full p-2.5 border border-border rounded-lg bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full p-2.5 border border-border rounded-lg bg-background resize-none focus:outline-none focus:border-foreground/30"
             rows={3}
             placeholder="Write a note..."
             onKeyDown={(e) => {

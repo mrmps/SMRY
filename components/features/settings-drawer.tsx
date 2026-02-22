@@ -614,25 +614,19 @@ function LanguageSectionInner() {
   const [languageDrawerOpen, setLanguageDrawerOpen] = React.useState(false);
   const [selectedLocale, setSelectedLocale] = React.useState<Locale | null>(null);
 
-  const switchLocale = React.useCallback((newLocale: Locale) => {
-    // If same locale, just close
-    if (newLocale === locale) {
-      setLanguageDrawerOpen(false);
-      return;
-    }
-
-    // Show selection immediately for visual feedback
-    setSelectedLocale(newLocale);
-
-    // Brief delay to show the selection before closing
-    setTimeout(() => {
-      setLanguageDrawerOpen(false);
-      // Reset disabled state before switching — component stays mounted so
-      // selectedLocale would otherwise permanently disable all buttons
+  // Clear optimistic state once the locale context has caught up
+  React.useEffect(() => {
+    if (selectedLocale && selectedLocale === locale) {
       setSelectedLocale(null);
-      // Swap locale in place — no navigation, so parent drawer stays open
-      switchLocaleInPlace(newLocale);
-    }, 200);
+    }
+  }, [locale, selectedLocale]);
+
+  const switchLocale = React.useCallback((newLocale: Locale) => {
+    if (newLocale === locale) return;
+    // Optimistic: show checkmark immediately while messages load
+    setSelectedLocale(newLocale);
+    // Switch locale in context (no navigation — modal stays open)
+    switchLocaleInPlace(newLocale);
   }, [locale, switchLocaleInPlace]);
 
   return (
@@ -683,13 +677,11 @@ function LanguageSectionInner() {
                   <button
                     key={loc}
                     onClick={() => switchLocale(loc)}
-                    disabled={!!selectedLocale} // Disable while transitioning
                     style={{ touchAction: "manipulation" }}
                     className={cn(
                       "flex items-center justify-between w-full px-4 py-4 text-left",
                       "min-h-[52px]",
                       "transition-all duration-200 active:opacity-70",
-                      selectedLocale && "pointer-events-none", // Prevent double-tap
                       isNewlySelected && "bg-muted/50" // Highlight new selection
                     )}
                   >
