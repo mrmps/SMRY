@@ -46,8 +46,8 @@ export function useHistory(isPremium: boolean = false) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Max items based on premium status
-  const maxItems = isPremium ? Infinity : 30;
+  // Max items (all users get full history)
+  const maxItems = Infinity;
 
   // Read initial value from localStorage
   useEffect(() => {
@@ -206,12 +206,12 @@ export function useHistory(isPremium: boolean = false) {
   /**
    * Get visible history based on premium status
    */
-  const visibleHistory = isPremium ? history : history.slice(0, maxItems);
+  const visibleHistory = history;
 
   /**
    * Check if there are more items hidden (for free users)
    */
-  const hiddenCount = isPremium ? 0 : Math.max(0, history.length - maxItems);
+  const hiddenCount = 0;
 
   return {
     history: visibleHistory,

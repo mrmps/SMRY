@@ -1276,24 +1276,18 @@ function SignedOutContent() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="mb-6 relative">
-        <div className="size-20 rounded-2xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center">
-          <Crown className="size-10 text-amber-500" />
+        <div className="size-20 rounded-2xl bg-gradient-to-br from-muted/40 to-muted/60 flex items-center justify-center">
+          <History className="size-10 text-muted-foreground" />
         </div>
       </div>
-      <h3 className="text-xl font-semibold">Sign in to view history</h3>
+      <h3 className="text-xl font-semibold">Sign in to view your history</h3>
       <p className="mt-2 text-sm text-muted-foreground max-w-[300px]">
-        Create an account to save your reading history and access it from any
-        device.
+        Your reading history is saved locally. Sign in to access it.
       </p>
       <div className="flex items-center gap-3 mt-6">
         <SignInButton mode="modal" fallbackRedirectUrl="/auth/redirect?returnUrl=%2Fhistory">
-          <Button variant="outline">
-            Sign In
-          </Button>
+          <Button>Sign In</Button>
         </SignInButton>
-        <Link href="/pricing?returnUrl=/history">
-          <Button>Get Pro</Button>
-        </Link>
       </div>
     </div>
   );

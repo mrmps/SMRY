@@ -16,7 +16,6 @@ import {
   ArrowUpRight,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
-import { usePremium } from "@/lib/hooks/use-premium";
 import { FeedbackIcon } from "@/components/ui/custom-icons";
 import { Kbd } from "@/components/ui/kbd";
 import ShareButton from "@/components/features/share-button";
@@ -247,7 +246,6 @@ export function FloatingToolbar({
   onShareOpenChange,
 }: FloatingToolbarProps) {
   const [copied, setCopied] = React.useState(false);
-  const { isPremium } = usePremium();
   const anyPanelOpen = !!(styleOptionsOpen || shareOpen);
 
   // Open original URL
@@ -343,9 +341,6 @@ export function FloatingToolbar({
           aria-label="Reading History"
         >
           <History className="size-5" />
-          {!isPremium && (
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-amber-500" />
-          )}
         </Link>
       </Tooltip>
 
