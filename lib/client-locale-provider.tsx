@@ -7,31 +7,18 @@ import { defaultLocale, type Locale } from "@/i18n/routing";
 import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Eager-loaded message loaders — webpack code-splits each locale into its own
+// chunk so they're available for client-side dynamic import without SSR issues.
 // ---------------------------------------------------------------------------
 
-async function loadMessages(locale: Locale): Promise<AbstractIntlMessages> {
-  switch (locale) {
-    case "en": return (await import("@/messages/en.json")).default;
-    case "pt": return (await import("@/messages/pt.json")).default;
-    case "de": return (await import("@/messages/de.json")).default;
-    case "zh": return (await import("@/messages/zh.json")).default;
-    case "es": return (await import("@/messages/es.json")).default;
-    case "nl": return (await import("@/messages/nl.json")).default;
-    default:   return (await import("@/messages/en.json")).default;
-  }
-}
-
-/** Rewrite the browser URL to reflect the new locale without a navigation. */
-function updateUrl(newLocale: Locale) {
-  const stripped = stripLocaleFromPathname(window.location.pathname);
-  const newPath = newLocale === defaultLocale
-    ? stripped
-    : `/${newLocale}${stripped}`;
-  const search = window.location.search;
-  const hash = window.location.hash;
-  window.history.replaceState(null, "", `${newPath}${search}${hash}`);
-}
+const MESSAGE_LOADERS: Record<Locale, () => Promise<AbstractIntlMessages>> = {
+  en: () => import("@/messages/en.json").then((m) => m.default as AbstractIntlMessages),
+  pt: () => import("@/messages/pt.json").then((m) => m.default as AbstractIntlMessages),
+  de: () => import("@/messages/de.json").then((m) => m.default as AbstractIntlMessages),
+  zh: () => import("@/messages/zh.json").then((m) => m.default as AbstractIntlMessages),
+  es: () => import("@/messages/es.json").then((m) => m.default as AbstractIntlMessages),
+  nl: () => import("@/messages/nl.json").then((m) => m.default as AbstractIntlMessages),
+};
 
 // ---------------------------------------------------------------------------
 // Context
@@ -67,18 +54,41 @@ export function ClientLocaleProvider({
   const [locale, setLocale] = React.useState<Locale>(initialLocale);
   const [messages, setMessages] = React.useState<AbstractIntlMessages>(initialMessages);
 
+  // Sync <html lang> on mount — fixes mismatch when root layout's getLocale()
+  // returns "en" but the [locale] layout provides the correct locale.
+  React.useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   const switchLocale = React.useCallback(async (newLocale: Locale) => {
     if (newLocale === locale) return;
-    const newMessages = await loadMessages(newLocale);
-    setLocale(newLocale);
-    setMessages(newMessages);
+
+    // 1. Persist preference so middleware uses it on reload
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     document.documentElement.lang = newLocale;
-    updateUrl(newLocale);
+
+    // 2. Load the new locale's messages dynamically (client-side only)
+    try {
+      const newMessages = await MESSAGE_LOADERS[newLocale]();
+      setMessages(newMessages);
+    } catch {
+      // Silently continue — locale still switches, translations may be stale
+    }
+
+    // 3. Update locale in context — re-renders translations without any navigation
+    setLocale(newLocale);
+
+    // 4. Update the browser URL silently so a hard reload lands on the correct locale
+    const stripped = stripLocaleFromPathname(window.location.pathname);
+    const newPath = newLocale === defaultLocale
+      ? stripped
+      : `/${newLocale}${stripped}`;
+    window.history.replaceState(null, "", `${newPath}${window.location.search}${window.location.hash}`);
   }, [locale]);
 
   return (
     <LocaleSwitchContext.Provider value={{ switchLocale }}>
-      <NextIntlClientProvider locale={locale} messages={messages}>
+      <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
         {children}
       </NextIntlClientProvider>
     </LocaleSwitchContext.Provider>

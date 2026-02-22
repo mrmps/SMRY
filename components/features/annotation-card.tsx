@@ -183,7 +183,7 @@ export const AnnotationCard = React.memo(function AnnotationCard({
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 style={{ fontSize: '16px' }}
-                className="w-full p-2 border border-border rounded-md bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full p-2 border border-border rounded-md bg-background resize-none focus:outline-none focus:border-foreground/30"
                 rows={2}
                 placeholder="Write a note..."
                 autoFocus
