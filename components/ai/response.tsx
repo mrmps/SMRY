@@ -213,9 +213,9 @@ export const Response = memo(
       if (!isAnimating) return false;
 
       return {
-        animation: 'fadeIn' as const,
-        duration: 340, // Balanced: smooth but not sluggish
-        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+        animation: 'blurIn' as const,
+        duration: 200,
+        easing: 'ease-out',
         sep: 'word' as const,
       };
     }, [isAnimating]);

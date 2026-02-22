@@ -1138,7 +1138,7 @@ html.dawn .bg-card {
 /* GPU acceleration for streaming container */
 .will-change-contents {
   will-change: contents;
-  contain: layout style;
+  contain: style;
 }
 
 /* Streamdown animation - smooth GPU-accelerated fade */
@@ -1169,12 +1169,6 @@ html.dawn .bg-card {
   /* Slightly slower cursor animation on mobile for elegance */
   [data-streamdown] *:last-child::after {
     animation: cursor-breathe 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-
-  /* Use content-visibility for very long responses - improves scroll performance */
-  [data-streamdown] > *:nth-child(n+15) {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 80px;
   }
 
   /* Smooth touch scrolling for streaming content */
