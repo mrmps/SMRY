@@ -44,8 +44,12 @@ const isDev = env.NODE_ENV === "development";
 
 const logger = createLogger("api:tts");
 
-// Initialize Azure Speech Service with validated env vars
-initAzureTTS(env.AZURE_SPEECH_KEY, env.AZURE_SPEECH_REGION);
+// Initialize Azure Speech Service with validated env vars (optional — TTS disabled when absent)
+if (env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION) {
+  initAzureTTS(env.AZURE_SPEECH_KEY, env.AZURE_SPEECH_REGION);
+} else {
+  logger.warn("Azure Speech credentials not set — TTS routes will return 503");
+}
 
 // Free user monthly limit
 const FREE_TTS_LIMIT = 3;
