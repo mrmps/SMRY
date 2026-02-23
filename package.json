@@ -43,7 +43,7 @@
     "@hugeicons/core-free-icons": "^3.1.1",
     "@hugeicons/react": "^1.1.5",
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@mozilla/readability": "^0.4.4",
+    "@mozilla/readability": "^0.6.0",
     "@next/third-parties": "^16.1.1",
     "@openrouter/ai-sdk-provider": "^2.1.1",
     "@openrouter/sdk": "^0.5.1",
