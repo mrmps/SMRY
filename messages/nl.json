@@ -350,6 +350,13 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entrySourceTabs_date": "23 februari 2026",
+    "entrySourceTabs_change1_text": "Duidelijkere bronlabels & beschrijvingen",
+    "entrySourceTabs_change1_detail": "Brontabs hernoemd naar Direct, AI-extractie en Archief met hover-tooltips die uitleggen wat elke bron doet.",
+    "entrySourceTabs_change2_text": "Snelste bron-indicator",
+    "entrySourceTabs_change2_detail": "Een \"snelste\"-badge verschijnt nu naast de winnende bron, zodat je kunt zien welke het eerst geladen is.",
+    "entrySourceTabs_change3_text": "Verminderd geheugengebruik",
+    "entrySourceTabs_change3_detail": "Niet-actieve brongegevens worden nu sneller opgeruimd, wat het geheugengebruik tijdens langere leessessies vermindert.",
     "entryHighlights_date": "21 februari 2026",
     "entryHighlights_change1_text": "Elk artikel markeren en annoteren",
     "entryHighlights_change1_detail": "Selecteer willekeurige tekst om deze direct te markeren in een van 5 kleuren. Voeg notities toe, wijzig kleuren of verwijder — je markeringen blijven precies waar je ze achterliet, ook na het sluiten van de pagina.",
