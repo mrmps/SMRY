@@ -94,20 +94,11 @@ const app = new Elysia({ adapter: node() })
   .use(gravityRoutes)
   .use(highlightsRoutes)
   .use(premiumRoutes)
-  // Deprecated endpoint stubs — return 410 Gone to signal permanent removal.
-  // Stops 404 floods from old client code, cached service workers, and crawlers.
-  // NOTE: /api/context and /api/px are ACTIVE ad endpoints (in gravityRoutes) — do NOT stub them here.
-  .get("/api/adtrack", ({ set }) => { set.status = 410; return { status: "gone" }; })
-  .post("/api/adtrack", ({ set }) => { set.status = 410; return { status: "gone" }; })
-  .get("/api/gravity-ad", ({ set }) => { set.status = 410; return { status: "gone" }; })
-  .get("/api/summarize", ({ set }) => { set.status = 410; return { status: "gone" }; })
-  .get("/api/jina", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
       const url = new URL(request.url);
-      // Also silence old/removed endpoints from stale browser caches
-      const silentPaths = ["/favicon.ico", "/robots.txt", "/_next", "/__nextjs", "/api/adtrack", "/api/gravity-ad", "/api/summarize", "/api/jina"];
+      const silentPaths = ["/favicon.ico", "/robots.txt", "/_next", "/__nextjs"];
       const isSilent = silentPaths.some(p => url.pathname.startsWith(p));
       if (!isSilent) {
         console.warn(`[elysia] 404: ${url.pathname}`);
