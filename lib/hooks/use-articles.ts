@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery, useQueries, UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { articleAPI } from "@/lib/api/client";
-import { ArticleResponse, Source, ArticleAutoResponse } from "@/types/api";
+import { ArticleResponse, Source, ArticleAutoResponse, SOURCES } from "@/types/api";
 
 const SERVER_SOURCES = ["smry-fast", "smry-slow", "wayback"] as const satisfies readonly Source[];
 
@@ -130,6 +130,143 @@ export function useArticleAuto(url: string) {
     data,
     wasEnhanced,
   }) as typeof query & { wasEnhanced: boolean };
+}
+
+/**
+ * State for a single source tab — simplified interface for ArrowTabs
+ */
+export interface SourceTabState {
+  data: ArticleResponse | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  isIdle: boolean; // true = not yet fetched (user hasn't clicked tab)
+}
+
+/**
+ * Hook that wraps useArticleAuto with lazy per-source tab loading.
+ * Initial load: single server-side race via useArticleAuto.
+ * Tab switch: lazy fetch via /api/article?source=X only when user clicks a tab.
+ * Auto-switch: if winner is truncated/blocked, auto-activates smry-slow tab.
+ */
+export function useArticleWithTabs(url: string) {
+  const normalizedUrl = normalizeUrl(url);
+  const autoQuery = useArticleAuto(url);
+  const winningSource = autoQuery.data?.source ?? null;
+
+  // Track which tabs user has clicked (triggers lazy fetch)
+  const [activatedSources, setActivatedSources] = useState<Set<Source>>(new Set());
+
+  // Track user's explicit tab selection (null = follow winning source / auto-switch)
+  const [userSelectedSource, setUserSelectedSource] = useState<Source | null>(null);
+
+  // Reset state when URL changes (React "adjust state during render" pattern)
+  const [prevUrl, setPrevUrl] = useState(normalizedUrl);
+  if (prevUrl !== normalizedUrl) {
+    setPrevUrl(normalizedUrl);
+    setActivatedSources(new Set());
+    setUserSelectedSource(null);
+  }
+
+  // Detect if winning source is truncated/blocked (pure derivation, no effect needed)
+  const winnerIsTruncated = !!(
+    autoQuery.data?.article
+    && autoQuery.data.source === "smry-fast"
+    && ((autoQuery.data.article.length ?? 0) < 500 || autoQuery.data.status === "blocked")
+  );
+
+  // Active source: user selection > auto-switch > winning source > default
+  const activeSource = userSelectedSource
+    ?? (winnerIsTruncated ? "smry-slow" as Source : null)
+    ?? winningSource
+    ?? "smry-fast" as Source;
+
+  // Determine if a non-winning source should fetch
+  const isSourceEnabled = (s: Source): boolean => {
+    if (s === winningSource) return false; // Already have data from auto
+    if (activatedSources.has(s)) return true; // User clicked this tab
+    if (winnerIsTruncated && s === "smry-slow") return true; // Auto-switch
+    return false;
+  };
+
+  // Per-source queries — enabled only when user clicks that tab
+  // AND it's not the winning source (which we already have from auto)
+  const smryFastQuery = useQuery({
+    queryKey: ["article", "smry-fast", normalizedUrl],
+    queryFn: () => articleAPI.getArticle(url, "smry-fast"),
+    enabled: isSourceEnabled("smry-fast"),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 2 * 60 * 1000,
+    retry: 1,
+  });
+
+  const smrySlowQuery = useQuery({
+    queryKey: ["article", "smry-slow", normalizedUrl],
+    queryFn: () => articleAPI.getArticle(url, "smry-slow"),
+    enabled: isSourceEnabled("smry-slow"),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 2 * 60 * 1000,
+    retry: 1,
+  });
+
+  const waybackQuery = useQuery({
+    queryKey: ["article", "wayback", normalizedUrl],
+    queryFn: () => articleAPI.getArticle(url, "wayback"),
+    enabled: isSourceEnabled("wayback"),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 2 * 60 * 1000,
+    retry: 1,
+  });
+
+  // User clicks a tab: activate source + set as selected
+  const activateSource = useCallback((source: Source) => {
+    setActivatedSources(prev => {
+      const next = new Set(prev);
+      next.add(source);
+      return next;
+    });
+    setUserSelectedSource(source);
+  }, []);
+
+  // Build SourceTabState record
+  const perSourceQueries: Record<Source, typeof smryFastQuery> = {
+    "smry-fast": smryFastQuery,
+    "smry-slow": smrySlowQuery,
+    "wayback": waybackQuery,
+  };
+
+  const sourceStates = {} as Record<Source, SourceTabState>;
+  for (const s of SOURCES) {
+    if (s === winningSource) {
+      // Winning source uses data from autoQuery
+      sourceStates[s] = {
+        data: autoQuery.data as ArticleResponse | undefined,
+        isLoading: autoQuery.isLoading,
+        isError: autoQuery.isError,
+        error: autoQuery.error,
+        isIdle: false,
+      };
+    } else {
+      const q = perSourceQueries[s];
+      const enabled = isSourceEnabled(s);
+      sourceStates[s] = {
+        data: q.data,
+        isLoading: q.isLoading,
+        isError: q.isError,
+        error: q.error,
+        isIdle: !enabled,
+      };
+    }
+  }
+
+  return {
+    sourceStates,
+    activeSource,
+    activateSource,
+    autoQuery,
+    wasEnhanced: autoQuery.wasEnhanced,
+    winningSource,
+  };
 }
 
 /**

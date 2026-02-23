@@ -350,6 +350,13 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entrySourceTabs_date": "Feb 23, 2026",
+    "entrySourceTabs_change1_text": "Clearer source labels & descriptions",
+    "entrySourceTabs_change1_detail": "Source tabs renamed to Direct, AI Extract, and Archive with hover tooltips explaining what each source does.",
+    "entrySourceTabs_change2_text": "Fastest source indicator",
+    "entrySourceTabs_change2_detail": "A \"fastest\" badge now appears next to the winning source so you can see which one loaded first.",
+    "entrySourceTabs_change3_text": "Reduced memory usage",
+    "entrySourceTabs_change3_detail": "Non-active source data is now garbage-collected faster, reducing memory usage during extended reading sessions.",
     "entryHighlights_date": "Feb 21, 2026",
     "entryHighlights_change1_text": "Highlight & annotate any article",
     "entryHighlights_change1_detail": "Select any text to instantly highlight it in one of 5 colors. Add notes, change colors, or delete — your highlights stay exactly where you left them, even after you close the page.",

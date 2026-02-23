@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useArticleAuto } from "@/lib/hooks/use-articles";
+import { useArticleWithTabs } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { ArrowLeft, AiMagic, Highlighter } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
-import { ArticleContent } from "@/components/article/content";
+import ArrowTabs from "@/components/article/tabs";
 import { TabbedSidebar, TabbedSidebarHandle } from "@/components/features/tabbed-sidebar";
 import { MobileBottomBar } from "@/components/features/mobile-bottom-bar";
 import { FloatingToolbar } from "@/components/features/floating-toolbar";
@@ -58,16 +58,16 @@ interface ProxyContentProps {
 }
 
 export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentProps) {
-  // Use the new auto endpoint - single request, races all sources server-side
-  const articleQuery = useArticleAuto(url);
+  // Lazy-loading tab system: auto-race for initial load, per-source fetch on tab click
+  const { sourceStates, activeSource, activateSource, autoQuery, winningSource } = useArticleWithTabs(url);
   const { isPremium } = useIsPremium();
   const isDesktop = useIsDesktop();
   const showDesktopPromo = isDesktop !== false;
   const showMobilePromo = isDesktop === false;
 
-  // Get the source that was actually used by the auto endpoint
-  const source = articleQuery.data?.source || "smry-fast";
-
+  // Active tab's source and data
+  const source = activeSource;
+  const activeState = sourceStates[activeSource];
 
   const viewModes = ["markdown", "html", "iframe"] as const;
 
@@ -85,15 +85,18 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const viewMode = query.view as (typeof viewModes)[number];
   const sidebarOpen = query.sidebar as boolean;
 
-  const activeArticle = articleQuery.data?.article;
+  const activeArticle = activeState.data?.article;
   const articleTitle = activeArticle?.title;
   const articleTextContent = activeArticle?.textContent;
 
   // Track initialization state per URL
   const initializedUrlRef = useRef<string | null>(null);
 
-  // With the auto endpoint, we get a single result - no need for complex selection logic
-  const firstSuccessfulArticle = articleQuery.data?.article || null;
+  // First successful article from initial auto-race (used for ad targeting and history)
+  const firstSuccessfulArticle = autoQuery.data?.article || null;
+
+  // Handle tab change (triggers lazy fetch for non-winning sources)
+  const handleSourceChange = useCallback((s: Source) => activateSource(s), [activateSource]);
 
   // Fetch ad - pass article data for better targeting
   // Ads refresh every 45 seconds for users who stay on the page
@@ -164,7 +167,6 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   }, []);
   const [mobileAdDismissed, setMobileAdDismissed] = useState(false);
   const [desktopAdDismissed, setDesktopAdDismissed] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [styleOptionsOpen, setStyleOptionsOpen] = useState(false);
@@ -820,16 +822,14 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
 
                 <div ref={desktopScrollRef} className="h-full overflow-y-auto bg-background scrollbar-hide">
                   <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
-                    <ArticleContent
-                      data={articleQuery.data}
-                      isLoading={articleQuery.isLoading}
-                      isError={articleQuery.isError}
-                      error={articleQuery.error}
-                      source={source}
+                    <ArrowTabs
                       url={url}
+                      sourceStates={sourceStates}
                       viewMode={viewMode}
-                      isFullScreen={isFullScreen}
-                      onFullScreenChange={setIsFullScreen}
+                      activeSource={activeSource}
+                      onSourceChange={handleSourceChange}
+                      mobileHeaderVisible={true}
+                      winningSource={winningSource}
                       inlineAd={!isPremium ? inlineAd : null}
                       onInlineAdVisible={inlineAd ? onInlineAdVisible : undefined}
                       onInlineAdClick={inlineAd ? onInlineAdClick : undefined}
@@ -1016,17 +1016,15 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                       : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
                   )}
                 >
-                  {/* Article content */}
-                  <ArticleContent
-                    data={articleQuery.data}
-                    isLoading={articleQuery.isLoading}
-                    isError={articleQuery.isError}
-                    error={articleQuery.error}
-                    source={source}
+                  {/* Article content with source tabs */}
+                  <ArrowTabs
                     url={url}
+                    sourceStates={sourceStates}
                     viewMode={viewMode}
-                    isFullScreen={isFullScreen}
-                    onFullScreenChange={setIsFullScreen}
+                    activeSource={activeSource}
+                    onSourceChange={handleSourceChange}
+                    mobileHeaderVisible={mobileHeaderVisible}
+                    winningSource={winningSource}
                     inlineAd={!isPremium ? inlineAd : null}
                     onInlineAdVisible={inlineAd ? onInlineAdVisible : undefined}
                     onInlineAdClick={inlineAd ? onInlineAdClick : undefined}

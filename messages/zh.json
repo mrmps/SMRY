@@ -350,6 +350,13 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entrySourceTabs_date": "2026年2月23日",
+    "entrySourceTabs_change1_text": "更清晰的来源标签和描述",
+    "entrySourceTabs_change1_detail": "来源标签已重命名为直接获取、AI提取和存档，并添加了悬停提示，解释每个来源的作用。",
+    "entrySourceTabs_change2_text": "最快来源指示器",
+    "entrySourceTabs_change2_detail": "现在会在获胜来源旁边显示\"最快\"徽章，让您可以看到哪个来源最先加载完成。",
+    "entrySourceTabs_change3_text": "减少内存使用",
+    "entrySourceTabs_change3_detail": "非活动来源数据现在会更快被回收，减少长时间阅读会话期间的内存使用。",
     "entryHighlights_date": "2026年2月21日",
     "entryHighlights_change1_text": "高亮和注释任何文章",
     "entryHighlights_change1_detail": "选择任意文本即可用5种颜色之一即时高亮。添加笔记、更改颜色或删除——即使关闭页面后，高亮也会保留在原处。",

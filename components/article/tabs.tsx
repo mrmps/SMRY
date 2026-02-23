@@ -4,8 +4,9 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { ArticleContent } from "./content";
-import { Source, ArticleResponse, SOURCES } from "@/types/api";
-import { UseQueryResult } from "@tanstack/react-query";
+import { Source, SOURCES } from "@/types/api";
+import type { SourceTabState } from "@/lib/hooks/use-articles";
+import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,15 +20,21 @@ import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import type { BypassStatus } from "@/types/api";
 
 const SOURCE_LABELS: Record<Source, string> = {
-  "smry-fast": "Smry Fast",
-  "smry-slow": "Smry Slow",
-  wayback: "Wayback",
+  "smry-fast": "Direct",
+  "smry-slow": "AI Extract",
+  wayback: "Archive",
 };
 
 const MOBILE_SOURCE_LABELS: Record<Source, string> = {
-  "smry-fast": "Fast",
-  "smry-slow": "Slow",
-  wayback: "Wayback",
+  "smry-fast": "Direct",
+  "smry-slow": "AI",
+  wayback: "Archive",
+};
+
+const SOURCE_TOOLTIPS: Record<Source, string> = {
+  "smry-fast": "Direct fetch — fastest, but may miss paywalled content",
+  "smry-slow": "AI extraction — best for paywalled or complex pages",
+  wayback: "Archived version from archive.org",
 };
 
 const EnhancedTabsList = memo(function EnhancedTabsList({
@@ -35,19 +42,23 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
   counts,
   loadingStates,
   errorStates,
+  idleStates,
   isPremium,
   bypassStatuses,
   bypassLoadingStates,
   bypassErrorStates,
+  winningSource,
 }: {
   sources: readonly Source[];
   counts: Record<Source, number | undefined>;
   loadingStates: Record<Source, boolean>;
   errorStates: Record<Source, boolean>;
+  idleStates: Record<Source, boolean>;
   isPremium: boolean;
   bypassStatuses: Record<Source, BypassStatus | null>;
   bypassLoadingStates: Record<Source, boolean>;
   bypassErrorStates: Record<Source, boolean>;
+  winningSource: Source | null;
 }) {
   const formatWordCount = (count: number | undefined): string | null => {
     if (count === undefined || count === null) return null;
@@ -66,6 +77,7 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
           const wordCount = formatWordCount(count);
           const isLoading = loadingStates[source];
           const hasError = errorStates[source];
+          const isWinner = winningSource === source;
 
           return (
             <TabsPrimitive.Tab
@@ -81,10 +93,20 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               )}
             >
-              <span className="hidden sm:inline">{SOURCE_LABELS[source]}</span>
-              <span className="inline sm:hidden">{MOBILE_SOURCE_LABELS[source]}</span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={<span />}
+                  className="cursor-default"
+                >
+                  <span className="hidden sm:inline">{SOURCE_LABELS[source]}</span>
+                  <span className="inline sm:hidden">{MOBILE_SOURCE_LABELS[source]}</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{SOURCE_TOOLTIPS[source]}</p>
+                </TooltipContent>
+              </Tooltip>
 
-              {isLoading ? (
+              {idleStates[source] ? null : isLoading ? (
                 <Skeleton className="h-4 w-8 sm:h-5 sm:w-10 rounded-md sm:rounded-lg" />
               ) : hasError ? (
                 <Tooltip>
@@ -108,14 +130,21 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
                   hasError={bypassErrorStates[source]}
                 />
               ) : wordCount ? (
-                <span
-                  className={cn(
-                    "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors",
-                    "bg-muted text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary",
+                <>
+                  <span
+                    className={cn(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors",
+                      "bg-muted text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary",
+                    )}
+                  >
+                    {wordCount}
+                  </span>
+                  {isWinner && (
+                    <span className="hidden sm:inline-flex items-center bg-primary/10 text-primary rounded-md px-1 text-[10px] font-medium">
+                      fastest
+                    </span>
                   )}
-                >
-                  {wordCount}
-                </span>
+                </>
               ) : null}
             </TabsPrimitive.Tab>
           );
@@ -125,33 +154,47 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
   );
 });
 
-type ArticleResults = Record<Source, UseQueryResult<ArticleResponse, Error>>;
-
 interface TabProps {
   url: string;
-  articleResults: ArticleResults;
+  sourceStates: Record<Source, SourceTabState>;
   viewMode: "markdown" | "html" | "iframe";
   activeSource: Source;
   onSourceChange: (source: Source) => void;
   className?: string;
   mobileHeaderVisible?: boolean;
+  winningSource?: Source | null;
+  // Ad props to pass through to ArticleContent
+  inlineAd?: GravityAdType | null;
+  onInlineAdVisible?: () => void;
+  onInlineAdClick?: () => void;
+  showInlineAd?: boolean;
+  footerAd?: GravityAdType | null;
+  onFooterAdVisible?: () => void;
+  onFooterAdClick?: () => void;
+  onAskAI?: (text: string) => void;
+  onOpenNoteEditor?: (id: string) => void;
 }
 
 const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
   url,
-  articleResults,
+  sourceStates,
   viewMode,
   activeSource,
   onSourceChange,
   mobileHeaderVisible = true,
   className,
+  winningSource = null,
+  inlineAd,
+  onInlineAdVisible,
+  onInlineAdClick,
+  showInlineAd,
+  footerAd,
+  onFooterAdVisible,
+  onFooterAdClick,
+  onAskAI,
+  onOpenNoteEditor,
 }) {
-  const results = articleResults;
   const { isPremium } = useIsPremium();
-
-  const smryFastResult = results["smry-fast"];
-  const smrySlowResult = results["smry-slow"];
-  const waybackResult = results.wayback;
 
   const [isFullScreen, setIsFullScreen] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -175,54 +218,59 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
     }
   }, [viewMode, isFullScreen]);
 
-  const smryFastLength = smryFastResult.data?.article?.length;
-  const smrySlowLength = smrySlowResult.data?.article?.length;
-  const waybackLength = waybackResult.data?.article?.length;
+  // Extract per-source states for stable dependency references
+  const fastState = sourceStates["smry-fast"];
+  const slowState = sourceStates["smry-slow"];
+  const waybackState = sourceStates["wayback"];
 
-  const smryFastLoading = smryFastResult.isLoading;
-  const smrySlowLoading = smrySlowResult.isLoading;
-  const waybackLoading = waybackResult.isLoading;
-
-  const smryFastError = smryFastResult.isError;
-  const smrySlowError = smrySlowResult.isError;
-  const waybackError = waybackResult.isError;
+  const fastLength = fastState.data?.article?.length;
+  const slowLength = slowState.data?.article?.length;
+  const wbLength = waybackState.data?.article?.length;
 
   const counts = useMemo<Record<Source, number | undefined>>(() => ({
-    "smry-fast": smryFastLength,
-    "smry-slow": smrySlowLength,
-    "wayback": waybackLength,
-  }), [smryFastLength, smrySlowLength, waybackLength]);
+    "smry-fast": fastLength,
+    "smry-slow": slowLength,
+    "wayback": wbLength,
+  }), [fastLength, slowLength, wbLength]);
 
   const loadingStates = useMemo<Record<Source, boolean>>(() => ({
-    "smry-fast": smryFastLoading,
-    "smry-slow": smrySlowLoading,
-    "wayback": waybackLoading,
-  }), [smryFastLoading, smrySlowLoading, waybackLoading]);
+    "smry-fast": fastState.isLoading,
+    "smry-slow": slowState.isLoading,
+    "wayback": waybackState.isLoading,
+  }), [fastState.isLoading, slowState.isLoading, waybackState.isLoading]);
 
   const errorStates = useMemo<Record<Source, boolean>>(() => ({
-    "smry-fast": smryFastError,
-    "smry-slow": smrySlowError,
-    "wayback": waybackError,
-  }), [smryFastError, smrySlowError, waybackError]);
+    "smry-fast": fastState.isError,
+    "smry-slow": slowState.isError,
+    "wayback": waybackState.isError,
+  }), [fastState.isError, slowState.isError, waybackState.isError]);
 
+  const idleStates = useMemo<Record<Source, boolean>>(() => ({
+    "smry-fast": fastState.isIdle,
+    "smry-slow": slowState.isIdle,
+    "wayback": waybackState.isIdle,
+  }), [fastState.isIdle, slowState.isIdle, waybackState.isIdle]);
+
+  // Bypass detection — only for non-idle sources with loaded data
   const bypassFast = useBypassDetection({
     url,
     source: "smry-fast",
-    article: results["smry-fast"].data?.article,
-    enabled: isPremium && !results["smry-fast"].isLoading && !!results["smry-fast"].data?.article,
+    article: fastState.data?.article,
+    enabled: isPremium && !fastState.isIdle && !fastState.isLoading && !!fastState.data?.article,
   });
   const bypassSlow = useBypassDetection({
     url,
     source: "smry-slow",
-    article: results["smry-slow"].data?.article,
-    enabled: isPremium && !results["smry-slow"].isLoading && !!results["smry-slow"].data?.article,
+    article: slowState.data?.article,
+    enabled: isPremium && !slowState.isIdle && !slowState.isLoading && !!slowState.data?.article,
   });
   const bypassWayback = useBypassDetection({
     url,
     source: "wayback",
-    article: results.wayback.data?.article,
-    enabled: isPremium && !results.wayback.isLoading && !!results.wayback.data?.article,
+    article: waybackState.data?.article,
+    enabled: isPremium && !waybackState.isIdle && !waybackState.isLoading && !!waybackState.data?.article,
   });
+
   const bypassStatuses = useMemo<Record<Source, BypassStatus | null>>(() => ({
     "smry-fast": bypassFast.result?.status ?? null,
     "smry-slow": bypassSlow.result?.status ?? null,
@@ -274,52 +322,42 @@ const ArrowTabs: React.FC<TabProps> = memo(function ArrowTabs({
             counts={counts}
             loadingStates={loadingStates}
             errorStates={errorStates}
+            idleStates={idleStates}
             isPremium={isPremium}
             bypassStatuses={bypassStatuses}
             bypassLoadingStates={bypassLoadingStates}
             bypassErrorStates={bypassErrorStates}
+            winningSource={winningSource}
           />
         </div>
 
-        <TabsContent id="article-panel-smry-fast" value={"smry-fast"} keepMounted>
-          <ArticleContent
-            data={results["smry-fast"].data}
-            isLoading={results["smry-fast"].isLoading}
-            isError={results["smry-fast"].isError}
-            error={results["smry-fast"].error}
-            source="smry-fast"
-            url={url}
-            viewMode={viewMode}
-            isFullScreen={isFullScreen}
-            onFullScreenChange={handleFullScreenChange}
-          />
-        </TabsContent>
-        <TabsContent id="article-panel-smry-slow" value={"smry-slow"} keepMounted>
-          <ArticleContent
-            data={results["smry-slow"].data}
-            isLoading={results["smry-slow"].isLoading}
-            isError={results["smry-slow"].isError}
-            error={results["smry-slow"].error}
-            source="smry-slow"
-            url={url}
-            viewMode={viewMode}
-            isFullScreen={isFullScreen}
-            onFullScreenChange={handleFullScreenChange}
-          />
-        </TabsContent>
-        <TabsContent id="article-panel-wayback" value={"wayback"} keepMounted>
-          <ArticleContent
-            data={results.wayback.data}
-            isLoading={results.wayback.isLoading}
-            isError={results.wayback.isError}
-            error={results.wayback.error}
-            source="wayback"
-            url={url}
-            viewMode={viewMode}
-            isFullScreen={isFullScreen}
-            onFullScreenChange={handleFullScreenChange}
-          />
-        </TabsContent>
+        {SOURCES.map((src) => {
+          const state = sourceStates[src];
+          return (
+            <TabsContent key={src} id={`article-panel-${src}`} value={src} keepMounted>
+              <ArticleContent
+                data={state.data}
+                isLoading={state.isIdle || state.isLoading}
+                isError={state.isError}
+                error={state.error}
+                source={src}
+                url={url}
+                viewMode={viewMode}
+                isFullScreen={isFullScreen}
+                onFullScreenChange={handleFullScreenChange}
+                inlineAd={inlineAd}
+                onInlineAdVisible={onInlineAdVisible}
+                onInlineAdClick={onInlineAdClick}
+                showInlineAd={showInlineAd}
+                footerAd={footerAd}
+                onFooterAdVisible={onFooterAdVisible}
+                onFooterAdClick={onFooterAdClick}
+                onAskAI={onAskAI}
+                onOpenNoteEditor={onOpenNoteEditor}
+              />
+            </TabsContent>
+          );
+        })}
       </Tabs>
     </div>
   );

@@ -302,12 +302,42 @@ async function fetchArticleWithWaybackDirect(url: string, externalSignal?: Abort
   try {
     logger.info({ source: "wayback", hostname }, "Fetching article directly from Wayback Machine");
 
+    // Check if a snapshot exists before blindly fetching — avoids 403/404 for unarchived articles
+    if (signal.aborted) {
+      memTracker.end({ success: false, reason: "aborted_before_start" });
+      return { error: createNetworkError("Request cancelled", url, 499) };
+    }
+
+    const availabilityUrl = `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`;
+    const availabilityRes = await fetch(availabilityUrl, { signal });
+    if (availabilityRes.ok) {
+      const availabilityData = await availabilityRes.json() as { archived_snapshots?: { closest?: { url?: string } } };
+      const snapshotUrl = availabilityData?.archived_snapshots?.closest?.url;
+      if (!snapshotUrl) {
+        logger.info({ source: "wayback", hostname }, "No Wayback snapshot available for this URL");
+        memTracker.end({ success: false, reason: "no_snapshot" });
+        return { error: createNetworkError("No archived version available for this article", url, 404) };
+      }
+    }
+
+    if (signal.aborted) {
+      memTracker.end({ success: false, reason: "aborted_after_availability" });
+      return { error: createNetworkError("Request cancelled", url, 499) };
+    }
+
     const response = await fetch(waybackUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Referer": "https://www.google.com/",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
       },
       redirect: "follow",
       signal,

@@ -350,6 +350,13 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entrySourceTabs_date": "23. Februar 2026",
+    "entrySourceTabs_change1_text": "Klarere Quellbezeichnungen & Beschreibungen",
+    "entrySourceTabs_change1_detail": "Quell-Tabs umbenannt in Direkt, KI-Extraktion und Archiv mit Hover-Tooltips, die erklären, was jede Quelle tut.",
+    "entrySourceTabs_change2_text": "Schnellste-Quelle-Anzeige",
+    "entrySourceTabs_change2_detail": "Ein \"Schnellste\"-Badge erscheint jetzt neben der gewinnenden Quelle, damit Sie sehen können, welche zuerst geladen wurde.",
+    "entrySourceTabs_change3_text": "Reduzierter Speicherverbrauch",
+    "entrySourceTabs_change3_detail": "Nicht aktive Quelldaten werden jetzt schneller freigegeben, was den Speicherverbrauch bei längeren Lesesitzungen reduziert.",
     "entryHighlights_date": "21. Februar 2026",
     "entryHighlights_change1_text": "Jeden Artikel hervorheben und annotieren",
     "entryHighlights_change1_detail": "Wählen Sie beliebigen Text aus, um ihn sofort in einer von 5 Farben hervorzuheben. Fügen Sie Notizen hinzu, ändern Sie Farben oder löschen Sie — Ihre Hervorhebungen bleiben genau dort, wo Sie sie hinterlassen haben, auch nach dem Schließen der Seite.",

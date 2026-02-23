@@ -350,6 +350,13 @@
     "upgrade": "Actualizar"
   },
   "changelogEntries": {
+    "entrySourceTabs_date": "23 de febrero de 2026",
+    "entrySourceTabs_change1_text": "Etiquetas de fuente más claras y descripciones",
+    "entrySourceTabs_change1_detail": "Las pestañas de fuente se renombraron a Directo, Extracción IA y Archivo con tooltips que explican lo que hace cada fuente.",
+    "entrySourceTabs_change2_text": "Indicador de fuente más rápida",
+    "entrySourceTabs_change2_detail": "Una insignia \"más rápida\" aparece ahora junto a la fuente ganadora para que puedas ver cuál se cargó primero.",
+    "entrySourceTabs_change3_text": "Uso de memoria reducido",
+    "entrySourceTabs_change3_detail": "Los datos de fuentes no activas ahora se liberan más rápido, reduciendo el uso de memoria durante sesiones de lectura prolongadas.",
     "entryHighlights_date": "21 de febrero de 2026",
     "entryHighlights_change1_text": "Resaltar y anotar cualquier artículo",
     "entryHighlights_change1_detail": "Selecciona cualquier texto para resaltarlo al instante en uno de 5 colores. Añade notas, cambia colores o elimina — tus resaltados se mantienen exactamente donde los dejaste, incluso después de cerrar la página.",

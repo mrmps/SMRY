@@ -350,6 +350,13 @@
     "upgrade": "Atualizar"
   },
   "changelogEntries": {
+    "entrySourceTabs_date": "23 de fevereiro de 2026",
+    "entrySourceTabs_change1_text": "Rótulos de fonte mais claros e descrições",
+    "entrySourceTabs_change1_detail": "As abas de fonte foram renomeadas para Direto, Extração IA e Arquivo com tooltips que explicam o que cada fonte faz.",
+    "entrySourceTabs_change2_text": "Indicador de fonte mais rápida",
+    "entrySourceTabs_change2_detail": "Um distintivo \"mais rápido\" agora aparece ao lado da fonte vencedora para que você possa ver qual carregou primeiro.",
+    "entrySourceTabs_change3_text": "Uso de memória reduzido",
+    "entrySourceTabs_change3_detail": "Os dados de fontes não ativas agora são liberados mais rapidamente, reduzindo o uso de memória durante sessões de leitura prolongadas.",
     "entryHighlights_date": "21 de fevereiro de 2026",
     "entryHighlights_change1_text": "Destacar e anotar qualquer artigo",
     "entryHighlights_change1_detail": "Selecione qualquer texto para destacá-lo instantaneamente em uma de 5 cores. Adicione notas, mude cores ou exclua — seus destaques permanecem exatamente onde você os deixou, mesmo após fechar a página.",
