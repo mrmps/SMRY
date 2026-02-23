@@ -6,7 +6,7 @@ import { headers } from 'next/headers';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ url?: string; sidebar?: string }>;
+  searchParams: Promise<{ url?: string }>;
 };
 
 // Base URL for OG images - always use production URL for social sharing
@@ -64,124 +64,93 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   // Extract hostname for fallback
   const hostname = new URL(normalizedUrl).hostname.replace('www.', '');
 
+  // Use lightweight metadata endpoint (~200 bytes, Redis-only, no concurrency slot)
+  // instead of /api/article/auto (2-8MB, uses concurrency slot).
+  // The user's page component already fetches the full article — no need to do it here.
   try {
-    // Fetch article data for metadata with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const metaStart = Date.now();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-    const response = await fetch(
-      `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(normalizedUrl)}`,
-      {
-        signal: controller.signal,
-        // IMPORTANT: Do NOT use next: { revalidate } here.
-        // Article responses are 2-8MB — Next.js allocates the full body in memory
-        // to try caching, then fails (>2MB limit), leaking the allocation.
-        // The article is already cached in Redis on the Elysia side.
-        cache: 'no-store',
-      }
+    const metaResponse = await fetch(
+      `${apiBaseUrl}/api/article/meta?url=${encodeURIComponent(normalizedUrl)}`,
+      { signal: controller.signal, cache: 'no-store' }
     );
-
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch article');
-    }
+    if (metaResponse.ok) {
+      const data = await metaResponse.json();
+      const meta = data.meta;
+      console.log(`[metadata] meta hit hostname=${hostname} source=${data.source} duration=${Date.now() - metaStart}ms`);
 
-    const data = await response.json();
-    const article = data.article;
+      const title = meta.title ? `${meta.title} | Smry` : `Article from ${hostname} | Smry`;
+      const description = `Read this article from ${meta.siteName || hostname} with Smry`;
 
-    if (!article) {
-      // No article data - use hostname-based metadata
+      // Include title and image in OG image URL for faster rendering (avoids extra API call in OG route)
+      const ogImageWithTitle = `${OG_BASE_URL}/api/og?url=${encodeURIComponent(normalizedUrl)}&title=${encodeURIComponent(meta.title || '')}${meta.image ? `&image=${encodeURIComponent(meta.image)}` : ''}`;
+
       return {
-        title: `Article from ${hostname} | Smry`,
-        description: `Read this article from ${hostname} with Smry`,
+        title,
+        description,
         robots: { index: false, follow: true },
         openGraph: {
           type: 'article',
-          title: `Article from ${hostname}`,
-          description: `Read this article from ${hostname} with Smry`,
+          title: meta.title || `Article from ${hostname}`,
+          description,
           siteName: 'smry.ai',
           url: canonicalUrl,
           images: [{
-            url: ogImageUrl,
+            url: ogImageWithTitle,
             width: 1200,
             height: 630,
-            alt: `Article from ${hostname} on Smry`,
+            alt: meta.title || `Article from ${hostname} on Smry`,
           }],
         },
         twitter: {
           card: 'summary_large_image',
-          title: `Article from ${hostname}`,
-          description: `Read this article from ${hostname} with Smry`,
-          images: [ogImageUrl],
+          title: meta.title || `Article from ${hostname}`,
+          description,
+          images: [ogImageWithTitle],
         },
       };
     }
-
-    const title = article.title ? `${article.title} | Smry` : 'Proxy | Smry';
-    const description = article.textContent
-      ? article.textContent.slice(0, 200).trim() + '...'
-      : 'Read articles with Smry';
-
-    // Include title and image in OG image URL for faster rendering (avoids extra API call)
-    const ogImageWithTitle = `${OG_BASE_URL}/api/og?url=${encodeURIComponent(normalizedUrl)}&title=${encodeURIComponent(article.title || '')}${article.image ? `&image=${encodeURIComponent(article.image)}` : ''}`;
-
-    return {
-      title,
-      description,
-      robots: { index: false, follow: true },
-      openGraph: {
-        type: 'article',
-        title: article.title || 'Smry',
-        description,
-        siteName: 'smry.ai',
-        url: canonicalUrl,
-        images: [{
-          url: ogImageWithTitle,
-          width: 1200,
-          height: 630,
-          alt: article.title || 'Article on Smry',
-        }],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: article.title || 'Smry',
-        description,
-        images: [ogImageWithTitle],
-      },
-    };
-  } catch {
-    // Fetch failed - return basic metadata
-    return {
-      title: `Article from ${hostname} | Smry`,
-      description: `Read this article from ${hostname} with Smry`,
-      robots: { index: false, follow: true },
-      openGraph: {
-        type: 'article',
-        title: `Article from ${hostname} | Smry`,
-        description: `Read this article from ${hostname} with Smry`,
-        siteName: 'smry.ai',
-        url: canonicalUrl,
-        images: [{
-          url: ogImageUrl,
-          width: 1200,
-          height: 630,
-          alt: `Article from ${hostname} on Smry`,
-        }],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: `Article from ${hostname} | Smry`,
-        description: `Read this article from ${hostname} with Smry`,
-        images: [ogImageUrl],
-      },
-    };
+    console.log(`[metadata] meta miss hostname=${hostname} status=${metaResponse.status} duration=${Date.now() - metaStart}ms`);
+  } catch (err) {
+    console.log(`[metadata] meta error hostname=${hostname} error=${err instanceof Error ? err.message : String(err)}`);
   }
+
+  // No cached metadata (article never fetched) or meta endpoint failed — use hostname defaults.
+  // Do NOT fall back to /api/article/auto — the page component already fetches the article.
+  console.log(`[metadata] using hostname fallback hostname=${hostname}`);
+  return {
+    title: `Article from ${hostname} | Smry`,
+    description: `Read this article from ${hostname} with Smry`,
+    robots: { index: false, follow: true },
+    openGraph: {
+      type: 'article',
+      title: `Article from ${hostname}`,
+      description: `Read this article from ${hostname} with Smry`,
+      siteName: 'smry.ai',
+      url: canonicalUrl,
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: `Article from ${hostname} on Smry`,
+      }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Article from ${hostname}`,
+      description: `Read this article from ${hostname} with Smry`,
+      images: [ogImageUrl],
+    },
+  };
 }
 
 export default async function ProxyPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { url: searchParamUrl, sidebar } = await searchParams;
+  const { url: searchParamUrl } = await searchParams;
   setRequestLocale(locale);
 
   // Get article URL from header (set by proxy middleware for URL-as-path routing)
@@ -191,7 +160,5 @@ export default async function ProxyPage({ params, searchParams }: Props) {
   const articleUrl = (headerUrl ? decodeURIComponent(headerUrl) : null) || searchParamUrl || null;
 
 
-  const initialSidebarOpen = sidebar === 'true';
-
-  return <ProxyPageContent initialSidebarOpen={initialSidebarOpen} articleUrl={articleUrl} />;
+  return <ProxyPageContent articleUrl={articleUrl} />;
 }

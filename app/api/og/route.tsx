@@ -25,35 +25,40 @@ export async function GET(request: NextRequest) {
       hostname = parsedUrl.hostname.replace("www.", "");
       siteName = hostname;
 
-      // If no title or image provided, try to fetch article data
+      // If no title or image provided, try lightweight metadata endpoint
+      // Uses Redis-only lookup (~1ms), no concurrency slot, ~200 bytes response
       if (!titleParam || !imageParam) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_URL || "https://smry.ai";
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
         try {
+          const metaStart = Date.now();
           const response = await fetch(
-            `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(url)}`,
-            {
-              signal: controller.signal,
-            }
+            `${apiBaseUrl}/api/article/meta?url=${encodeURIComponent(url)}`,
+            { signal: controller.signal }
           );
           clearTimeout(timeoutId);
 
           if (response.ok) {
             const data = await response.json();
-            if (data.article?.title && !titleParam) {
-              title = data.article.title;
+            const meta = data.meta;
+            if (meta?.title && !titleParam) {
+              title = meta.title;
             }
-            if (data.article?.siteName) {
-              siteName = data.article.siteName;
+            if (meta?.siteName) {
+              siteName = meta.siteName;
             }
-            if (data.article?.image && !imageParam) {
-              articleImage = data.article.image;
+            if (meta?.image && !imageParam) {
+              articleImage = meta.image;
             }
+            console.log(`[og] meta hit hostname=${hostname} source=${data.source} duration=${Date.now() - metaStart}ms`);
+          } else {
+            console.log(`[og] meta miss hostname=${hostname} status=${response.status} duration=${Date.now() - metaStart}ms`);
           }
-        } catch {
+        } catch (err) {
           clearTimeout(timeoutId);
+          console.log(`[og] meta error hostname=${hostname} error=${err instanceof Error ? err.message : String(err)}`);
         }
       }
     } catch {
@@ -64,13 +69,51 @@ export async function GET(request: NextRequest) {
   // Strip characters that can't be rendered by Latin fonts (Inter/Syne).
   // Non-Latin chars (CJK, Arabic, Hebrew, etc.) cause "Cannot convert argument
   // to a ByteString" crash in ImageResponse. Replace them with a space.
-  title = title.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F\u2070-\u209F\u20A0-\u20CF\u2100-\u214F]/g, ' ')
+  // Exclude control chars (U+0000-U+001F), line/paragraph separators (U+2028-U+2029),
+  // and BOM (U+FEFF) which are known Satori crash vectors.
+  title = title
+    .replace(/[\u0000-\u001F\u2028\u2029\uFEFF]/g, '')
+    .replace(/[^\u0020-\u024F\u1E00-\u1EFF\u2010-\u2027\u2030-\u205E\u2070-\u209F\u20A0-\u20CF\u2100-\u214F]/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim() || "Read articles without paywalls";
 
   // Also sanitize siteName and hostname for the same reason
-  siteName = siteName.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F]/g, ' ').replace(/\s{2,}/g, ' ').trim() || "smry.ai";
-  hostname = hostname.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  siteName = siteName.replace(/[\u0000-\u001F\u2028\u2029\uFEFF]/g, '').replace(/[^\u0020-\u024F\u1E00-\u1EFF\u2010-\u2027\u2030-\u205E]/g, ' ').replace(/\s{2,}/g, ' ').trim() || "smry.ai";
+  hostname = hostname.replace(/[\u0000-\u001F\u2028\u2029\uFEFF]/g, '').replace(/[^\u0020-\u024F\u1E00-\u1EFF\u2010-\u2027\u2030-\u205E]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
+  // Sanitize articleImage URL — non-ASCII chars in URLs crash ImageResponse
+  // with "Cannot convert argument to a ByteString". Validate it's a proper http(s) URL
+  // and use the encoded href (new URL() percent-encodes non-ASCII path segments).
+  if (articleImage) {
+    const originalImage = articleImage;
+    try {
+      const imgUrl = new URL(articleImage);
+      if (imgUrl.protocol !== 'http:' && imgUrl.protocol !== 'https:') {
+        articleImage = "";
+        console.log(`[og] image dropped: bad protocol="${imgUrl.protocol}" hostname=${hostname}`);
+      } else {
+        // Use encoded URL — this percent-encodes any CJK/non-ASCII chars in the path
+        articleImage = imgUrl.href;
+        if (articleImage !== originalImage) {
+          console.log(`[og] image re-encoded hostname=${hostname}`);
+        }
+      }
+    } catch {
+      articleImage = ""; // Invalid URL (e.g., relative path), skip image
+      console.log(`[og] image dropped: invalid URL hostname=${hostname} url=${originalImage.slice(0, 100)}`);
+    }
+  }
+
+  // Extra safety: drop data: URIs (can be huge), and URLs that still have non-ASCII after encoding
+  if (articleImage) {
+    if (articleImage.startsWith('data:')) {
+      console.log(`[og] image dropped: data URI hostname=${hostname}`);
+      articleImage = "";
+    } else if (/[^\x20-\x7E]/.test(articleImage)) {
+      console.log(`[og] image dropped: non-ASCII in encoded URL hostname=${hostname}`);
+      articleImage = "";
+    }
+  }
 
   // Truncate title if too long
   if (title.length > 80) {
@@ -118,6 +161,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Wrap in try-catch to handle any remaining ByteString crashes from Satori/resvg.
+  // Sanitization covers most cases, but remote image response headers or edge-case
+  // characters can still crash ImageResponse. A safe fallback prevents 500s.
+  try {
   return new ImageResponse(
     (
       <div
@@ -302,4 +349,47 @@ export async function GET(request: NextRequest) {
       },
     }
   );
+  } catch (err) {
+    console.error(`[og] ImageResponse crashed hostname=${hostname} title=${title.slice(0, 50)} hasImage=${!!articleImage} error=${err instanceof Error ? err.message : String(err)}`);
+
+    // Fallback: minimal safe image with no dynamic content or external images
+    try {
+      return new ImageResponse(
+        (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#09090b",
+              gap: "16px",
+            }}
+          >
+            <div style={{ color: "#ffffff", fontSize: 64, fontWeight: 700 }}>
+              smry
+            </div>
+            <div style={{ color: "#71717a", fontSize: 24 }}>
+              Read without paywalls
+            </div>
+          </div>
+        ),
+        {
+          width: 1200,
+          height: 630,
+          headers: {
+            "Cache-Control": "public, max-age=60, s-maxage=60",
+          },
+        }
+      );
+    } catch {
+      // Ultimate fallback: return a 302 redirect or plain response
+      return new Response("smry.ai", {
+        status: 200,
+        headers: { "Content-Type": "text/plain", "Cache-Control": "public, max-age=60" },
+      });
+    }
+  }
 }

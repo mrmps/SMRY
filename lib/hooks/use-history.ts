@@ -150,9 +150,8 @@ export function useHistory(isPremium: boolean = false) {
           newHistory = [newItem, ...prev];
         }
 
-        // Keep only the max allowed items (we store 100 max regardless)
-        // But display limit is based on premium status
-        const storageLimit = 100;
+        // Keep only the max allowed items in localStorage
+        const storageLimit = 1000;
         if (newHistory.length > storageLimit) {
           newHistory = newHistory.slice(0, storageLimit);
         }
@@ -265,9 +264,9 @@ export function addArticleToHistory(url: string, title: string): void {
       newHistory = [newItem, ...history];
     }
 
-    // Keep only 100 items max
-    if (newHistory.length > 100) {
-      newHistory = newHistory.slice(0, 100);
+    // Keep only 1000 items max in localStorage
+    if (newHistory.length > 1000) {
+      newHistory = newHistory.slice(0, 1000);
     }
 
     window.localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));

@@ -10,6 +10,10 @@ export const env = createEnv({
   server: {
     // Auth
     CLERK_SECRET_KEY: z.string().min(1),
+    // Optional: PEM public key from Clerk Dashboard for networkless JWT verification.
+    // Eliminates JWKS fetch failures and kid mismatch issues from key rotation.
+    // Set via Clerk Dashboard > API Keys > Show JWT Public Key.
+    CLERK_JWT_KEY: z.string().optional(),
 
     // AI/API
     OPENROUTER_API_KEY: z.string().min(1),
@@ -49,7 +53,7 @@ export const env = createEnv({
     // Server config
     CORS_ORIGIN: z.string().min(1),
     API_PORT: z.coerce.number().default(3001),
-    MAX_CONCURRENT_ARTICLE_FETCHES: z.coerce.number().default(20),
+    MAX_CONCURRENT_ARTICLE_FETCHES: z.coerce.number().default(50),
     ARTICLE_FETCH_SLOT_TIMEOUT_MS: z.coerce.number().default(30000),
     MAX_CONCURRENT_TTS: z.coerce.number().optional(),
     MAX_TTS_PER_USER: z.coerce.number().optional(),

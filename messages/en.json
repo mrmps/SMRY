@@ -53,7 +53,10 @@
     "trustWorksWith": "Works on 1,000+ sites",
     "trustFree": "Free to use",
     "continueReading": "Continue reading",
-    "continueReadingProgress": "{progress}% read"
+    "continueReadingProgress": "{progress}% read",
+    "confidenceWorksGreat": "Works great for this site",
+    "confidenceUsuallyWorks": "Usually works for this site",
+    "confidenceLimited": "Limited access for this site"
   },
   "banner": {
     "heading": "Hop over these paywalls:"
@@ -350,6 +353,13 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryExport_date": "Feb 23, 2026",
+    "entryExport_change1_text": "Export full articles to your knowledge base",
+    "entryExport_change1_detail": "Save any article to Notion, Obsidian, or Roam Research with one click — complete with title, author, date, and full text. Your reading never stays trapped in a browser tab again.",
+    "entryExport_change2_text": "Download as Markdown or JSON",
+    "entryExport_change2_detail": "Export articles as clean Markdown files or structured JSON for your own tools and workflows. Obsidian exports include YAML frontmatter, Roam exports use native [[page links]] and attributes.",
+    "entryExport_change3_text": "Copy or download — your choice",
+    "entryExport_change3_detail": "Every format supports both clipboard copy and file download. Paste directly into your app or save for later — accessible from the share menu on any article.",
     "entryHighlights_date": "Feb 21, 2026",
     "entryHighlights_change1_text": "Highlight & annotate any article",
     "entryHighlights_change1_detail": "Select any text to instantly highlight it in one of 5 colors. Add notes, change colors, or delete — your highlights stay exactly where you left them, even after you close the page.",

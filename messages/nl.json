@@ -53,7 +53,10 @@
     "trustWorksWith": "Werkt op 1.000+ sites",
     "trustFree": "Gratis te gebruiken",
     "continueReading": "Verder lezen",
-    "continueReadingProgress": "{progress}% gelezen"
+    "continueReadingProgress": "{progress}% gelezen",
+    "confidenceWorksGreat": "Werkt uitstekend voor deze site",
+    "confidenceUsuallyWorks": "Werkt meestal voor deze site",
+    "confidenceLimited": "Beperkte toegang voor deze site"
   },
   "banner": {
     "heading": "Spring over deze betaalmuren:"
@@ -337,7 +340,7 @@
   },
   "updateBanner": {
     "new": "Nieuw:",
-    "message": "Je leeservaring heeft een grote upgrade gekregen — nieuwe werkbalk, thema's en lettertypen",
+    "message": "Exporteer artikelen naar Notion, Obsidian en Markdown — je kennis is van jou",
     "changelog": "Wijzigingslogboek"
   },
   "changelog": {
@@ -350,6 +353,13 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entryExport_date": "23 februari 2026",
+    "entryExport_change1_text": "Exporteer volledige artikelen naar je kennisbank",
+    "entryExport_change1_detail": "Sla elk artikel op in Notion, Obsidian of Roam Research met één klik — compleet met titel, auteur, datum en volledige tekst. Je leesmateriaal zit nooit meer vast in een browsertabblad.",
+    "entryExport_change2_text": "Download als Markdown of JSON",
+    "entryExport_change2_detail": "Exporteer artikelen als schone Markdown-bestanden of gestructureerde JSON voor je eigen tools en workflows. Obsidian-exports bevatten YAML-frontmatter, Roam-exports gebruiken native [[paginalinks]] en attributen.",
+    "entryExport_change3_text": "Kopiëren of downloaden — jij kiest",
+    "entryExport_change3_detail": "Elk formaat ondersteunt zowel klembord kopiëren als bestand downloaden. Plak direct in je app of bewaar voor later — bereikbaar via het deelmenu bij elk artikel.",
     "entryHighlights_date": "21 februari 2026",
     "entryHighlights_change1_text": "Elk artikel markeren en annoteren",
     "entryHighlights_change1_detail": "Selecteer willekeurige tekst om deze direct te markeren in een van 5 kleuren. Voeg notities toe, wijzig kleuren of verwijder — je markeringen blijven precies waar je ze achterliet, ook na het sluiten van de pagina.",

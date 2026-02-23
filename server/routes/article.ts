@@ -467,6 +467,32 @@ const SourceEnum = t.Union([t.Literal("smry-fast"), t.Literal("smry-slow"), t.Li
 const SOURCES = ["smry-fast", "smry-slow", "wayback"] as const;
 
 export const articleRoutes = new Elysia({ prefix: "/api" }).get(
+  "/article/meta",
+  async ({ query, set }) => {
+    const { url } = query;
+    const hostname = (() => { try { return new URL(url).hostname; } catch { return "unknown"; } })();
+    const start = Date.now();
+
+    // Lightweight metadata lookup — just Redis GETs (~1ms), no concurrency slot needed
+    for (const source of SOURCES) {
+      const metaKey = `meta:${source}:${url}`;
+      try {
+        const metadata = await redis.get(metaKey);
+        if (metadata && typeof metadata === "object") {
+          logger.info({ endpoint: "article/meta", hostname, source, cache_hit: true, duration_ms: Date.now() - start }, "Meta cache hit");
+          return { meta: metadata, source, status: "success" };
+        }
+      } catch (err) {
+        logger.warn({ endpoint: "article/meta", hostname, source, error: String(err) }, "Meta cache lookup error");
+      }
+    }
+    // No cached metadata — return 404 (NOT a full article fetch)
+    logger.info({ endpoint: "article/meta", hostname, cache_hit: false, duration_ms: Date.now() - start }, "Meta cache miss");
+    set.status = 404;
+    return { error: "No cached metadata", status: "not_found" };
+  },
+  { query: t.Object({ url: t.String() }) }
+).get(
   "/article",
   async ({ query, request, set }) => {
     const clientIp = extractClientIp(request);
@@ -719,12 +745,23 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
           let winningSource: string | null = null;
 
           const abortLosers = (winnerSource: string) => {
-            for (const [source, controller] of Object.entries(abortControllers)) {
-              if (source !== winnerSource) {
-                controller.abort();
+            // Give losers a grace period to complete and cache their results.
+            // This way /article/enhanced can serve bypass content (e.g. Diffbot/Wayback
+            // results for paywalled articles where smry-fast wins with truncated content).
+            const GRACE_MS = 8000;
+            setTimeout(() => {
+              const abortedSources: string[] = [];
+              for (const [source, controller] of Object.entries(abortControllers)) {
+                if (source !== winnerSource && !controller.signal.aborted) {
+                  controller.abort();
+                  abortedSources.push(source);
+                }
               }
-            }
-            logger.info({ winning_source: winnerSource }, "Aborted losers immediately after winner found");
+              if (abortedSources.length > 0) {
+                logger.info({ winning_source: winnerSource, aborted_sources: abortedSources }, "Grace period expired, aborting remaining losers");
+              }
+            }, GRACE_MS);
+            logger.info({ winning_source: winnerSource, grace_ms: GRACE_MS }, "Winner found, losers get grace period");
           };
 
           fetchPromises.forEach((promise, index) => {
@@ -732,7 +769,14 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
               completedCount++;
 
               // If race already resolved, cache this late result then release reference
+              // (this happens when losers complete during the 8s grace period)
               if (resolved && result) {
+                logger.info({
+                  late_source: result.source,
+                  winning_source: winningSource,
+                  late_article_length: result.article.length,
+                  late_delay_ms: Date.now() - fetchStart,
+                }, "Race loser completed during grace period — caching result for /article/enhanced");
                 cacheResult(result);
                 return;
               }
@@ -749,11 +793,8 @@ export const articleRoutes = new Elysia({ prefix: "/api" }).get(
                 // Cache winner immediately
                 cacheResult(result);
 
-                // Abort losers immediately to free memory — no grace period.
-                // The /article/enhanced endpoint fetches independently if needed.
+                // Give losers a grace period to complete and cache their results
                 abortLosers(result.source);
-
-                logger.info({ winning_source: result.source }, "Race winner found, losers aborted immediately");
 
                 resolve(result);
 

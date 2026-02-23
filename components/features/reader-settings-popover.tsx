@@ -196,7 +196,7 @@ function PaletteRadio({
       className="relative flex-1 shrink-0 h-[35px] rounded-[8px] cursor-pointer"
       style={{
         backgroundColor: bgColor,
-        border: `2px solid ${selected ? "rgb(0, 158, 250)" : "var(--color-border)"}`,
+        border: `2px solid ${selected ? "var(--color-foreground)" : "var(--color-border)"}`,
       }}
     >
       <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-sm text-foreground/75 pointer-events-none">

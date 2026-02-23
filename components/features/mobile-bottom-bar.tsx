@@ -9,14 +9,16 @@ import {
   Link2,
   ExternalLink,
   Twitter,
-  FileText,
   Settings,
   TextFont,
   ChevronRight,
   Check,
   VolumeHigh,
   Loader2,
+  ShareIos,
+  ArrowLeft,
 } from "@/components/ui/icons";
+import { ExportArticleContent, type ArticleExportData } from "@/components/features/export-article";
 import {
   Drawer,
   DrawerContent,
@@ -120,6 +122,7 @@ interface MobileBottomBarProps {
   onTTSToggle?: () => void;
   isTTSActive?: boolean;
   isTTSLoading?: boolean;
+  articleExportData?: ArticleExportData;
   className?: string;
 }
 
@@ -131,9 +134,11 @@ export function MobileBottomBar({
   onTTSToggle,
   isTTSActive,
   isTTSLoading,
+  articleExportData,
   className,
 }: MobileBottomBarProps) {
   const [shareDrawerOpen, setShareDrawerOpen] = React.useState(false);
+  const [shareView, setShareView] = React.useState<"share" | "export">("share");
   const [copiedItem, setCopiedItem] = React.useState<string | null>(null);
   const [styleDrawerOpen, setStyleDrawerOpen] = React.useState(false);
   const [fontDrawerOpen, setFontDrawerOpen] = React.useState(false);
@@ -274,7 +279,7 @@ export function MobileBottomBar({
         </button>
 
         {/* Share */}
-        <Drawer open={shareDrawerOpen} onOpenChange={setShareDrawerOpen}>
+        <Drawer open={shareDrawerOpen} onOpenChange={(open) => { setShareDrawerOpen(open); if (!open) setShareView("share"); }}>
           <DrawerTrigger
             render={(props) => {
               const { key, ...rest } = props as typeof props & {
@@ -297,57 +302,98 @@ export function MobileBottomBar({
           />
           <DrawerContent className="pb-safe">
             <DrawerHeader className="sr-only">
-              <DrawerTitle>Share</DrawerTitle>
+              <DrawerTitle>{shareView === "export" ? "Export Article" : "Share"}</DrawerTitle>
             </DrawerHeader>
 
-            <div className="px-4 pt-2 pb-4 space-y-3" data-vaul-no-drag>
-              {/* Top action buttons */}
-              <div className="flex gap-2">
-                <button
-                  style={{ touchAction: "manipulation" }}
-                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={handleNativeShare}
-                >
-                  <Upload className="size-4" aria-hidden="true" />
-                  Share
-                </button>
-                <button
-                  style={{ touchAction: "manipulation" }}
-                  className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={handleTweet}
-                >
-                  <Twitter className="size-4" aria-hidden="true" />
-                  Tweet
-                </button>
-              </div>
-
-              {/* Action list card */}
-              <div className="bg-muted rounded-xl overflow-hidden">
-                <div className="relative">
+            {shareView === "export" && articleExportData ? (
+              /* Export view */
+              <div className="px-4 pt-2 pb-4 space-y-3" data-vaul-no-drag>
+                {/* Back header */}
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleCopy(smryUrl, "smry")}
+                    onClick={() => setShareView("share")}
                     style={{ touchAction: "manipulation" }}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
+                    className="size-9 flex items-center justify-center rounded-full text-muted-foreground active:bg-muted transition-colors -ml-1"
+                    aria-label="Back to share"
                   >
-                    <Link2
-                      className="size-5 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <span className="flex-1">Copy smry link</span>
-                    {copiedItem === "smry" && (
-                      <span
-                        className="text-xs text-primary"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        Copied!
-                      </span>
-                    )}
+                    <ArrowLeft className="size-5" />
                   </button>
-                  <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[15px] font-semibold block">Export Article</span>
+                    {articleTitle && (
+                      <span className="text-xs text-muted-foreground truncate block">{articleTitle}</span>
+                    )}
+                  </div>
+                </div>
+                <ExportArticleContent data={articleExportData} />
+              </div>
+            ) : (
+              /* Share view */
+              <div className="px-4 pt-2 pb-4 space-y-3" data-vaul-no-drag>
+                {/* Top action buttons */}
+                <div className="flex gap-2">
+                  <button
+                    style={{ touchAction: "manipulation" }}
+                    className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onClick={handleNativeShare}
+                  >
+                    <Upload className="size-4" aria-hidden="true" />
+                    Share
+                  </button>
+                  <button
+                    style={{ touchAction: "manipulation" }}
+                    className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-muted text-foreground font-medium text-sm transition-opacity active:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onClick={handleTweet}
+                  >
+                    <Twitter className="size-4" aria-hidden="true" />
+                    Tweet
+                  </button>
                 </div>
 
-                <div className="relative">
+                {/* Action list card */}
+                <div className="bg-muted rounded-xl overflow-hidden">
+                  {articleExportData && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShareView("export")}
+                        style={{ touchAction: "manipulation" }}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
+                      >
+                        <ShareIos
+                          className="size-5 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        <span className="flex-1">Export article</span>
+                        <ChevronRight className="size-4 text-muted-foreground" />
+                      </button>
+                      <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <button
+                      onClick={() => handleCopy(smryUrl, "smry")}
+                      style={{ touchAction: "manipulation" }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
+                    >
+                      <Link2
+                        className="size-5 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <span className="flex-1">Copy smry link</span>
+                      {copiedItem === "smry" && (
+                        <span
+                          className="text-xs text-primary"
+                          role="status"
+                          aria-live="polite"
+                        >
+                          Copied!
+                        </span>
+                      )}
+                    </button>
+                    <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
+                  </div>
+
                   <button
                     onClick={() => {
                       window.open(
@@ -366,43 +412,18 @@ export function MobileBottomBar({
                     />
                     <span className="flex-1">Open original in browser</span>
                   </button>
-                  <div className="absolute bottom-0 left-12 right-0 h-px bg-border/50" />
                 </div>
 
+                {/* Cancel button card */}
                 <button
-                  onClick={() => {
-                    const markdown = `[${articleTitle || "Article"}](${smryUrl})`;
-                    handleCopy(markdown, "markdown");
-                  }}
+                  className="w-full h-12 rounded-xl bg-muted text-muted-foreground font-medium transition-opacity active:opacity-70"
                   style={{ touchAction: "manipulation" }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity active:opacity-70 focus-visible:bg-accent focus-visible:outline-none"
+                  onClick={() => setShareDrawerOpen(false)}
                 >
-                  <FileText
-                    className="size-5 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <span className="flex-1">Copy as markdown</span>
-                  {copiedItem === "markdown" && (
-                    <span
-                      className="text-xs text-primary"
-                      role="status"
-                      aria-live="polite"
-                    >
-                      Copied!
-                    </span>
-                  )}
+                  Cancel
                 </button>
               </div>
-
-              {/* Cancel button card */}
-              <button
-                className="w-full h-12 rounded-xl bg-muted text-muted-foreground font-medium transition-opacity active:opacity-70"
-                style={{ touchAction: "manipulation" }}
-                onClick={() => setShareDrawerOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
+            )}
           </DrawerContent>
         </Drawer>
 

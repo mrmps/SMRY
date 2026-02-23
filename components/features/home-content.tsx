@@ -28,6 +28,8 @@ import { useGravityAd } from "@/lib/hooks/use-gravity-ad";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { getLastUnfinishedArticle, clearReadingProgress } from "@/lib/hooks/use-reading-progress";
 import { FaviconImage } from "@/components/shared/favicon-image";
+import { getSiteConfidence } from "@/lib/data/site-confidence";
+import { SiteConfidenceIndicator } from "@/components/features/site-confidence-indicator";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -356,6 +358,11 @@ export const HomeContent = memo(function HomeContent() {
     return getValidationError(debouncedUrl);
   }, [debouncedUrl, hasBlurred]);
 
+  const confidence = useMemo(() => {
+    if (!debouncedUrl.trim()) return null;
+    return getSiteConfidence(debouncedUrl);
+  }, [debouncedUrl]);
+
   // Display either submit-triggered error or debounced error
   const displayError = urlError ?? debouncedError;
 
@@ -498,12 +505,14 @@ export const HomeContent = memo(function HomeContent() {
             </div>
           </form>
 
-          {displayError && (
+          {displayError ? (
             <p id="url-error" className="mt-3 flex items-center text-sm text-destructive/70" role="alert">
               <ExclamationCircleIcon className="mr-1.5 size-4" />
               {displayError}
             </p>
-          )}
+          ) : confidence ? (
+            <SiteConfidenceIndicator tier={confidence.tier} domain={confidence.domain} t={t} />
+          ) : null}
 
           {/* Ad right below input — highest attention zone */}
           {!isPremium && !isPremiumLoading && ad && (

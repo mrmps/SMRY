@@ -10,8 +10,6 @@ import {
   History,
   Settings,
   MoreHorizontal,
-  Copy,
-  Check,
   Bug,
   ArrowUpRight,
   VolumeHigh,
@@ -31,6 +29,7 @@ import {
   MenuSeparator,
 } from "@/components/ui/menu";
 import { Source } from "@/types/api";
+import type { ArticleExportData } from "@/components/features/export-article";
 
 interface TooltipProps {
   label: string;
@@ -97,7 +96,10 @@ function ToolbarButton({
   return (
     <Tooltip label={label} shortcut={shortcut} disabled={tooltipDisabled}>
       <button
-        onClick={onClick}
+        onClick={(e) => {
+          onClick?.();
+          e.currentTarget.blur();
+        }}
         className={cn(
           "size-10 flex items-center justify-center rounded-lg transition-all duration-150",
           "hover:bg-accent hover:text-accent-foreground",
@@ -166,7 +168,7 @@ function ViewModeSelector({
           "hover:bg-accent hover:text-accent-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "active:scale-95",
-          "text-foreground"
+          "text-muted-foreground"
         )}
         aria-label={`Current view: ${viewModeLabels[viewMode]}`}
       >
@@ -222,10 +224,10 @@ interface FloatingToolbarProps {
   originalUrl: string;
   shareUrl: string;
   articleTitle?: string;
-  articleTextContent?: string;
   source: Source;
   sidebarOpen: boolean;
   onOpenSettings: () => void;
+  articleExportData?: ArticleExportData;
   styleOptionsOpen?: boolean;
   onStyleOptionsOpenChange?: (open: boolean) => void;
   shareOpen?: boolean;
@@ -241,10 +243,10 @@ export function FloatingToolbar({
   originalUrl,
   shareUrl,
   articleTitle,
-  articleTextContent,
   source,
   sidebarOpen,
   onOpenSettings,
+  articleExportData,
   styleOptionsOpen,
   onStyleOptionsOpenChange,
   shareOpen,
@@ -253,28 +255,11 @@ export function FloatingToolbar({
   isTTSActive,
   isTTSLoading,
 }: FloatingToolbarProps) {
-  const [copied, setCopied] = React.useState(false);
   const anyPanelOpen = !!(styleOptionsOpen || shareOpen);
 
   // Open original URL
   const openOriginal = () => {
     window.open(originalUrl, "_blank", "noopener,noreferrer");
-  };
-
-  // Copy page content
-  const handleCopyPage = async () => {
-    try {
-      let markdown = `# ${articleTitle || "Article"}\n\n`;
-      markdown += `**Source:** ${originalUrl}\n\n`;
-      if (articleTextContent) {
-        markdown += `---\n\n${articleTextContent}\n\n`;
-      }
-      await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy:", error);
-    }
   };
 
   // Open in AI
@@ -326,6 +311,7 @@ export function FloatingToolbar({
             viewMode={viewMode}
             sidebarOpen={sidebarOpen}
             articleTitle={articleTitle}
+            articleExportData={articleExportData}
             triggerVariant="icon"
             open={shareOpen}
             onOpenChange={onShareOpenChange}
@@ -348,7 +334,7 @@ export function FloatingToolbar({
       <div className="h-px bg-border/50 my-1" />
 
       {/* Reading History - direct link */}
-      <Tooltip label="Reading History" disabled={anyPanelOpen}>
+      <Tooltip label="Reading History" shortcut="H" disabled={anyPanelOpen}>
         <Link
           href="/history"
           className={cn(
@@ -412,18 +398,6 @@ export function FloatingToolbar({
           }}
         />
         <MenuPopup side="right" align="start" className="min-w-[200px]">
-          <MenuItem
-            onClick={handleCopyPage}
-            className="flex items-center gap-2 px-3"
-          >
-            {copied ? (
-              <Check className="size-4 text-green-600" />
-            ) : (
-              <Copy className="size-4" />
-            )}
-            <span className="flex-1">{copied ? "Copied!" : "Copy page"}</span>
-            <Kbd className="text-[10px] px-1.5 py-0.5">⌘C</Kbd>
-          </MenuItem>
           <MenuItem
             onClick={() => handleOpenInAI("chatgpt")}
             className="flex items-center gap-2 px-3"

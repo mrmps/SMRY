@@ -661,7 +661,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = memo(function Artic
                   : "h-[85vh] w-full rounded-lg border border-zinc-200 bg-white"
               }
               title={`${source} view of ${url}`}
-              sandbox="allow-same-origin"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
               loading="lazy"
             />
           </div>

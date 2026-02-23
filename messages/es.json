@@ -53,7 +53,10 @@
     "trustWorksWith": "Funciona en 1.000+ sitios",
     "trustFree": "Gratis",
     "continueReading": "Seguir leyendo",
-    "continueReadingProgress": "{progress}% leído"
+    "continueReadingProgress": "{progress}% leído",
+    "confidenceWorksGreat": "Funciona muy bien para este sitio",
+    "confidenceUsuallyWorks": "Generalmente funciona para este sitio",
+    "confidenceLimited": "Acceso limitado para este sitio"
   },
   "banner": {
     "heading": "Salta estos muros de pago:"
@@ -337,7 +340,7 @@
   },
   "updateBanner": {
     "new": "Nuevo:",
-    "message": "Tu experiencia de lectura acaba de recibir una gran mejora — nueva barra de herramientas, temas y fuentes",
+    "message": "Exporta artículos a Notion, Obsidian y Markdown — tu conocimiento es tuyo",
     "changelog": "Registro de cambios"
   },
   "changelog": {
@@ -350,6 +353,13 @@
     "upgrade": "Actualizar"
   },
   "changelogEntries": {
+    "entryExport_date": "23 de febrero de 2026",
+    "entryExport_change1_text": "Exporta artículos completos a tu base de conocimiento",
+    "entryExport_change1_detail": "Guarda cualquier artículo en Notion, Obsidian o Roam Research con un clic — completo con título, autor, fecha y texto completo. Tu lectura nunca más quedará atrapada en una pestaña del navegador.",
+    "entryExport_change2_text": "Descarga como Markdown o JSON",
+    "entryExport_change2_detail": "Exporta artículos como archivos Markdown limpios o JSON estructurado para tus propias herramientas y flujos de trabajo. Las exportaciones de Obsidian incluyen frontmatter YAML, las de Roam usan [[enlaces de página]] y atributos nativos.",
+    "entryExport_change3_text": "Copiar o descargar — tú eliges",
+    "entryExport_change3_detail": "Cada formato permite copiar al portapapeles o descargar como archivo. Pega directamente en tu app o guárdalo para después — accesible desde el menú de compartir en cualquier artículo.",
     "entryHighlights_date": "21 de febrero de 2026",
     "entryHighlights_change1_text": "Resaltar y anotar cualquier artículo",
     "entryHighlights_change1_detail": "Selecciona cualquier texto para resaltarlo al instante en uno de 5 colores. Añade notas, cambia colores o elimina — tus resaltados se mantienen exactamente donde los dejaste, incluso después de cerrar la página.",

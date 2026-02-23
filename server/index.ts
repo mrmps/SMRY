@@ -44,8 +44,8 @@ const app = new Elysia({ adapter: node() })
   }))
   // Security headers to prevent clickjacking and other attacks
   .onBeforeHandle(({ set }) => {
-    set.headers["X-Frame-Options"] = "DENY";
-    set.headers["Content-Security-Policy"] = "frame-ancestors 'none'";
+    set.headers["X-Frame-Options"] = "SAMEORIGIN";
+    set.headers["Content-Security-Policy"] = "frame-ancestors 'self'";
     set.headers["X-Content-Type-Options"] = "nosniff";
     set.headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
   })
@@ -107,8 +107,7 @@ const app = new Elysia({ adapter: node() })
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
       const url = new URL(request.url);
-      // Also silence old/removed endpoints from stale browser caches
-      const silentPaths = ["/favicon.ico", "/robots.txt", "/_next", "/__nextjs", "/api/adtrack", "/api/gravity-ad", "/api/summarize", "/api/jina"];
+      const silentPaths = ["/favicon.ico", "/robots.txt", "/_next", "/__nextjs"];
       const isSilent = silentPaths.some(p => url.pathname.startsWith(p));
       if (!isSilent) {
         console.warn(`[elysia] 404: ${url.pathname}`);

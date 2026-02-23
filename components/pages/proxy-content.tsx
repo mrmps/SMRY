@@ -6,11 +6,10 @@ import { normalizeUrl } from "@/lib/validation/url";
 import { useMemo } from "react";
 
 interface ProxyPageContentProps {
-  initialSidebarOpen?: boolean;
   articleUrl?: string | null;
 }
 
-export function ProxyPageContent({ initialSidebarOpen = false, articleUrl }: ProxyPageContentProps) {
+export function ProxyPageContent({ articleUrl }: ProxyPageContentProps) {
   const searchParams = useSearchParams();
   // Use articleUrl prop (from server/header) or fall back to searchParams
   const rawUrl = articleUrl || searchParams.get("url") || "";
@@ -73,5 +72,5 @@ export function ProxyPageContent({ initialSidebarOpen = false, articleUrl }: Pro
     );
   }
 
-  return <ProxyContent url={normalizedUrl!} initialSidebarOpen={initialSidebarOpen} />;
+  return <ProxyContent url={normalizedUrl!} />;
 }
