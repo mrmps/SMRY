@@ -34,6 +34,7 @@ import { HighlightsProvider } from "@/lib/contexts/highlights-context";
 import { AnnotationsSidebar } from "@/components/features/annotations-sidebar";
 import { MobileChatDrawer, type MobileChatDrawerHandle } from "@/components/features/mobile-chat-drawer";
 import { MobileAnnotationsDrawer } from "@/components/features/mobile-annotations-drawer";
+import { type ArticleExportData } from "@/components/features/export-article";
 import {
   Sidebar,
   SidebarContent,
@@ -54,10 +55,9 @@ interface ProxyContentProps {
   url: string;
   initialSource?: Source;
   initialViewMode?: "markdown" | "html" | "iframe";
-  initialSidebarOpen?: boolean;
 }
 
-export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentProps) {
+export function ProxyContent({ url }: ProxyContentProps) {
   // Use the new auto endpoint - single request, races all sources server-side
   const articleQuery = useArticleAuto(url);
   const { isPremium } = useIsPremium();
@@ -75,7 +75,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
     {
       url: parseAsString.withDefault(url),
       view: parseAsStringLiteral(viewModes).withDefault("markdown"),
-      sidebar: parseAsBoolean.withDefault(initialSidebarOpen),
+      sidebar: parseAsBoolean.withDefault(false),
     },
     {
       history: "replace",
@@ -88,6 +88,21 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
   const activeArticle = articleQuery.data?.article;
   const articleTitle = activeArticle?.title;
   const articleTextContent = activeArticle?.textContent;
+
+  // Build article export data for share popover/drawer
+  const articleExportData: ArticleExportData | undefined = useMemo(() => {
+    if (!activeArticle) return undefined;
+    return {
+      title: activeArticle.title,
+      url,
+      byline: activeArticle.byline ?? undefined,
+      textContent: activeArticle.textContent,
+      content: activeArticle.content,
+      siteName: activeArticle.siteName ?? undefined,
+      publishedTime: activeArticle.publishedTime ?? undefined,
+      lang: activeArticle.lang ?? undefined,
+    };
+  }, [activeArticle, url]);
 
   // Track initialization state per URL
   const initializedUrlRef = useRef<string | null>(null);
@@ -601,6 +616,12 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         tabbedSidebarRef.current?.copyLastResponse();
         return;
       }
+      // ⌘⇧E — Export article (opens share popover)
+      if (mod && e.shiftKey && (e.key === "e" || e.key === "E")) {
+        e.preventDefault();
+        setShareOpen(true);
+        return;
+      }
       // Esc — Stop AI generation (don't preventDefault so dialogs still close)
       if (e.key === "Escape") {
         tabbedSidebarRef.current?.stopGeneration();
@@ -637,10 +658,16 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         window.open(url, "_blank", "noopener,noreferrer");
         return;
       }
-      // , — Open settings popover
+      // H — Open Reading History
+      if ((e.key === "h" || e.key === "H") && !mod && !e.shiftKey) {
+        e.preventDefault();
+        window.location.href = "/history";
+        return;
+      }
+      // , — Toggle settings popover
       if (e.key === "," && !mod) {
         e.preventDefault();
-        setSettingsOpen(true);
+        setSettingsOpen((prev) => !prev);
         return;
       }
       // ⌘C — Copy page as markdown (only when no text is selected and not in input)
@@ -676,10 +703,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
         setAnnotationsSidebarOpen((prev) => !prev);
         return;
       }
-      // S — Open Style Options popover
+      // S — Toggle Style Options popover
       if ((e.key === "s" || e.key === "S") && !mod && !e.shiftKey) {
         e.preventDefault();
-        setStyleOptionsOpen(true);
+        setStyleOptionsOpen((prev) => !prev);
         return;
       }
     };
@@ -866,10 +893,10 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                   originalUrl={url}
                   shareUrl={`https://smry.ai/proxy?url=${encodeURIComponent(url)}`}
                   articleTitle={articleTitle}
-                  articleTextContent={articleTextContent}
                   source={source || "smry-fast"}
                   sidebarOpen={sidebarOpen}
-                  onOpenSettings={() => setSettingsOpen(true)}
+                  onOpenSettings={() => setSettingsOpen((prev) => !prev)}
+                  articleExportData={articleExportData}
                   styleOptionsOpen={styleOptionsOpen}
                   onStyleOptionsOpenChange={setStyleOptionsOpen}
                   shareOpen={shareOpen}
@@ -1105,6 +1132,7 @@ export function ProxyContent({ url, initialSidebarOpen = false }: ProxyContentPr
                 originalUrl={url}
                 articleTitle={articleTitle}
                 onOpenSettings={() => mobileSettingsRef.current?.open()}
+                articleExportData={articleExportData}
               />
 
               {/* Mobile Settings Drawer - native iOS style */}

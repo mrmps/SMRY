@@ -53,7 +53,10 @@
     "trustWorksWith": "支持1,000+网站",
     "trustFree": "免费使用",
     "continueReading": "继续阅读",
-    "continueReadingProgress": "已读 {progress}%"
+    "continueReadingProgress": "已读 {progress}%",
+    "confidenceWorksGreat": "该网站效果很好",
+    "confidenceUsuallyWorks": "该网站通常有效",
+    "confidenceLimited": "该网站访问受限"
   },
   "banner": {
     "heading": "跳过这些付费墙："
@@ -337,7 +340,7 @@
   },
   "updateBanner": {
     "new": "新功能：",
-    "message": "你的阅读体验迎来重大升级 — 全新工具栏、主题和字体",
+    "message": "将文章导出到 Notion、Obsidian 和 Markdown — 你的知识属于你",
     "changelog": "更新日志"
   },
   "changelog": {
@@ -350,6 +353,13 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entryExport_date": "2026年2月23日",
+    "entryExport_change1_text": "将完整文章导出到你的知识库",
+    "entryExport_change1_detail": "一键将任何文章保存到 Notion、Obsidian 或 Roam Research——包括标题、作者、日期和全文。你的阅读内容再也不会被困在浏览器标签页中。",
+    "entryExport_change2_text": "下载为 Markdown 或 JSON",
+    "entryExport_change2_detail": "将文章导出为干净的 Markdown 文件或结构化 JSON，用于你自己的工具和工作流程。Obsidian 导出包含 YAML 前置信息，Roam 导出使用原生 [[页面链接]] 和属性。",
+    "entryExport_change3_text": "复制或下载——由你选择",
+    "entryExport_change3_detail": "每种格式都支持剪贴板复制和文件下载。直接粘贴到你的应用中或保存备用——可从任何文章的分享菜单访问。",
     "entryHighlights_date": "2026年2月21日",
     "entryHighlights_change1_text": "高亮和注释任何文章",
     "entryHighlights_change1_detail": "选择任意文本即可用5种颜色之一即时高亮。添加笔记、更改颜色或删除——即使关闭页面后，高亮也会保留在原处。",

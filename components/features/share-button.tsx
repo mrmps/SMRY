@@ -8,11 +8,15 @@ import {
   Linkedin,
   X,
   Copy,
+  ShareIos,
+  ArrowLeft,
+  ChevronRight,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { generateShareUrls } from "@/lib/share-urls";
 import { Button } from "@/components/ui/button";
 import { ResponsiveDrawer } from "@/components/features/responsive-drawer";
+import { ExportArticleContent, type ArticleExportData } from "@/components/features/export-article";
 
 import { Source } from "@/types/api";
 
@@ -46,6 +50,7 @@ interface ShareButtonDataProps {
   source?: Source;
   viewMode?: string;
   sidebarOpen?: boolean;
+  articleExportData?: ArticleExportData;
 }
 
 interface ShareButtonProps extends ShareButtonDataProps {
@@ -65,9 +70,11 @@ const ShareModalContent = React.memo(function ShareModalContent({
   url,
   originalUrl,
   source: _source,
+  articleExportData,
   onClose,
 }: ShareButtonDataProps & { onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<"share" | "export">("share");
 
   const handleCopy = async () => {
     try {
@@ -92,6 +99,42 @@ const ShareModalContent = React.memo(function ShareModalContent({
 
   const shareUrls = generateShareUrls(originalUrl || "");
 
+  // Export view
+  if (view === "export" && articleExportData) {
+    return (
+      <div className="flex flex-col">
+        {/* Header with back button */}
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setView("share")}
+              className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors -ml-1"
+              aria-label="Back to share"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+            <h2 className="text-base font-semibold text-foreground">Export Article</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors -mr-1"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Export content */}
+        <div className="px-4 pb-6">
+          <ExportArticleContent data={articleExportData} />
+        </div>
+      </div>
+    );
+  }
+
+  // Share view (default)
   return (
     <div className="flex flex-col">
       {/* Header */}
@@ -156,7 +199,7 @@ const ShareModalContent = React.memo(function ShareModalContent({
         </div>
 
         {/* Share Options */}
-        <div>
+        <div className="mb-5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">
             Share to
           </label>
@@ -202,6 +245,23 @@ const ShareModalContent = React.memo(function ShareModalContent({
             </a>
           </div>
         </div>
+
+        {/* Export Article — prominent separate section */}
+        {articleExportData && (
+          <button
+            onClick={() => setView("export")}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 transition-colors group text-left"
+          >
+            <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <ShareIos className="size-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Export article</p>
+              <p className="text-xs text-muted-foreground">Notion, Obsidian, Markdown &amp; more</p>
+            </div>
+            <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { headers } from 'next/headers';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ url?: string; sidebar?: string }>;
+  searchParams: Promise<{ url?: string }>;
 };
 
 // Base URL for OG images - always use production URL for social sharing
@@ -150,7 +150,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function ProxyPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { url: searchParamUrl, sidebar } = await searchParams;
+  const { url: searchParamUrl } = await searchParams;
   setRequestLocale(locale);
 
   // Get article URL from header (set by proxy middleware for URL-as-path routing)
@@ -160,7 +160,5 @@ export default async function ProxyPage({ params, searchParams }: Props) {
   const articleUrl = (headerUrl ? decodeURIComponent(headerUrl) : null) || searchParamUrl || null;
 
 
-  const initialSidebarOpen = sidebar === 'true';
-
-  return <ProxyPageContent initialSidebarOpen={initialSidebarOpen} articleUrl={articleUrl} />;
+  return <ProxyPageContent articleUrl={articleUrl} />;
 }

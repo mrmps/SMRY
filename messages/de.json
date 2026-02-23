@@ -53,7 +53,10 @@
     "trustWorksWith": "Funktioniert auf 1.000+ Seiten",
     "trustFree": "Kostenlos nutzbar",
     "continueReading": "Weiterlesen",
-    "continueReadingProgress": "{progress}% gelesen"
+    "continueReadingProgress": "{progress}% gelesen",
+    "confidenceWorksGreat": "Funktioniert hervorragend für diese Seite",
+    "confidenceUsuallyWorks": "Funktioniert meistens für diese Seite",
+    "confidenceLimited": "Eingeschränkter Zugang für diese Seite"
   },
   "banner": {
     "heading": "Diese Paywalls überspringen:"
@@ -337,7 +340,7 @@
   },
   "updateBanner": {
     "new": "Neu:",
-    "message": "Dein Leseerlebnis hat ein großes Upgrade erhalten — neue Symbolleiste, Themes und Schriftarten",
+    "message": "Artikel exportieren nach Notion, Obsidian und Markdown — dein Wissen gehört dir",
     "changelog": "Änderungsprotokoll"
   },
   "changelog": {
@@ -350,6 +353,13 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryExport_date": "23. Februar 2026",
+    "entryExport_change1_text": "Ganze Artikel in Ihre Wissensdatenbank exportieren",
+    "entryExport_change1_detail": "Speichern Sie jeden Artikel mit einem Klick in Notion, Obsidian oder Roam Research — komplett mit Titel, Autor, Datum und Volltext. Ihr Lesestoff bleibt nie wieder in einem Browser-Tab gefangen.",
+    "entryExport_change2_text": "Als Markdown oder JSON herunterladen",
+    "entryExport_change2_detail": "Exportieren Sie Artikel als saubere Markdown-Dateien oder strukturiertes JSON für Ihre eigenen Tools und Workflows. Obsidian-Exporte enthalten YAML-Frontmatter, Roam-Exporte verwenden native [[Seitenlinks]] und Attribute.",
+    "entryExport_change3_text": "Kopieren oder herunterladen — Ihre Wahl",
+    "entryExport_change3_detail": "Jedes Format unterstützt sowohl Zwischenablage-Kopie als auch Datei-Download. Direkt in Ihre App einfügen oder für später speichern — erreichbar über das Teilen-Menü bei jedem Artikel.",
     "entryHighlights_date": "21. Februar 2026",
     "entryHighlights_change1_text": "Jeden Artikel hervorheben und annotieren",
     "entryHighlights_change1_detail": "Wählen Sie beliebigen Text aus, um ihn sofort in einer von 5 Farben hervorzuheben. Fügen Sie Notizen hinzu, ändern Sie Farben oder löschen Sie — Ihre Hervorhebungen bleiben genau dort, wo Sie sie hinterlassen haben, auch nach dem Schließen der Seite.",

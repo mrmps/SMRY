@@ -1030,6 +1030,21 @@ function HistoryContent() {
     new Set()
   );
 
+  // Progressive loading — show PAGE_SIZE items initially, load more on demand
+  const PAGE_SIZE = 30;
+  const [visibleState, setVisibleState] = useState({ count: PAGE_SIZE, query: "" });
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when search changes (derived state pattern)
+  const visibleCount = visibleState.query === searchQuery ? visibleState.count : PAGE_SIZE;
+  const setVisibleCount = useCallback((value: number | ((prev: number) => number)) => {
+    setVisibleState((prev) => {
+      const currentCount = prev.query === searchQuery ? prev.count : PAGE_SIZE;
+      const nextCount = typeof value === "function" ? value(currentCount) : value;
+      return { count: nextCount, query: searchQuery };
+    });
+  }, [searchQuery]);
+
   // Filter history based on search
   const filteredHistory = useMemo(() => {
     if (!searchQuery.trim()) return history;
@@ -1042,15 +1057,39 @@ function HistoryContent() {
     );
   }, [history, searchQuery]);
 
-  // Group items
+  // Paginated subset — only render up to visibleCount items
+  const paginatedHistory = useMemo(
+    () => filteredHistory.slice(0, visibleCount),
+    [filteredHistory, visibleCount]
+  );
+  const hasMore = visibleCount < filteredHistory.length;
+
+  // Group items (from paginated subset)
   const groupedByDate = useMemo(
-    () => groupByDate(filteredHistory),
-    [filteredHistory]
+    () => groupByDate(paginatedHistory),
+    [paginatedHistory]
   );
   const groupedByDomain = useMemo(
-    () => groupByDomain(filteredHistory),
-    [filteredHistory]
+    () => groupByDomain(paginatedHistory),
+    [paginatedHistory]
   );
+
+  // Auto-load more when scrolling near bottom
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   const handleClearSearch = useCallback(() => setSearchQuery(""), []);
 
@@ -1075,12 +1114,12 @@ function HistoryContent() {
 
   // Build navigation list that matches rendered order
   const navigationItems = useMemo(() => {
-    if (viewMode === "grid") return filteredHistory;
+    if (viewMode === "grid") return paginatedHistory;
     if (grouping === "domain") {
       return Array.from(groupedByDomain.values()).flatMap(({ items }) => items);
     }
     return Array.from(groupedByDate.values()).flatMap((items) => items);
-  }, [filteredHistory, groupedByDate, groupedByDomain, grouping, viewMode]);
+  }, [paginatedHistory, groupedByDate, groupedByDomain, grouping, viewMode]);
 
   // Keyboard navigation
   useKeyboardNavigation(
@@ -1160,7 +1199,7 @@ function HistoryContent() {
         <NoSearchResults query={searchQuery} />
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {filteredHistory.map((item) => (
+          {paginatedHistory.map((item) => (
             <HistoryItemCard
               key={item.id}
               item={item}
@@ -1230,6 +1269,18 @@ function HistoryContent() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Load more sentinel — auto-triggers via IntersectionObserver */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex items-center justify-center py-6">
+          <button
+            onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Show more ({filteredHistory.length - visibleCount} remaining)
+          </button>
         </div>
       )}
 
