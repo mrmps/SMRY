@@ -9,7 +9,7 @@
  * Modeled on the ClickHouse acquireQuerySlot/releaseQuerySlot pattern.
  */
 
-let maxConcurrentFetches = 20;
+let maxConcurrentFetches = 50;
 let slotTimeoutMs = 30_000;
 let activeFetches = 0;
 
@@ -94,6 +94,6 @@ export function configureFetchLimiter(opts: {
 export function _resetForTests(): void {
   activeFetches = 0;
   fetchQueue.length = 0;
-  maxConcurrentFetches = 20;
+  maxConcurrentFetches = 50;
   slotTimeoutMs = 30_000;
 }

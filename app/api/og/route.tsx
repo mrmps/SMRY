@@ -25,35 +25,40 @@ export async function GET(request: NextRequest) {
       hostname = parsedUrl.hostname.replace("www.", "");
       siteName = hostname;
 
-      // If no title or image provided, try to fetch article data
+      // If no title or image provided, try lightweight metadata endpoint
+      // Uses Redis-only lookup (~1ms), no concurrency slot, ~200 bytes response
       if (!titleParam || !imageParam) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_URL || "https://smry.ai";
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
         try {
+          const metaStart = Date.now();
           const response = await fetch(
-            `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(url)}`,
-            {
-              signal: controller.signal,
-            }
+            `${apiBaseUrl}/api/article/meta?url=${encodeURIComponent(url)}`,
+            { signal: controller.signal }
           );
           clearTimeout(timeoutId);
 
           if (response.ok) {
             const data = await response.json();
-            if (data.article?.title && !titleParam) {
-              title = data.article.title;
+            const meta = data.meta;
+            if (meta?.title && !titleParam) {
+              title = meta.title;
             }
-            if (data.article?.siteName) {
-              siteName = data.article.siteName;
+            if (meta?.siteName) {
+              siteName = meta.siteName;
             }
-            if (data.article?.image && !imageParam) {
-              articleImage = data.article.image;
+            if (meta?.image && !imageParam) {
+              articleImage = meta.image;
             }
+            console.log(`[og] meta hit hostname=${hostname} source=${data.source} duration=${Date.now() - metaStart}ms`);
+          } else {
+            console.log(`[og] meta miss hostname=${hostname} status=${response.status} duration=${Date.now() - metaStart}ms`);
           }
-        } catch {
+        } catch (err) {
           clearTimeout(timeoutId);
+          console.log(`[og] meta error hostname=${hostname} error=${err instanceof Error ? err.message : String(err)}`);
         }
       }
     } catch {
@@ -71,6 +76,29 @@ export async function GET(request: NextRequest) {
   // Also sanitize siteName and hostname for the same reason
   siteName = siteName.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F]/g, ' ').replace(/\s{2,}/g, ' ').trim() || "smry.ai";
   hostname = hostname.replace(/[^\u0000-\u024F\u1E00-\u1EFF\u2000-\u206F]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
+  // Sanitize articleImage URL — non-ASCII chars in URLs crash ImageResponse
+  // with "Cannot convert argument to a ByteString". Validate it's a proper http(s) URL
+  // and use the encoded href (new URL() percent-encodes non-ASCII path segments).
+  if (articleImage) {
+    const originalImage = articleImage;
+    try {
+      const imgUrl = new URL(articleImage);
+      if (imgUrl.protocol !== 'http:' && imgUrl.protocol !== 'https:') {
+        articleImage = "";
+        console.log(`[og] image dropped: bad protocol="${imgUrl.protocol}" hostname=${hostname}`);
+      } else {
+        // Use encoded URL — this percent-encodes any CJK/non-ASCII chars in the path
+        articleImage = imgUrl.href;
+        if (articleImage !== originalImage) {
+          console.log(`[og] image re-encoded hostname=${hostname}`);
+        }
+      }
+    } catch {
+      articleImage = ""; // Invalid URL (e.g., relative path), skip image
+      console.log(`[og] image dropped: invalid URL hostname=${hostname} url=${originalImage.slice(0, 100)}`);
+    }
+  }
 
   // Truncate title if too long
   if (title.length > 80) {

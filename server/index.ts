@@ -37,8 +37,8 @@ const app = new Elysia({ adapter: node() })
   }))
   // Security headers to prevent clickjacking and other attacks
   .onBeforeHandle(({ set }) => {
-    set.headers["X-Frame-Options"] = "DENY";
-    set.headers["Content-Security-Policy"] = "frame-ancestors 'none'";
+    set.headers["X-Frame-Options"] = "SAMEORIGIN";
+    set.headers["Content-Security-Policy"] = "frame-ancestors 'self'";
     set.headers["X-Content-Type-Options"] = "nosniff";
     set.headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
   })
@@ -94,6 +94,16 @@ const app = new Elysia({ adapter: node() })
   .use(gravityRoutes)
   .use(highlightsRoutes)
   .use(premiumRoutes)
+  // Deprecated endpoint stubs — return 410 Gone to signal permanent removal.
+  // Stops 404 floods from old client code, cached service workers, and crawlers.
+  // Log at warn level to track how often they're still hit (should decrease over time).
+  .get("/api/adtrack", ({ set }) => { console.warn("[deprecated] GET /api/adtrack"); set.status = 410; return { status: "gone" }; })
+  .post("/api/adtrack", ({ set }) => { console.warn("[deprecated] POST /api/adtrack"); set.status = 410; return { status: "gone" }; })
+  .get("/api/gravity-ad", ({ set }) => { console.warn("[deprecated] GET /api/gravity-ad"); set.status = 410; return { status: "gone" }; })
+  .get("/api/summarize", ({ set }) => { console.warn("[deprecated] GET /api/summarize"); set.status = 410; return { status: "gone" }; })
+  .get("/api/jina", ({ set }) => { console.warn("[deprecated] GET /api/jina"); set.status = 410; return { status: "gone" }; })
+  .get("/api/context", ({ set }) => { console.warn("[deprecated] GET /api/context"); set.status = 410; return { status: "gone" }; })
+  .post("/api/context", ({ set }) => { console.warn("[deprecated] POST /api/context"); set.status = 410; return { status: "gone" }; })
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
