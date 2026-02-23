@@ -177,8 +177,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
       tts.stop();
       setTTSOpen(false);
     } else {
-      setTTSOpen(true);
-      tts.play();
+      setTTSOpen((prev) => !prev);
     }
   }, [tts]);
 
@@ -932,9 +931,9 @@ export function ProxyContent({ url }: ProxyContentProps) {
                   isTTSLoading={tts.isLoading}
                 />
 
-                {/* TTS Player — fixed bottom-left when active */}
+                {/* TTS Player — fixed bottom-center when active */}
                 {ttsOpen && (
-                  <div className="fixed bottom-4 left-4 z-40 w-[320px]">
+                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[420px] max-w-[calc(100vw-2rem)]">
                     <TTSPlayer
                       isPlaying={tts.isPlaying}
                       isPaused={tts.isPaused}
@@ -947,6 +946,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
                       canUse={tts.canUse}
                       usageCount={tts.usageCount}
                       error={tts.error}
+                      articleTitle={articleTitle}
                       onPlay={tts.play}
                       onPause={tts.pause}
                       onResume={tts.resume}
@@ -1191,7 +1191,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
               {/* TTS Player — above bottom bar on mobile */}
               {ttsOpen && (
                 <div
-                  className="fixed left-2 right-2 z-40"
+                  className="fixed left-3 right-3 z-40"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
                 >
                   <TTSPlayer
@@ -1206,6 +1206,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
                     canUse={tts.canUse}
                     usageCount={tts.usageCount}
                     error={tts.error}
+                    articleTitle={articleTitle}
                     onPlay={tts.play}
                     onPause={tts.pause}
                     onResume={tts.resume}

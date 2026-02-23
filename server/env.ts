@@ -59,9 +59,8 @@ export const env = createEnv({
     MAX_TTS_PER_USER: z.coerce.number().optional(),
     TTS_SLOT_TIMEOUT_MS: z.coerce.number().optional(),
 
-    // Azure Speech Service (optional — TTS disabled when absent)
-    AZURE_SPEECH_KEY: z.string().min(1).optional(),
-    AZURE_SPEECH_REGION: z.string().min(1).optional(),
+    // Cartesia TTS (optional — TTS disabled when absent)
+    CARTESIA_API_KEY: z.string().min(1).optional(),
 
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal"])

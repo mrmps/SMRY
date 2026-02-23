@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 
-// Free user monthly limit
+// Free user daily limit
 const FREE_TTS_LIMIT = 3;
 
 interface WordBoundary {
@@ -41,14 +41,14 @@ interface UseTTSReturn {
   error: string | null;
 }
 
-function getMonthKey(): string {
+function getDayKey(): string {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 function getLocalUsage(): string[] {
   try {
-    const key = `tts-articles-${getMonthKey()}`;
+    const key = `tts-usage-${getDayKey()}`;
     const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : [];
   } catch {
@@ -58,7 +58,7 @@ function getLocalUsage(): string[] {
 
 function addLocalUsage(articleUrl: string): void {
   try {
-    const key = `tts-articles-${getMonthKey()}`;
+    const key = `tts-usage-${getDayKey()}`;
     const urls = getLocalUsage();
     if (!urls.includes(articleUrl)) {
       urls.push(articleUrl);
@@ -78,7 +78,7 @@ export function useTTS(
 
   const [status, setStatus] = useState<TTSStatus>("idle");
   const [rate, setRateState] = useState(1);
-  const [voice, setVoiceState] = useState("en-US-AriaNeural");
+  const [voice, setVoiceState] = useState("79a125e8-cd45-4c13-8a67-188112f4dd22");
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [currentWord, setCurrentWord] = useState("");
   const [progress, setProgress] = useState(0);
@@ -95,7 +95,7 @@ export function useTTS(
   const animFrameRef = useRef<number>(0);
   const lastWordIdxRef = useRef(-1); // Avoid redundant state updates
 
-  const canUse = process.env.NODE_ENV === "development" || isPremium || usageCount < FREE_TTS_LIMIT || getLocalUsage().includes(articleUrl);
+  const canUse = process.env.NODE_ENV === "development" || isPremium || usageCount < FREE_TTS_LIMIT;
 
   /** Clean up audio resources (blob URL, element, animation frame) */
   const cleanupAudio = useCallback(() => {
@@ -174,7 +174,7 @@ export function useTTS(
     if (status === "loading" || status === "playing") return;
 
     if (!canUse) {
-      setError("Monthly TTS limit reached. Upgrade to Premium for unlimited listening.");
+      setError("Daily TTS limit reached. Upgrade to Premium for unlimited listening.");
       return;
     }
 
@@ -202,18 +202,12 @@ export function useTTS(
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      // Convert rate number to edge-tts rate string
-      const rateStr = rate === 1 ? "+0%"
-        : rate > 1 ? `+${Math.round((rate - 1) * 100)}%`
-        : `-${Math.round((1 - rate) * 100)}%`;
-
       const response = await fetch("/api/tts", {
         method: "POST",
         headers,
         body: JSON.stringify({
           text: articleTextContent,
           voice,
-          rate: rateStr,
           articleUrl,
         }),
         signal: abortRef.current.signal,
@@ -222,7 +216,7 @@ export function useTTS(
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         if (response.status === 429) {
-          setError(data.error || "Monthly TTS limit reached. Upgrade to Premium for unlimited listening.");
+          setError(data.error || "Daily TTS limit reached. Upgrade to Premium for unlimited listening.");
           setStatus("error");
           return;
         }
@@ -281,7 +275,7 @@ export function useTTS(
       for (let i = 0; i < binaryStr.length; i++) {
         bytes[i] = binaryStr.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: "audio/mpeg" });
+      const blob = new Blob([bytes], { type: "audio/wav" });
       const audioUrl = URL.createObjectURL(blob);
       audioUrlRef.current = audioUrl;
 
@@ -325,7 +319,7 @@ export function useTTS(
       setError((err as Error).message || "TTS failed");
       setStatus("error");
     }
-  }, [articleTextContent, articleUrl, canUse, cleanupAudio, getToken, isPremium, rate, status, trackPlayback, voice]);
+  }, [articleTextContent, articleUrl, canUse, cleanupAudio, getToken, isPremium, status, trackPlayback, voice]);
 
   const pause = useCallback(() => {
     if (audioRef.current && status === "playing") {
