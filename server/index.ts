@@ -96,14 +96,12 @@ const app = new Elysia({ adapter: node() })
   .use(premiumRoutes)
   // Deprecated endpoint stubs — return 410 Gone to signal permanent removal.
   // Stops 404 floods from old client code, cached service workers, and crawlers.
-  // No logging — these are high-volume and pollute logs.
+  // NOTE: /api/context and /api/px are ACTIVE ad endpoints (in gravityRoutes) — do NOT stub them here.
   .get("/api/adtrack", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .post("/api/adtrack", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .get("/api/gravity-ad", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .get("/api/summarize", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .get("/api/jina", ({ set }) => { set.status = 410; return { status: "gone" }; })
-  .get("/api/context", ({ set }) => { set.status = 410; return { status: "gone" }; })
-  .post("/api/context", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
