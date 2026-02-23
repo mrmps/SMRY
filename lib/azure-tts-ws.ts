@@ -1,18 +1,15 @@
 /**
- * Raw WebSocket client for Edge TTS that bypasses Bun's `ws` polyfill.
+ * Azure Speech Service WebSocket client for TTS.
  *
- * Bun replaces `import { WebSocket } from "ws"` with its native WebSocket,
- * which does NOT support custom headers (Origin, User-Agent, Host).
- * Edge TTS requires these headers for authentication.
+ * Uses Azure's official Cognitive Services WebSocket API with subscription
+ * key auth. WebSocket is required (over REST) because word boundary events
+ * for text highlighting are only available via the streaming protocol.
  *
  * This module uses `node:tls` to make a raw TLS connection, performs the
  * HTTP/1.1 WebSocket upgrade handshake with custom headers, and implements
  * minimal WebSocket framing (RFC 6455) for text/binary messages.
  *
- * Also implements Microsoft's Sec-MS-GEC DRM token (SHA-256 hash based on
- * Windows file time ticks + trusted client token), required since mid-2024.
- *
- * Only implements what Edge TTS needs:
+ * Only implements what Azure Speech TTS needs:
  * - Send text frames (config + SSML)
  * - Receive text frames (metadata, turn.end)
  * - Receive binary frames (audio chunks)
@@ -20,68 +17,69 @@
  */
 
 import { connect as tlsConnect, type TLSSocket } from "node:tls";
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
 
-// --- Edge TTS DRM constants ---
-const TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
-const WIN_EPOCH = BigInt(11644473600); // seconds between 1601-01-01 and 1970-01-01
-const CHROMIUM_FULL_VERSION = "143.0.3650.75";
-const CHROMIUM_MAJOR_VERSION = "143";
-const SEC_MS_GEC_VERSION = `1-${CHROMIUM_FULL_VERSION}`;
+// --- Azure Speech config (set once at startup via initAzureTTS) ---
 
-const BASE_URL = "speech.platform.bing.com/consumer/speech/synthesize/readaloud";
-const WS_URL = `wss://${BASE_URL}/edge/v1?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}`;
-const VOICE_LIST_URL = `https://${BASE_URL}/voices/list?trustedclienttoken=${TRUSTED_CLIENT_TOKEN}`;
+interface AzureSpeechConfig {
+  key: string;
+  region: string;
+}
 
-// Clock skew correction (updated on 403 responses)
-let clockSkewSeconds = 0;
+let config: AzureSpeechConfig | null = null;
 
 /**
- * Generate the Sec-MS-GEC token required by Microsoft Edge TTS.
- * Algorithm: SHA-256(windowsFileTicks + trustedClientToken), uppercase hex.
- * Ticks are rounded down to nearest 5-minute boundary.
+ * Initialize Azure TTS with validated env vars. Must be called once at startup.
+ * Throws if key or region is missing.
  */
-function generateSecMsGec(): string {
-  const nowSeconds = BigInt(Math.floor(Date.now() / 1000 + clockSkewSeconds));
-  let ticks = nowSeconds + WIN_EPOCH;
-  ticks -= ticks % BigInt(300); // Round to 5-minute boundary
-  ticks *= BigInt(10000000); // Convert to 100-nanosecond intervals
-
-  const strToHash = `${ticks}${TRUSTED_CLIENT_TOKEN}`;
-  return createHash("sha256").update(strToHash, "ascii").digest("hex").toUpperCase();
+export function initAzureTTS(key: string, region: string): void {
+  config = { key, region };
 }
 
-/** Build the full WebSocket URL with DRM query parameters. */
-export function buildEdgeTTSUrl(connectionId: string): string {
-  const secMsGec = generateSecMsGec();
-  return `${WS_URL}&ConnectionId=${connectionId}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}`;
+function getConfig(): AzureSpeechConfig {
+  if (!config) {
+    throw new Error("Azure TTS not initialized — call initAzureTTS() at startup");
+  }
+  return config;
 }
 
-/** Build the voice list URL with DRM query parameters. */
+// --- Azure Speech URL/header builders ---
+
+/** Build the Azure TTS WebSocket URL. */
+export function buildTTSUrl(connectionId: string): string {
+  const { region } = getConfig();
+  return `wss://${region}.tts.speech.microsoft.com/cognitiveservices/websocket/v1?ConnectionId=${connectionId}`;
+}
+
+/** Get Azure TTS auth headers. */
+export function getTTSHeaders(): Record<string, string> {
+  const { key } = getConfig();
+  return { "Ocp-Apim-Subscription-Key": key };
+}
+
+/** Get the Host header value for the TTS WebSocket. */
+export function getTTSHost(): string {
+  const { region } = getConfig();
+  return `${region}.tts.speech.microsoft.com`;
+}
+
+/** Get the Origin header value for the TTS WebSocket. */
+export function getTTSOrigin(): string {
+  const { region } = getConfig();
+  return `https://${region}.tts.speech.microsoft.com`;
+}
+
+/** Build the Azure voice list REST URL. */
 export function buildVoiceListUrl(): string {
-  const secMsGec = generateSecMsGec();
-  return `${VOICE_LIST_URL}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}`;
+  const { region } = getConfig();
+  return `https://${region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
 }
 
-/** Get standard headers for Edge TTS connections. */
-export function getEdgeTTSHeaders(): Record<string, string> {
-  const muid = randomBytes(16).toString("hex").toUpperCase();
-  return {
-    "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_MAJOR_VERSION}.0.0.0 Safari/537.36 Edg/${CHROMIUM_MAJOR_VERSION}.0.0.0`,
-    "Accept-Encoding": "gzip, deflate, br, zstd",
-    "Accept-Language": "en-US,en;q=0.9",
-    Pragma: "no-cache",
-    "Cache-Control": "no-cache",
-    Cookie: `MUID=${muid}`,
-  };
-}
-
-/** Update clock skew from a server Date header (call after 403 response). */
-export function updateClockSkew(serverDateHeader: string): void {
-  const serverTime = new Date(serverDateHeader).getTime() / 1000;
-  const clientTime = Date.now() / 1000 + clockSkewSeconds;
-  clockSkewSeconds += serverTime - clientTime;
+/** Get auth headers for the voice list fetch. */
+export function getVoiceListHeaders(): Record<string, string> {
+  const { key } = getConfig();
+  return { "Ocp-Apim-Subscription-Key": key };
 }
 
 // --- WebSocket opcodes ---
@@ -92,13 +90,21 @@ const OP_CLOSE = 0x8;
 const OP_PING = 0x9;
 const OP_PONG = 0xa;
 
-interface EdgeWSOptions {
+interface WSOptions {
   host: string;
   origin: string;
   headers?: Record<string, string>;
 }
 
-export class EdgeTTSWebSocket extends EventEmitter {
+/**
+ * Raw TLS WebSocket client for Azure Speech Service.
+ *
+ * Bun's native WebSocket does NOT support custom headers (Origin, Host),
+ * which Azure requires for auth. This class uses `node:tls` directly to
+ * perform the HTTP/1.1 WebSocket upgrade with custom headers and implements
+ * minimal RFC 6455 framing.
+ */
+export class AzureTTSWebSocket extends EventEmitter {
   private socket: TLSSocket | null = null;
   private buffer: Buffer = Buffer.alloc(0);
   private upgraded = false;
@@ -108,7 +114,7 @@ export class EdgeTTSWebSocket extends EventEmitter {
   private fragmentOpcode = 0;
   private fragments: Buffer[] = [];
 
-  constructor(url: string, options: EdgeWSOptions) {
+  constructor(url: string, options: WSOptions) {
     super();
 
     const parsed = new URL(url);

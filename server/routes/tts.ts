@@ -1,7 +1,7 @@
 /**
  * TTS Routes - POST /api/tts, GET /api/tts/voices
  *
- * /api/tts - Generates speech audio from text using Microsoft Edge TTS (free).
+ * /api/tts - Generates speech audio via Azure Speech Service WebSocket API.
  *            Streams SSE with audio chunks (base64 mp3) and word boundary events.
  * /api/tts/voices - Returns available voice list.
  *
@@ -19,11 +19,15 @@
 
 import { Elysia, t } from "elysia";
 import {
-  EdgeTTSWebSocket,
-  buildEdgeTTSUrl,
+  AzureTTSWebSocket,
+  initAzureTTS,
+  buildTTSUrl,
+  getTTSHeaders,
+  getTTSHost,
+  getTTSOrigin,
   buildVoiceListUrl,
-  getEdgeTTSHeaders,
-} from "../../lib/edge-tts-ws";
+  getVoiceListHeaders,
+} from "../../lib/azure-tts-ws";
 import { getAuthInfo } from "../middleware/auth";
 import { createLogger } from "../../lib/logger";
 import { startMemoryTrack } from "../../lib/memory-tracker";
@@ -40,7 +44,8 @@ const isDev = env.NODE_ENV === "development";
 
 const logger = createLogger("api:tts");
 
-// Edge TTS URLs and DRM tokens are managed by lib/edge-tts-ws.ts
+// Initialize Azure Speech Service with validated env vars
+initAzureTTS(env.AZURE_SPEECH_KEY, env.AZURE_SPEECH_REGION);
 
 // Free user monthly limit
 const FREE_TTS_LIMIT = 3;
@@ -189,7 +194,7 @@ async function checkTtsUsage(
 }
 
 /**
- * Generate a single chunk of TTS audio via Edge TTS WebSocket.
+ * Generate a single chunk of TTS audio via Azure Speech WebSocket.
  * AbortSignal support for cleanup when client disconnects.
  */
 function generateChunk(
@@ -232,10 +237,10 @@ function generateChunk(
     signal?.addEventListener("abort", onAbort, { once: true });
 
     const connectionId = uuid();
-    const ws = new EdgeTTSWebSocket(buildEdgeTTSUrl(connectionId), {
-      host: "speech.platform.bing.com",
-      origin: "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold",
-      headers: getEdgeTTSHeaders(),
+    const ws = new AzureTTSWebSocket(buildTTSUrl(connectionId), {
+      host: getTTSHost(),
+      origin: getTTSOrigin(),
+      headers: getTTSHeaders(),
     });
 
     const audioData: Buffer[] = [];
@@ -590,11 +595,12 @@ export const ttsRoutes = new Elysia()
 
     try {
       const resp = await fetch(buildVoiceListUrl(), {
+        headers: getVoiceListHeaders(),
         signal: AbortSignal.timeout(10_000),
       });
       const voices = (await resp.json()) as Array<{
         ShortName: string;
-        FriendlyName: string;
+        DisplayName: string;
         Gender: string;
         Locale: string;
       }>;
@@ -603,7 +609,7 @@ export const ttsRoutes = new Elysia()
         .filter((v) => v.Locale.startsWith("en-"))
         .map((v) => ({
           id: v.ShortName,
-          name: v.FriendlyName.replace("Microsoft ", "").replace(" Online (Natural)", ""),
+          name: v.DisplayName.replace("Microsoft ", ""),
           gender: v.Gender,
           locale: v.Locale,
         }));
