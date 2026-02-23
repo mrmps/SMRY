@@ -108,9 +108,42 @@ export async function getAuthInfo(request: Request): Promise<AuthInfo> {
 
     if (!token) return { isPremium: false, userId: null };
 
-    const result = await verifyToken(token, {
+    // Build verify options. When CLERK_JWT_KEY is set, verifyToken skips JWKS
+    // fetching entirely and verifies the signature locally — eliminates kid
+    // mismatch errors from key rotation and network failures.
+    const verifyOpts: Parameters<typeof verifyToken>[1] = {
       secretKey: env.CLERK_SECRET_KEY,
-    });
+      ...(env.CLERK_JWT_KEY ? { jwtKey: env.CLERK_JWT_KEY } : {}),
+    };
+
+    let result: Awaited<ReturnType<typeof verifyToken>>;
+    try {
+      result = await verifyToken(token, verifyOpts);
+    } catch (firstError) {
+      // If kid mismatch and we're using JWKS (no jwtKey), retry with fresh JWKS.
+      // Clerk SDK already retries on unknown kid, but this handles edge cases
+      // where the cache was populated with stale keys from a previous rotation.
+      const isKidMismatch = firstError instanceof Error &&
+        firstError.message.includes("kid");
+      if (isKidMismatch && !env.CLERK_JWT_KEY) {
+        console.warn(`[auth] JWK kid mismatch, retrying with fresh JWKS: ${firstError.message}`);
+        try {
+          result = await verifyToken(token, {
+            ...verifyOpts,
+            skipJwksCache: true,
+          });
+        } catch (retryError) {
+          console.error(`[auth] JWK retry also failed: ${retryError instanceof Error ? retryError.message : String(retryError)}`);
+          return { isPremium: false, userId: null };
+        }
+      } else {
+        // Non-kid error or we're using jwtKey — don't retry
+        if (env.NODE_ENV === "development") {
+          console.error("[auth] verifyToken error:", firstError);
+        }
+        return { isPremium: false, userId: null };
+      }
+    }
 
     if (!result) return { isPremium: false, userId: null };
 
@@ -128,7 +161,11 @@ export async function getAuthInfo(request: Request): Promise<AuthInfo> {
 
     return { isPremium, userId };
   } catch (error) {
-    if (env.NODE_ENV === "development") {
+    // Log auth errors in production too (kid mismatch, network failures, etc.)
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("kid") || msg.includes("JWKS") || msg.includes("signing key")) {
+      console.error(`[auth] Clerk key error (possible key rotation or env mismatch): ${msg}`);
+    } else if (env.NODE_ENV === "development") {
       console.error("[auth] Error:", error);
     }
     return { isPremium: false, userId: null };

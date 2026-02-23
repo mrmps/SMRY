@@ -10,6 +10,10 @@ export const env = createEnv({
   server: {
     // Auth
     CLERK_SECRET_KEY: z.string().min(1),
+    // Optional: PEM public key from Clerk Dashboard for networkless JWT verification.
+    // Eliminates JWKS fetch failures and kid mismatch issues from key rotation.
+    // Set via Clerk Dashboard > API Keys > Show JWT Public Key.
+    CLERK_JWT_KEY: z.string().optional(),
 
     // AI/API
     OPENROUTER_API_KEY: z.string().min(1),

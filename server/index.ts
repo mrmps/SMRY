@@ -96,14 +96,14 @@ const app = new Elysia({ adapter: node() })
   .use(premiumRoutes)
   // Deprecated endpoint stubs — return 410 Gone to signal permanent removal.
   // Stops 404 floods from old client code, cached service workers, and crawlers.
-  // Log at warn level to track how often they're still hit (should decrease over time).
-  .get("/api/adtrack", ({ set }) => { console.warn("[deprecated] GET /api/adtrack"); set.status = 410; return { status: "gone" }; })
-  .post("/api/adtrack", ({ set }) => { console.warn("[deprecated] POST /api/adtrack"); set.status = 410; return { status: "gone" }; })
-  .get("/api/gravity-ad", ({ set }) => { console.warn("[deprecated] GET /api/gravity-ad"); set.status = 410; return { status: "gone" }; })
-  .get("/api/summarize", ({ set }) => { console.warn("[deprecated] GET /api/summarize"); set.status = 410; return { status: "gone" }; })
-  .get("/api/jina", ({ set }) => { console.warn("[deprecated] GET /api/jina"); set.status = 410; return { status: "gone" }; })
-  .get("/api/context", ({ set }) => { console.warn("[deprecated] GET /api/context"); set.status = 410; return { status: "gone" }; })
-  .post("/api/context", ({ set }) => { console.warn("[deprecated] POST /api/context"); set.status = 410; return { status: "gone" }; })
+  // No logging — these are high-volume and pollute logs.
+  .get("/api/adtrack", ({ set }) => { set.status = 410; return { status: "gone" }; })
+  .post("/api/adtrack", ({ set }) => { set.status = 410; return { status: "gone" }; })
+  .get("/api/gravity-ad", ({ set }) => { set.status = 410; return { status: "gone" }; })
+  .get("/api/summarize", ({ set }) => { set.status = 410; return { status: "gone" }; })
+  .get("/api/jina", ({ set }) => { set.status = 410; return { status: "gone" }; })
+  .get("/api/context", ({ set }) => { set.status = 410; return { status: "gone" }; })
+  .post("/api/context", ({ set }) => { set.status = 410; return { status: "gone" }; })
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {
