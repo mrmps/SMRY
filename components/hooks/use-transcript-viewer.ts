@@ -180,6 +180,11 @@ function useTranscriptViewer({
   const rafRef = useRef<number | null>(null)
   const handleTimeUpdateRef = useRef<(time: number) => void>(() => {})
   const onDurationChangeRef = useRef<(duration: number) => void>(() => {})
+  const onPlayRef = useRef<(() => void) | undefined>(onPlay)
+  const onPauseRef = useRef<(() => void) | undefined>(onPause)
+  const onEndedRef = useRef<(() => void) | undefined>(onEnded)
+  const onTimeUpdateCallbackRef = useRef<((time: number) => void) | undefined>(onTimeUpdate)
+  const seekTargetRef = useRef<number | null>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isScrubbing, setIsScrubbing] = useState(false)
@@ -205,6 +210,10 @@ function useTranscriptViewer({
     }
     return 0
   }, [alignment, words])
+
+  // Content end time from alignment — used to auto-end and cap displayed duration
+  const contentEndRef = useRef(guessedDuration)
+  useEffect(() => { contentEndRef.current = guessedDuration }, [guessedDuration])
 
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(() =>
     words.length ? 0 : -1
@@ -302,6 +311,11 @@ function useTranscriptViewer({
     onDurationChangeRef.current = onDurationChange ?? (() => {})
   }, [onDurationChange])
 
+  useEffect(() => { onPlayRef.current = onPlay }, [onPlay])
+  useEffect(() => { onPauseRef.current = onPause }, [onPause])
+  useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
+  useEffect(() => { onTimeUpdateCallbackRef.current = onTimeUpdate }, [onTimeUpdate])
+
   const stopRaf = useCallback(() => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current)
@@ -318,13 +332,26 @@ function useTranscriptViewer({
         return
       }
       const time = node.currentTime
-      setCurrentTime(time)
+      const contentEnd = contentEndRef.current
+
+      setCurrentTime(contentEnd > 0 ? Math.min(time, contentEnd) : time)
       handleTimeUpdateRef.current(time)
+
+      // Auto-end when all article text has been spoken (skip trailing silence)
+      if (contentEnd > 0 && time >= contentEnd && !node.paused) {
+        node.pause()
+        onEndedRef.current?.()
+        rafRef.current = null
+        return
+      }
+
       if (Number.isFinite(node.duration) && node.duration > 0) {
         setDuration((prev) => {
           if (!prev) {
-            onDurationChangeRef.current(node.duration)
-            return node.duration
+            // Use content-based duration, not raw audio duration
+            const effective = contentEnd > 0 ? contentEnd : node.duration
+            onDurationChangeRef.current(effective)
+            return effective
           }
           return prev
         })
@@ -339,38 +366,56 @@ function useTranscriptViewer({
     if (!audio) return
 
     const syncPlayback = () => setIsPlaying(!audio.paused)
-    const syncTime = () => setCurrentTime(audio.currentTime)
-    const syncDuration = () =>
-      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
+    const syncTime = () => {
+      const contentEnd = contentEndRef.current
+      const raw = audio.currentTime
+      setCurrentTime(contentEnd > 0 ? Math.min(raw, contentEnd) : raw)
+    }
+    const syncDuration = () => {
+      const contentEnd = contentEndRef.current
+      const raw = Number.isFinite(audio.duration) ? audio.duration : 0
+      setDuration(contentEnd > 0 ? contentEnd : raw)
+    }
 
     const handlePlay = () => {
       syncPlayback()
       startRaf()
-      onPlay?.()
+      onPlayRef.current?.()
     }
     const handlePause = () => {
       syncPlayback()
       syncTime()
       stopRaf()
-      onPause?.()
+      onPauseRef.current?.()
     }
     const handleEnded = () => {
       syncPlayback()
       syncTime()
       stopRaf()
-      onEnded?.()
+      onEndedRef.current?.()
     }
     const handleTimeUpdateEvt = () => {
       syncTime()
-      onTimeUpdate?.(audio.currentTime)
+      onTimeUpdateCallbackRef.current?.(audio.currentTime)
     }
     const handleSeeked = () => {
+      if (seekTargetRef.current != null) {
+        const target = seekTargetRef.current
+        seekTargetRef.current = null
+        // Browser quirk: if audio jumped away from target, re-seek
+        if (Math.abs(audio.currentTime - target) > 0.5) {
+          audio.currentTime = target
+          return
+        }
+      }
       syncTime()
       handleTimeUpdateRef.current(audio.currentTime)
     }
     const handleDuration = () => {
       syncDuration()
-      onDurationChange?.(audio.duration)
+      const contentEnd = contentEndRef.current
+      const effective = contentEnd > 0 ? contentEnd : audio.duration
+      onDurationChangeRef.current(effective)
     }
 
     syncPlayback()
@@ -400,21 +445,13 @@ function useTranscriptViewer({
       audio.removeEventListener("durationchange", handleDuration)
       audio.removeEventListener("loadedmetadata", handleDuration)
     }
-  }, [
-    audioRef,
-    startRaf,
-    stopRaf,
-    onPlay,
-    onPause,
-    onEnded,
-    onTimeUpdate,
-    onDurationChange,
-  ])
+  }, [audioRef, startRaf, stopRaf])
 
   const seekToTime = useCallback(
     (time: number) => {
       const node = audioRef.current
       if (!node) return
+      seekTargetRef.current = time
       setCurrentTime(time)
       node.currentTime = time
       handleTimeUpdateRef.current(time)

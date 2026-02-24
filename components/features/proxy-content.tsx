@@ -6,6 +6,7 @@ import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { ArrowLeft, AiMagic, Highlighter } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 import { ArticleContent } from "@/components/article/content";
@@ -43,10 +44,12 @@ import {
   useTranscriptViewerContext,
 } from "@/components/ui/transcript-viewer";
 import { useTTSHighlight } from "@/components/hooks/use-tts-highlight";
+import { VOICE_PRESETS, getVoiceAvatarGradient } from "@/lib/elevenlabs-tts";
 import {
   Forward,
   Backward,
   X,
+  AlertTriangle,
 } from "@/components/ui/icons";
 import { type ArticleExportData } from "@/components/features/export-article";
 import {
@@ -59,7 +62,16 @@ import {
 
 const RATE_PRESETS = [0.75, 1, 1.25, 1.5, 2, 2.5];
 
-function TTSControls({ onClose }: { onClose: () => void }) {
+interface TTSControlsProps {
+  onClose: () => void;
+  voice: string;
+  onVoiceChange: (voiceId: string) => void;
+  isPremium?: boolean;
+  usageCount?: number;
+  usageLimit?: number;
+}
+
+function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0, usageLimit = 3 }: TTSControlsProps) {
   const {
     seekToTime,
     currentTime,
@@ -69,19 +81,24 @@ function TTSControls({ onClose }: { onClose: () => void }) {
 
   const [rate, setRate] = React.useState(1);
   const [showSpeed, setShowSpeed] = React.useState(false);
+  const [showVoice, setShowVoice] = React.useState(false);
   const speedRef = React.useRef<HTMLDivElement>(null);
+  const voiceRef = React.useRef<HTMLDivElement>(null);
 
-  // Close speed panel on outside click
+  // Close panels on outside click
   React.useEffect(() => {
-    if (!showSpeed) return;
+    if (!showSpeed && !showVoice) return;
     const handler = (e: MouseEvent) => {
-      if (speedRef.current && !speedRef.current.contains(e.target as Node)) {
+      if (showSpeed && speedRef.current && !speedRef.current.contains(e.target as Node)) {
         setShowSpeed(false);
+      }
+      if (showVoice && voiceRef.current && !voiceRef.current.contains(e.target as Node)) {
+        setShowVoice(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [showSpeed]);
+  }, [showSpeed, showVoice]);
 
   const handleRateChange = React.useCallback((newRate: number) => {
     setRate(newRate);
@@ -106,84 +123,176 @@ function TTSControls({ onClose }: { onClose: () => void }) {
   }, [seekToTime, currentTime]);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5">
-      {/* Speed button */}
-      <div className="relative" ref={speedRef}>
+    <div className="flex flex-col">
+      {/* Credits banner for free users — flush at top of player */}
+      {!isPremium && (
+        <div className="flex items-center gap-2 rounded-t-2xl bg-amber-500/10 border-b border-amber-500/20 px-4 py-2">
+          <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+          <span className="text-[11px] text-amber-700 dark:text-amber-400">
+            You only have <span className="font-semibold">{Math.max(0, usageLimit - usageCount)}</span> credit{usageLimit - usageCount !== 1 ? "s" : ""} remaining.
+          </span>
+          <Link href="/pricing" className="text-[11px] font-medium text-amber-600 dark:text-amber-300 hover:underline ml-auto shrink-0 whitespace-nowrap">
+            Subscribe now
+          </Link>
+        </div>
+      )}
+
+      {/* Header row: label + close button */}
+      <div className={cn("flex items-center justify-between px-3 pb-1", isPremium ? "pt-2.5" : "pt-1.5")}>
+        <span className="text-[11px] font-medium text-muted-foreground tracking-wide uppercase">Now Playing</span>
         <button
-          onClick={() => setShowSpeed((p) => !p)}
-          className={cn(
-            "size-9 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors",
-            "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
-            showSpeed && "bg-accent text-foreground",
-          )}
+          onClick={onClose}
+          className="size-7 flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent transition-colors"
+          aria-label="Close"
         >
-          {rate}x
+          <X className="size-3.5" />
         </button>
-        {showSpeed && (
-          <div className="absolute bottom-full mb-2 left-0 z-50 bg-popover border rounded-xl shadow-2xl p-3 w-[200px]">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <button
-                onClick={() => handleRateChange(Math.max(0.5, Math.round((rate - 0.25) * 100) / 100))}
-                className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
-              >−</button>
-              <span className="text-lg font-bold tabular-nums min-w-[40px] text-center">{rate}×</span>
-              <button
-                onClick={() => handleRateChange(Math.min(3, Math.round((rate + 0.25) * 100) / 100))}
-                className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
-              >+</button>
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {RATE_PRESETS.map((r) => (
+      </div>
+
+      {/* Controls row */}
+      <div className="flex items-center gap-2 px-3 pb-2.5">
+        {/* Voice picker */}
+        <div className="relative" ref={voiceRef}>
+          <button
+            onClick={() => { setShowVoice((p) => !p); setShowSpeed(false); }}
+            className={cn(
+              "h-9 px-2.5 flex items-center gap-1.5 rounded-full text-xs font-medium transition-colors truncate max-w-[90px]",
+              "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+              showVoice && "bg-accent text-foreground",
+            )}
+            aria-label="Change voice"
+          >
+            <span
+              className="size-[18px] rounded-full shrink-0"
+              style={{ background: getVoiceAvatarGradient(voice) }}
+            />
+            {VOICE_PRESETS.find((v) => v.id === voice)?.name ?? "Voice"}
+          </button>
+          {showVoice && (
+            <div className="absolute bottom-full mb-2 left-0 z-50 bg-popover border rounded-xl shadow-2xl p-2 w-[240px] max-h-[280px] overflow-y-auto scrollbar-hide">
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 py-1.5">Female</div>
+              {VOICE_PRESETS.filter((v) => v.gender === "female").map((v) => (
                 <button
-                  key={r}
-                  onClick={() => handleRateChange(r)}
+                  key={v.id}
+                  onClick={() => { onVoiceChange(v.id); setShowVoice(false); }}
                   className={cn(
-                    "h-7 rounded-md text-xs font-medium tabular-nums transition-colors",
-                    r === rate
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/30"
-                      : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+                    "w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-left transition-colors",
+                    v.id === voice
+                      ? "bg-primary/15 text-primary"
+                      : "hover:bg-accent hover:text-foreground text-foreground",
                   )}
                 >
-                  {r}×
+                  <span
+                    className="size-7 rounded-full shrink-0"
+                    style={{ background: getVoiceAvatarGradient(v.id) }}
+                  />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium truncate">{v.name}</span>
+                      {v.id === voice && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground truncate">{v.accent} · {v.description}</span>
+                  </div>
+                </button>
+              ))}
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 py-1.5 mt-2">Male</div>
+              {VOICE_PRESETS.filter((v) => v.gender === "male").map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => { onVoiceChange(v.id); setShowVoice(false); }}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-left transition-colors",
+                    v.id === voice
+                      ? "bg-primary/15 text-primary"
+                      : "hover:bg-accent hover:text-foreground text-foreground",
+                  )}
+                >
+                  <span
+                    className="size-7 rounded-full shrink-0"
+                    style={{ background: getVoiceAvatarGradient(v.id) }}
+                  />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium truncate">{v.name}</span>
+                      {v.id === voice && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground truncate">{v.accent} · {v.description}</span>
+                  </div>
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Skip backward */}
+        <button
+          onClick={skipBackward}
+          className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          aria-label="Skip backward 10 seconds"
+        >
+          <Backward className="size-4" />
+        </button>
+
+        {/* Play/Pause */}
+        <TranscriptViewerPlayPauseButton size="icon" variant="ghost" className="size-10" />
+
+        {/* Skip forward */}
+        <button
+          onClick={skipForward}
+          className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          aria-label="Skip forward 10 seconds"
+        >
+          <Forward className="size-4" />
+        </button>
+
+        {/* Scrub bar */}
+        <TranscriptViewerScrubBar className="flex-1" />
+
+        {/* Speed button */}
+        <div className="relative" ref={speedRef}>
+          <button
+            onClick={() => { setShowSpeed((p) => !p); setShowVoice(false); }}
+            className={cn(
+              "size-9 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors",
+              "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+              showSpeed && "bg-accent text-foreground",
+            )}
+          >
+            {rate}x
+          </button>
+          {showSpeed && (
+            <div className="absolute bottom-full mb-2 right-0 z-50 bg-popover border rounded-xl shadow-2xl p-3 w-[200px]">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <button
+                  onClick={() => handleRateChange(Math.max(0.5, Math.round((rate - 0.25) * 100) / 100))}
+                  className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
+                >−</button>
+                <span className="text-lg font-bold tabular-nums min-w-[40px] text-center">{rate}×</span>
+                <button
+                  onClick={() => handleRateChange(Math.min(3, Math.round((rate + 0.25) * 100) / 100))}
+                  className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
+                >+</button>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {RATE_PRESETS.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => handleRateChange(r)}
+                    className={cn(
+                      "h-7 rounded-md text-xs font-medium tabular-nums transition-colors",
+                      r === rate
+                        ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                        : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    {r}×
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Skip backward */}
-      <button
-        onClick={skipBackward}
-        className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        aria-label="Skip backward 10 seconds"
-      >
-        <Backward className="size-4" />
-      </button>
-
-      {/* Play/Pause */}
-      <TranscriptViewerPlayPauseButton size="icon" variant="ghost" className="size-10" />
-
-      {/* Skip forward */}
-      <button
-        onClick={skipForward}
-        className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        aria-label="Skip forward 10 seconds"
-      >
-        <Forward className="size-4" />
-      </button>
-
-      {/* Scrub bar */}
-      <TranscriptViewerScrubBar className="flex-1" />
-
-      {/* Close */}
-      <button
-        onClick={onClose}
-        className="size-9 flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent transition-colors"
-        aria-label="Close"
-      >
-        <X className="size-4" />
-      </button>
     </div>
   );
 }
@@ -196,6 +305,66 @@ function TTSArticleHighlight() {
   const { currentWordIndex, seekToTime, play, words } = useTranscriptViewerContext();
   useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play, words });
   return null;
+}
+
+/** Animated waveform bars for TTS loading state */
+function TTSWaveAnimation() {
+  return (
+    <div className="flex items-center justify-center gap-[2.5px] h-8">
+      {Array.from({ length: 20 }, (_, i) => (
+        <div
+          key={i}
+          className="tts-wave-bar"
+          style={{
+            animationDelay: `${i * 0.06}s`,
+            animationDuration: `${0.8 + 0.4 * Math.sin((i / 19) * Math.PI)}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Structured TTS error card */
+function TTSErrorCard({ error, parsedError, onClose, onRetry }: {
+  error: string;
+  parsedError: { message: string; canRetry: boolean; showUpgrade: boolean } | null;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  const display = parsedError ?? { message: error, canRetry: true, showUpgrade: false };
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
+        <p className="text-sm text-foreground">{display.message}</p>
+      </div>
+      <div className="flex items-center gap-2 pl-6">
+        {display.canRetry && (
+          <button
+            onClick={onRetry}
+            className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            Try again
+          </button>
+        )}
+        <button
+          onClick={onClose}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Close
+        </button>
+        {display.showUpgrade && (
+          <Link
+            href="/pricing"
+            className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ml-auto"
+          >
+            Upgrade to Premium
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // Check if the user is typing in an input/textarea/contentEditable
@@ -325,21 +494,24 @@ export function ProxyContent({ url }: ProxyContentProps) {
   // TTS (Text-to-Speech) — TranscriptViewer with word-level highlighting
   const [ttsOpen, setTTSOpen] = useState(false);
   const tts = useTTS(articleTextContent, url, isPremium);
+  const ttsRef = useRef(tts);
+  useEffect(() => { ttsRef.current = tts; });
 
   const handleTTSToggle = React.useCallback(() => {
-    if (tts.isReady || tts.isLoading) {
-      tts.stop();
+    const t = ttsRef.current;
+    if (t.isReady || t.isLoading) {
+      t.stop();
       setTTSOpen(false);
     } else {
       setTTSOpen(true);
-      tts.load();
+      t.load();
     }
-  }, [tts]);
+  }, []);
 
   const handleTTSClose = React.useCallback(() => {
-    tts.stop();
+    ttsRef.current.stop();
     setTTSOpen(false);
-  }, [tts]);
+  }, []);
 
   const [mobileSummaryOpen, setMobileSummaryOpenRaw] = useState(false);
   const [mobileAnnotationsOpen, setMobileAnnotationsOpenRaw] = useState(false);
@@ -1092,25 +1264,25 @@ export function ProxyContent({ url }: ProxyContentProps) {
                     audioSrc={tts.audioSrc}
                     audioType="audio/mpeg"
                     alignment={tts.alignment}
-                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
                     onEnded={handleTTSClose}
                   >
                     <TranscriptViewerAudio />
                     <TTSArticleHighlight />
-                    <TTSControls onClose={handleTTSClose} />
+                    <TTSControls onClose={handleTTSClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
                   </TranscriptViewerContainer>
                 )}
 
                 {/* TTS loading/error state */}
                 {ttsOpen && tts.isLoading && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-3 shadow-2xl">
-                    <p className="text-sm text-muted-foreground animate-pulse">Generating audio...</p>
+                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-4 shadow-2xl flex flex-col items-center gap-2">
+                    <TTSWaveAnimation />
+                    <p className="text-xs text-muted-foreground">Generating audio...</p>
                   </div>
                 )}
                 {ttsOpen && tts.error && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-3 shadow-2xl">
-                    <p className="text-sm text-destructive">{tts.error}</p>
-                    <button onClick={handleTTSClose} className="text-xs text-muted-foreground hover:text-foreground mt-1">Close</button>
+                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border border-destructive/20 px-5 py-3.5 shadow-2xl max-w-[400px]">
+                    <TTSErrorCard error={tts.error} parsedError={tts.parsedError} onClose={handleTTSClose} onRetry={() => { tts.stop(); tts.load(); }} />
                   </div>
                 )}
 
@@ -1341,32 +1513,32 @@ export function ProxyContent({ url }: ProxyContentProps) {
                   audioSrc={tts.audioSrc}
                   audioType="audio/mpeg"
                   alignment={tts.alignment}
-                  className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-1.5rem)] max-w-[420px] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
+                  className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-1.5rem)] max-w-[520px] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
                   onEnded={handleTTSClose}
                 >
                   <TranscriptViewerAudio />
                   <TTSArticleHighlight />
-                  <TTSControls onClose={handleTTSClose} />
+                  <TTSControls onClose={handleTTSClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
                 </TranscriptViewerContainer>
               )}
 
               {/* TTS loading/error state (mobile) */}
               {ttsOpen && tts.isLoading && (
                 <div
-                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-4 py-3 shadow-2xl text-center"
+                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-4 py-4 shadow-2xl flex flex-col items-center gap-2"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
                 >
-                  <p className="text-sm text-muted-foreground animate-pulse">Generating audio...</p>
+                  <TTSWaveAnimation />
+                  <p className="text-xs text-muted-foreground">Generating audio...</p>
                 </div>
               )}
               {ttsOpen && tts.error && (
                 <div
-                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-4 py-3 shadow-2xl text-center"
+                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border border-destructive/20 px-4 py-3.5 shadow-2xl"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
                 >
-                  <p className="text-sm text-destructive">{tts.error}</p>
-                  <button onClick={handleTTSClose} className="text-xs text-muted-foreground hover:text-foreground mt-1">Close</button>
+                  <TTSErrorCard error={tts.error} parsedError={tts.parsedError} onClose={handleTTSClose} onRetry={() => { tts.stop(); tts.load(); }} />
                 </div>
               )}
 

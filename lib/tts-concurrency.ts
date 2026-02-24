@@ -1,9 +1,9 @@
 /**
  * TTS Concurrency Limiter
  *
- * Caps concurrent WebSocket connections to Edge TTS to prevent:
- * - IP bans from Microsoft (too many connections)
- * - Memory exhaustion (each stream holds ~30MB audio buffer)
+ * Caps concurrent API requests to ElevenLabs to prevent:
+ * - Rate limit errors from ElevenLabs (429s)
+ * - Memory exhaustion (each request holds audio buffer in memory)
  * - Worker thread starvation (other API requests get blocked)
  *
  * With 30K DAU and 100+ concurrent TTS users, we must:
@@ -19,7 +19,7 @@ import { createLogger } from "./logger";
 const logger = createLogger("tts:concurrency");
 
 // --- Configuration ---
-let maxConcurrentTTS = 20; // Global max simultaneous Edge TTS WebSocket connections
+let maxConcurrentTTS = 20; // Global max simultaneous ElevenLabs API requests
 let maxPerUser = 2; // Per-user max concurrent TTS requests
 let slotTimeoutMs = 15_000; // Max wait time in queue before 503
 

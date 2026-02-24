@@ -42,6 +42,28 @@ export interface ElevenLabsVoice {
 // Default voice: "Rachel" — clear, natural female voice
 export const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 
+/** Curated voice presets for article narration */
+export interface VoicePreset {
+  id: string;
+  name: string;
+  gender: "female" | "male";
+  accent: string;
+  description: string;
+}
+
+export const VOICE_PRESETS: VoicePreset[] = [
+  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", gender: "female", accent: "American", description: "Calm, clear" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", gender: "female", accent: "American", description: "Soft, news" },
+  { id: "XrExE9yKIg1WjnnlVkGX", name: "Matilda", gender: "female", accent: "American", description: "Warm" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", gender: "female", accent: "British", description: "Raspy" },
+  { id: "Xb7hH8MSUJpSbSDYk0k2", name: "Alice", gender: "female", accent: "British", description: "Confident" },
+  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam", gender: "male", accent: "American", description: "Deep" },
+  { id: "nPczCjzI2devNBz1zQrb", name: "Brian", gender: "male", accent: "American", description: "Deep, narration" },
+  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", gender: "male", accent: "British", description: "News presenter" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh", gender: "male", accent: "American", description: "Deep, young" },
+  { id: "ErXwobaYiN019PkySvjV", name: "Antoni", gender: "male", accent: "American", description: "Well-rounded" },
+];
+
 // Cheapest model: Flash v2.5 — 0.5 credits/char, ~75ms latency
 export const MODEL_ID = "eleven_flash_v2_5";
 
@@ -209,6 +231,35 @@ function findWordOffset(text: string, word: string, existingBoundaries: WordBoun
 /** Rough MP3 duration estimate: 64kbps = 8000 bytes/sec */
 function estimateMp3DurationMs(byteLength: number): number {
   return (byteLength / 8000) * 1000;
+}
+
+// --- Voice avatar helpers ---
+
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+  "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+  "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
+  "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)",
+  "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)",
+  "linear-gradient(135deg, #f5576c 0%, #ff9a9e 100%)",
+  "linear-gradient(135deg, #667eea 0%, #38f9d7 100%)",
+];
+
+/** Deterministic CSS gradient for a voice avatar based on voice ID */
+export function getVoiceAvatarGradient(voiceId: string): string {
+  let hash = 0;
+  for (let i = 0; i < voiceId.length; i++) {
+    hash = ((hash << 5) - hash + voiceId.charCodeAt(i)) | 0;
+  }
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
+}
+
+/** First letter of a voice name for avatar display */
+export function getVoiceAvatarInitial(name: string): string {
+  return (name[0] ?? "?").toUpperCase();
 }
 
 // --- Voice list ---

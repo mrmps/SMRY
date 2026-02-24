@@ -12,7 +12,7 @@ import {
   MoreHorizontal,
   Bug,
   ArrowUpRight,
-  VolumeHigh,
+  Play,
   Loader2,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
@@ -323,7 +323,7 @@ export function FloatingToolbar({
       <ToolbarButton
         icon={isTTSLoading
           ? <Loader2 className="size-5 animate-spin" />
-          : <VolumeHigh className="size-5" />
+          : <Play className="size-5" />
         }
         label={isTTSActive ? "Stop listening" : "Listen"}
         shortcut="L"

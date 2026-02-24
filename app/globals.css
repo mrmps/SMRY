@@ -1900,3 +1900,22 @@ mark[data-highlight-pulse="true"] {
   animation: highlight-pulse 0.6s ease-in-out 2;
 }
 
+/* TTS wave animation */
+@keyframes tts-wave {
+  0% { transform: scaleY(0.15); opacity: 0.4; }
+  25% { transform: scaleY(0.8); opacity: 0.8; }
+  50% { transform: scaleY(1); opacity: 1; }
+  75% { transform: scaleY(0.5); opacity: 0.7; }
+  100% { transform: scaleY(0.15); opacity: 0.4; }
+}
+
+.tts-wave-bar {
+  width: 2.5px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: tts-wave 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+  transform-origin: center;
+}
+

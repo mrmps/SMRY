@@ -133,8 +133,13 @@ export function useTTSHighlight({
     })
     observerRef.current = observer
 
-    // Click-to-seek: clicking a word span seeks audio to that word's time
-    const handlePointerDown = (e: PointerEvent) => {
+    // Click-to-seek: clicking a word span seeks audio to that word's time.
+    // Uses "click" (not "pointerdown") so text selection/drag doesn't trigger seek.
+    const handleClick = (e: MouseEvent) => {
+      // Don't seek if user selected text (drag-to-highlight)
+      const selection = window.getSelection()
+      if (selection && selection.toString().length > 0) return
+
       const target = (e.target as HTMLElement)?.closest?.("[data-tts-idx]")
       if (!target) return
       const idx = target.getAttribute("data-tts-idx")
@@ -145,18 +150,15 @@ export function useTTSHighlight({
       const seek = seekToTimeRef.current
       if (!w || !seek || wordIndex < 0 || wordIndex >= w.length) return
 
-      e.preventDefault()
-      e.stopPropagation()
       seek(w[wordIndex].startTime)
-      // Small delay to let seek take effect before playing
       requestAnimationFrame(() => {
         playRef.current?.()
       })
     }
-    document.addEventListener("pointerdown", handlePointerDown, true)
+    document.addEventListener("click", handleClick, true)
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, true)
+      document.removeEventListener("click", handleClick, true)
       observer.disconnect()
       observerRef.current = null
       isMutatingRef.current = true

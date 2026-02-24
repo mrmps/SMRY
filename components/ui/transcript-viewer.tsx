@@ -88,7 +88,7 @@ type TranscriptViewerContainerProps = {
 
 function TranscriptViewerContainer({
   audioSrc,
-  audioType = "audio/mpeg",
+  audioType: _audioType = "audio/mpeg",
   alignment,
   segmentComposer,
   hideAudioTags = true,
@@ -120,9 +120,8 @@ function TranscriptViewerContainer({
       controls: false,
       preload: "metadata" as const,
       src: audioSrc,
-      children: <source src={audioSrc} type={audioType} />,
     }),
-    [audioRef, audioSrc, audioType]
+    [audioRef, audioSrc]
   )
 
   const contextValue = useMemo(

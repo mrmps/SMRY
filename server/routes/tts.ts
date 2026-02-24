@@ -195,9 +195,10 @@ function checkIpRateLimit(ip: string): boolean {
 }
 
 /**
- * Check and increment TTS usage for a user.
+ * Check TTS usage for a user (read-only — does NOT increment).
  * Free users: 3 plays per day. Premium: unlimited.
  * Uses Redis with in-memory fallback when Redis is down.
+ * Call `incrementTtsUsage()` only after successful generation.
  */
 async function checkTtsUsage(
   userId: string | null,
@@ -216,9 +217,7 @@ async function checkTtsUsage(
       if (current >= FREE_TTS_LIMIT) {
         return { allowed: false, count: current, limit: FREE_TTS_LIMIT };
       }
-      await redis.incr(redisKey);
-      await redis.expire(redisKey, 90000); // 25 hours
-      return { allowed: true, count: current + 1, limit: FREE_TTS_LIMIT };
+      return { allowed: true, count: current, limit: FREE_TTS_LIMIT };
     } catch (error) {
       logger.warn({ error, userId }, "Redis TTS usage check failed, falling back to memory");
     }
@@ -230,16 +229,46 @@ async function checkTtsUsage(
     if (memEntry.count >= FREE_TTS_LIMIT) {
       return { allowed: false, count: memEntry.count, limit: FREE_TTS_LIMIT };
     }
-    memEntry.count++;
     return { allowed: true, count: memEntry.count, limit: FREE_TTS_LIMIT };
   }
 
-  if (memoryUsageCache.size >= MEMORY_CACHE_MAX) {
-    const first = memoryUsageCache.keys().next().value;
-    if (first) memoryUsageCache.delete(first);
+  return { allowed: true, count: 0, limit: FREE_TTS_LIMIT };
+}
+
+/**
+ * Increment TTS usage counter after successful generation.
+ * Called ONLY after audio is generated/replayed — never on failure.
+ */
+async function incrementTtsUsage(
+  userId: string | null,
+  isPremium: boolean,
+): Promise<void> {
+  if (isDev || isPremium || !userId) return;
+
+  const dayKey = getDayKey();
+
+  if (redis) {
+    const redisKey = `tts-usage:${userId}:${dayKey}`;
+    try {
+      await redis.incr(redisKey);
+      await redis.expire(redisKey, 90000); // 25 hours
+      return;
+    } catch (error) {
+      logger.warn({ error, userId }, "Redis TTS usage increment failed, falling back to memory");
+    }
   }
-  memoryUsageCache.set(memKey, { count: 1, day: dayKey });
-  return { allowed: true, count: 1, limit: FREE_TTS_LIMIT };
+
+  const memKey = `${userId}:${dayKey}`;
+  const memEntry = memoryUsageCache.get(memKey);
+  if (memEntry && memEntry.day === dayKey) {
+    memEntry.count++;
+  } else {
+    if (memoryUsageCache.size >= MEMORY_CACHE_MAX) {
+      const first = memoryUsageCache.keys().next().value;
+      if (first) memoryUsageCache.delete(first);
+    }
+    memoryUsageCache.set(memKey, { count: 1, day: dayKey });
+  }
 }
 
 // ─── Alignment merging ───
@@ -277,7 +306,7 @@ function mergeChunkAlignments(
         const lastEnd = merged.characterEndTimesSeconds[merged.characterEndTimesSeconds.length - 1] || cumulativeTimeS;
         merged.characters.push(" ");
         merged.characterStartTimesSeconds.push(lastEnd);
-        merged.characterEndTimesSeconds.push(cumulativeTimeS);
+        merged.characterEndTimesSeconds.push(Math.max(lastEnd, cumulativeTimeS));
       }
 
       for (let j = 0; j < alignment.characters.length; j++) {
@@ -297,7 +326,7 @@ function mergeChunkAlignments(
   return merged;
 }
 
-// ElevenLabs allows 4 concurrent requests per subscription.
+// ElevenLabs concurrent request limit varies by plan.
 // Use 3 to leave headroom and avoid 429s from race conditions.
 const ELEVENLABS_MAX_CONCURRENT = 3;
 
@@ -522,6 +551,8 @@ export const ttsRoutes = new Elysia()
           );
 
           const result = await generateCombined(chunks, chunkKeys, voiceId, signal);
+          // Fire-and-forget: don't delay audio response for Redis write
+          incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
           tracker.end({ status: "completed" });
 
           return new Response(
@@ -533,7 +564,7 @@ export const ttsRoutes = new Elysia()
             {
               headers: {
                 "Content-Type": "application/json",
-                "X-TTS-Usage-Count": String(usage.count),
+                "X-TTS-Usage-Count": String(usage.count + 1),
                 "X-TTS-Usage-Limit": String(usage.limit),
               },
             },
@@ -557,6 +588,8 @@ export const ttsRoutes = new Elysia()
 
       try {
         const result = await generateCombined(chunks, chunkKeys, voiceId);
+        // Fire-and-forget: don't delay audio response for Redis write
+        incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
         tracker.end({ status: "completed", cached: true });
 
         return new Response(
@@ -568,7 +601,7 @@ export const ttsRoutes = new Elysia()
           {
             headers: {
               "Content-Type": "application/json",
-              "X-TTS-Usage-Count": String(usage.count),
+              "X-TTS-Usage-Count": String(usage.count + 1),
               "X-TTS-Usage-Limit": String(usage.limit),
               "X-TTS-Cache": "hit",
             },

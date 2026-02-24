@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, type MutableRefObject } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { extractTTSText } from "@/lib/tts-text";
 import { cleanTextForTTS } from "@/lib/tts-chunk";
@@ -24,6 +24,33 @@ export interface CombinedTTSResult {
 
 type TTSStatus = "idle" | "loading" | "ready" | "error";
 
+export interface ParsedTTSError {
+  message: string;
+  canRetry: boolean;
+  showUpgrade: boolean;
+}
+
+function parseTTSError(raw: string): ParsedTTSError {
+  const lower = raw.toLowerCase();
+
+  if (lower.includes("quota_exceeded"))
+    return { message: "Speech service is at capacity. Try again later.", canRetry: true, showUpgrade: false };
+  if (lower.includes("daily tts limit"))
+    return { message: "You've used all your free listens for today.", canRetry: false, showUpgrade: true };
+  if (lower.includes("too many") || lower.includes("rate limit"))
+    return { message: "Too many requests. Wait a moment.", canRetry: true, showUpgrade: false };
+  if (lower.includes("service busy") || lower.includes("503"))
+    return { message: "Speech service is busy. Try again shortly.", canRetry: true, showUpgrade: false };
+  if (lower.includes("timed out"))
+    return { message: "Timed out. Try a shorter article.", canRetry: true, showUpgrade: false };
+  if (lower.includes("too long"))
+    return { message: "Article too long for audio (50K char max).", canRetry: false, showUpgrade: false };
+  if (lower.includes("401") || lower.includes("unauthorized"))
+    return { message: "Service configuration error. Try again later.", canRetry: true, showUpgrade: false };
+
+  return { message: "Something went wrong. Please try again.", canRetry: true, showUpgrade: false };
+}
+
 export interface UseTTSReturn {
   status: TTSStatus;
   isLoading: boolean;
@@ -38,7 +65,9 @@ export interface UseTTSReturn {
   durationMs: number;
   canUse: boolean;
   usageCount: number;
+  usageLimit: number;
   error: string | null;
+  parsedError: ParsedTTSError | null;
 }
 
 // ─── Client-side cache (IndexedDB) ───
@@ -217,11 +246,6 @@ export function useTTS(
     if (!articleTextContent) return;
     if (status === "loading") return;
 
-    if (!canUse) {
-      setError("Daily TTS limit reached. Upgrade to Premium for unlimited listening.");
-      return;
-    }
-
     // Extract clean text from DOM
     let ttsText = articleTextContent;
     try {
@@ -249,7 +273,7 @@ export function useTTS(
     abortRef.current = abortController;
 
     try {
-      // ─── Check client-side IndexedDB cache ───
+      // ─── Check client-side IndexedDB cache first (no credits consumed) ───
       const cacheKey = await computeCacheKey(cleanedText, voice);
       const cached = await getCachedAudio(cacheKey);
 
@@ -260,11 +284,14 @@ export function useTTS(
         setAlignment(cached.alignment);
         setDurationMs(cached.durationMs);
         setStatus("ready");
+        // Cached replays don't consume credits
+        return;
+      }
 
-        if (!isPremium) {
-          addLocalUsage(articleUrl);
-          setUsageCount(getLocalUsage().length);
-        }
+      // ─── No cache hit — enforce credit limit before API call ───
+      if (!canUse) {
+        setError("Daily TTS limit reached. Upgrade to Premium for unlimited listening.");
+        setStatus("error");
         return;
       }
 
@@ -336,13 +363,44 @@ export function useTTS(
     setError(null);
   }, [cleanup]);
 
+  const [pendingReload, setPendingReload] = useState(false);
+  const loadRef = useRef(load) as MutableRefObject<typeof load>;
+  useEffect(() => { loadRef.current = load; });
+
   const setVoice = useCallback((voiceId: string) => {
-    setVoiceState(voiceId);
-    // Reset if voice changes — need to re-fetch
-    if (status === "ready") {
-      stop();
+    setVoiceState((prev) => {
+      if (prev === voiceId) return prev;
+      return voiceId;
+    });
+  }, []);
+
+  // Auto-reload when voice changes while audio is ready/errored
+  const prevVoiceRef = useRef(voice);
+  useEffect(() => {
+    if (prevVoiceRef.current === voice) return;
+    prevVoiceRef.current = voice;
+    if (status === "ready" || status === "error") {
+      // Cleanup old audio without closing player
+      abortRef.current?.abort();
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setAudioSrc(null);
+      setAlignment(null);
+      setDurationMs(0);
+      setStatus("idle");
+      setError(null);
+      setPendingReload(true);
     }
-  }, [status, stop]);
+  }, [voice, status]);
+
+  // Trigger load after voice change cleanup
+  useEffect(() => {
+    if (!pendingReload) return;
+    setPendingReload(false);
+    loadRef.current();
+  }, [pendingReload]);
 
   return {
     status,
@@ -357,6 +415,8 @@ export function useTTS(
     durationMs,
     canUse,
     usageCount,
+    usageLimit: FREE_TTS_LIMIT,
     error,
+    parsedError: error ? parseTTSError(error) : null,
   };
 }
