@@ -59,8 +59,8 @@ export const env = createEnv({
     MAX_TTS_PER_USER: z.coerce.number().optional(),
     TTS_SLOT_TIMEOUT_MS: z.coerce.number().optional(),
 
-    // Cartesia TTS (optional — TTS disabled when absent)
-    CARTESIA_API_KEY: z.string().min(1).optional(),
+    // ElevenLabs TTS (optional — TTS disabled when absent)
+    ELEVENLABS_API_KEY: z.string().min(1).optional(),
 
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal"])

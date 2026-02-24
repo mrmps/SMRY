@@ -50,6 +50,7 @@
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-hover-card": "^1.1.15",
+    "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
@@ -98,7 +99,8 @@
     "validator": "^13.15.23",
     "vaul-base": "0.0.6",
     "zod": "^3.22.4",
-    "zod-validation-error": "^5.0.0"
+    "zod-validation-error": "^5.0.0",
+    "@elevenlabs/elevenlabs-js": "^2.36.0"
   },
   "devDependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",

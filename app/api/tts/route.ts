@@ -1,8 +1,8 @@
 /**
- * TTS Streaming Proxy
+ * TTS JSON Proxy
  *
- * Next.js Route Handler that proxies TTS requests to the Elysia server
- * with proper SSE streaming support. Includes:
+ * Next.js Route Handler that proxies TTS requests to the Elysia server.
+ * Returns JSON: { audioBase64, alignment, durationMs }
  * - 120s timeout (TTS synthesis can take time for long articles)
  * - Auth forwarding (Bearer token + session cookie)
  * - Client IP forwarding for rate limiting
@@ -55,20 +55,11 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!response.ok) {
-    const text = await response.text();
-    return new Response(text, {
-      status: response.status,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  // Forward the SSE stream with proper headers
+  // Forward response with usage headers
   return new Response(response.body, {
+    status: response.status,
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      "Content-Type": "application/json",
       "X-TTS-Usage-Count": response.headers.get("X-TTS-Usage-Count") || "0",
       "X-TTS-Usage-Limit": response.headers.get("X-TTS-Usage-Limit") || "3",
     },

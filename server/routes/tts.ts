@@ -1,17 +1,20 @@
 /**
  * TTS Routes - POST /api/tts, GET /api/tts/voices
  *
- * /api/tts - Generates speech audio via Cartesia TTS SSE API.
- *            Streams SSE with audio chunks (base64 WAV) and word boundary events.
+ * /api/tts - Generates speech audio via ElevenLabs TTS API.
+ *            Returns JSON: { audioBase64, alignment, durationMs }
+ *            All chunks generated in parallel, merged server-side.
  * /api/tts/voices - Returns available voice list.
  *
  * Scalability design (30K DAU, 100+ concurrent):
+ * - Server-side per-chunk LRU cache: SHA-256(text+voice) → audio + alignment
+ *   Cache hit = instant, no ElevenLabs call, no concurrency slot
+ * - Parallel chunk generation via Promise.all (uncached chunks only)
  * - Bounded concurrency: max 20 global connections, max 2 per user
  * - Memory tracking: all operations instrumented via memory-tracker
- * - Client disconnect cleanup: AbortSignal propagated to Cartesia request
+ * - Client disconnect cleanup: AbortSignal propagated to ElevenLabs request
  * - Rate limiting: per-IP via in-memory sliding window + daily Redis quota
  * - Audio size cap: max 50KB text (~30 min audio, ~50MB buffer)
- * - Backpressure: stream controller checked before enqueue
  * - Graceful error handling with explicit cleanup
  *
  * Free users: 3 articles/day. Premium users: unlimited.
@@ -19,11 +22,12 @@
 
 import { Elysia, t } from "elysia";
 import {
-  initCartesiaTTS,
-  generateSpeech,
-  fetchCartesiaVoices,
+  initElevenLabsTTS,
+  generateSpeechForChunk,
+  fetchElevenLabsVoices,
   DEFAULT_VOICE_ID,
-} from "../../lib/cartesia-tts";
+  type ChunkAlignment,
+} from "../../lib/elevenlabs-tts";
 import { getAuthInfo } from "../middleware/auth";
 import { createLogger } from "../../lib/logger";
 import { startMemoryTrack } from "../../lib/memory-tracker";
@@ -35,23 +39,94 @@ import {
 } from "../../lib/tts-concurrency";
 import { Redis } from "@upstash/redis";
 import { env } from "../env";
+import {
+  cleanTextForTTS,
+  splitTTSChunks,
+  computeChunkKeySync,
+} from "../../lib/tts-chunk";
 
 const isDev = env.NODE_ENV === "development";
 
 const logger = createLogger("api:tts");
 
-// Initialize Cartesia TTS with validated env vars (optional — TTS disabled when absent)
-if (env.CARTESIA_API_KEY) {
-  initCartesiaTTS(env.CARTESIA_API_KEY);
+// ─── Server-side per-chunk LRU cache for TTS ───
+// Key: SHA-256(chunkText + voice). Value: audio buffer + alignment.
+// Per-chunk caching: each ~1000-char chunk is independently cached.
+// Cache hit = instant replay per chunk, no ElevenLabs call.
+// 500 MB cap, 1 hour TTL, Map-based LRU (insertion order = access order).
+
+interface ChunkCacheEntry {
+  audio: Buffer;
+  alignment: ChunkAlignment | null;
+  durationMs: number;
+  size: number;
+  createdAt: number;
+}
+
+const TTS_CACHE_MAX_BYTES = 500 * 1024 * 1024; // 500 MB
+const TTS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+class ChunkLRUCache {
+  private cache = new Map<string, ChunkCacheEntry>();
+  private totalSize = 0;
+
+  get(key: string): ChunkCacheEntry | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() - entry.createdAt > TTS_CACHE_TTL_MS) {
+      this.delete(key);
+      return null;
+    }
+
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry;
+  }
+
+  set(key: string, entry: ChunkCacheEntry): void {
+    if (this.cache.has(key)) {
+      this.delete(key);
+    }
+
+    while (this.totalSize + entry.size > TTS_CACHE_MAX_BYTES && this.cache.size > 0) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) this.delete(oldestKey);
+    }
+
+    this.cache.set(key, entry);
+    this.totalSize += entry.size;
+  }
+
+  delete(key: string): void {
+    const entry = this.cache.get(key);
+    if (entry) {
+      this.totalSize -= entry.size;
+      this.cache.delete(key);
+    }
+  }
+
+  get stats() {
+    return {
+      entries: this.cache.size,
+      totalSizeMB: Math.round(this.totalSize / 1024 / 1024 * 10) / 10,
+      maxSizeMB: Math.round(TTS_CACHE_MAX_BYTES / 1024 / 1024),
+    };
+  }
+}
+
+const chunkCache = new ChunkLRUCache();
+
+// Initialize ElevenLabs TTS with validated env vars (optional — TTS disabled when absent)
+if (env.ELEVENLABS_API_KEY) {
+  initElevenLabsTTS(env.ELEVENLABS_API_KEY);
 } else {
-  logger.warn("Cartesia API key not set — TTS routes will return 503");
+  logger.warn("ElevenLabs API key not set — TTS routes will return 503");
 }
 
 // Free user daily limit
 const FREE_TTS_LIMIT = 3;
-
-// SSE chunk size for base64 audio
-const SSE_CHUNK_SIZE = 32768;
 
 // Rate limiter: per-IP sliding window
 const ipRateLimiter = new Map<string, { count: number; resetAt: number }>();
@@ -99,13 +174,12 @@ function extractClientIp(request: Request): string {
 }
 
 function checkIpRateLimit(ip: string): boolean {
-  if (isDev) return true; // Skip rate limiting in dev mode
+  if (isDev) return true;
 
   const now = Date.now();
   const entry = ipRateLimiter.get(ip);
 
   if (!entry || entry.resetAt <= now) {
-    // Evict if too large
     if (ipRateLimiter.size >= IP_RATE_LIMITER_MAX_SIZE) {
       const oldest = ipRateLimiter.entries().next().value;
       if (oldest) ipRateLimiter.delete(oldest[0]);
@@ -129,13 +203,12 @@ async function checkTtsUsage(
   userId: string | null,
   isPremium: boolean,
 ): Promise<{ allowed: boolean; count: number; limit: number }> {
-  if (isDev) return { allowed: true, count: 0, limit: Infinity }; // Unlimited in dev mode
+  if (isDev) return { allowed: true, count: 0, limit: Infinity };
   if (isPremium) return { allowed: true, count: 0, limit: Infinity };
   if (!userId) return { allowed: false, count: 0, limit: FREE_TTS_LIMIT };
 
   const dayKey = getDayKey();
 
-  // Try Redis first
   if (redis) {
     const redisKey = `tts-usage:${userId}:${dayKey}`;
     try {
@@ -144,7 +217,6 @@ async function checkTtsUsage(
         return { allowed: false, count: current, limit: FREE_TTS_LIMIT };
       }
       await redis.incr(redisKey);
-      // Expire at end of day + 1h buffer
       await redis.expire(redisKey, 90000); // 25 hours
       return { allowed: true, count: current + 1, limit: FREE_TTS_LIMIT };
     } catch (error) {
@@ -152,7 +224,6 @@ async function checkTtsUsage(
     }
   }
 
-  // In-memory fallback (prevents unlimited usage when Redis is down)
   const memKey = `${userId}:${dayKey}`;
   const memEntry = memoryUsageCache.get(memKey);
   if (memEntry && memEntry.day === dayKey) {
@@ -163,7 +234,6 @@ async function checkTtsUsage(
     return { allowed: true, count: memEntry.count, limit: FREE_TTS_LIMIT };
   }
 
-  // Evict if cache too large
   if (memoryUsageCache.size >= MEMORY_CACHE_MAX) {
     const first = memoryUsageCache.keys().next().value;
     if (first) memoryUsageCache.delete(first);
@@ -172,76 +242,191 @@ async function checkTtsUsage(
   return { allowed: true, count: 1, limit: FREE_TTS_LIMIT };
 }
 
+// ─── Alignment merging ───
+
+interface MergedAlignment {
+  characters: string[];
+  characterStartTimesSeconds: number[];
+  characterEndTimesSeconds: number[];
+}
+
 /**
- * Stream TTS audio + word boundaries via SSE using Cartesia.
- * Supports abort signal for cleanup on client disconnect.
+ * Merge per-chunk character alignments into a single alignment.
+ * Adjusts time offsets so each chunk's times are relative to global audio start.
+ * Inserts a space character between chunks to separate words at chunk boundaries.
  */
-async function* streamTTS(
-  text: string,
+function mergeChunkAlignments(
+  chunkAlignments: (ChunkAlignment | null)[],
+  chunkDurationsMs: number[],
+): MergedAlignment {
+  const merged: MergedAlignment = {
+    characters: [],
+    characterStartTimesSeconds: [],
+    characterEndTimesSeconds: [],
+  };
+
+  let cumulativeTimeS = 0;
+
+  for (let i = 0; i < chunkAlignments.length; i++) {
+    const alignment = chunkAlignments[i];
+    const durationMs = chunkDurationsMs[i] || 0;
+
+    if (alignment && alignment.characters.length > 0) {
+      // Space separator between chunks (not before first)
+      if (i > 0 && merged.characters.length > 0) {
+        const lastEnd = merged.characterEndTimesSeconds[merged.characterEndTimesSeconds.length - 1] || cumulativeTimeS;
+        merged.characters.push(" ");
+        merged.characterStartTimesSeconds.push(lastEnd);
+        merged.characterEndTimesSeconds.push(cumulativeTimeS);
+      }
+
+      for (let j = 0; j < alignment.characters.length; j++) {
+        merged.characters.push(alignment.characters[j]);
+        merged.characterStartTimesSeconds.push(
+          (alignment.characterStartTimesSeconds[j] || 0) + cumulativeTimeS
+        );
+        merged.characterEndTimesSeconds.push(
+          (alignment.characterEndTimesSeconds[j] || 0) + cumulativeTimeS
+        );
+      }
+    }
+
+    cumulativeTimeS += durationMs / 1000;
+  }
+
+  return merged;
+}
+
+// ElevenLabs allows 4 concurrent requests per subscription.
+// Use 3 to leave headroom and avoid 429s from race conditions.
+const ELEVENLABS_MAX_CONCURRENT = 3;
+
+/**
+ * Run async tasks with bounded concurrency.
+ * Preserves result order (results[i] corresponds to tasks[i]).
+ */
+async function pooled<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number,
+): Promise<T[]> {
+  const results = new Array<T>(tasks.length);
+  let nextIdx = 0;
+
+  async function worker() {
+    while (nextIdx < tasks.length) {
+      const idx = nextIdx++;
+      results[idx] = await tasks[idx]();
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, tasks.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+interface ChunkGenResult {
+  audio: Buffer;
+  alignment: ChunkAlignment | null;
+  durationMs: number;
+  fromCache: boolean;
+}
+
+/**
+ * Generate chunks with bounded concurrency and return combined audio + alignment.
+ * Each chunk is checked against server-side LRU cache first (cache hits are free).
+ * Uncached chunks are generated via ElevenLabs with max 3 concurrent API calls.
+ */
+async function generateCombined(
+  chunks: string[],
+  chunkKeys: string[],
   voice: string,
   signal?: AbortSignal,
-): AsyncGenerator<string> {
-  // Chunk long text on sentence boundaries (~30KB per chunk)
-  const MAX_CHUNK = 30000;
-  const chunks: string[] = [];
-  if (text.length <= MAX_CHUNK) {
-    chunks.push(text);
-  } else {
-    const sentences = text.split(/(?<=[.!?])\s+/);
-    let current = "";
-    for (const sentence of sentences) {
-      if (current.length + sentence.length > MAX_CHUNK && current.length > 0) {
-        chunks.push(current);
-        current = sentence;
-      } else {
-        current += (current ? " " : "") + sentence;
-      }
+): Promise<{
+  audioBase64: string;
+  alignment: MergedAlignment;
+  durationMs: number;
+}> {
+  // Separate cached from uncached — cached are free, only uncached need rate limiting
+  const results = new Array<ChunkGenResult>(chunks.length);
+  const uncachedIndices: number[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const cached = chunkCache.get(chunkKeys[i]);
+    if (cached) {
+      results[i] = {
+        audio: cached.audio,
+        alignment: cached.alignment,
+        durationMs: cached.durationMs,
+        fromCache: true,
+      };
+    } else {
+      uncachedIndices.push(i);
     }
-    if (current) chunks.push(current);
   }
 
-  let globalTimeOffset = 0;
-  let globalTextOffset = 0;
+  // Generate uncached chunks with bounded concurrency
+  if (uncachedIndices.length > 0) {
+    const tasks = uncachedIndices.map((i) => async () => {
+      if (signal?.aborted) throw new Error("Aborted");
 
-  for (const chunk of chunks) {
-    if (signal?.aborted) return;
+      const result = await generateSpeechForChunk(chunks[i], voice, signal);
 
-    const result = await generateSpeech(chunk, voice, signal);
-
-    // Yield word boundaries with adjusted offsets
-    for (const boundary of result.boundaries) {
-      if (signal?.aborted) return;
-      yield `event: boundary\ndata: ${JSON.stringify({
-        text: boundary.text,
-        offset: boundary.offset + globalTimeOffset,
-        duration: boundary.duration,
-        textOffset: boundary.textOffset + globalTextOffset,
-        textLength: boundary.textLength,
-      })}\n\n`;
-    }
-
-    // Yield audio as base64 chunks (WAV)
-    if (result.audio.length > 0) {
-      const base64 = result.audio.toString("base64");
-      for (let i = 0; i < base64.length; i += SSE_CHUNK_SIZE) {
-        if (signal?.aborted) return;
-        yield `event: audio\ndata: ${JSON.stringify({
-          chunk: base64.slice(i, i + SSE_CHUNK_SIZE),
-          index: Math.floor(i / SSE_CHUNK_SIZE),
-          final: i + SSE_CHUNK_SIZE >= base64.length,
-        })}\n\n`;
+      // Cache immediately
+      if (result.audioBuffer.length > 0) {
+        chunkCache.set(chunkKeys[i], {
+          audio: result.audioBuffer,
+          alignment: result.alignment,
+          durationMs: result.durationMs,
+          size: result.audioBuffer.length,
+          createdAt: Date.now(),
+        });
       }
-    }
 
-    // Calculate time offset for next chunk
-    if (result.boundaries.length > 0) {
-      const lastBoundary = result.boundaries[result.boundaries.length - 1];
-      globalTimeOffset += lastBoundary.offset + lastBoundary.duration + 100;
+      return {
+        audio: result.audioBuffer,
+        alignment: result.alignment,
+        durationMs: result.durationMs,
+        fromCache: false,
+      } satisfies ChunkGenResult;
+    });
+
+    const generated = await pooled(tasks, ELEVENLABS_MAX_CONCURRENT);
+    for (let j = 0; j < uncachedIndices.length; j++) {
+      results[uncachedIndices[j]] = generated[j];
     }
-    globalTextOffset += chunk.length + 1;
   }
 
-  yield `event: done\ndata: {}\n\n`;
+  // Concatenate audio buffers
+  const totalSize = results.reduce((sum, r) => sum + r.audio.length, 0);
+  const combined = Buffer.alloc(totalSize);
+  let offset = 0;
+  for (const r of results) {
+    r.audio.copy(combined, offset);
+    offset += r.audio.length;
+  }
+
+  // Merge alignments with cumulative time offsets
+  const mergedAlignment = mergeChunkAlignments(
+    results.map((r) => r.alignment),
+    results.map((r) => r.durationMs),
+  );
+
+  const totalDurationMs = results.reduce((sum, r) => sum + r.durationMs, 0);
+  const cacheHits = results.filter((r) => r.fromCache).length;
+
+  logger.debug(
+    { chunksTotal: chunks.length, cacheHits, totalSizeMB: Math.round(totalSize / 1024 / 1024 * 10) / 10 },
+    "TTS combined generation completed",
+  );
+
+  return {
+    audioBase64: combined.toString("base64"),
+    alignment: mergedAlignment,
+    durationMs: totalDurationMs,
+  };
 }
 
 // Cached voice list (refreshes every hour)
@@ -285,95 +470,117 @@ export const ttsRoutes = new Elysia()
         };
       }
 
-      // --- Memory tracking ---
-      const tracker = startMemoryTrack("tts-synthesis", {
-        userId: auth.userId,
-        textLength: text.length,
-        voice: voice || DEFAULT_VOICE_ID,
-        clientIp,
-      });
-
-      // --- Concurrency slot ---
-      const abortController = new AbortController();
-      const { signal } = abortController;
-
-      // Listen for client disconnect (request abort)
-      request.signal?.addEventListener("abort", () => abortController.abort(), { once: true });
-
-      try {
-        await acquireTTSSlot(auth.userId, signal);
-      } catch (err) {
-        tracker.end({ status: "rejected", reason: (err as Error).name });
-        if (err instanceof TTSSlotTimeoutError) {
-          set.status = 503;
-          return { error: "TTS service busy. Please try again shortly." };
-        }
-        if (err instanceof TTSUserLimitError) {
-          set.status = 429;
-          return { error: "Too many concurrent TTS requests. Please wait for current playback to finish." };
-        }
-        throw err;
+      // --- Clean text for TTS (strip ads, navigation junk) ---
+      const cleanedText = cleanTextForTTS(text);
+      if (cleanedText.length === 0) {
+        set.status = 400;
+        return { error: "No readable text after cleaning" };
       }
 
+      // --- Split into chunks + compute per-chunk keys ---
+      const voiceId = voice || DEFAULT_VOICE_ID;
+      const chunks = splitTTSChunks(cleanedText);
+      const chunkKeys = chunks.map((c) => computeChunkKeySync(c, voiceId));
+
+      // --- Check if all chunks are cached (skip concurrency slot) ---
+      const allCached = chunkKeys.every((key) => chunkCache.get(key) !== null);
+
+      const tracker = startMemoryTrack("tts-synthesis", {
+        userId: auth.userId,
+        textLength: cleanedText.length,
+        voice: voiceId,
+        clientIp,
+        chunksTotal: chunks.length,
+        allCached,
+      });
+
+      // Skip concurrency slot if everything is cached
+      if (!allCached) {
+        const abortController = new AbortController();
+        const { signal } = abortController;
+        request.signal?.addEventListener("abort", () => abortController.abort(), { once: true });
+
+        try {
+          await acquireTTSSlot(auth.userId, signal);
+        } catch (err) {
+          tracker.end({ status: "rejected", reason: (err as Error).name });
+          if (err instanceof TTSSlotTimeoutError) {
+            set.status = 503;
+            return { error: "TTS service busy. Please try again shortly." };
+          }
+          if (err instanceof TTSUserLimitError) {
+            set.status = 429;
+            return { error: "Too many concurrent TTS requests. Please wait for current playback to finish." };
+          }
+          throw err;
+        }
+
+        try {
+          logger.info(
+            { userId: auth.userId, textLength: cleanedText.length, voice: voiceId, chunksTotal: chunks.length, articleUrl },
+            "TTS synthesis started",
+          );
+
+          const result = await generateCombined(chunks, chunkKeys, voiceId, signal);
+          tracker.end({ status: "completed" });
+
+          return new Response(
+            JSON.stringify({
+              audioBase64: result.audioBase64,
+              alignment: result.alignment,
+              durationMs: result.durationMs,
+            }),
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "X-TTS-Usage-Count": String(usage.count),
+                "X-TTS-Usage-Limit": String(usage.limit),
+              },
+            },
+          );
+        } catch (error) {
+          const errMsg = (error as Error).message || "TTS generation failed";
+          logger.error({ error: errMsg, userId: auth.userId }, "TTS synthesis error");
+          tracker.end({ status: "error", error: errMsg });
+          set.status = 500;
+          return { error: errMsg };
+        } finally {
+          releaseTTSSlot(auth.userId);
+        }
+      }
+
+      // All cached — no concurrency slot needed
       logger.info(
-        { userId: auth.userId, isPremium: auth.isPremium, textLength: text.length, voice, articleUrl },
-        "TTS synthesis started",
+        { userId: auth.userId, textLength: cleanedText.length, voice: voiceId, chunksTotal: chunks.length },
+        "TTS cache hit — replaying cached audio",
       );
 
-      // --- Stream SSE response ---
-      const encoder = new TextEncoder(); // Reuse single encoder
+      try {
+        const result = await generateCombined(chunks, chunkKeys, voiceId);
+        tracker.end({ status: "completed", cached: true });
 
-      const stream = new ReadableStream({
-        async start(controller) {
-          try {
-            for await (const event of streamTTS(
-              text,
-              voice || DEFAULT_VOICE_ID,
-              signal,
-            )) {
-              // Backpressure check: skip if controller is closing
-              try {
-                controller.enqueue(encoder.encode(event));
-              } catch {
-                // Stream closed by client
-                abortController.abort();
-                break;
-              }
-            }
-            try { controller.close(); } catch { /* already closed */ }
-            tracker.end({ status: "completed" });
-          } catch (error) {
-            const errMsg = (error as Error).message || "TTS generation failed";
-            logger.error({ error: errMsg, userId: auth.userId }, "TTS streaming error");
-            try {
-              controller.enqueue(
-                encoder.encode(`event: error\ndata: ${JSON.stringify({ error: errMsg })}\n\n`),
-              );
-              controller.close();
-            } catch { /* stream already closed */ }
-            tracker.end({ status: "error", error: errMsg });
-          } finally {
-            releaseTTSSlot(auth.userId);
-          }
-        },
-        cancel() {
-          // Called when client disconnects
-          abortController.abort();
-          releaseTTSSlot(auth.userId);
-          tracker.end({ status: "client_disconnected" });
-          logger.debug({ userId: auth.userId }, "TTS stream cancelled by client");
-        },
-      });
-
-      return new Response(stream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-          "X-TTS-Usage-Count": String(usage.count),
-          "X-TTS-Usage-Limit": String(usage.limit),
-        },
-      });
+        return new Response(
+          JSON.stringify({
+            audioBase64: result.audioBase64,
+            alignment: result.alignment,
+            durationMs: result.durationMs,
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-TTS-Usage-Count": String(usage.count),
+              "X-TTS-Usage-Limit": String(usage.limit),
+              "X-TTS-Cache": "hit",
+            },
+          },
+        );
+      } catch (error) {
+        const errMsg = (error as Error).message || "TTS replay failed";
+        logger.error({ error: errMsg, userId: auth.userId }, "TTS cache replay error");
+        tracker.end({ status: "error", error: errMsg });
+        set.status = 500;
+        return { error: errMsg };
+      }
     },
     {
       body: t.Object({
@@ -390,7 +597,7 @@ export const ttsRoutes = new Elysia()
     }
 
     try {
-      const voices = await fetchCartesiaVoices();
+      const voices = await fetchElevenLabsVoices();
       voiceCache = { voices, expiresAt: now + 3600000 };
       return voices;
     } catch (error) {
@@ -403,3 +610,8 @@ export const ttsRoutes = new Elysia()
       return { error: "Failed to fetch voices" };
     }
   });
+
+/** Expose cache stats for /health endpoint */
+export function getTTSCacheStats() {
+  return chunkCache.stats;
+}

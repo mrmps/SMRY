@@ -35,14 +35,168 @@ import { AnnotationsSidebar } from "@/components/features/annotations-sidebar";
 import { MobileChatDrawer, type MobileChatDrawerHandle } from "@/components/features/mobile-chat-drawer";
 import { MobileAnnotationsDrawer } from "@/components/features/mobile-annotations-drawer";
 import { useTTS } from "@/lib/hooks/use-tts";
-import { TTSPlayer } from "@/components/features/tts-player";
-import { TTSHighlight } from "@/components/features/tts-highlight";
+import {
+  TranscriptViewerContainer,
+  TranscriptViewerAudio,
+  TranscriptViewerPlayPauseButton,
+  TranscriptViewerScrubBar,
+  useTranscriptViewerContext,
+} from "@/components/ui/transcript-viewer";
+import { useTTSHighlight } from "@/components/hooks/use-tts-highlight";
+import {
+  Forward,
+  Backward,
+  X,
+} from "@/components/ui/icons";
 import { type ArticleExportData } from "@/components/features/export-article";
 import {
   Sidebar,
   SidebarContent,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+
+// ─── TTS Player Controls (used inside TranscriptViewerContainer) ───
+
+const RATE_PRESETS = [0.75, 1, 1.25, 1.5, 2, 2.5];
+
+function TTSControls({ onClose }: { onClose: () => void }) {
+  const {
+    seekToTime,
+    currentTime,
+    duration,
+    audioRef,
+  } = useTranscriptViewerContext();
+
+  const [rate, setRate] = React.useState(1);
+  const [showSpeed, setShowSpeed] = React.useState(false);
+  const speedRef = React.useRef<HTMLDivElement>(null);
+
+  // Close speed panel on outside click
+  React.useEffect(() => {
+    if (!showSpeed) return;
+    const handler = (e: MouseEvent) => {
+      if (speedRef.current && !speedRef.current.contains(e.target as Node)) {
+        setShowSpeed(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showSpeed]);
+
+  const handleRateChange = React.useCallback((newRate: number) => {
+    setRate(newRate);
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = newRate;
+  }, [audioRef]);
+
+  // Apply rate when audio element changes (e.g. on first load)
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (audio && audio.playbackRate !== rate) {
+      audio.playbackRate = rate;
+    }
+  });
+
+  const skipForward = React.useCallback(() => {
+    seekToTime(Math.min(currentTime + 10, duration));
+  }, [seekToTime, currentTime, duration]);
+
+  const skipBackward = React.useCallback(() => {
+    seekToTime(Math.max(currentTime - 10, 0));
+  }, [seekToTime, currentTime]);
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2.5">
+      {/* Speed button */}
+      <div className="relative" ref={speedRef}>
+        <button
+          onClick={() => setShowSpeed((p) => !p)}
+          className={cn(
+            "size-9 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors",
+            "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+            showSpeed && "bg-accent text-foreground",
+          )}
+        >
+          {rate}x
+        </button>
+        {showSpeed && (
+          <div className="absolute bottom-full mb-2 left-0 z-50 bg-popover border rounded-xl shadow-2xl p-3 w-[200px]">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <button
+                onClick={() => handleRateChange(Math.max(0.5, Math.round((rate - 0.25) * 100) / 100))}
+                className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
+              >−</button>
+              <span className="text-lg font-bold tabular-nums min-w-[40px] text-center">{rate}×</span>
+              <button
+                onClick={() => handleRateChange(Math.min(3, Math.round((rate + 0.25) * 100) / 100))}
+                className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
+              >+</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {RATE_PRESETS.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => handleRateChange(r)}
+                  className={cn(
+                    "h-7 rounded-md text-xs font-medium tabular-nums transition-colors",
+                    r === rate
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                      : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+                  )}
+                >
+                  {r}×
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Skip backward */}
+      <button
+        onClick={skipBackward}
+        className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        aria-label="Skip backward 10 seconds"
+      >
+        <Backward className="size-4" />
+      </button>
+
+      {/* Play/Pause */}
+      <TranscriptViewerPlayPauseButton size="icon" variant="ghost" className="size-10" />
+
+      {/* Skip forward */}
+      <button
+        onClick={skipForward}
+        className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        aria-label="Skip forward 10 seconds"
+      >
+        <Forward className="size-4" />
+      </button>
+
+      {/* Scrub bar */}
+      <TranscriptViewerScrubBar className="flex-1" />
+
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="size-9 flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent transition-colors"
+        aria-label="Close"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Bridge component: lives inside TranscriptViewerContainer, reads the current
+ * word index from context and highlights it on the article DOM via <mark>.
+ */
+function TTSArticleHighlight() {
+  const { currentWordIndex, seekToTime, play, words } = useTranscriptViewerContext();
+  useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play, words });
+  return null;
+}
 
 // Check if the user is typing in an input/textarea/contentEditable
 function isTypingInInput(e: KeyboardEvent): boolean {
@@ -168,16 +322,17 @@ export function ProxyContent({ url }: ProxyContentProps) {
     addArticleToHistory(url, firstSuccessfulArticle.title || "Untitled Article");
   }, [firstSuccessfulArticle, url]);
 
-  // TTS (Text-to-Speech) dictation
+  // TTS (Text-to-Speech) — TranscriptViewer with word-level highlighting
   const [ttsOpen, setTTSOpen] = useState(false);
   const tts = useTTS(articleTextContent, url, isPremium);
 
   const handleTTSToggle = React.useCallback(() => {
-    if (tts.isPlaying || tts.isPaused || tts.isLoading) {
+    if (tts.isReady || tts.isLoading) {
       tts.stop();
       setTTSOpen(false);
     } else {
-      setTTSOpen((prev) => !prev);
+      setTTSOpen(true);
+      tts.load();
     }
   }, [tts]);
 
@@ -927,44 +1082,37 @@ export function ProxyContent({ url }: ProxyContentProps) {
                   shareOpen={shareOpen}
                   onShareOpenChange={setShareOpen}
                   onTTSToggle={handleTTSToggle}
-                  isTTSActive={tts.isPlaying || tts.isPaused || tts.isLoading}
+                  isTTSActive={tts.isReady || tts.isLoading}
                   isTTSLoading={tts.isLoading}
                 />
 
-                {/* TTS Player — fixed bottom-center when active */}
-                {ttsOpen && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[420px] max-w-[calc(100vw-2rem)]">
-                    <TTSPlayer
-                      isPlaying={tts.isPlaying}
-                      isPaused={tts.isPaused}
-                      isLoading={tts.isLoading}
-                      progress={tts.progress}
-                      currentTime={tts.currentTime}
-                      duration={tts.duration}
-                      rate={tts.rate}
-                      currentWord={tts.currentWord}
-                      canUse={tts.canUse}
-                      usageCount={tts.usageCount}
-                      error={tts.error}
-                      articleTitle={articleTitle}
-                      onPlay={tts.play}
-                      onPause={tts.pause}
-                      onResume={tts.resume}
-                      onStop={tts.stop}
-                      onSkipForward={tts.skipForward}
-                      onSkipBackward={tts.skipBackward}
-                      onRateChange={tts.setRate}
-                      onClose={handleTTSClose}
-                    />
-                  </div>
+                {/* TTS floating player — highlights words on the article */}
+                {ttsOpen && tts.isReady && tts.audioSrc && tts.alignment && (
+                  <TranscriptViewerContainer
+                    audioSrc={tts.audioSrc}
+                    audioType="audio/mpeg"
+                    alignment={tts.alignment}
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
+                    onEnded={handleTTSClose}
+                  >
+                    <TranscriptViewerAudio />
+                    <TTSArticleHighlight />
+                    <TTSControls onClose={handleTTSClose} />
+                  </TranscriptViewerContainer>
                 )}
 
-                {/* TTS Word Highlighting */}
-                <TTSHighlight
-                  currentWord={tts.currentWord}
-                  currentWordIndex={tts.currentWordIndex}
-                  isActive={tts.isPlaying}
-                />
+                {/* TTS loading/error state */}
+                {ttsOpen && tts.isLoading && (
+                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-3 shadow-2xl">
+                    <p className="text-sm text-muted-foreground animate-pulse">Generating audio...</p>
+                  </div>
+                )}
+                {ttsOpen && tts.error && (
+                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-3 shadow-2xl">
+                    <p className="text-sm text-destructive">{tts.error}</p>
+                    <button onClick={handleTTSClose} className="text-xs text-muted-foreground hover:text-foreground mt-1">Close</button>
+                  </div>
+                )}
 
                 {/* Settings Popover - Desktop dialog, Mobile drawer */}
                 <SettingsPopover
@@ -1103,11 +1251,10 @@ export function ProxyContent({ url }: ProxyContentProps) {
                 <div
                   className={cn(
                     viewMode === "html"
-                      ? "px-2 pt-2" // Near-fullscreen with small margins for HTML mode
-                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4" // Padded for reader mode
+                      ? "px-2 pt-2"
+                      : "mx-auto max-w-3xl px-4 sm:px-6 py-4"
                   )}
                 >
-                  {/* Article content */}
                   <ArticleContent
                     data={articleQuery.data}
                     isLoading={articleQuery.isLoading}
@@ -1188,43 +1335,40 @@ export function ProxyContent({ url }: ProxyContentProps) {
                 </div>
               )}
 
-              {/* TTS Player — above bottom bar on mobile */}
-              {ttsOpen && (
-                <div
-                  className="fixed left-3 right-3 z-40"
+              {/* TTS floating player — highlights words on the article (mobile) */}
+              {ttsOpen && tts.isReady && tts.audioSrc && tts.alignment && (
+                <TranscriptViewerContainer
+                  audioSrc={tts.audioSrc}
+                  audioType="audio/mpeg"
+                  alignment={tts.alignment}
+                  className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-1.5rem)] max-w-[420px] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
                   style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+                  onEnded={handleTTSClose}
                 >
-                  <TTSPlayer
-                    isPlaying={tts.isPlaying}
-                    isPaused={tts.isPaused}
-                    isLoading={tts.isLoading}
-                    progress={tts.progress}
-                    currentTime={tts.currentTime}
-                    duration={tts.duration}
-                    rate={tts.rate}
-                    currentWord={tts.currentWord}
-                    canUse={tts.canUse}
-                    usageCount={tts.usageCount}
-                    error={tts.error}
-                    articleTitle={articleTitle}
-                    onPlay={tts.play}
-                    onPause={tts.pause}
-                    onResume={tts.resume}
-                    onStop={tts.stop}
-                    onSkipForward={tts.skipForward}
-                    onSkipBackward={tts.skipBackward}
-                    onRateChange={tts.setRate}
-                    onClose={handleTTSClose}
-                  />
-                </div>
+                  <TranscriptViewerAudio />
+                  <TTSArticleHighlight />
+                  <TTSControls onClose={handleTTSClose} />
+                </TranscriptViewerContainer>
               )}
 
-              {/* TTS Word Highlighting (mobile) */}
-              <TTSHighlight
-                currentWord={tts.currentWord}
-                currentWordIndex={tts.currentWordIndex}
-                isActive={tts.isPlaying}
-              />
+              {/* TTS loading/error state (mobile) */}
+              {ttsOpen && tts.isLoading && (
+                <div
+                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-4 py-3 shadow-2xl text-center"
+                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+                >
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating audio...</p>
+                </div>
+              )}
+              {ttsOpen && tts.error && (
+                <div
+                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-4 py-3 shadow-2xl text-center"
+                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
+                >
+                  <p className="text-sm text-destructive">{tts.error}</p>
+                  <button onClick={handleTTSClose} className="text-xs text-muted-foreground hover:text-foreground mt-1">Close</button>
+                </div>
+              )}
 
               {/* Mobile Bottom Bar */}
               <MobileBottomBar
@@ -1235,7 +1379,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
                 articleTitle={articleTitle}
                 onOpenSettings={() => mobileSettingsRef.current?.open()}
                 onTTSToggle={handleTTSToggle}
-                isTTSActive={tts.isPlaying || tts.isPaused || tts.isLoading}
+                isTTSActive={tts.isReady || tts.isLoading}
                 isTTSLoading={tts.isLoading}
                 articleExportData={articleExportData}
               />
