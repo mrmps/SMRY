@@ -185,6 +185,10 @@ function useTranscriptViewer({
   const onEndedRef = useRef<(() => void) | undefined>(onEnded)
   const onTimeUpdateCallbackRef = useRef<((time: number) => void) | undefined>(onTimeUpdate)
   const seekTargetRef = useRef<number | null>(null)
+  /** Set to true when audio auto-pauses at content end; cleared on seek */
+  const reachedEndRef = useRef(false)
+  /** Timestamp of last seek completion — used to suppress auto-pause briefly after seeking */
+  const lastSeekDoneRef = useRef(0)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isScrubbing, setIsScrubbing] = useState(false)
@@ -192,10 +196,13 @@ function useTranscriptViewer({
   const [currentTime, setCurrentTime] = useState(0)
 
   const { segments, words } = useMemo(() => {
-    if (segmentComposer) {
-      return segmentComposer(alignment)
+    const result = segmentComposer
+      ? segmentComposer(alignment)
+      : composeSegments(alignment, { hideAudioTags })
+    if (process.env.NODE_ENV === "development") {
+      console.log("[TTS Player] composeSegments: segments:", result.segments.length, "words:", result.words.length, "alignment chars:", alignment?.characters?.length ?? 0)
     }
-    return composeSegments(alignment, { hideAudioTags })
+    return result
   }, [segmentComposer, alignment, hideAudioTags])
 
   const guessedDuration = useMemo(() => {
@@ -325,24 +332,40 @@ function useTranscriptViewer({
 
   const startRaf = useCallback(() => {
     if (rafRef.current != null) return
+    if (process.env.NODE_ENV === "development") console.log("[TTS Player] RAF loop started")
     const tick = () => {
       const node = audioRef.current
       if (!node) {
+        if (process.env.NODE_ENV === "development") console.warn("[TTS Player] RAF tick: audio node is null, stopping loop")
         rafRef.current = null
         return
       }
+
+      // Skip RAF state updates while a seek is in progress —
+      // browser may report stale currentTime until the seek completes
+      if (seekTargetRef.current != null) {
+        rafRef.current = requestAnimationFrame(tick)
+        return
+      }
+
       const time = node.currentTime
       const contentEnd = contentEndRef.current
 
       setCurrentTime(contentEnd > 0 ? Math.min(time, contentEnd) : time)
       handleTimeUpdateRef.current(time)
 
-      // Auto-end when all article text has been spoken (skip trailing silence)
+      // Auto-pause when all article text has been spoken (skip trailing silence).
+      // The player stays open — user can re-play or seek back.
+      // Skip auto-pause within 500ms of a seek completing — the user explicitly
+      // scrubbed near the end and expects playback to continue from there.
       if (contentEnd > 0 && time >= contentEnd && !node.paused) {
-        node.pause()
-        onEndedRef.current?.()
-        rafRef.current = null
-        return
+        const msSinceSeek = Date.now() - lastSeekDoneRef.current
+        if (msSinceSeek > 500) {
+          reachedEndRef.current = true
+          node.pause()
+          rafRef.current = null
+          return
+        }
       }
 
       if (Number.isFinite(node.duration) && node.duration > 0) {
@@ -363,10 +386,19 @@ function useTranscriptViewer({
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {
+      if (process.env.NODE_ENV === "development") console.warn("[TTS Player] audio element not found in setup effect")
+      return
+    }
+    if (process.env.NODE_ENV === "development") {
+      console.log("[TTS Player] audio element setup. src:", audio.src ? audio.src.slice(0, 50) + "..." : "none", "words:", words.length, "guessedDuration:", guessedDuration.toFixed(2))
+    }
 
     const syncPlayback = () => setIsPlaying(!audio.paused)
     const syncTime = () => {
+      // Never override React state while a seek is in flight — the browser
+      // may report a stale currentTime until the `seeked` event fires.
+      if (seekTargetRef.current != null) return
       const contentEnd = contentEndRef.current
       const raw = audio.currentTime
       setCurrentTime(contentEnd > 0 ? Math.min(raw, contentEnd) : raw)
@@ -378,23 +410,32 @@ function useTranscriptViewer({
     }
 
     const handlePlay = () => {
+      if (process.env.NODE_ENV === "development") console.log("[TTS Player] play at", audio.currentTime.toFixed(2))
       syncPlayback()
       startRaf()
       onPlayRef.current?.()
     }
     const handlePause = () => {
+      if (process.env.NODE_ENV === "development") console.log("[TTS Player] pause at", audio.currentTime.toFixed(2), seekTargetRef.current != null ? "(seek in progress)" : "")
       syncPlayback()
-      syncTime()
+      // Don't sync time during an active seek — pause can fire transiently
+      // when the browser interrupts playback to fulfil a seek request.
+      if (seekTargetRef.current == null) {
+        syncTime()
+      }
       stopRaf()
       onPauseRef.current?.()
     }
     const handleEnded = () => {
+      if (process.env.NODE_ENV === "development") console.log("[TTS Player] ended at", audio.currentTime.toFixed(2))
       syncPlayback()
       syncTime()
       stopRaf()
       onEndedRef.current?.()
     }
     const handleTimeUpdateEvt = () => {
+      // Skip stale timeupdate events fired during an active seek
+      if (seekTargetRef.current != null) return
       syncTime()
       onTimeUpdateCallbackRef.current?.(audio.currentTime)
     }
@@ -404,11 +445,18 @@ function useTranscriptViewer({
         seekTargetRef.current = null
         // Browser quirk: if audio jumped away from target, re-seek
         if (Math.abs(audio.currentTime - target) > 0.5) {
+          seekTargetRef.current = target // re-arm guard for the retry
           audio.currentTime = target
           return
         }
       }
-      syncTime()
+      // Record seek completion time — used to suppress auto-pause briefly
+      // so scrubbing near content end doesn't immediately kill playback.
+      lastSeekDoneRef.current = Date.now()
+      // Now safe to sync — seekTargetRef is cleared, audio.currentTime is final
+      const contentEnd = contentEndRef.current
+      const raw = audio.currentTime
+      setCurrentTime(contentEnd > 0 ? Math.min(raw, contentEnd) : raw)
       handleTimeUpdateRef.current(audio.currentTime)
     }
     const handleDuration = () => {
@@ -451,10 +499,17 @@ function useTranscriptViewer({
     (time: number) => {
       const node = audioRef.current
       if (!node) return
+      const wasPlaying = !node.paused
+      reachedEndRef.current = false
       seekTargetRef.current = time
       setCurrentTime(time)
       node.currentTime = time
       handleTimeUpdateRef.current(time)
+      // Resume playback immediately if audio was playing — don't defer to
+      // a RAF callback which creates a window for stale events to interfere.
+      if (wasPlaying && node.paused) {
+        void node.play()
+      }
     },
     [audioRef]
   )
@@ -471,10 +526,21 @@ function useTranscriptViewer({
   const play = useCallback(() => {
     const audio = audioRef.current
     if (!audio) return
+    // Only restart from beginning if audio naturally reached the end
+    // (reachedEndRef is set by the RAF auto-pause). If the user manually
+    // scrubbed near the end, play from the current position instead.
+    if (reachedEndRef.current) {
+      reachedEndRef.current = false
+      seekTargetRef.current = 0
+      audio.currentTime = 0
+      setCurrentTime(0)
+      setCurrentWordIndex(words.length ? 0 : -1)
+      handleTimeUpdateRef.current(0)
+    }
     if (audio.paused) {
       void audio.play()
     }
-  }, [audioRef])
+  }, [audioRef, words.length])
 
   const pause = useCallback(() => {
     const audio = audioRef.current

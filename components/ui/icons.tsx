@@ -140,6 +140,9 @@ import {
   Backward01Icon,
   DashboardSpeed01Icon,
   HeadphonesIcon,
+
+  // Security
+  LockPasswordIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type { FC } from "react";
@@ -344,6 +347,9 @@ export const Forward = createIcon(Forward01Icon, "Forward");
 export const Backward = createIcon(Backward01Icon, "Backward");
 export const Speed = createIcon(DashboardSpeed01Icon, "Speed");
 export const Headphones = createIcon(HeadphonesIcon, "Headphones");
+
+// Security Icons
+export const Lock = createIcon(LockPasswordIcon, "Lock");
 
 // Type export for Lucide compatibility
 export type LucideIcon = FC<IconProps>;

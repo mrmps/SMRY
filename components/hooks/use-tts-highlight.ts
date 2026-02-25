@@ -22,6 +22,17 @@ type UseTTSHighlightOptions = {
 const STYLE_ID = "tts-highlight-styles"
 
 /**
+ * Global flag so useInlineHighlights MutationObserver can skip TTS DOM mutations
+ * and avoid cascading rebuilds.
+ *
+ * Uses a generation counter to prevent stale setTimeout callbacks from
+ * prematurely clearing the flag on close→reopen races.
+ */
+let _ttsMutating = false
+let _ttsMutGeneration = 0
+export function isTTSMutating(): boolean { return _ttsMutating }
+
+/**
  * Highlights the current TTS word on the article DOM by wrapping every word
  * in a `<span data-tts-idx>` and toggling CSS classes as playback advances.
  *
@@ -55,6 +66,8 @@ export function useTTSHighlight({
 
   const buildSpans = useCallback((articleEl: Element): boolean => {
     isMutatingRef.current = true
+    _ttsMutating = true
+    const gen = ++_ttsMutGeneration
     try {
       removeAllTTSSpans()
       spanMapRef.current.clear()
@@ -70,9 +83,16 @@ export function useTTSHighlight({
 
       return true
     } finally {
-      queueMicrotask(() => {
-        isMutatingRef.current = false
-      })
+      // Use setTimeout(250) instead of queueMicrotask so the flag stays true
+      // long enough to cover the useInlineHighlights MutationObserver debounce (150ms).
+      // Generation counter prevents stale timeouts from clearing the flag
+      // during close→reopen races.
+      setTimeout(() => {
+        if (_ttsMutGeneration === gen) {
+          isMutatingRef.current = false
+          _ttsMutating = false
+        }
+      }, 250)
     }
   }, [])
 
@@ -95,13 +115,18 @@ export function useTTSHighlight({
       observerRef.current?.disconnect()
       observerRef.current = null
       isMutatingRef.current = true
+      _ttsMutating = true
+      const gen = ++_ttsMutGeneration
       cleanupFully()
       spanMapRef.current.clear()
       prevIndexRef.current = -1
       initializedRef.current = false
-      queueMicrotask(() => {
-        isMutatingRef.current = false
-      })
+      setTimeout(() => {
+        if (_ttsMutGeneration === gen) {
+          isMutatingRef.current = false
+          _ttsMutating = false
+        }
+      }, 250)
       return
     }
 
@@ -109,7 +134,12 @@ export function useTTSHighlight({
 
     const articleEl = document.querySelector("[data-article-content]")
     if (articleEl) {
-      buildSpans(articleEl)
+      const ok = buildSpans(articleEl)
+      if (process.env.NODE_ENV === "development") {
+        console.log("[TTS Highlight] initial buildSpans:", ok, "spans:", spanMapRef.current.size)
+      }
+    } else if (process.env.NODE_ENV === "development") {
+      console.log("[TTS Highlight] article element not found on activation, waiting for MutationObserver")
     }
 
     const observer = new MutationObserver(() => {
@@ -150,10 +180,11 @@ export function useTTSHighlight({
       const seek = seekToTimeRef.current
       if (!w || !seek || wordIndex < 0 || wordIndex >= w.length) return
 
+      e.stopPropagation()
       seek(w[wordIndex].startTime)
-      requestAnimationFrame(() => {
-        playRef.current?.()
-      })
+      // Play immediately — seekToTime now handles resuming internally,
+      // but if audio was paused we still need to explicitly start playback.
+      playRef.current?.()
     }
     document.addEventListener("click", handleClick, true)
 
@@ -162,13 +193,18 @@ export function useTTSHighlight({
       observer.disconnect()
       observerRef.current = null
       isMutatingRef.current = true
+      _ttsMutating = true
+      const gen = ++_ttsMutGeneration
       cleanupFully()
       spanMapRef.current.clear()
       prevIndexRef.current = -1
       initializedRef.current = false
-      queueMicrotask(() => {
-        isMutatingRef.current = false
-      })
+      setTimeout(() => {
+        if (_ttsMutGeneration === gen) {
+          isMutatingRef.current = false
+          _ttsMutating = false
+        }
+      }, 250)
     }
   }, [isActive, buildSpans, areSpansValid, tryRebuild])
 
@@ -179,7 +215,15 @@ export function useTTSHighlight({
     let map = spanMapRef.current
 
     if (map.size === 0 || !areSpansValid()) {
-      if (!tryRebuild()) return
+      if (process.env.NODE_ENV === "development") {
+        console.log("[TTS Highlight] spans invalid/empty, attempting rebuild. size:", map.size, "valid:", map.size > 0 ? areSpansValid() : "N/A")
+      }
+      if (!tryRebuild()) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[TTS Highlight] rebuild failed — article element may not be in DOM")
+        }
+        return
+      }
       map = spanMapRef.current
     }
 
@@ -249,17 +293,31 @@ function injectStyles() {
 [data-tts-idx] {
   transition: color 0.15s, background-color 0.15s;
   cursor: pointer;
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+  border: none;
 }
-.tts-spoken {
-  color: inherit;
+[data-article-content] .tts-spoken {
+  color: inherit !important;
 }
-.tts-current {
-  background-color: color-mix(in srgb, var(--primary) 15%, transparent);
+[data-article-content] .tts-current {
+  background-color: color-mix(in srgb, var(--primary) 15%, transparent) !important;
   border-radius: 3px;
   padding: 1px 2px;
 }
-.tts-unspoken {
-  color: var(--muted-foreground);
+[data-article-content] .tts-unspoken {
+  color: var(--muted-foreground) !important;
+}
+/* Preserve user annotation highlights — TTS classes must not override mark styling */
+mark[data-highlight-id] [data-tts-idx] {
+  color: inherit !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+}
+/* Marks inside TTS spans (when highlights re-applied after TTS wraps) */
+[data-tts-idx] mark[data-highlight-id] {
+  color: inherit !important;
 }
 `
   document.head.appendChild(style)

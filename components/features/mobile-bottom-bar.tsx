@@ -13,7 +13,7 @@ import {
   TextFont,
   ChevronRight,
   Check,
-  VolumeHigh,
+  Play,
   Loader2,
   ShareIos,
   ArrowLeft,
@@ -441,7 +441,7 @@ export function MobileBottomBar({
           {isTTSLoading ? (
             <Loader2 className="size-5 animate-spin" />
           ) : (
-            <VolumeHigh className="size-5" />
+            <Play className="size-5" />
           )}
           <span className="text-[11px] font-medium">
             {isTTSActive ? "Stop" : "Listen"}

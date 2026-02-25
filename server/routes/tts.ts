@@ -24,10 +24,12 @@ import { Elysia, t } from "elysia";
 import {
   initElevenLabsTTS,
   generateSpeechForChunk,
-  fetchElevenLabsVoices,
   DEFAULT_VOICE_ID,
+  VOICE_PRESETS,
+  isVoiceAllowed,
   type ChunkAlignment,
 } from "../../lib/elevenlabs-tts";
+import { TTSRedisCache } from "../../lib/tts-redis-cache";
 import { getAuthInfo } from "../middleware/auth";
 import { createLogger } from "../../lib/logger";
 import { startMemoryTrack } from "../../lib/memory-tracker";
@@ -51,9 +53,9 @@ const logger = createLogger("api:tts");
 
 // ─── Server-side per-chunk LRU cache for TTS ───
 // Key: SHA-256(chunkText + voice). Value: audio buffer + alignment.
-// Per-chunk caching: each ~1000-char chunk is independently cached.
+// Per-chunk caching: each ~5000-char chunk is independently cached.
 // Cache hit = instant replay per chunk, no ElevenLabs call.
-// 500 MB cap, 1 hour TTL, Map-based LRU (insertion order = access order).
+// 300 MB cap, 1 hour TTL, Map-based LRU (insertion order = access order).
 
 interface ChunkCacheEntry {
   audio: Buffer;
@@ -63,7 +65,7 @@ interface ChunkCacheEntry {
   createdAt: number;
 }
 
-const TTS_CACHE_MAX_BYTES = 500 * 1024 * 1024; // 500 MB
+const TTS_CACHE_MAX_BYTES = 300 * 1024 * 1024; // 300 MB
 const TTS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 class ChunkLRUCache {
@@ -118,6 +120,67 @@ class ChunkLRUCache {
 
 const chunkCache = new ChunkLRUCache();
 
+// ─── Article-level combined result cache ───
+// Key: SHA-256(fullCleanedText + voice). Stores final merged audio + alignment.
+// Eliminates chunking, per-chunk lookups, and buffer merging for exact replays.
+// 200 MB cap, 2 hour TTL. Separate from chunk cache.
+
+interface ArticleCacheEntry {
+  audioBuffer: Buffer;
+  alignment: MergedAlignment;
+  durationMs: number;
+  size: number;
+  createdAt: number;
+}
+
+const ARTICLE_CACHE_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
+const ARTICLE_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+class ArticleLRUCache {
+  private cache = new Map<string, ArticleCacheEntry>();
+  private totalSize = 0;
+
+  get(key: string): ArticleCacheEntry | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.createdAt > ARTICLE_CACHE_TTL_MS) {
+      this.delete(key);
+      return null;
+    }
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry;
+  }
+
+  set(key: string, entry: ArticleCacheEntry): void {
+    if (this.cache.has(key)) this.delete(key);
+    while (this.totalSize + entry.size > ARTICLE_CACHE_MAX_BYTES && this.cache.size > 0) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest) this.delete(oldest);
+    }
+    this.cache.set(key, entry);
+    this.totalSize += entry.size;
+  }
+
+  delete(key: string): void {
+    const entry = this.cache.get(key);
+    if (entry) {
+      this.totalSize -= entry.size;
+      this.cache.delete(key);
+    }
+  }
+
+  get stats() {
+    return {
+      entries: this.cache.size,
+      totalSizeMB: Math.round(this.totalSize / 1024 / 1024 * 10) / 10,
+      maxSizeMB: Math.round(ARTICLE_CACHE_MAX_BYTES / 1024 / 1024),
+    };
+  }
+}
+
+const articleCache = new ArticleLRUCache();
+
 // Initialize ElevenLabs TTS with validated env vars (optional — TTS disabled when absent)
 if (env.ELEVENLABS_API_KEY) {
   initElevenLabsTTS(env.ELEVENLABS_API_KEY);
@@ -154,6 +217,12 @@ try {
   }
 } catch {
   logger.warn("Redis not available for TTS usage tracking");
+}
+
+// Redis-backed TTS chunk cache (L3 — survives restarts)
+let ttsRedisCache: TTSRedisCache | null = null;
+if (redis) {
+  ttsRedisCache = new TTSRedisCache(redis);
 }
 
 // In-memory fallback for daily limits when Redis is down
@@ -330,6 +399,9 @@ function mergeChunkAlignments(
 // Use 3 to leave headroom and avoid 429s from race conditions.
 const ELEVENLABS_MAX_CONCURRENT = 3;
 
+// Cross-chunk context for prosody continuity (chars from adjacent chunks)
+const CONTEXT_CHARS = 250;
+
 /**
  * Run async tasks with bounded concurrency.
  * Preserves result order (results[i] corresponds to tasks[i]).
@@ -367,6 +439,7 @@ interface ChunkGenResult {
  * Generate chunks with bounded concurrency and return combined audio + alignment.
  * Each chunk is checked against server-side LRU cache first (cache hits are free).
  * Uncached chunks are generated via ElevenLabs with max 3 concurrent API calls.
+ * Cross-chunk context (previousText/nextText) is passed for prosody continuity.
  */
 async function generateCombined(
   chunks: string[],
@@ -374,7 +447,7 @@ async function generateCombined(
   voice: string,
   signal?: AbortSignal,
 ): Promise<{
-  audioBase64: string;
+  audioBuffer: Buffer;
   alignment: MergedAlignment;
   durationMs: number;
 }> {
@@ -382,6 +455,7 @@ async function generateCombined(
   const results = new Array<ChunkGenResult>(chunks.length);
   const uncachedIndices: number[] = [];
 
+  // L2: Check in-memory chunk cache
   for (let i = 0; i < chunks.length; i++) {
     const cached = chunkCache.get(chunkKeys[i]);
     if (cached) {
@@ -396,14 +470,54 @@ async function generateCombined(
     }
   }
 
-  // Generate uncached chunks with bounded concurrency
+  // L3: Check Redis cache for remaining misses
+  if (uncachedIndices.length > 0 && ttsRedisCache) {
+    const redisKeys = uncachedIndices.map((i) => chunkKeys[i]);
+    const redisResults = await ttsRedisCache.getBatch(redisKeys);
+    const stillUncached: number[] = [];
+
+    for (let j = 0; j < uncachedIndices.length; j++) {
+      const redisHit = redisResults[j];
+      if (redisHit) {
+        const idx = uncachedIndices[j];
+        results[idx] = {
+          audio: redisHit.audio,
+          alignment: redisHit.alignment,
+          durationMs: redisHit.durationMs,
+          fromCache: true,
+        };
+        // Promote to in-memory cache (write-through)
+        chunkCache.set(chunkKeys[idx], {
+          audio: redisHit.audio,
+          alignment: redisHit.alignment,
+          durationMs: redisHit.durationMs,
+          size: redisHit.audio.length,
+          createdAt: Date.now(),
+        });
+      } else {
+        stillUncached.push(uncachedIndices[j]);
+      }
+    }
+
+    // Replace uncachedIndices with what Redis didn't have
+    uncachedIndices.length = 0;
+    uncachedIndices.push(...stillUncached);
+  }
+
+  // L4: Generate uncached chunks via ElevenLabs with bounded concurrency
   if (uncachedIndices.length > 0) {
     const tasks = uncachedIndices.map((i) => async () => {
       if (signal?.aborted) throw new Error("Aborted");
 
-      const result = await generateSpeechForChunk(chunks[i], voice, signal);
+      // Pass surrounding text for prosody continuity at chunk boundaries
+      const context = {
+        previousText: i > 0 ? chunks[i - 1].slice(-CONTEXT_CHARS) : undefined,
+        nextText: i < chunks.length - 1 ? chunks[i + 1].slice(0, CONTEXT_CHARS) : undefined,
+      };
 
-      // Cache immediately
+      const result = await generateSpeechForChunk(chunks[i], voice, signal, context);
+
+      // Cache immediately to L2 (in-memory)
       if (result.audioBuffer.length > 0) {
         chunkCache.set(chunkKeys[i], {
           audio: result.audioBuffer,
@@ -412,6 +526,11 @@ async function generateCombined(
           size: result.audioBuffer.length,
           createdAt: Date.now(),
         });
+
+        // Write-through to L3 (Redis) — fire-and-forget
+        if (ttsRedisCache) {
+          ttsRedisCache.set(chunkKeys[i], result.audioBuffer, result.alignment, result.durationMs).catch(() => {});
+        }
       }
 
       return {
@@ -447,19 +566,16 @@ async function generateCombined(
   const cacheHits = results.filter((r) => r.fromCache).length;
 
   logger.debug(
-    { chunksTotal: chunks.length, cacheHits, totalSizeMB: Math.round(totalSize / 1024 / 1024 * 10) / 10 },
+    { chunksTotal: chunks.length, cacheHits, uncached: uncachedIndices.length, totalSizeMB: Math.round(totalSize / 1024 / 1024 * 10) / 10 },
     "TTS combined generation completed",
   );
 
   return {
-    audioBase64: combined.toString("base64"),
+    audioBuffer: combined,
     alignment: mergedAlignment,
     durationMs: totalDurationMs,
   };
 }
-
-// Cached voice list (refreshes every hour)
-let voiceCache: { voices: unknown[]; expiresAt: number } | null = null;
 
 export const ttsRoutes = new Elysia()
   .post(
@@ -487,6 +603,13 @@ export const ttsRoutes = new Elysia()
       // --- Auth ---
       const auth = await getAuthInfo(request);
 
+      // --- Voice tier gating ---
+      const voiceId = voice || DEFAULT_VOICE_ID;
+      if (!isVoiceAllowed(voiceId, auth.isPremium)) {
+        set.status = 403;
+        return { error: "Premium voice requires an active subscription", upgrade: true };
+      }
+
       // --- Daily usage limit ---
       const usage = await checkTtsUsage(auth.userId, auth.isPremium);
       if (!usage.allowed) {
@@ -506,13 +629,61 @@ export const ttsRoutes = new Elysia()
         return { error: "No readable text after cleaning" };
       }
 
+      // --- Article-level cache: instant replay, zero processing ---
+      const articleKey = computeChunkKeySync(cleanedText, voiceId);
+      const cachedArticle = articleCache.get(articleKey);
+      if (cachedArticle) {
+        logger.info(
+          { userId: auth.userId, textLength: cleanedText.length, voice: voiceId },
+          "TTS article cache hit — instant replay",
+        );
+        incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
+        return new Response(
+          JSON.stringify({
+            audioBase64: cachedArticle.audioBuffer.toString("base64"),
+            alignment: cachedArticle.alignment,
+            durationMs: cachedArticle.durationMs,
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-TTS-Usage-Count": String(usage.count + 1),
+              "X-TTS-Usage-Limit": String(usage.limit),
+              "X-TTS-Cache": "article-hit",
+            },
+          },
+        );
+      }
+
       // --- Split into chunks + compute per-chunk keys ---
-      const voiceId = voice || DEFAULT_VOICE_ID;
       const chunks = splitTTSChunks(cleanedText);
       const chunkKeys = chunks.map((c) => computeChunkKeySync(c, voiceId));
 
-      // --- Check if all chunks are cached (skip concurrency slot) ---
-      const allCached = chunkKeys.every((key) => chunkCache.get(key) !== null);
+      // --- Check if all chunks are cached (L2 memory + L3 Redis → skip concurrency slot) ---
+      let allCached = chunkKeys.every((key) => chunkCache.get(key) !== null);
+      if (!allCached && ttsRedisCache) {
+        // Check Redis for chunks missing from memory
+        const missingKeys = chunkKeys.filter((key) => chunkCache.get(key) === null);
+        const redisResults = await ttsRedisCache.getBatch(missingKeys);
+        const allRedisHit = redisResults.every((r) => r !== null);
+        if (allRedisHit) {
+          // Promote all Redis hits to memory so generateCombined finds them
+          let mk = 0;
+          for (let i = 0; i < chunkKeys.length; i++) {
+            if (chunkCache.get(chunkKeys[i]) === null) {
+              const hit = redisResults[mk++]!;
+              chunkCache.set(chunkKeys[i], {
+                audio: hit.audio,
+                alignment: hit.alignment,
+                durationMs: hit.durationMs,
+                size: hit.audio.length,
+                createdAt: Date.now(),
+              });
+            }
+          }
+          allCached = true;
+        }
+      }
 
       const tracker = startMemoryTrack("tts-synthesis", {
         userId: auth.userId,
@@ -522,6 +693,47 @@ export const ttsRoutes = new Elysia()
         chunksTotal: chunks.length,
         allCached,
       });
+
+      // Log memory snapshot before synthesis
+      const memBefore = process.memoryUsage();
+      logger.info({
+        rss: Math.round(memBefore.rss / 1024 / 1024),
+        heapUsed: Math.round(memBefore.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(memBefore.heapTotal / 1024 / 1024),
+        chunkCacheStats: chunkCache.stats,
+        articleCacheStats: articleCache.stats,
+        redisCacheStats: ttsRedisCache?.stats,
+      }, "TTS pre-synthesis memory snapshot");
+
+      /** Helper: build response from generateCombined result and cache at article level */
+      const buildResponse = (result: { audioBuffer: Buffer; alignment: MergedAlignment; durationMs: number }, cacheTag: string) => {
+        // Cache combined result at article level for future instant replays
+        articleCache.set(articleKey, {
+          audioBuffer: result.audioBuffer,
+          alignment: result.alignment,
+          durationMs: result.durationMs,
+          size: result.audioBuffer.length,
+          createdAt: Date.now(),
+        });
+
+        incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
+
+        return new Response(
+          JSON.stringify({
+            audioBase64: result.audioBuffer.toString("base64"),
+            alignment: result.alignment,
+            durationMs: result.durationMs,
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-TTS-Usage-Count": String(usage.count + 1),
+              "X-TTS-Usage-Limit": String(usage.limit),
+              ...(cacheTag ? { "X-TTS-Cache": cacheTag } : {}),
+            },
+          },
+        );
+      };
 
       // Skip concurrency slot if everything is cached
       if (!allCached) {
@@ -551,24 +763,8 @@ export const ttsRoutes = new Elysia()
           );
 
           const result = await generateCombined(chunks, chunkKeys, voiceId, signal);
-          // Fire-and-forget: don't delay audio response for Redis write
-          incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
           tracker.end({ status: "completed" });
-
-          return new Response(
-            JSON.stringify({
-              audioBase64: result.audioBase64,
-              alignment: result.alignment,
-              durationMs: result.durationMs,
-            }),
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "X-TTS-Usage-Count": String(usage.count + 1),
-                "X-TTS-Usage-Limit": String(usage.limit),
-              },
-            },
-          );
+          return buildResponse(result, "");
         } catch (error) {
           const errMsg = (error as Error).message || "TTS generation failed";
           logger.error({ error: errMsg, userId: auth.userId }, "TTS synthesis error");
@@ -580,33 +776,16 @@ export const ttsRoutes = new Elysia()
         }
       }
 
-      // All cached — no concurrency slot needed
+      // All chunks cached — no concurrency slot needed
       logger.info(
         { userId: auth.userId, textLength: cleanedText.length, voice: voiceId, chunksTotal: chunks.length },
-        "TTS cache hit — replaying cached audio",
+        "TTS chunk cache hit — replaying cached audio",
       );
 
       try {
         const result = await generateCombined(chunks, chunkKeys, voiceId);
-        // Fire-and-forget: don't delay audio response for Redis write
-        incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
         tracker.end({ status: "completed", cached: true });
-
-        return new Response(
-          JSON.stringify({
-            audioBase64: result.audioBase64,
-            alignment: result.alignment,
-            durationMs: result.durationMs,
-          }),
-          {
-            headers: {
-              "Content-Type": "application/json",
-              "X-TTS-Usage-Count": String(usage.count + 1),
-              "X-TTS-Usage-Limit": String(usage.limit),
-              "X-TTS-Cache": "hit",
-            },
-          },
-        );
+        return buildResponse(result, "chunk-hit");
       } catch (error) {
         const errMsg = (error as Error).message || "TTS replay failed";
         logger.error({ error: errMsg, userId: auth.userId }, "TTS cache replay error");
@@ -623,28 +802,19 @@ export const ttsRoutes = new Elysia()
       }),
     },
   )
-  .get("/api/tts/voices", async ({ set }) => {
-    const now = Date.now();
-    if (voiceCache && voiceCache.expiresAt > now) {
-      return voiceCache.voices;
-    }
-
-    try {
-      const voices = await fetchElevenLabsVoices();
-      voiceCache = { voices, expiresAt: now + 3600000 };
-      return voices;
-    } catch (error) {
-      if (voiceCache) {
-        logger.warn({ error }, "Voice fetch failed, returning stale cache");
-        return voiceCache.voices;
-      }
-      logger.error({ error }, "Failed to fetch voice list");
-      set.status = 500;
-      return { error: "Failed to fetch voices" };
-    }
+  .get("/api/tts/voices", async ({ request }) => {
+    const auth = await getAuthInfo(request);
+    return VOICE_PRESETS.map((v) => ({
+      ...v,
+      locked: !isVoiceAllowed(v.id, auth.isPremium),
+    }));
   });
 
 /** Expose cache stats for /health endpoint */
 export function getTTSCacheStats() {
-  return chunkCache.stats;
+  return {
+    chunks: chunkCache.stats,
+    articles: articleCache.stats,
+    redis: ttsRedisCache?.stats ?? { hits: 0, misses: 0, errors: 0, hitRate: 0 },
+  };
 }

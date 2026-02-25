@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import type { CharacterAlignmentResponseModel } from "@elevenlabs/elevenlabs-js/api/types/CharacterAlignmentResponseModel"
-import { Pause, Play } from "lucide-react"
+import { Pause, Play } from "@/components/ui/icons"
 
 import { cn } from "@/lib/utils"
 import {
@@ -32,7 +32,7 @@ import {
 type TranscriptGap = Extract<TranscriptSegment, { kind: "gap" }>
 
 type TranscriptViewerContextValue = UseTranscriptViewerResult & {
-  audioProps: Omit<ComponentPropsWithRef<"audio">, "children" | "src">
+  audioProps: Omit<ComponentPropsWithRef<"audio">, "children">
 }
 
 const TranscriptViewerContext =
@@ -398,7 +398,7 @@ function TranscriptViewerScrubBar({
             )}
           >
             <ScrubBarTimeLabel time={currentTime} />
-            <ScrubBarTimeLabel time={duration - currentTime} />
+            <ScrubBarTimeLabel time={duration} />
           </div>
         )}
       </div>

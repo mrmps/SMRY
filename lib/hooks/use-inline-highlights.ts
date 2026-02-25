@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import type { Highlight } from "./use-highlights";
+import { isTTSMutating } from "@/components/hooks/use-tts-highlight";
 
 const MARK_ATTR = "data-highlight-id";
 const MARK_COLOR_ATTR = "data-highlight-color";
@@ -372,6 +373,8 @@ export function useInlineHighlights(
 
     const observer = new MutationObserver(() => {
       if (isApplyingRef.current) return;
+      // Skip mutations caused by TTS highlight span wrapping/unwrapping
+      if (isTTSMutating()) return;
 
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
@@ -379,7 +382,7 @@ export function useInlineHighlights(
 
       debounceTimerRef.current = setTimeout(() => {
         debounceTimerRef.current = null;
-        if (isApplyingRef.current) return;
+        if (isApplyingRef.current || isTTSMutating()) return;
 
         const hasMarks = container.querySelector(`mark[${MARK_ATTR}]`);
         if (!hasMarks && highlightsRef.current.length > 0) {

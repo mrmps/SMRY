@@ -44,12 +44,13 @@ import {
   useTranscriptViewerContext,
 } from "@/components/ui/transcript-viewer";
 import { useTTSHighlight } from "@/components/hooks/use-tts-highlight";
-import { VOICE_PRESETS, getVoiceAvatarGradient } from "@/lib/elevenlabs-tts";
+import { VOICE_PRESETS, getVoiceAvatarGradient, isVoiceAllowed } from "@/lib/elevenlabs-tts";
 import {
   Forward,
   Backward,
   X,
   AlertTriangle,
+  Lock,
 } from "@/components/ui/icons";
 import { type ArticleExportData } from "@/components/features/export-article";
 import {
@@ -170,56 +171,62 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
           </button>
           {showVoice && (
             <div className="absolute bottom-full mb-2 left-0 z-50 bg-popover border rounded-xl shadow-2xl p-2 w-[240px] max-h-[280px] overflow-y-auto scrollbar-hide">
-              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 py-1.5">Female</div>
-              {VOICE_PRESETS.filter((v) => v.gender === "female").map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => { onVoiceChange(v.id); setShowVoice(false); }}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-left transition-colors",
-                    v.id === voice
-                      ? "bg-primary/15 text-primary"
-                      : "hover:bg-accent hover:text-foreground text-foreground",
-                  )}
-                >
-                  <span
-                    className="size-7 rounded-full shrink-0"
-                    style={{ background: getVoiceAvatarGradient(v.id) }}
-                  />
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium truncate">{v.name}</span>
-                      {v.id === voice && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground truncate">{v.accent} · {v.description}</span>
-                  </div>
-                </button>
+              {(["female", "male"] as const).map((gender, gi) => (
+                <React.Fragment key={gender}>
+                  <div className={cn("text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 py-1.5", gi > 0 && "mt-2")}>{gender === "female" ? "Female" : "Male"}</div>
+                  {VOICE_PRESETS.filter((v) => v.gender === gender).map((v) => {
+                    const locked = !isPremium && !isVoiceAllowed(v.id, !!isPremium);
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => {
+                          if (locked) {
+                            window.location.href = "/pricing";
+                            return;
+                          }
+                          onVoiceChange(v.id);
+                          setShowVoice(false);
+                        }}
+                        className={cn(
+                          "group/voice w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-left transition-colors relative",
+                          locked
+                            ? "opacity-60 hover:opacity-90 cursor-pointer"
+                            : v.id === voice
+                              ? "bg-primary/15 text-primary"
+                              : "hover:bg-accent hover:text-foreground text-foreground",
+                        )}
+                      >
+                        <span
+                          className={cn("size-7 rounded-full shrink-0", locked && "grayscale-[40%]")}
+                          style={{ background: getVoiceAvatarGradient(v.id) }}
+                        />
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-sm font-medium truncate">{v.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate">{v.accent} · {v.description}</span>
+                        </div>
+                        {locked && (
+                          <span className="shrink-0 flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5">
+                            <Lock className="size-3" />
+                            {/* Badge text: always visible on mobile (no hover), acts as tooltip context */}
+                            <span className="text-[9px] font-medium text-muted-foreground leading-none">PRO</span>
+                          </span>
+                        )}
+                        {/* Desktop hover tooltip — hidden on touch devices */}
+                        {locked && (
+                          <span className="pointer-events-none absolute right-0 -top-7 z-50 hidden group-hover/voice:block rounded-md bg-foreground text-background px-2 py-1 text-[10px] font-medium shadow-lg whitespace-nowrap">
+                            Upgrade to unlock
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
               ))}
-              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 py-1.5 mt-2">Male</div>
-              {VOICE_PRESETS.filter((v) => v.gender === "male").map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => { onVoiceChange(v.id); setShowVoice(false); }}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg text-left transition-colors",
-                    v.id === voice
-                      ? "bg-primary/15 text-primary"
-                      : "hover:bg-accent hover:text-foreground text-foreground",
-                  )}
-                >
-                  <span
-                    className="size-7 rounded-full shrink-0"
-                    style={{ background: getVoiceAvatarGradient(v.id) }}
-                  />
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium truncate">{v.name}</span>
-                      {v.id === voice && <span className="size-1.5 rounded-full bg-primary shrink-0" />}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground truncate">{v.accent} · {v.description}</span>
-                  </div>
-                </button>
-              ))}
+              {!isPremium && (
+                <div className="text-[10px] text-muted-foreground text-center pt-2 pb-1 border-t mt-2">
+                  <Link href="/pricing" className="hover:text-foreground transition-colors">Unlock all voices with Premium</Link>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -302,8 +309,21 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
  * word index from context and highlights it on the article DOM via <mark>.
  */
 function TTSArticleHighlight() {
-  const { currentWordIndex, seekToTime, play, words } = useTranscriptViewerContext();
+  const { currentWordIndex, seekToTime, play, words, isPlaying, currentTime } = useTranscriptViewerContext();
   useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play, words });
+
+  // Debug: log word index updates to diagnose desktop vs mobile sync
+  const prevRef = useRef({ wordIndex: -1, loggedAt: 0 });
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const now = Date.now();
+    // Log at most every 2 seconds to avoid flooding
+    if (currentWordIndex !== prevRef.current.wordIndex && now - prevRef.current.loggedAt > 2000) {
+      console.log("[TTS Sync] wordIndex:", currentWordIndex, "time:", currentTime.toFixed(2), "playing:", isPlaying, "wordsTotal:", words.length);
+      prevRef.current = { wordIndex: currentWordIndex, loggedAt: now };
+    }
+  }, [currentWordIndex, currentTime, isPlaying, words.length]);
+
   return null;
 }
 
@@ -365,6 +385,98 @@ function TTSErrorCard({ error, parsedError, onClose, onRetry }: {
       </div>
     </div>
   );
+}
+
+// ─── Shared TTS Floating Player (used in both desktop and mobile views) ───
+
+const MOBILE_TTS_BOTTOM_STYLE = { bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' } as const;
+/** Approx height of the TTS player + bottom bar gap so content isn't hidden */
+const MOBILE_TTS_SCROLL_PADDING = 180;
+
+function TTSFloatingPlayer({
+  tts,
+  ttsOpen,
+  onClose,
+  isPremium,
+  isMobile,
+}: {
+  tts: import("@/lib/hooks/use-tts").UseTTSReturn;
+  ttsOpen: boolean;
+  onClose: () => void;
+  isPremium: boolean;
+  isMobile: boolean;
+}) {
+  // Auto-scroll mobile content so it isn't hidden behind the player
+  useEffect(() => {
+    if (!isMobile || !ttsOpen) return;
+    const sc = document.querySelector("[data-mobile-scroll]");
+    if (!sc) return;
+    // Add padding so content at bottom isn't obscured
+    (sc as HTMLElement).style.paddingBottom = `${MOBILE_TTS_SCROLL_PADDING}px`;
+    // Scroll up a bit to reveal content behind the player
+    sc.scrollBy({ top: 60, behavior: "smooth" });
+    return () => {
+      // Remove padding when player closes
+      (sc as HTMLElement).style.paddingBottom = "";
+    };
+  }, [isMobile, ttsOpen]);
+
+  if (!ttsOpen) return null;
+
+  // Ready — full player
+  if (tts.isReady && tts.audioSrc && tts.alignment) {
+    return (
+      <TranscriptViewerContainer
+        audioSrc={tts.audioSrc}
+        audioType="audio/mpeg"
+        alignment={tts.alignment}
+        className={cn(
+          "fixed left-1/2 -translate-x-1/2 z-40 rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0",
+          isMobile
+            ? "w-[calc(100vw-1.5rem)] max-w-[520px]"
+            : "bottom-6 w-[520px] max-w-[calc(100vw-2rem)]"
+        )}
+        style={isMobile ? MOBILE_TTS_BOTTOM_STYLE : undefined}
+      >
+        <TranscriptViewerAudio />
+        <TTSArticleHighlight />
+        <TTSControls onClose={onClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
+      </TranscriptViewerContainer>
+    );
+  }
+
+  // Loading
+  if (tts.isLoading) {
+    return (
+      <div
+        className={cn(
+          "fixed z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-4 shadow-2xl flex flex-col items-center gap-2",
+          isMobile ? "left-3 right-3" : "bottom-6 left-1/2 -translate-x-1/2"
+        )}
+        style={isMobile ? MOBILE_TTS_BOTTOM_STYLE : undefined}
+      >
+        <TTSWaveAnimation />
+        <p className="text-xs text-muted-foreground">Generating audio...</p>
+      </div>
+    );
+  }
+
+  // Error
+  if (tts.error) {
+    return (
+      <div
+        className={cn(
+          "fixed z-40 rounded-xl bg-card/95 backdrop-blur-xl border border-destructive/20 shadow-2xl",
+          isMobile ? "left-3 right-3 px-4 py-3.5" : "bottom-6 left-1/2 -translate-x-1/2 px-5 py-3.5 max-w-[400px]"
+        )}
+        style={isMobile ? MOBILE_TTS_BOTTOM_STYLE : undefined}
+      >
+        <TTSErrorCard error={tts.error} parsedError={tts.parsedError} onClose={onClose} onRetry={() => { tts.stop(); tts.load(); }} />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // Check if the user is typing in an input/textarea/contentEditable
@@ -1258,33 +1370,8 @@ export function ProxyContent({ url }: ProxyContentProps) {
                   isTTSLoading={tts.isLoading}
                 />
 
-                {/* TTS floating player — highlights words on the article */}
-                {ttsOpen && tts.isReady && tts.audioSrc && tts.alignment && (
-                  <TranscriptViewerContainer
-                    audioSrc={tts.audioSrc}
-                    audioType="audio/mpeg"
-                    alignment={tts.alignment}
-                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
-                    onEnded={handleTTSClose}
-                  >
-                    <TranscriptViewerAudio />
-                    <TTSArticleHighlight />
-                    <TTSControls onClose={handleTTSClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
-                  </TranscriptViewerContainer>
-                )}
-
-                {/* TTS loading/error state */}
-                {ttsOpen && tts.isLoading && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-4 shadow-2xl flex flex-col items-center gap-2">
-                    <TTSWaveAnimation />
-                    <p className="text-xs text-muted-foreground">Generating audio...</p>
-                  </div>
-                )}
-                {ttsOpen && tts.error && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-card/95 backdrop-blur-xl border border-destructive/20 px-5 py-3.5 shadow-2xl max-w-[400px]">
-                    <TTSErrorCard error={tts.error} parsedError={tts.parsedError} onClose={handleTTSClose} onRetry={() => { tts.stop(); tts.load(); }} />
-                  </div>
-                )}
+                {/* TTS floating player (shared component) */}
+                <TTSFloatingPlayer tts={tts} ttsOpen={ttsOpen} onClose={handleTTSClose} isPremium={isPremium} isMobile={false} />
 
                 {/* Settings Popover - Desktop dialog, Mobile drawer */}
                 <SettingsPopover
@@ -1507,40 +1594,8 @@ export function ProxyContent({ url }: ProxyContentProps) {
                 </div>
               )}
 
-              {/* TTS floating player — highlights words on the article (mobile) */}
-              {ttsOpen && tts.isReady && tts.audioSrc && tts.alignment && (
-                <TranscriptViewerContainer
-                  audioSrc={tts.audioSrc}
-                  audioType="audio/mpeg"
-                  alignment={tts.alignment}
-                  className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-1.5rem)] max-w-[520px] rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0"
-                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
-                  onEnded={handleTTSClose}
-                >
-                  <TranscriptViewerAudio />
-                  <TTSArticleHighlight />
-                  <TTSControls onClose={handleTTSClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
-                </TranscriptViewerContainer>
-              )}
-
-              {/* TTS loading/error state (mobile) */}
-              {ttsOpen && tts.isLoading && (
-                <div
-                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-4 py-4 shadow-2xl flex flex-col items-center gap-2"
-                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
-                >
-                  <TTSWaveAnimation />
-                  <p className="text-xs text-muted-foreground">Generating audio...</p>
-                </div>
-              )}
-              {ttsOpen && tts.error && (
-                <div
-                  className="fixed left-3 right-3 z-40 rounded-xl bg-card/95 backdrop-blur-xl border border-destructive/20 px-4 py-3.5 shadow-2xl"
-                  style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
-                >
-                  <TTSErrorCard error={tts.error} parsedError={tts.parsedError} onClose={handleTTSClose} onRetry={() => { tts.stop(); tts.load(); }} />
-                </div>
-              )}
+              {/* TTS floating player (shared component) */}
+              <TTSFloatingPlayer tts={tts} ttsOpen={ttsOpen} onClose={handleTTSClose} isPremium={isPremium} isMobile={true} />
 
               {/* Mobile Bottom Bar */}
               <MobileBottomBar

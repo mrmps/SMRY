@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, type MutableRefObject } from 
 import { useAuth } from "@clerk/nextjs";
 import { extractTTSText } from "@/lib/tts-text";
 import { cleanTextForTTS } from "@/lib/tts-chunk";
+import { isVoiceAllowed } from "@/lib/elevenlabs-tts";
 
 // Free user daily limit
 const FREE_TTS_LIMIT = 3;
@@ -45,6 +46,8 @@ function parseTTSError(raw: string): ParsedTTSError {
     return { message: "Timed out. Try a shorter article.", canRetry: true, showUpgrade: false };
   if (lower.includes("too long"))
     return { message: "Article too long for audio (50K char max).", canRetry: false, showUpgrade: false };
+  if (lower.includes("premium") || lower.includes("subscription") || lower.includes("403"))
+    return { message: "This voice is available with Premium.", canRetry: false, showUpgrade: true };
   if (lower.includes("401") || lower.includes("unauthorized"))
     return { message: "Service configuration error. Try again later.", canRetry: true, showUpgrade: false };
 
@@ -222,29 +225,55 @@ export function useTTS(
   const abortRef = useRef<AbortController | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
+  // In-memory cache: keep generated audio per voice so switching is instant
+  const voiceCacheRef = useRef<Map<string, { blobUrl: string; alignment: CombinedAlignment; durationMs: number }>>(new Map());
+
   const canUse = process.env.NODE_ENV === "development" || isPremium || usageCount < FREE_TTS_LIMIT;
 
   const cleanup = useCallback(() => {
+    // Don't revoke — the blob URL is saved in voiceCacheRef for instant voice switching.
+    // It will be revoked on stop() or unmount.
+    blobUrlRef.current = null;
+    setAudioSrc(null);
+    setAlignment(null);
+    setDurationMs(0);
+  }, []);
+
+  const revokeAllBlobUrls = useCallback(() => {
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
     }
-    setAudioSrc(null);
-    setAlignment(null);
-    setDurationMs(0);
+    for (const entry of voiceCacheRef.current.values()) {
+      URL.revokeObjectURL(entry.blobUrl);
+    }
+    voiceCacheRef.current.clear();
   }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      revokeAllBlobUrls();
     };
-  }, []);
+  }, [revokeAllBlobUrls]);
 
   const load = useCallback(async () => {
     if (!articleTextContent) return;
     if (status === "loading") return;
+
+    // ─── L0: In-memory voice cache (instant, no async) ───
+    const memoryCached = voiceCacheRef.current.get(voice);
+    if (memoryCached) {
+      if (process.env.NODE_ENV === "development") console.log("[TTS] L0 hit (memory cache) voice:", voice);
+      blobUrlRef.current = memoryCached.blobUrl;
+      setAudioSrc(memoryCached.blobUrl);
+      setAlignment(memoryCached.alignment);
+      setDurationMs(memoryCached.durationMs);
+      setStatus("ready");
+      setError(null);
+      return;
+    }
 
     // Extract clean text from DOM
     let ttsText = articleTextContent;
@@ -273,18 +302,20 @@ export function useTTS(
     abortRef.current = abortController;
 
     try {
-      // ─── Check client-side IndexedDB cache first (no credits consumed) ───
+      // ─── L1: IndexedDB cache (no credits consumed) ───
       const cacheKey = await computeCacheKey(cleanedText, voice);
       const cached = await getCachedAudio(cacheKey);
 
       if (cached) {
+        if (process.env.NODE_ENV === "development") console.log("[TTS] L1 hit (IndexedDB) voice:", voice);
         const url = URL.createObjectURL(cached.blob);
         blobUrlRef.current = url;
+        // Save to in-memory cache for instant switching next time
+        voiceCacheRef.current.set(voice, { blobUrl: url, alignment: cached.alignment, durationMs: cached.durationMs });
         setAudioSrc(url);
         setAlignment(cached.alignment);
         setDurationMs(cached.durationMs);
         setStatus("ready");
-        // Cached replays don't consume credits
         return;
       }
 
@@ -296,6 +327,8 @@ export function useTTS(
       }
 
       // ─── Fetch from server ───
+      if (process.env.NODE_ENV === "development") console.log("[TTS] cache miss, fetching from server. voice:", voice, "textLen:", cleanedText.length);
+      const fetchStart = performance.now();
       const token = await getToken();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -309,6 +342,9 @@ export function useTTS(
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
+        if (response.status === 403) {
+          throw new Error(data.error || "This voice requires a Premium subscription.");
+        }
         if (response.status === 429) {
           throw new Error(data.error || "Daily TTS limit reached. Upgrade to Premium for unlimited listening.");
         }
@@ -333,6 +369,14 @@ export function useTTS(
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
 
+      // Save to in-memory cache for instant switching
+      voiceCacheRef.current.set(voice, { blobUrl: url, alignment: serverAlignment, durationMs: serverDuration });
+
+      if (process.env.NODE_ENV === "development") {
+        const elapsed = Math.round(performance.now() - fetchStart);
+        console.log(`[TTS] server response: ${elapsed}ms, audioSize: ${(binaryStr.length / 1024).toFixed(0)}KB, duration: ${(serverDuration / 1000).toFixed(1)}s`);
+      }
+
       setAudioSrc(url);
       setAlignment(serverAlignment);
       setDurationMs(serverDuration);
@@ -351,56 +395,53 @@ export function useTTS(
         setStatus("idle");
         return;
       }
-      setError((err as Error).message || "TTS failed");
+      const errMsg = (err as Error).message || "TTS failed";
+      if (process.env.NODE_ENV === "development") console.error("[TTS] error:", errMsg);
+      setError(errMsg);
       setStatus("error");
     }
   }, [articleTextContent, articleUrl, canUse, cleanup, getToken, isPremium, status, voice]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
-    cleanup();
+    revokeAllBlobUrls();
+    setAudioSrc(null);
+    setAlignment(null);
+    setDurationMs(0);
     setStatus("idle");
     setError(null);
-  }, [cleanup]);
+  }, [revokeAllBlobUrls]);
 
-  const [pendingReload, setPendingReload] = useState(false);
   const loadRef = useRef(load) as MutableRefObject<typeof load>;
   useEffect(() => { loadRef.current = load; });
 
   const setVoice = useCallback((voiceId: string) => {
+    if (!isVoiceAllowed(voiceId, isPremium)) return;
     setVoiceState((prev) => {
       if (prev === voiceId) return prev;
       return voiceId;
     });
-  }, []);
+  }, [isPremium]);
 
-  // Auto-reload when voice changes while audio is ready/errored
+  // Auto-reload when voice changes while audio is ready/errored.
+  // If the new voice is in the in-memory cache, load() will restore it instantly (no API call).
   const prevVoiceRef = useRef(voice);
   useEffect(() => {
     if (prevVoiceRef.current === voice) return;
     prevVoiceRef.current = voice;
     if (status === "ready" || status === "error") {
-      // Cleanup old audio without closing player
       abortRef.current?.abort();
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
+      // Don't revoke blob URLs — they're kept in voiceCacheRef for instant switching
+      blobUrlRef.current = null;
       setAudioSrc(null);
       setAlignment(null);
       setDurationMs(0);
       setStatus("idle");
       setError(null);
-      setPendingReload(true);
+      // Trigger load in next tick (load checks in-memory cache first → instant if cached)
+      queueMicrotask(() => { loadRef.current(); });
     }
   }, [voice, status]);
-
-  // Trigger load after voice change cleanup
-  useEffect(() => {
-    if (!pendingReload) return;
-    setPendingReload(false);
-    loadRef.current();
-  }, [pendingReload]);
 
   return {
     status,

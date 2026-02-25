@@ -49,20 +49,36 @@ export interface VoicePreset {
   gender: "female" | "male";
   accent: string;
   description: string;
+  tier: "free" | "premium";
 }
 
 export const VOICE_PRESETS: VoicePreset[] = [
-  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", gender: "female", accent: "American", description: "Calm, clear" },
-  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", gender: "female", accent: "American", description: "Soft, news" },
-  { id: "XrExE9yKIg1WjnnlVkGX", name: "Matilda", gender: "female", accent: "American", description: "Warm" },
-  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", gender: "female", accent: "British", description: "Raspy" },
-  { id: "Xb7hH8MSUJpSbSDYk0k2", name: "Alice", gender: "female", accent: "British", description: "Confident" },
-  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam", gender: "male", accent: "American", description: "Deep" },
-  { id: "nPczCjzI2devNBz1zQrb", name: "Brian", gender: "male", accent: "American", description: "Deep, narration" },
-  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", gender: "male", accent: "British", description: "News presenter" },
-  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh", gender: "male", accent: "American", description: "Deep, young" },
-  { id: "ErXwobaYiN019PkySvjV", name: "Antoni", gender: "male", accent: "American", description: "Well-rounded" },
+  { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", gender: "female", accent: "American", description: "Calm, clear", tier: "free" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", gender: "female", accent: "American", description: "Soft, news", tier: "premium" },
+  { id: "XrExE9yKIg1WjnnlVkGX", name: "Matilda", gender: "female", accent: "American", description: "Warm", tier: "premium" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", gender: "female", accent: "British", description: "Raspy", tier: "premium" },
+  { id: "Xb7hH8MSUJpSbSDYk0k2", name: "Alice", gender: "female", accent: "British", description: "Confident", tier: "premium" },
+  { id: "pNInz6obpgDQGcFmaJgB", name: "Adam", gender: "male", accent: "American", description: "Deep", tier: "premium" },
+  { id: "nPczCjzI2devNBz1zQrb", name: "Brian", gender: "male", accent: "American", description: "Deep, narration", tier: "free" },
+  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", gender: "male", accent: "British", description: "News presenter", tier: "premium" },
+  { id: "TxGEqnHWrfWFTfGW9XjX", name: "Josh", gender: "male", accent: "American", description: "Deep, young", tier: "premium" },
+  { id: "ErXwobaYiN019PkySvjV", name: "Antoni", gender: "male", accent: "American", description: "Well-rounded", tier: "premium" },
 ];
+
+/** Voice IDs available to free users (Rachel + Brian) */
+export const FREE_VOICE_IDS = new Set(
+  VOICE_PRESETS.filter((v) => v.tier === "free").map((v) => v.id),
+);
+
+/** All valid voice IDs */
+export const ALL_VOICE_IDS = new Set(VOICE_PRESETS.map((v) => v.id));
+
+/** Check if a voice is allowed for a given user tier */
+export function isVoiceAllowed(voiceId: string, isPremium: boolean): boolean {
+  if (!ALL_VOICE_IDS.has(voiceId)) return false;
+  if (isPremium) return true;
+  return FREE_VOICE_IDS.has(voiceId);
+}
 
 // Cheapest model: Flash v2.5 — 0.5 credits/char, ~75ms latency
 export const MODEL_ID = "eleven_flash_v2_5";
@@ -89,11 +105,13 @@ export interface ChunkResult {
  * Generate speech for a single text chunk using ElevenLabs convertWithTimestamps.
  *
  * Returns MP3 audio buffer + word-level boundaries derived from character alignment.
+ * Optional `context` provides surrounding text for cross-chunk prosody continuity.
  */
 export async function generateSpeechForChunk(
   text: string,
   voiceId: string,
   signal?: AbortSignal,
+  context?: { previousText?: string; nextText?: string },
 ): Promise<ChunkResult> {
   const el = getClient();
 
@@ -101,10 +119,12 @@ export async function generateSpeechForChunk(
     text,
     modelId: MODEL_ID,
     outputFormat: OUTPUT_FORMAT,
+    ...(context?.previousText ? { previousText: context.previousText } : {}),
+    ...(context?.nextText ? { nextText: context.nextText } : {}),
   }, {
     abortSignal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(30_000)])
-      : AbortSignal.timeout(30_000),
+      ? AbortSignal.any([signal, AbortSignal.timeout(60_000)])
+      : AbortSignal.timeout(60_000),
   });
 
   // Extract audio buffer from base64
@@ -262,25 +282,3 @@ export function getVoiceAvatarInitial(name: string): string {
   return (name[0] ?? "?").toUpperCase();
 }
 
-// --- Voice list ---
-
-/**
- * Fetch available voices from ElevenLabs.
- */
-export async function fetchElevenLabsVoices(): Promise<ElevenLabsVoice[]> {
-  const el = getClient();
-
-  const response = await el.voices.getAll({
-    showLegacy: false,
-  });
-
-  const voices = response.voices ?? [];
-
-  return voices
-    .filter((v) => v.labels?.language === "en" || v.labels?.language === "English")
-    .map((v) => ({
-      id: v.voiceId ?? "",
-      name: v.name ?? "Unknown",
-      language: "en",
-    }));
-}
