@@ -45,7 +45,7 @@ function parseTTSError(raw: string): ParsedTTSError {
   if (lower.includes("timed out"))
     return { message: "Timed out. Try a shorter article.", canRetry: true, showUpgrade: false };
   if (lower.includes("too long"))
-    return { message: "Article too long for audio (50K char max).", canRetry: false, showUpgrade: false };
+    return { message: "Article too long for audio (200K char max).", canRetry: false, showUpgrade: false };
   if (lower.includes("premium") || lower.includes("subscription") || lower.includes("403"))
     return { message: "This voice is available with Premium.", canRetry: false, showUpgrade: true };
   if (lower.includes("401") || lower.includes("unauthorized"))

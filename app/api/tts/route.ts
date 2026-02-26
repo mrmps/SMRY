@@ -3,7 +3,7 @@
  *
  * Next.js Route Handler that proxies TTS requests to the Elysia server.
  * Returns JSON: { audioBase64, alignment, durationMs }
- * - 120s timeout (TTS synthesis can take time for long articles)
+ * - 300s timeout (TTS synthesis can take time for long articles, up to 200K chars)
  * - Auth forwarding (Bearer token + session cookie)
  * - Client IP forwarding for rate limiting
  */
@@ -39,8 +39,8 @@ export async function POST(req: Request) {
       method: "POST",
       headers,
       body,
-      // 120s timeout — long articles take time to synthesize
-      signal: AbortSignal.timeout(120_000),
+      // 300s timeout — long articles (up to 200K chars) take time to synthesize
+      signal: AbortSignal.timeout(300_000),
     });
   } catch (err) {
     if ((err as Error).name === "TimeoutError") {

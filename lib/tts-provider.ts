@@ -42,6 +42,13 @@ export interface ChunkAlignment {
   characterEndTimesSeconds: number[];
 }
 
+/** Merged alignment across all chunks — used for article-level caching */
+export interface MergedAlignment {
+  characters: string[];
+  characterStartTimesSeconds: number[];
+  characterEndTimesSeconds: number[];
+}
+
 export interface ChunkResult {
   audioBuffer: Buffer;
   boundaries: WordBoundary[];

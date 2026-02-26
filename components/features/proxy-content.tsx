@@ -314,6 +314,12 @@ function TTSArticleHighlight() {
   const { currentWordIndex, seekToTime, resume, toggle, words, isPlaying, currentTime, duration } = useTranscriptViewerContext();
   useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play: resume, words });
 
+  // Use refs for volatile values so the handler reads latest without re-registering
+  const currentTimeRef = useRef(currentTime);
+  const durationRef = useRef(duration);
+  useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+  useEffect(() => { durationRef.current = duration; }, [duration]);
+
   // Listen for keyboard-dispatched TTS commands (Space, ArrowLeft, ArrowRight)
   useEffect(() => {
     const handler = (e: Event) => {
@@ -324,16 +330,16 @@ function TTSArticleHighlight() {
           toggle();
           break;
         case "seek-backward":
-          seekToTime(Math.max(currentTime - 10, 0));
+          seekToTime(Math.max(currentTimeRef.current - 10, 0));
           break;
         case "seek-forward":
-          seekToTime(Math.min(currentTime + 10, duration));
+          seekToTime(Math.min(currentTimeRef.current + 10, durationRef.current));
           break;
       }
     };
     document.addEventListener("tts-command", handler);
     return () => document.removeEventListener("tts-command", handler);
-  }, [toggle, seekToTime, currentTime, duration]);
+  }, [toggle, seekToTime]);
 
   // Debug: log word index updates to diagnose desktop vs mobile sync
   const prevRef = useRef({ wordIndex: -1, loggedAt: 0 });

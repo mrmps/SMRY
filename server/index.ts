@@ -29,11 +29,7 @@ configureFetchLimiter({
   maxConcurrent: env.MAX_CONCURRENT_ARTICLE_FETCHES,
   slotTimeout: env.ARTICLE_FETCH_SLOT_TIMEOUT_MS,
 });
-configureTTSLimiter({
-  maxConcurrent: env.MAX_CONCURRENT_TTS ?? 20,
-  maxPerUser: env.MAX_TTS_PER_USER ?? 2,
-  slotTimeout: env.TTS_SLOT_TIMEOUT_MS ?? 15_000,
-});
+configureTTSLimiter({});
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const app = new Elysia({ adapter: node() })

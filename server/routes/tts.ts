@@ -14,7 +14,7 @@
  * - Memory tracking: all operations instrumented via memory-tracker
  * - Client disconnect cleanup: AbortSignal propagated to Inworld request
  * - Rate limiting: per-IP via in-memory sliding window + daily Redis quota
- * - Audio size cap: max 50KB text (~30 min audio, ~50MB buffer)
+ * - Audio size cap: max 200K text (~2hr audio, ~150MB buffer)
  * - Graceful error handling with explicit cleanup
  *
  * Free users: 3 articles/day. Premium users: unlimited.
@@ -28,6 +28,7 @@ import {
   VOICE_PRESETS,
   isVoiceAllowed,
   type ChunkAlignment,
+  type MergedAlignment,
 } from "../../lib/tts-provider";
 import { TTSRedisCache } from "../../lib/tts-redis-cache";
 import { getAuthInfo } from "../middleware/auth";
@@ -342,12 +343,6 @@ async function incrementTtsUsage(
 
 // ─── Alignment merging ───
 
-interface MergedAlignment {
-  characters: string[];
-  characterStartTimesSeconds: number[];
-  characterEndTimesSeconds: number[];
-}
-
 /**
  * Merge per-chunk character alignments into a single alignment.
  * Adjusts time offsets so each chunk's times are relative to global audio start.
@@ -590,9 +585,9 @@ export const ttsRoutes = new Elysia()
         set.status = 400;
         return { error: "Text is required" };
       }
-      if (text.length > 50000) {
+      if (text.length > 200000) {
         set.status = 400;
-        return { error: "Text too long. Maximum 50,000 characters." };
+        return { error: "Text too long. Maximum 200,000 characters." };
       }
 
       // --- IP rate limiting ---
@@ -656,6 +651,41 @@ export const ttsRoutes = new Elysia()
         );
       }
 
+      // --- L1.5: Redis article cache (cross-device sync for premium users) ---
+      if (ttsRedisCache) {
+        const redisArticle = await ttsRedisCache.getArticle(articleKey);
+        if (redisArticle) {
+          logger.info(
+            { userId: auth.userId, textLength: cleanedText.length, voice: voiceId },
+            "TTS Redis article cache hit — cross-device replay",
+          );
+          // Promote to in-memory article cache
+          articleCache.set(articleKey, {
+            audioBuffer: redisArticle.audio,
+            alignment: redisArticle.alignment,
+            durationMs: redisArticle.durationMs,
+            size: redisArticle.audio.length,
+            createdAt: Date.now(),
+          });
+          incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
+          return new Response(
+            JSON.stringify({
+              audioBase64: redisArticle.audio.toString("base64"),
+              alignment: redisArticle.alignment,
+              durationMs: redisArticle.durationMs,
+            }),
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "X-TTS-Usage-Count": String(usage.count + 1),
+                "X-TTS-Usage-Limit": String(usage.limit),
+                "X-TTS-Cache": "redis-article-hit",
+              },
+            },
+          );
+        }
+      }
+
       // --- Split into chunks + compute per-chunk keys ---
       const chunks = splitTTSChunks(cleanedText);
       const chunkKeys = chunks.map((c) => computeChunkKeySync(c, voiceId));
@@ -716,6 +746,11 @@ export const ttsRoutes = new Elysia()
           size: result.audioBuffer.length,
           createdAt: Date.now(),
         });
+
+        // Write-through to Redis article cache for cross-device sync (premium only, fire-and-forget)
+        if (ttsRedisCache && auth.isPremium) {
+          ttsRedisCache.setArticle(articleKey, result.audioBuffer, result.alignment, result.durationMs).catch(() => {});
+        }
 
         incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
 

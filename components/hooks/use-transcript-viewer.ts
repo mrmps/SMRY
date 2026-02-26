@@ -64,10 +64,12 @@ function composeSegments(
     if (process.env.NODE_ENV === "development") {
       console.warn("[TTS Player] alignment array length mismatch — chars:", characters.length, "starts:", starts.length, "ends:", ends.length, "truncating to:", minLen)
     }
-    characters.length = minLen
-    starts.length = minLen
-    ends.length = minLen
   }
+
+  // Use sliced copies to avoid mutating the original alignment arrays (React state)
+  const chars = characters.slice(0, minLen)
+  const startTimes = starts.slice(0, minLen)
+  const endTimes = ends.slice(0, minLen)
 
   const segments: TranscriptSegment[] = []
   const words: TranscriptWord[] = []
@@ -107,10 +109,10 @@ function composeSegments(
     wordBuffer = ""
   }
 
-  for (let i = 0; i < characters.length; i++) {
-    const char = characters[i]
-    const start = starts[i] ?? 0
-    const end = ends[i] ?? start
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i]
+    const start = startTimes[i] ?? 0
+    const end = endTimes[i] ?? start
 
     if (hideAudioTags) {
       if (char === "[") {
@@ -453,9 +455,16 @@ function useTranscriptViewer({
     }
     const handlePause = () => {
       if (process.env.NODE_ENV === "development") console.log("[TTS Player] pause at", audio.currentTime.toFixed(2))
+      // Desktop browsers fire transient pause events during seeks.
+      // Don't stop RAF if we're within 300ms of a programmatic seek —
+      // the audio will resume shortly via seekToTime's play() call.
+      const msSinceSeek = Date.now() - lastSeekTimeRef.current
+      const isTransientSeekPause = msSinceSeek < 300
       syncPlayback()
-      syncTime()
-      stopRaf()
+      if (!isTransientSeekPause) {
+        syncTime()
+        stopRaf()
+      }
       onPauseRef.current?.()
     }
     const handleEnded = () => {
@@ -483,6 +492,11 @@ function useTranscriptViewer({
       syncTime()
       if (msSinceSeek > 150) {
         handleTimeUpdateRef.current(audio.currentTime)
+      }
+      // Desktop browsers fire pause during seeking, stopping the RAF loop.
+      // Restart it here so word highlighting continues after the seek.
+      if (!audio.paused && rafRef.current == null) {
+        startRaf()
       }
     }
     const handleDuration = () => {
@@ -514,6 +528,14 @@ function useTranscriptViewer({
     const handlePlaying = () => {
       setIsBuffering(false)
       onBufferingRef.current?.(false)
+      // Restart RAF loop if it stopped during a transient pause (buffering,
+      // seeking, etc.). Desktop browsers commonly fire pause→seeked→playing
+      // during seeks, and the RAF tick exits when node.paused is true.
+      // Without this, word highlighting freezes on desktop after any seek
+      // or buffering event.
+      if (!audio.paused && rafRef.current == null) {
+        startRaf()
+      }
     }
 
     audio.addEventListener("play", handlePlay)
