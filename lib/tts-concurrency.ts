@@ -19,7 +19,7 @@ import { createLogger } from "./logger";
 const logger = createLogger("tts:concurrency");
 
 // --- Configuration ---
-let maxConcurrentTTS = 20; // Global max simultaneous Inworld API requests
+let maxConcurrentTTS = 15; // Global max simultaneous Inworld API requests (was 20 — reduced for 4GB server)
 let maxPerUser = 2; // Per-user max concurrent TTS requests
 let slotTimeoutMs = 15_000; // Max wait time in queue before 503
 

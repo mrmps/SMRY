@@ -56,10 +56,10 @@ const isDev = env.NODE_ENV === "development";
 const logger = createLogger("api:tts");
 
 // ─── Server-side per-chunk LRU cache for TTS ───
-// Key: SHA-256(chunkText + voice). Value: audio buffer + alignment.
-// Per-chunk caching: each ~5000-char chunk is independently cached.
+// Key: SHA-256(version + chunkText + voice). Value: audio buffer + alignment.
+// Per-chunk caching: each ~1800-char chunk is independently cached.
 // Cache hit = instant replay per chunk, no Inworld call.
-// 300 MB cap, 1 hour TTL, Map-based LRU (insertion order = access order).
+// 150 MB cap, 1 hour TTL, Map-based LRU (insertion order = access order).
 
 interface ChunkCacheEntry {
   audio: Buffer;
@@ -69,7 +69,7 @@ interface ChunkCacheEntry {
   createdAt: number;
 }
 
-const TTS_CACHE_MAX_BYTES = 300 * 1024 * 1024; // 300 MB
+const TTS_CACHE_MAX_BYTES = 150 * 1024 * 1024; // 150 MB (was 300 — reduced for 4GB server)
 const TTS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 class ChunkLRUCache {
@@ -137,8 +137,11 @@ interface ArticleCacheEntry {
   createdAt: number;
 }
 
-const ARTICLE_CACHE_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
+const ARTICLE_CACHE_MAX_BYTES = 100 * 1024 * 1024; // 100 MB (was 200 — reduced for 4GB server)
 const ARTICLE_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// Maximum combined audio size before rejecting (prevents OOM on very long articles)
+const MAX_AUDIO_BYTES = 50 * 1024 * 1024; // 50 MB (~45 min audio at 64kbps)
 
 class ArticleLRUCache {
   private cache = new Map<string, ArticleCacheEntry>();
@@ -185,6 +188,16 @@ class ArticleLRUCache {
 
 const articleCache = new ArticleLRUCache();
 
+// ─── Request deduplication ───
+// When multiple users request the same article+voice simultaneously (e.g. viral article),
+// only one Inworld generation runs. Others await the same promise.
+// Prevents duplicate API calls and duplicate memory usage.
+const pendingGenerations = new Map<string, Promise<{
+  audioBuffer: Buffer;
+  alignment: MergedAlignment;
+  durationMs: number;
+}>>();
+
 // Register TTS stats with memory tracker for unified monitoring
 registerTTSStatsProvider({
   getCacheStats: () => {
@@ -198,6 +211,7 @@ registerTTSStatsProvider({
       tts_article_cache_mb: as.totalSizeMB,
       tts_article_cache_max_mb: as.maxSizeMB,
       tts_redis_cache: ttsRedisCache?.stats ?? null,
+      tts_pending_generations: pendingGenerations.size,
     };
   },
   getSlotStats: () => {
@@ -297,21 +311,26 @@ function checkIpRateLimit(ip: string): boolean {
 /**
  * Check TTS usage for a user (read-only — does NOT increment).
  * Free users: 3 plays per day. Premium: unlimited.
+ * Anonymous users: tracked by IP address (anon:{ip}).
  * Uses Redis with in-memory fallback when Redis is down.
  * Call `incrementTtsUsage()` only after successful generation.
  */
 async function checkTtsUsage(
   userId: string | null,
   isPremium: boolean,
+  clientIp?: string,
 ): Promise<{ allowed: boolean; count: number; limit: number }> {
   if (isDev) return { allowed: true, count: 0, limit: Infinity };
   if (isPremium) return { allowed: true, count: 0, limit: Infinity };
-  if (!userId) return { allowed: false, count: 0, limit: FREE_TTS_LIMIT };
+
+  // Anonymous users tracked by IP, logged-in free users tracked by userId
+  const trackingKey = userId || (clientIp ? `anon:${clientIp}` : null);
+  if (!trackingKey) return { allowed: false, count: 0, limit: FREE_TTS_LIMIT };
 
   const dayKey = getDayKey();
 
   if (redis) {
-    const redisKey = `tts-usage:${userId}:${dayKey}`;
+    const redisKey = `tts-usage:${trackingKey}:${dayKey}`;
     try {
       const current = (await redis.get<number>(redisKey)) || 0;
       if (current >= FREE_TTS_LIMIT) {
@@ -319,11 +338,11 @@ async function checkTtsUsage(
       }
       return { allowed: true, count: current, limit: FREE_TTS_LIMIT };
     } catch (error) {
-      logger.warn({ error, userId }, "Redis TTS usage check failed, falling back to memory");
+      logger.warn({ error, userId, trackingKey }, "Redis TTS usage check failed, falling back to memory");
     }
   }
 
-  const memKey = `${userId}:${dayKey}`;
+  const memKey = `${trackingKey}:${dayKey}`;
   const memEntry = memoryUsageCache.get(memKey);
   if (memEntry && memEntry.day === dayKey) {
     if (memEntry.count >= FREE_TTS_LIMIT) {
@@ -338,14 +357,20 @@ async function checkTtsUsage(
 /**
  * Increment TTS usage counter after successful generation.
  * Called ONLY after audio is generated/replayed — never on failure.
+ * Anonymous users tracked by IP address (anon:{ip}).
  */
 async function incrementTtsUsage(
   userId: string | null,
   isPremium: boolean,
   articleUrl?: string,
   voiceId?: string,
+  clientIp?: string,
 ): Promise<void> {
-  if (isDev || isPremium || !userId) return;
+  if (isDev || isPremium) return;
+
+  // Anonymous users tracked by IP, logged-in free users tracked by userId
+  const trackingKey = userId || (clientIp ? `anon:${clientIp}` : null);
+  if (!trackingKey) return;
 
   const dayKey = getDayKey();
 
@@ -353,26 +378,26 @@ async function incrementTtsUsage(
     // Dedup: only count unique article+voice combos per user per day
     if (articleUrl && voiceId) {
       try {
-        const dedupeKey = `tts-dedup:${userId}:${dayKey}`;
+        const dedupeKey = `tts-dedup:${trackingKey}:${dayKey}`;
         const added = await redis.sadd(dedupeKey, `${articleUrl}|${voiceId}`);
         await redis.expire(dedupeKey, 90000); // 25 hours
         if (added === 0) return; // Already counted this combo today
       } catch (error) {
-        logger.warn({ error, userId }, "Redis TTS dedup check failed");
+        logger.warn({ error, userId, trackingKey }, "Redis TTS dedup check failed");
       }
     }
 
-    const redisKey = `tts-usage:${userId}:${dayKey}`;
+    const redisKey = `tts-usage:${trackingKey}:${dayKey}`;
     try {
       await redis.incr(redisKey);
       await redis.expire(redisKey, 90000); // 25 hours
       return;
     } catch (error) {
-      logger.warn({ error, userId }, "Redis TTS usage increment failed, falling back to memory");
+      logger.warn({ error, userId, trackingKey }, "Redis TTS usage increment failed, falling back to memory");
     }
   }
 
-  const memKey = `${userId}:${dayKey}`;
+  const memKey = `${trackingKey}:${dayKey}`;
   const memEntry = memoryUsageCache.get(memKey);
   if (memEntry && memEntry.day === dayKey) {
     memEntry.count++;
@@ -434,8 +459,10 @@ function mergeChunkAlignments(
   return merged;
 }
 
-// Inworld allows more concurrent requests than Inworld
-const TTS_PROVIDER_MAX_CONCURRENT = 5;
+// Max concurrent Inworld API calls per TTS request.
+// With 15 global slots × 3 internal = 45 max concurrent Inworld connections.
+// Lower than 5 to reduce memory pressure and Inworld rate-limit risk at scale.
+const TTS_PROVIDER_MAX_CONCURRENT = 3;
 
 /**
  * Run async tasks with bounded concurrency.
@@ -581,8 +608,13 @@ async function generateCombined(
   // Without this, iOS Safari reads the first chunk's metadata and thinks the
   // total duration equals just the first chunk — causing playback to "end" at
   // the chunk boundary while audio continues from pre-decoded buffers.
-  const strippedBuffers = results.map((r) => stripMp3Metadata(r.audio));
+  let strippedBuffers: Buffer[] | null = results.map((r) => stripMp3Metadata(r.audio));
   const audioOnlySize = strippedBuffers.reduce((sum, b) => sum + b.length, 0);
+
+  // Safety cap: reject if combined audio would be too large (prevents OOM)
+  if (audioOnlySize > MAX_AUDIO_BYTES) {
+    throw new Error(`Audio too large (${Math.round(audioOnlySize / 1024 / 1024)}MB). Try a shorter article.`);
+  }
 
   // Log before large buffer allocation — at 100+ concurrent this matters
   logLargeAllocation("tts-audio-concat", audioOnlySize, {
@@ -596,13 +628,19 @@ async function generateCombined(
     buf.copy(audioOnly, offset);
     offset += buf.length;
   }
+  // Release stripped buffers immediately — no longer needed, let GC reclaim
+  strippedBuffers = null;
 
   // Generate a Xing VBR header frame with the correct total frame count
   // and byte size. iOS Safari uses this to determine the real duration.
   const xingFrame = generateXingFrame(audioOnly);
-  const combined = xingFrame.length > 0
-    ? Buffer.concat([xingFrame, audioOnly])
-    : audioOnly;
+  let combined: Buffer;
+  if (xingFrame.length > 0) {
+    combined = Buffer.concat([xingFrame, audioOnly]);
+    // audioOnly is superseded by combined — help GC on large articles
+  } else {
+    combined = audioOnly;
+  }
 
   // Merge alignments with cumulative time offsets
   const mergedAlignment = mergeChunkAlignments(
@@ -649,9 +687,9 @@ export const ttsRoutes = new Elysia()
         set.status = 400;
         return { error: "Text is required" };
       }
-      if (text.length > 200000) {
+      if (text.length > 100000) {
         set.status = 400;
-        return { error: "Text too long. Maximum 200,000 characters." };
+        return { error: "Text too long. Maximum 100,000 characters (~20 min audio)." };
       }
 
       // --- IP rate limiting ---
@@ -671,7 +709,7 @@ export const ttsRoutes = new Elysia()
       }
 
       // --- Daily usage limit ---
-      const usage = await checkTtsUsage(auth.userId, auth.isPremium);
+      const usage = await checkTtsUsage(auth.userId, auth.isPremium, clientIp);
       if (!usage.allowed) {
         set.status = 429;
         return {
@@ -697,7 +735,7 @@ export const ttsRoutes = new Elysia()
           { userId: auth.userId, textLength: cleanedText.length, voice: voiceId },
           "TTS article cache hit — instant replay",
         );
-        incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
+        incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId, clientIp).catch(() => {});
         return new Response(
           JSON.stringify({
             audioBase64: cachedArticle.audioBuffer.toString("base64"),
@@ -731,7 +769,7 @@ export const ttsRoutes = new Elysia()
             size: redisArticle.audio.length,
             createdAt: Date.now(),
           });
-          incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
+          incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId, clientIp).catch(() => {});
           return new Response(
             JSON.stringify({
               audioBase64: redisArticle.audio.toString("base64"),
@@ -836,7 +874,7 @@ export const ttsRoutes = new Elysia()
           ttsRedisCache.setArticle(articleKey, result.audioBuffer, result.alignment, result.durationMs).catch(() => {});
         }
 
-        incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
+        incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId, clientIp).catch(() => {});
 
         const memAfter = process.memoryUsage();
         logger.info({
@@ -887,15 +925,43 @@ export const ttsRoutes = new Elysia()
           throw err;
         }
 
+        // Dedup: if another request is already generating the same article+voice,
+        // piggyback on its promise instead of making duplicate Inworld API calls.
+        const pending = pendingGenerations.get(articleKey);
+        if (pending) {
+          logger.info(
+            { userId: auth.userId, voice: voiceId },
+            "TTS dedup — joining in-flight generation",
+          );
+          releaseTTSSlot(auth.userId); // Don't hold a slot while waiting
+          try {
+            const result = await pending;
+            tracker.end({ status: "dedup" });
+            return buildResponse(result, "dedup");
+          } catch (error) {
+            const errMsg = (error as Error).message || "TTS dedup failed";
+            tracker.end({ status: "error", error: errMsg });
+            set.status = 500;
+            return { error: errMsg };
+          }
+        }
+
         try {
           logger.info(
             { userId: auth.userId, textLength: cleanedText.length, voice: voiceId, chunksTotal: chunks.length, articleUrl },
             "TTS synthesis started",
           );
 
-          const result = await generateCombined(chunks, chunkKeys, voiceId, signal);
-          tracker.end({ status: "completed" });
-          return buildResponse(result, "");
+          const generationPromise = generateCombined(chunks, chunkKeys, voiceId, signal);
+          pendingGenerations.set(articleKey, generationPromise);
+
+          try {
+            const result = await generationPromise;
+            tracker.end({ status: "completed" });
+            return buildResponse(result, "");
+          } finally {
+            pendingGenerations.delete(articleKey);
+          }
         } catch (error) {
           const errMsg = (error as Error).message || "TTS generation failed";
           logger.error({ error: errMsg, userId: auth.userId }, "TTS synthesis error");

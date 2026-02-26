@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, type MutableRefObject } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { extractTTSText } from "@/lib/tts-text";
-import { cleanTextForTTS } from "@/lib/tts-chunk";
+import { cleanTextForTTS, computeChunkKey } from "@/lib/tts-chunk";
 import { isVoiceAllowed, DEFAULT_VOICE_ID } from "@/lib/tts-provider";
 
 // Free user daily limit
@@ -45,7 +45,7 @@ function parseTTSError(raw: string): ParsedTTSError {
   if (lower.includes("timed out"))
     return { message: "Timed out. Try a shorter article.", canRetry: true, showUpgrade: false };
   if (lower.includes("too long"))
-    return { message: "Article too long for audio (200K char max).", canRetry: false, showUpgrade: false };
+    return { message: "Article too long for audio (100K char max).", canRetry: false, showUpgrade: false };
   if (lower.includes("premium") || lower.includes("subscription") || lower.includes("403"))
     return { message: "This voice is available with Premium.", canRetry: false, showUpgrade: true };
   if (lower.includes("401") || lower.includes("unauthorized"))
@@ -144,12 +144,23 @@ async function setCachedAudio(key: string, blob: Blob, alignment: CombinedAlignm
       countReq.onerror = () => resolve(0);
     });
     if (count >= IDB_MAX_ENTRIES) {
-      // Delete all and start fresh (simple eviction for bounded cache)
-      const clearTx = db.transaction(IDB_STORE, "readwrite");
-      clearTx.objectStore(IDB_STORE).clear();
+      // Evict oldest 10 entries by createdAt to make room (LRU-style).
+      // Previous approach cleared ALL entries — too aggressive for users
+      // who switch between voices and articles frequently.
+      const evictTx = db.transaction(IDB_STORE, "readwrite");
+      const store = evictTx.objectStore(IDB_STORE);
+      const allReq = store.getAll();
       await new Promise<void>((resolve) => {
-        clearTx.oncomplete = () => resolve();
-        clearTx.onerror = () => resolve();
+        allReq.onsuccess = () => {
+          const entries = (allReq.result as CachedAudio[])
+            .sort((a, b) => a.createdAt - b.createdAt);
+          const toDelete = entries.slice(0, 10);
+          for (const entry of toDelete) {
+            store.delete(entry.key);
+          }
+          resolve();
+        };
+        allReq.onerror = () => resolve();
       });
     }
     const tx = db.transaction(IDB_STORE, "readwrite");
@@ -203,15 +214,10 @@ function addLocalUsage(articleUrl: string, voiceId: string): void {
   } catch { /* ignore */ }
 }
 
-// ─── Cache key for combined audio (SHA-256 of cleaned text + voice) ───
-// Version must match CHUNK_CACHE_VERSION in tts-chunk.ts — bump both together.
-const CLIENT_CACHE_VERSION = "v3";
-
-async function computeCacheKey(text: string, voice: string): Promise<string> {
-  const data = new TextEncoder().encode(CLIENT_CACHE_VERSION + "\0" + text + "\0" + voice);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
-}
+// ─── Cache key for combined audio ───
+// Uses the shared computeChunkKey from tts-chunk.ts — single source of truth
+// for cache version and hash algorithm. No more manual version syncing.
+const computeCacheKey = computeChunkKey;
 
 // ─── Hook ───
 

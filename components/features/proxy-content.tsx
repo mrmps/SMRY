@@ -520,12 +520,9 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
             !isOk && !isLow && "bg-amber-500/10 border-amber-500/20",
             isLow && "bg-red-500/10 border-red-500/20",
           )}>
-            <AlertTriangle className={cn(
-              "size-3.5 shrink-0",
-              isOk && "text-emerald-500",
-              !isOk && !isLow && "text-amber-500",
-              isLow && "text-red-500",
-            )} />
+            {isLow && (
+              <AlertTriangle className="size-3.5 shrink-0 text-red-500" />
+            )}
             <span className={cn(
               "text-[11px]",
               isOk && "text-emerald-700 dark:text-emerald-400",

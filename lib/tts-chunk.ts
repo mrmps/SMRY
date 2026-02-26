@@ -4,7 +4,7 @@
  * Used by both browser (use-tts hook) and server (tts route) to ensure
  * identical text cleaning, chunk splitting, and cache key computation.
  *
- * Per-chunk caching: each ~5000-char chunk is independently cached by its
+ * Per-chunk caching: each ~1800-char chunk is independently cached by its
  * own text content + voice. Partial cache hits work — only missing chunks
  * need to be generated.
  */

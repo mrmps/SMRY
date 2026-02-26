@@ -1,11 +1,13 @@
 /**
- * TTS Redis L2 Cache — persistent per-chunk audio cache that survives restarts.
+ * TTS Redis Cache — persistent audio cache that survives server restarts.
  *
- * Cache hierarchy:
- *   L0: Client IndexedDB (7d, 50 entries)
- *   L1: Server article LRU (200MB, 2h TTL)
- *   L2: Server chunk LRU (300MB, 1h TTL)
- *   L3: Redis chunk cache (7d TTL) ← THIS
+ * Cache hierarchy (client → server):
+ *   L0: Client in-memory voiceCacheRef (session, per voice)
+ *   L1: Client IndexedDB (7d, 50 entries)
+ *   L2: Server article LRU (100MB, 2h TTL)
+ *   L2.5: Redis article cache (7d, 10MB/entry) ← THIS (article level)
+ *   L3: Server chunk LRU (150MB, 1h TTL)
+ *   L3.5: Redis chunk cache (7d, 2MB/chunk) ← THIS (chunk level)
  *   L4: Inworld API (last resort)
  *
  * Stores gzip-compressed JSON with base64 audio per chunk hash.

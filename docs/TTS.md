@@ -12,7 +12,7 @@ Browser                          Next.js Proxy              Elysia API Server
                                                              ├─ IP rate limit (10/min)
                                                              ├─ Auth check (premium vs free limit)
                                                              ├─ Voice gating (free: Ashley/Dennis only)
-                                                             ├─ Concurrency slot (max 20 global, 2/user)
+                                                             ├─ Concurrency slot (max 15 global, 2/user)
                                                              ├─ Clean text (strip ads, junk patterns)
                                                              ├─ Article-level LRU cache lookup
                                                              ├─ Article cache hit → instant replay
@@ -20,11 +20,12 @@ Browser                          Next.js Proxy              Elysia API Server
                                                              ├─ Per-chunk LRU cache lookup (SHA-256 key)
                                                              ├─ Per-chunk Redis cache lookup (L3)
                                                              ├─ Cache hits → skip synthesis
-                                                             ├─ Cache misses → parallel synthesis (max 5)
+                                                             ├─ Request dedup (pendingGenerations map)
+                                                             ├─ Cache misses → parallel synthesis (max 3)
                                                              │   └─ Inworld TTS API (REST)
                                                              │       → MP3 audio + character alignment
                                                              ├─ Write to memory + Redis caches
-                                                             ├─ Concatenate audio chunks, merge alignment
+                                                             ├─ Concat audio + Xing VBR header, merge alignment
 2. ← JSON response          ←    Forward JSON          ←    └─ Return { audioBase64, alignment, durationMs }
 
 3. Client decodes base64 → Blob URL for <audio>
@@ -36,11 +37,14 @@ Browser                          Next.js Proxy              Elysia API Server
 ### Key design decisions
 
 - **Single JSON response (not SSE)**: One API call returns all audio + alignment as JSON. Simpler than SSE streaming — the multi-tier cache makes subsequent plays instant.
-- **Four-tier server caching**: L1 article LRU (200MB, 2h) → L2 chunk LRU (300MB, 1h) → L3 Redis chunk cache (7d TTL) → L4 Inworld API. Redis survives server restarts.
+- **Seven-tier caching**: L0 client memory → L1 IndexedDB (7d, 50 entries) → L2 article LRU (100MB, 2h) → L2.5 Redis article (7d) → L3 chunk LRU (150MB, 1h) → L3.5 Redis chunk (7d) → L4 Inworld API. Redis survives server restarts.
 - **Client-side voice cache**: In-memory `Map<voiceId, {blobUrl, alignment, durationMs}>` so switching between previously-heard voices is instant — no API call, no IndexedDB lookup.
 - **Voice tier gating**: Free users restricted to Ashley + Dennis (2 voices). Premium users get all 10. Enforced server-side (403) and client-side (UI lock icons, redirect to /pricing).
 - **1800-char chunks**: ~1800-char chunks on sentence boundaries (Inworld limit: 2000 chars with safety margin). Fewer API calls = lower cost + better prosody.
-- **Parallel chunk synthesis**: Up to 5 concurrent Inworld API calls for uncached chunks, reducing total generation time.
+- **Parallel chunk synthesis**: Up to 3 concurrent Inworld API calls per request for uncached chunks. Lowered from 5 to reduce per-request memory footprint on 4GB server.
+- **Request deduplication**: `pendingGenerations` Map prevents duplicate Inworld API calls when multiple users request the same article+voice simultaneously. Piggybacking requests release their concurrency slot immediately.
+- **Xing VBR header**: Combined MP3 audio gets an Xing/Info frame prepended so iOS Safari reports correct total duration. Without it, `audio.duration` shows wrong value for VBR-encoded multi-chunk audio.
+- **Audio throttled React state**: `setCurrentTime` updated at ~15fps (every 66ms) to avoid 60 re-renders/sec. Word highlighting reads `audio.currentTime` directly at 60fps via RAF, bypassing React state.
 - **Character-level alignment**: Inworld returns per-character start/end times via `timestampType: "CHARACTER"`. Converted to word boundaries via `alignmentToWordBoundaries()`.
 - **Seek-safe playback**: `seekTargetRef` guard prevents stale `timeupdate`/`pause` events from overriding seek state. Seeks resume playback immediately without RAF delay.
 - **Span-wrapping highlighting**: Words wrapped in `<span data-tts-idx="N">` with CSS class toggling (`tts-spoken`, `tts-current`, `tts-unspoken`). MutationObserver re-wraps on article DOM changes. Explicit CSS resets (`background: transparent; padding: 0; margin: 0`) prevent visual artifacts inside annotation `<mark>` elements.
@@ -93,18 +97,21 @@ Browser                          Next.js Proxy              Elysia API Server
 ## Cache Hierarchy
 
 ```
-L0: Client in-memory voice cache  (per session)        — instant voice switching, no async
-L1: Client IndexedDB              (7d TTL, 50 entries)  — per-user, no server call
-L2: Server article LRU            (200MB, 2h TTL)       — instant replay, no chunking
-L3: Server chunk LRU              (300MB, 1h TTL)       — per-chunk, partial hits
-L4: Redis chunk cache             (7d TTL, per-chunk)    — survives restarts
-L5: Inworld TTS API               (last resort)          — actual credit spend
+L0:   Client in-memory voice cache  (per session)        — instant voice switching, no async
+L1:   Client IndexedDB              (7d TTL, 50 entries)  — per-user, no server call
+L2:   Server article LRU            (100MB, 2h TTL)       — instant replay, no chunking
+L2.5: Redis article cache           (7d TTL, 10MB/entry)  — cross-device sync (premium)
+L3:   Server chunk LRU              (150MB, 1h TTL)       — per-chunk, partial hits
+L3.5: Redis chunk cache             (7d TTL, 2MB/chunk)   — survives restarts
+L4:   Inworld TTS API               (last resort)         — actual credit spend
 ```
 
 ### Write-through promotion
-- Redis hit → promoted to server chunk LRU (L3 → L2)
+- Redis article hit → promoted to server article LRU (L2.5 → L2)
+- Redis chunk hit → promoted to server chunk LRU (L3.5 → L3)
 - IndexedDB hit → promoted to client in-memory cache (L1 → L0)
-- API result → written to all caches (L0 + L1 + L3 + L4)
+- API result → written to all server caches (L2 + L2.5 + L3 + L3.5)
+- Client receives result → written to L0 + L1
 
 ## Voice Tiers
 
@@ -315,11 +322,12 @@ When the TTS player opens on mobile:
 ┌─────────────────────────────────────────┐
 │         TTS Concurrency Limiter         │
 ├─────────────────────────────────────────┤
-│ Global max:  20 concurrent requests     │
+│ Global max:  15 concurrent requests     │
 │ Per-user:    2 concurrent requests      │
 │ Queue:       FIFO with 15s timeout      │
 │ Abort:       Client disconnect cleanup  │
-│ Inworld:     5 concurrent API calls     │
+│ Inworld:     3 concurrent API calls/req │
+│ Dedup:       pendingGenerations map     │
 │ Metrics:     /health endpoint stats     │
 └─────────────────────────────────────────┘
 ```
@@ -329,8 +337,8 @@ When the TTS player opens on mobile:
 | Layer | Mechanism | Limit | Scope |
 |-------|-----------|-------|-------|
 | IP rate limit | In-memory sliding window | 10 req/min per IP | All users |
-| Daily quota | Redis (primary) + in-memory (fallback) | 3 articles/day | Free users (incremented after success only) |
-| Concurrency | Slot limiter | 20 global, 2 per user | All users |
+| Daily quota | Redis (primary) + in-memory (fallback) | 3 articles/day | Free + anonymous users (incremented after success only, deduped by article+voice) |
+| Concurrency | Slot limiter | 15 global, 2 per user | All users |
 
 ### Server Caching (Three-Tier)
 
@@ -338,23 +346,35 @@ When the TTS player opens on mobile:
 
 | Property | Value |
 |----------|-------|
-| Cache key | SHA-256(fullText + voiceId) |
-| Max size | 200 MB |
+| Cache key | SHA-256(v3 + fullText + voiceId) |
+| Max size | 100 MB |
 | TTL | 2 hours |
 | Scope | Server-side LRU |
 | Effect | Instant replay — zero processing, zero API calls |
+
+**L2.5: Redis article cache** (cross-device sync for premium):
+
+| Property | Value |
+|----------|-------|
+| Cache key | `tts:article:v2:{sha256hex}` |
+| TTL | 7 days |
+| Max per article | 10 MB |
+| Compression | gzip via `compressAsync`/`decompressAsync` |
+| Scope | Redis (Upstash) |
+| Effect | Premium users get same audio on all devices |
+| Write | Premium-only (fire-and-forget after generation) |
 
 **L3: Per-chunk cache** (individual chunk audio):
 
 | Property | Value |
 |----------|-------|
-| Cache key | SHA-256(chunkText + voiceId) |
-| Max size | 300 MB |
+| Cache key | SHA-256(v3 + chunkText + voiceId) |
+| Max size | 150 MB |
 | TTL | 1 hour |
 | Scope | Server-side LRU |
 | Effect | Cached chunks skip synthesis + concurrency slot |
 
-**L4: Redis chunk cache** (persistent across restarts):
+**L3.5: Redis chunk cache** (persistent across restarts):
 
 | Property | Value |
 |----------|-------|
@@ -370,27 +390,43 @@ When the TTS player opens on mobile:
 
 | Concern | Mitigation |
 |---------|-----------|
-| Audio buffer growth | ~1800 chars per Inworld call (not full article). MP3 much smaller than WAV |
+| Audio buffer growth | ~1800 chars per Inworld call (not full article). MP3 much smaller than WAV. 50MB audio size cap per request |
+| Cache memory caps | Article LRU 100MB + Chunk LRU 150MB = 250MB total (was 500MB) |
+| Text limit | 100K chars max (was 200K). ~20 min audio |
 | Blob URL leaks | Voice cache tracks all blob URLs. `stop()` revokes all. Cleanup on unmount |
 | Client disconnect | AbortSignal cancels Inworld request, releases concurrency slot |
 | Per-chunk timeout | 60s `AbortSignal.timeout` per Inworld call |
-| Per-request tracking | `startMemoryTrack()` instruments every TTS synthesis |
-| Client-side cache | IndexedDB, max 50 entries, 7-day TTL |
-| Redis cache | 2MB per-chunk cap, gzip compression, silent degradation on errors |
+| Per-request tracking | `startMemoryTrack()` instruments every TTS synthesis with checkpoints |
+| Client-side cache | IndexedDB, max 50 entries, 7-day TTL, evicts oldest 10 on overflow |
+| Redis cache | 2MB per-chunk cap, 10MB per-article cap, gzip compression, silent degradation |
+| Intermediate buffers | Nulled after use to allow GC during generation |
+| Large response warning | Logs warning when audio > 20MB |
 
-### Memory Estimates (100 concurrent users)
+### Memory Estimates (100 concurrent users, 4GB server)
 
 ```
-Per user:
-  Server per chunk:      ~60-120 KB (MP3, much smaller than PCM/WAV)
-  Server per article:    ~500 KB - 2 MB (all chunks, before caching)
-  Client per tab:        ~1-5 MB (all chunk blobs kept for seeking)
-  Client voice cache:    ~2-10 MB (multiple voice variants in memory)
+Fixed costs:
+  Base process (Bun + Next.js):  ~500 MB
+  Article LRU cache:             100 MB (max)
+  Chunk LRU cache:               150 MB (max)
+  Other caches + overhead:       ~200 MB
 
-100 concurrent:
-  Server peak:           50-200 MB (most served from cache)
-  Redis:                 Proportional to unique articles × voices
-  Client per tab:        ~1-10 MB (MP3 audio blobs, multiple voices)
+Per concurrent user (generating):
+  Audio buffers per request:     ~1-3 MB (chunks + combined)
+  Alignment data:                ~50 KB
+  Total per user:                ~3 MB
+
+15 concurrent generating:
+  Active generation memory:      ~45 MB
+  Peak total:                    ~1.0 GB
+
+100 concurrent (85 from cache, 15 generating):
+  Server peak:                   ~1.0-1.4 GB
+  Headroom on 4GB server:        ~2.6 GB
+
+Per client tab:
+  Audio blobs:                   ~1-5 MB
+  Voice cache (multiple voices): ~2-10 MB
 ```
 
 ### Failure Modes
@@ -399,7 +435,7 @@ Per user:
 |----------|----------|
 | Inworld API error | Error returned in JSON, displayed in player |
 | Inworld service down | 503 returned, error displayed in player |
-| Server overloaded (20 slots full) | Queue with 15s timeout, then 503 "TTS service busy" |
+| Server overloaded (15 slots full) | Queue with 15s timeout, then 503 "TTS service busy" |
 | User spamming requests | IP rate limit (429), per-user concurrency limit (429) |
 | Client disconnects mid-generation | AbortSignal cancels Inworld request, releases slot |
 | Single chunk hangs | 60s per-chunk timeout aborts that call; error propagated |
@@ -413,7 +449,7 @@ Per user:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `INWORLD_API_KEY` | — | Inworld AI API key (TTS disabled when absent) |
-| `MAX_CONCURRENT_TTS` | 20 | Global max simultaneous TTS requests |
+| `MAX_CONCURRENT_TTS` | 15 | Global max simultaneous TTS requests |
 | `MAX_TTS_PER_USER` | 2 | Per-user max concurrent TTS requests |
 | `TTS_SLOT_TIMEOUT_MS` | 15000 | Max wait time in concurrency queue (ms) |
 
@@ -426,7 +462,7 @@ Per user:
   "tts": {
     "activeSlots": 5,
     "queuedRequests": 2,
-    "maxConcurrentTTS": 20,
+    "maxConcurrentTTS": 15,
     "maxPerUser": 2,
     "perUserBreakdown": { "user_abc": 1, "user_xyz": 2 },
     "totalAcquired": 1234,
@@ -454,8 +490,11 @@ Per user:
 | `TTS article cache hit` | `api:tts` | Full article served from cache |
 | `TTS chunk cache hit` | `api:tts` | All chunks served from cache |
 | `TTS request queued` | `tts:concurrency` | All slots full, request waiting |
+| `TTS dedup piggyback` | `api:tts` | Request piggybacked on in-flight generation |
 | `TTS pre-synthesis memory snapshot` | `api:tts` | RSS, heap, cache stats before synthesis |
+| `large_allocation` | `memory-tracker` | Audio buffer > threshold warning |
 | `memory_operation` name=`tts-synthesis` | `memory-tracker` | Per-request memory delta |
+| `memory_checkpoint` | `memory-tracker` | Intermediate checkpoints (chunk-gen, build-response) |
 
 #### Client-side (development only)
 
@@ -477,14 +516,16 @@ Per user:
 ## Free Tier Limits
 
 **Free users**: 3 articles/day, 2 voices (Ashley + Dennis)
+**Anonymous users**: 3 articles/day per IP, 2 voices — no signup required
 
 ### Enforcement layers
 
 1. **Client-side** (localStorage): Tracks daily article URLs
-2. **Server-side** (Redis primary): `tts-usage:{userId}:{YYYY-MM-DD}` counter with daily TTL
+2. **Server-side** (Redis primary): `tts-usage:{trackingKey}:{YYYY-MM-DD}` counter with daily TTL
 3. **Server-side** (in-memory fallback): Used when Redis is down. Bounded at 5K entries
-4. **Anonymous users**: Client-side only enforcement
+4. **Anonymous users**: Server-side IP-based tracking (`trackingKey = anon:{clientIp}`)
 5. **Voice gating**: `isVoiceAllowed()` checks both server and client side
+6. **Deduplication**: Same article+voice combo counted only once per day per user (`tts-dedup:{trackingKey}:{day}` Redis set)
 
 **Important**: The daily quota counter is incremented *after* successful audio generation only. If generation fails (e.g., concurrency timeout, Inworld error), the user's count is not consumed.
 
