@@ -53,6 +53,9 @@ const MAX_CHUNK_SIZE = 1800; // Inworld limit: 2000 chars per request (with safe
  * Inworld TTS has a 2000-char per-request limit.
  * Smaller chunks = more API calls, but each call is cheaper.
  * Identical algorithm on client and server ensures matching chunk keys.
+ *
+ * If a single sentence exceeds MAX_CHUNK_SIZE, it is force-split on the
+ * last word boundary before the limit so no chunk ever exceeds 1800 chars.
  */
 export function splitTTSChunks(text: string): string[] {
   if (text.length <= MAX_CHUNK_SIZE) {
@@ -64,7 +67,24 @@ export function splitTTSChunks(text: string): string[] {
   let current = "";
 
   for (const sentence of sentences) {
-    if (current.length + sentence.length > MAX_CHUNK_SIZE && current.length > 0) {
+    // If the sentence itself exceeds the limit, force-split on word boundaries
+    if (sentence.length > MAX_CHUNK_SIZE) {
+      if (current) {
+        chunks.push(current);
+        current = "";
+      }
+      for (const sub of forceSplitLongSegment(sentence)) {
+        if (current.length + sub.length + (current ? 1 : 0) > MAX_CHUNK_SIZE && current.length > 0) {
+          chunks.push(current);
+          current = sub;
+        } else {
+          current += (current ? " " : "") + sub;
+        }
+      }
+      continue;
+    }
+
+    if (current.length + sentence.length + (current ? 1 : 0) > MAX_CHUNK_SIZE && current.length > 0) {
       chunks.push(current);
       current = sentence;
     } else {
@@ -74,6 +94,30 @@ export function splitTTSChunks(text: string): string[] {
   if (current) chunks.push(current);
 
   return chunks;
+}
+
+/**
+ * Force-split a long segment (no sentence boundaries) into pieces that
+ * each fit within MAX_CHUNK_SIZE. Splits on the last word boundary (' ')
+ * before the limit. Falls back to hard character split if there are no spaces.
+ */
+function forceSplitLongSegment(text: string): string[] {
+  const parts: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > MAX_CHUNK_SIZE) {
+    // Find last space within the limit
+    let splitAt = remaining.lastIndexOf(" ", MAX_CHUNK_SIZE);
+    if (splitAt <= 0) {
+      // No space found — hard split at limit
+      splitAt = MAX_CHUNK_SIZE;
+    }
+    parts.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+  if (remaining) parts.push(remaining);
+
+  return parts;
 }
 
 // --- Chunk key computation ---
