@@ -35,12 +35,13 @@ import {
 import { TTSRedisCache } from "../../lib/tts-redis-cache";
 import { getAuthInfo } from "../middleware/auth";
 import { createLogger } from "../../lib/logger";
-import { startMemoryTrack } from "../../lib/memory-tracker";
+import { startMemoryTrack, logLargeAllocation, registerTTSStatsProvider } from "../../lib/memory-tracker";
 import {
   acquireTTSSlot,
   releaseTTSSlot,
   TTSSlotTimeoutError,
   TTSUserLimitError,
+  getTTSSlotStats,
 } from "../../lib/tts-concurrency";
 import { Redis } from "@upstash/redis";
 import { env } from "../env";
@@ -183,6 +184,33 @@ class ArticleLRUCache {
 }
 
 const articleCache = new ArticleLRUCache();
+
+// Register TTS stats with memory tracker for unified monitoring
+registerTTSStatsProvider({
+  getCacheStats: () => {
+    const cs = chunkCache.stats;
+    const as = articleCache.stats;
+    return {
+      tts_chunk_cache_entries: cs.entries,
+      tts_chunk_cache_mb: cs.totalSizeMB,
+      tts_chunk_cache_max_mb: cs.maxSizeMB,
+      tts_article_cache_entries: as.entries,
+      tts_article_cache_mb: as.totalSizeMB,
+      tts_article_cache_max_mb: as.maxSizeMB,
+      tts_redis_cache: ttsRedisCache?.stats ?? null,
+    };
+  },
+  getSlotStats: () => {
+    const s = getTTSSlotStats();
+    return {
+      tts_active_slots: s.activeSlots,
+      tts_queued: s.queuedRequests,
+      tts_peak_concurrent: s.peakConcurrent,
+      tts_max_concurrent: s.maxConcurrentTTS,
+      tts_per_user_max: s.maxPerUser,
+    };
+  },
+});
 
 // Initialize Inworld AI TTS with validated env vars (optional — TTS disabled when absent)
 if (env.INWORLD_API_KEY) {
@@ -555,6 +583,13 @@ async function generateCombined(
   // the chunk boundary while audio continues from pre-decoded buffers.
   const strippedBuffers = results.map((r) => stripMp3Metadata(r.audio));
   const audioOnlySize = strippedBuffers.reduce((sum, b) => sum + b.length, 0);
+
+  // Log before large buffer allocation — at 100+ concurrent this matters
+  logLargeAllocation("tts-audio-concat", audioOnlySize, {
+    chunks: chunks.length,
+    voice,
+  });
+
   const audioOnly = Buffer.alloc(audioOnlySize);
   let offset = 0;
   for (const buf of strippedBuffers) {
@@ -767,12 +802,32 @@ export const ttsRoutes = new Elysia()
 
       /** Helper: build response from generateCombined result and cache at article level */
       const buildResponse = (result: { audioBuffer: Buffer; alignment: MergedAlignment; durationMs: number }, cacheTag: string) => {
+        const audioBytes = result.audioBuffer.length;
+        // base64 encoding expands ~133%, JSON wrapping adds alignment data.
+        // Peak: audioBuffer + base64 string + JSON string ≈ 3.7x audioBuffer size.
+        const estimatedResponseBytes = Math.round(audioBytes * 1.34) + 1024;
+        logLargeAllocation("tts-base64-response", estimatedResponseBytes, {
+          audioBytes,
+          durationMs: result.durationMs,
+          cacheTag,
+        });
+
+        // Warn if a single response is very large (>20MB audio = ~27MB response)
+        if (audioBytes > 20 * 1024 * 1024) {
+          logger.warn({
+            audioMB: Math.round(audioBytes / 1024 / 1024 * 10) / 10,
+            responseMB: Math.round(estimatedResponseBytes / 1024 / 1024 * 10) / 10,
+            durationMs: result.durationMs,
+            textLength: cleanedText.length,
+          }, "tts_large_response: audio exceeds 20MB — risk of memory pressure at scale");
+        }
+
         // Cache combined result at article level for future instant replays
         articleCache.set(articleKey, {
           audioBuffer: result.audioBuffer,
           alignment: result.alignment,
           durationMs: result.durationMs,
-          size: result.audioBuffer.length,
+          size: audioBytes,
           createdAt: Date.now(),
         });
 
@@ -782,6 +837,17 @@ export const ttsRoutes = new Elysia()
         }
 
         incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
+
+        const memAfter = process.memoryUsage();
+        logger.info({
+          audioMB: Math.round(audioBytes / 1024 / 1024 * 10) / 10,
+          durationSec: Math.round(result.durationMs / 1000),
+          cacheTag: cacheTag || "generated",
+          rss: Math.round(memAfter.rss / 1024 / 1024),
+          heapUsed: Math.round(memAfter.heapUsed / 1024 / 1024),
+          chunkCacheStats: chunkCache.stats,
+          articleCacheStats: articleCache.stats,
+        }, "TTS response built");
 
         return new Response(
           JSON.stringify({

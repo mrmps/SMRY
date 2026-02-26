@@ -85,8 +85,10 @@ export function splitTTSChunks(text: string): string[] {
  *
  * v2: MP3 frame-based durationMs (parseMp3DurationMs) replaces boundary-based estimate.
  *     Old cached chunks had wrong durationMs causing cumulative alignment drift.
+ * v3: Xing VBR header fix — combined audio now has correct total duration header.
+ *     Invalidates all cached chunks so they get re-combined with the Xing frame.
  */
-const CHUNK_CACHE_VERSION = "v2";
+const CHUNK_CACHE_VERSION = "v3";
 
 /**
  * Compute a per-chunk cache key (async, browser-compatible via Web Crypto).

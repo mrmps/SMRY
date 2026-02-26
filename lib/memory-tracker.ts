@@ -22,6 +22,19 @@ import { getBufferStats } from "./clickhouse";
 import { abuseRateLimiter } from "./rate-limit-memory";
 import { getFetchSlotStats } from "./article-concurrency";
 
+// Late-bound TTS stats getters to avoid circular imports.
+// Set by tts.ts on module load via registerTTSStatsProvider().
+let _ttsCacheStatsGetter: (() => Record<string, unknown>) | null = null;
+let _ttsSlotStatsGetter: (() => Record<string, unknown>) | null = null;
+
+export function registerTTSStatsProvider(opts: {
+  getCacheStats: () => Record<string, unknown>;
+  getSlotStats: () => Record<string, unknown>;
+}): void {
+  _ttsCacheStatsGetter = opts.getCacheStats;
+  _ttsSlotStatsGetter = opts.getSlotStats;
+}
+
 const logger = createLogger("memory-tracker");
 
 // Thresholds for logging (only log significant operations to avoid noise)
@@ -78,6 +91,8 @@ export function getAllCacheStats(): Record<string, unknown> {
       article_active_fetches: fetchSlots.activeFetches,
       article_queued_fetches: fetchSlots.queuedFetches,
       article_max_concurrent: fetchSlots.maxConcurrentFetches,
+      ...(_ttsCacheStatsGetter ? _ttsCacheStatsGetter() : {}),
+      ...(_ttsSlotStatsGetter ? _ttsSlotStatsGetter() : {}),
     };
   } catch {
     return { error: "Failed to get cache stats" };
