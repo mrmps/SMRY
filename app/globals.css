@@ -1899,3 +1899,21 @@ mark[data-highlight-pulse="true"] {
   outline-offset: 1px;
   animation: highlight-pulse 0.6s ease-in-out 2;
 }
+
+/* TTS wave animation — subtle variant for loading state */
+@keyframes tts-wave-subtle {
+  0% { transform: scaleY(0.2); opacity: 0.3; }
+  50% { transform: scaleY(0.7); opacity: 0.5; }
+  100% { transform: scaleY(0.2); opacity: 0.3; }
+}
+
+.tts-wave-bar-subtle {
+  width: 2px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--muted-foreground);
+  animation: tts-wave-subtle 1.2s ease-in-out infinite;
+  will-change: transform, opacity;
+  transform-origin: center;
+}
+

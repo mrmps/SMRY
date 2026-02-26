@@ -340,7 +340,7 @@
   },
   "updateBanner": {
     "new": "Neu:",
-    "message": "Artikel exportieren nach Notion, Obsidian und Markdown — dein Wissen gehört dir",
+    "message": "Jeden Artikel mit natürlichen KI-Stimmen anhören — 3 kostenlose Wiedergaben, keine Anmeldung nötig",
     "changelog": "Änderungsprotokoll"
   },
   "changelog": {
@@ -353,6 +353,15 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryTTS_date": "26. Februar 2026",
+    "entryTTS_change1_text": "Jeden Artikel mit KI-Stimmen anhören",
+    "entryTTS_change1_detail": "Verwandeln Sie jeden Artikel in einen natürlich klingenden Podcast. Drücken Sie Play und hören Sie beim Pendeln, Kochen oder Trainieren zu — Ihre Augen bekommen eine Pause, während Ihr Gehirn weiterlernt.",
+    "entryTTS_change2_text": "Wort-für-Wort Hervorhebung",
+    "entryTTS_change2_detail": "Jedes Wort wird in Echtzeit hervorgehoben, während das Audio abgespielt wird. Tippen Sie auf ein Wort, um direkt zu diesem Moment zu springen — wie Karaoke für Artikel.",
+    "entryTTS_change3_text": "10 natürlich klingende Stimmen",
+    "entryTTS_change3_detail": "Wählen Sie aus 10 KI-Stimmen in männlichen und weiblichen Optionen. 2 Stimmen sind für immer kostenlos — upgraden Sie, um alle 10 freizuschalten.",
+    "entryTTS_change4_text": "Wiedergabegeschwindigkeit & Steuerung",
+    "entryTTS_change4_detail": "Beschleunigen Sie auf 2x oder verlangsamen Sie zum gründlichen Lesen. Überspringen Sie 10 Sekunden vor oder zurück mit einem Tipp. Ein kompakter Player bleibt beim Scrollen sichtbar.",
     "entryExport_date": "23. Februar 2026",
     "entryExport_change1_text": "Ganze Artikel in Ihre Wissensdatenbank exportieren",
     "entryExport_change1_detail": "Speichern Sie jeden Artikel mit einem Klick in Notion, Obsidian oder Roam Research — komplett mit Titel, Autor, Datum und Volltext. Ihr Lesestoff bleibt nie wieder in einem Browser-Tab gefangen.",

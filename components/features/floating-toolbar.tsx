@@ -12,6 +12,8 @@ import {
   MoreHorizontal,
   Bug,
   ArrowUpRight,
+  Play,
+  LoaderCircle,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
 import { FeedbackIcon } from "@/components/ui/custom-icons";
@@ -230,6 +232,9 @@ interface FloatingToolbarProps {
   onStyleOptionsOpenChange?: (open: boolean) => void;
   shareOpen?: boolean;
   onShareOpenChange?: (open: boolean) => void;
+  onTTSToggle?: () => void;
+  isTTSActive?: boolean;
+  isTTSLoading?: boolean;
 }
 
 export function FloatingToolbar({
@@ -246,6 +251,9 @@ export function FloatingToolbar({
   onStyleOptionsOpenChange,
   shareOpen,
   onShareOpenChange,
+  onTTSToggle,
+  isTTSActive,
+  isTTSLoading,
 }: FloatingToolbarProps) {
   const anyPanelOpen = !!(styleOptionsOpen || shareOpen);
 
@@ -310,6 +318,18 @@ export function FloatingToolbar({
           />
         </div>
       </Tooltip>
+
+      {/* Listen (TTS) */}
+      <ToolbarButton
+        icon={isTTSLoading
+          ? <LoaderCircle className="size-5 animate-spin" />
+          : <Play className="size-5" />
+        }
+        label={isTTSActive ? "Stop listening" : "Listen"}
+        shortcut="L"
+        onClick={onTTSToggle}
+        isActive={isTTSActive}
+      />
 
       <div className="h-px bg-border/50 my-1" />
 

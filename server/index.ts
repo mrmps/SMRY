@@ -15,10 +15,12 @@ import { bypassDetectionRoutes } from "./routes/bypass-detection";
 import { gravityRoutes } from "./routes/gravity";
 import { highlightsRoutes } from "./routes/highlights";
 import { premiumRoutes } from "./routes/premium";
+import { ttsRoutes } from "./routes/tts";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
 import { startCacheStatsLogger, getAllCacheStats } from "../lib/memory-tracker";
 import { checkErrorRateAndAlert } from "../lib/alerting";
 import { configureFetchLimiter } from "../lib/article-concurrency";
+import { configureTTSLimiter, getTTSSlotStats } from "../lib/tts-concurrency";
 import { env } from "./env";
 
 startMemoryMonitor();
@@ -27,6 +29,7 @@ configureFetchLimiter({
   maxConcurrent: env.MAX_CONCURRENT_ARTICLE_FETCHES,
   slotTimeout: env.ARTICLE_FETCH_SLOT_TIMEOUT_MS,
 });
+configureTTSLimiter({});
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const app = new Elysia({ adapter: node() })
@@ -83,6 +86,7 @@ const app = new Elysia({ adapter: node() })
         rssMb: memory.rss_mb,
       },
       caches,
+      tts: getTTSSlotStats(),
     };
   })
   .use(articleRoutes)
@@ -94,6 +98,7 @@ const app = new Elysia({ adapter: node() })
   .use(gravityRoutes)
   .use(highlightsRoutes)
   .use(premiumRoutes)
+  .use(ttsRoutes)
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {

@@ -55,6 +55,9 @@ export const env = createEnv({
     API_PORT: z.coerce.number().default(3001),
     MAX_CONCURRENT_ARTICLE_FETCHES: z.coerce.number().default(50),
     ARTICLE_FETCH_SLOT_TIMEOUT_MS: z.coerce.number().default(30000),
+    // Inworld AI TTS (optional — TTS disabled when absent)
+    INWORLD_API_KEY: z.string().min(1).optional(),
+
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal"])
       .default("info"),
