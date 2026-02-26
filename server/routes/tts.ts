@@ -312,12 +312,26 @@ async function checkTtsUsage(
 async function incrementTtsUsage(
   userId: string | null,
   isPremium: boolean,
+  articleUrl?: string,
+  voiceId?: string,
 ): Promise<void> {
   if (isDev || isPremium || !userId) return;
 
   const dayKey = getDayKey();
 
   if (redis) {
+    // Dedup: only count unique article+voice combos per user per day
+    if (articleUrl && voiceId) {
+      try {
+        const dedupeKey = `tts-dedup:${userId}:${dayKey}`;
+        const added = await redis.sadd(dedupeKey, `${articleUrl}|${voiceId}`);
+        await redis.expire(dedupeKey, 90000); // 25 hours
+        if (added === 0) return; // Already counted this combo today
+      } catch (error) {
+        logger.warn({ error, userId }, "Redis TTS dedup check failed");
+      }
+    }
+
     const redisKey = `tts-usage:${userId}:${dayKey}`;
     try {
       await redis.incr(redisKey);
@@ -633,7 +647,7 @@ export const ttsRoutes = new Elysia()
           { userId: auth.userId, textLength: cleanedText.length, voice: voiceId },
           "TTS article cache hit — instant replay",
         );
-        incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
+        incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
         return new Response(
           JSON.stringify({
             audioBase64: cachedArticle.audioBuffer.toString("base64"),
@@ -667,7 +681,7 @@ export const ttsRoutes = new Elysia()
             size: redisArticle.audio.length,
             createdAt: Date.now(),
           });
-          incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
+          incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
           return new Response(
             JSON.stringify({
               audioBase64: redisArticle.audio.toString("base64"),
@@ -752,7 +766,7 @@ export const ttsRoutes = new Elysia()
           ttsRedisCache.setArticle(articleKey, result.audioBuffer, result.alignment, result.durationMs).catch(() => {});
         }
 
-        incrementTtsUsage(auth.userId, auth.isPremium).catch(() => {});
+        incrementTtsUsage(auth.userId, auth.isPremium, articleUrl, voiceId).catch(() => {});
 
         return new Response(
           JSON.stringify({

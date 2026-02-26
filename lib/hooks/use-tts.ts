@@ -395,6 +395,12 @@ export function useTTS(
       setDurationMs(serverDuration);
       setStatus("ready");
 
+      // Sync usage count with server (server deduplicates by article+voice)
+      const serverUsageCount = parseInt(response.headers.get("X-TTS-Usage-Count") || "", 10);
+      if (!isNaN(serverUsageCount) && !isPremium) {
+        setUsageCount(serverUsageCount);
+      }
+
       // Track usage — each article+voice combo = 1 credit
       if (!isPremium) {
         addLocalUsage(articleUrl, voice);
@@ -417,15 +423,25 @@ export function useTTS(
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
+    // Clear cache entries synchronously so subsequent load() won't find stale entries
+    const staleUrls: string[] = [];
+    if (blobUrlRef.current) staleUrls.push(blobUrlRef.current);
+    for (const entry of voiceCacheRef.current.values()) {
+      staleUrls.push(entry.blobUrl);
+    }
+    voiceCacheRef.current.clear();
+    blobUrlRef.current = null;
     // Defer blob URL revocation to prevent MEDIA_ERR_SRC_NOT_SUPPORTED
     // during React's unmount cycle when audio element still references the URL
-    queueMicrotask(() => revokeAllBlobUrls());
+    queueMicrotask(() => {
+      for (const url of staleUrls) URL.revokeObjectURL(url);
+    });
     setAudioSrc(null);
     setAlignment(null);
     setDurationMs(0);
     setStatus("idle");
     setError(null);
-  }, [revokeAllBlobUrls]);
+  }, []);
 
   const loadRef = useRef(load) as MutableRefObject<typeof load>;
   useEffect(() => { loadRef.current = load; });

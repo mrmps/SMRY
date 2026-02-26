@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, type RefObject } from "react"
 import { buildWordPositions, type WordPosition } from "@/lib/tts-text"
 
 type TranscriptWord = {
@@ -18,6 +18,21 @@ type UseTTSHighlightOptions = {
   play?: () => void
   /** Transcript words with timing data (used for click-to-seek and span timing) */
   words?: TranscriptWord[]
+  /** Audio element ref for RAF-based sync (bypasses React state latency) */
+  audioRef?: RefObject<HTMLAudioElement | null>
+}
+
+/** Binary search for the word at a given time. Returns word index or -1. */
+function findWordAtTime(words: TranscriptWord[], time: number): number {
+  if (!words.length) return -1
+  let lo = 0, hi = words.length - 1, answer = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (time >= words[mid].startTime && time < words[mid].endTime) return mid
+    if (time < words[mid].startTime) hi = mid - 1
+    else { answer = mid; lo = mid + 1 }
+  }
+  return answer >= 0 ? answer : 0
 }
 
 const STYLE_ID = "tts-highlight-styles"
@@ -79,6 +94,7 @@ export function useTTSHighlight({
   seekToTime,
   play,
   words,
+  audioRef,
 }: UseTTSHighlightOptions) {
   const spanMapRef = useRef<Map<number, HTMLSpanElement>>(new Map())
   /** Number of DOM word spans created by buildWordPositions */
@@ -259,18 +275,22 @@ export function useTTSHighlight({
     observerRef.current = observer
 
     // Click-to-seek: clicking a word span seeks audio to that word's time.
-    // Uses "click" (not "pointerdown") so text selection/drag doesn't trigger seek.
-    //
-    // Direct index mapping: DOM span index → alignment word index → seek time.
-    // Both word lists come from the same cleaned text so indices are 1:1 when
-    // counts match, with proportional fallback for mismatches.
-    const handleClick = (e: MouseEvent) => {
-      // Don't seek if user selected text (drag-to-highlight)
-      const selection = window.getSelection()
-      if (selection && selection.toString().length > 0) return
+    // Uses mousedown position tracking to distinguish "real clicks" from
+    // "drag-to-select" — only a click with < 5px of mouse movement triggers seek.
+    // This fixes the desktop bug where pre-existing text selections blocked
+    // click-to-seek (the capture-phase handler saw the old selection before
+    // the browser collapsed it).
+    let mdX = 0, mdY = 0
+    const handleMouseDown = (e: MouseEvent) => { mdX = e.clientX; mdY = e.clientY }
 
+    const handleClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement)?.closest?.("[data-tts-idx]")
       if (!target) return
+
+      // If mouse moved > 5px from mousedown, user was drag-selecting — don't seek
+      const dx = e.clientX - mdX, dy = e.clientY - mdY
+      if (dx * dx + dy * dy > 25) return
+
       const idx = target.getAttribute("data-tts-idx")
       if (idx == null) return
 
@@ -289,6 +309,8 @@ export function useTTSHighlight({
 
       const seekTime = w[alignIdx].startTime
 
+      // Clear any pre-existing selection so it doesn't interfere
+      window.getSelection()?.removeAllRanges()
       e.stopPropagation()
       e.preventDefault()
 
@@ -309,9 +331,11 @@ export function useTTSHighlight({
       seek(seekTime)
       playRef.current?.()
     }
+    document.addEventListener("mousedown", handleMouseDown, true)
     document.addEventListener("click", handleClick, true)
 
     return () => {
+      document.removeEventListener("mousedown", handleMouseDown, true)
       document.removeEventListener("click", handleClick, true)
       observer.disconnect()
       observerRef.current = null
@@ -355,38 +379,14 @@ export function useTTSHighlight({
     }
   }, [])
 
-  // Toggle classes on word change.
-  // `currentWordIndex` is an alignment word index (from composeSegments).
-  // Map it to a DOM span index using direct 1:1 mapping (proportional fallback
-  // when word counts differ).
-  useEffect(() => {
-    if (!isActive) return
-
-    let map = spanMapRef.current
-
-    if (map.size === 0 || !areSpansValid()) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[TTS Highlight] spans invalid/empty, attempting rebuild. size:", map.size, "valid:", map.size > 0 ? areSpansValid() : "N/A")
-      }
-      if (!tryRebuild()) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[TTS Highlight] rebuild failed — article element may not be in DOM")
-        }
-        return
-      }
-      map = spanMapRef.current
-    }
-
-    // Map alignment word index → DOM span index via text-based map (robust)
-    // Falls back to proportional mapping if no text match found
-    const mappedDomIdx = alignToDomMapRef.current.get(currentWordIndex)
-    const spanIdx = mappedDomIdx !== undefined
-      ? mappedDomIdx
-      : alignToDomIdx(currentWordIndex, domWordCountRef.current, alignWordCountRef.current)
-
+  // Shared helper: update span CSS classes for a given target index.
+  // Handles init (bulk-set), forward (incremental), and backward (bulk or incremental).
+  const applyHighlight = useCallback((
+    spanIdx: number,
+    map: Map<number, HTMLSpanElement>,
+  ) => {
     if (spanIdx < 0 || spanIdx >= map.size) return
 
-    // First run or after a rebuild: bulk-set all spans
     if (!initializedRef.current) {
       initializedRef.current = true
       for (const [idx, span] of map) {
@@ -403,7 +403,6 @@ export function useTTSHighlight({
     const prev = prevIndexRef.current
 
     if (spanIdx < prev) {
-      // Backward seek: use bulk path if jumping >100 words
       const backwardDelta = prev - spanIdx
       if (backwardDelta > 100) {
         for (const [idx, span] of map) {
@@ -422,7 +421,7 @@ export function useTTSHighlight({
           else span.classList.add("tts-unspoken")
         }
       }
-    } else {
+    } else if (spanIdx > prev) {
       if (prev >= 0) {
         const prevSpan = map.get(prev)
         if (prevSpan) {
@@ -442,11 +441,98 @@ export function useTTSHighlight({
         curSpan.classList.remove("tts-unspoken")
         curSpan.classList.add("tts-current")
       }
+    } else {
+      return // Same index, no update needed
     }
 
     prevIndexRef.current = spanIdx
     debouncedScrollToSpan(map.get(spanIdx))
-  }, [isActive, currentWordIndex, areSpansValid, tryRebuild, debouncedScrollToSpan])
+  }, [debouncedScrollToSpan])
+
+  // Helper: resolve alignment word index → DOM span index
+  const resolveSpanIdx = useCallback((wordIdx: number): number => {
+    const mapped = alignToDomMapRef.current.get(wordIdx)
+    return mapped !== undefined
+      ? mapped
+      : alignToDomIdx(wordIdx, domWordCountRef.current, alignWordCountRef.current)
+  }, [])
+
+  // Primary sync: RAF-based direct audio read (bypasses React state entirely).
+  // When audioElement is provided, reads audio.currentTime directly every frame,
+  // computes word index via binary search, and updates DOM classes synchronously.
+  // Falls back to React state-driven currentWordIndex when audioElement is absent.
+  useEffect(() => {
+    if (!isActive) return
+
+    // Read .current inside effect (not during render) to avoid "Cannot access refs during render"
+    const audio = audioRef?.current
+    // When no direct audio access, fall back to React-driven currentWordIndex
+    if (!audio) return
+
+    let raf: number | null = null
+
+    const tick = () => {
+      raf = null
+      const w = wordsRef.current
+      let map = spanMapRef.current
+
+      if (!w?.length) return schedule()
+      if (map.size === 0 || !areSpansValid()) {
+        tryRebuild()
+        map = spanMapRef.current
+        if (map.size === 0) return schedule()
+      }
+
+      const t = audio.currentTime
+      const wordIdx = findWordAtTime(w, t)
+      const spanIdx = resolveSpanIdx(wordIdx)
+
+      if (spanIdx !== prevIndexRef.current || !initializedRef.current) {
+        applyHighlight(spanIdx, map)
+      }
+
+      schedule()
+    }
+
+    function schedule() {
+      if (audio && !audio.paused && raf == null) {
+        raf = requestAnimationFrame(tick)
+      }
+    }
+
+    const onPlay = () => schedule()
+    const onSeeked = () => { tick() } // One-shot update on seek
+
+    audio.addEventListener("play", onPlay)
+    audio.addEventListener("seeked", onSeeked)
+
+    // Initial sync
+    if (!audio.paused) schedule()
+    else tick()
+
+    return () => {
+      if (raf != null) cancelAnimationFrame(raf)
+      audio.removeEventListener("play", onPlay)
+      audio.removeEventListener("seeked", onSeeked)
+    }
+  }, [isActive, audioRef, areSpansValid, tryRebuild, applyHighlight, resolveSpanIdx])
+
+  // Fallback: React state-driven sync for when audioRef is not available.
+  // This path is only used if no direct audio reference is provided.
+  useEffect(() => {
+    if (!isActive || audioRef?.current) return // Skip when RAF path is active
+
+    let map = spanMapRef.current
+    if (map.size === 0 || !areSpansValid()) {
+      if (!tryRebuild()) return
+      map = spanMapRef.current
+    }
+
+    const spanIdx = resolveSpanIdx(currentWordIndex)
+    if (spanIdx >= 0 && spanIdx < map.size) {
+      applyHighlight(spanIdx, map)
+    }
+  }, [isActive, audioRef, currentWordIndex, areSpansValid, tryRebuild, applyHighlight, resolveSpanIdx])
 }
 
 // ---------------------------------------------------------------------------
@@ -608,15 +694,22 @@ function scrollToSpan(span: HTMLSpanElement | undefined) {
   const rect = span.getBoundingClientRect()
   const containerRect = sc.getBoundingClientRect()
 
-  // Mobile TTS player covers ~180px from bottom; use a larger buffer to keep
-  // the current word above the floating player instead of hidden behind it.
-  const bottomBuffer = mobileSc ? 200 : 100
+  // Measure the actual TTS player so we know what's obscured.
+  const player = document.querySelector<HTMLElement>("[data-tts-player]")
+  const playerTop = player
+    ? player.getBoundingClientRect().top
+    : containerRect.bottom - 200
+
+  const topBuffer = 60
+  const visibleBottom = playerTop - 16
 
   const isVisible =
-    rect.top >= containerRect.top + 60 &&
-    rect.bottom <= containerRect.bottom - bottomBuffer
+    rect.top >= containerRect.top + topBuffer &&
+    rect.bottom <= visibleBottom
 
   if (!isVisible) {
-    span.scrollIntoView({ behavior: "smooth", block: "center" })
+    // Use native smooth scroll — scroll word to top of visible area above the player
+    const offset = rect.top - (containerRect.top + topBuffer)
+    sc.scrollBy({ top: offset, behavior: "smooth" })
   }
 }

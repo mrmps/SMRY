@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useArticleAuto } from "@/lib/hooks/use-articles";
 import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { ArrowLeft, AiMagic, Highlighter } from "@/components/ui/icons";
+import { Logo } from "@/components/shared/logo";
 import { Kbd } from "@/components/ui/kbd";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -37,22 +39,26 @@ import { MobileChatDrawer, type MobileChatDrawerHandle } from "@/components/feat
 import { MobileAnnotationsDrawer } from "@/components/features/mobile-annotations-drawer";
 import { useTTS } from "@/lib/hooks/use-tts";
 import {
-  TranscriptViewerContainer,
-  TranscriptViewerAudio,
-  TranscriptViewerPlayPauseButton,
-  TranscriptViewerScrubBar,
-  useTranscriptViewerContext,
-} from "@/components/ui/transcript-viewer";
+  ScrubBarContainer,
+  ScrubBarProgress,
+  ScrubBarThumb,
+  ScrubBarTrack,
+  ScrubBarTimeLabel,
+} from "@/components/ui/scrub-bar";
+import { Button } from "@/components/ui/button";
 import { useTTSHighlight } from "@/components/hooks/use-tts-highlight";
 import { VOICE_PRESETS, getVoiceAvatarGradient, isVoiceAllowed } from "@/lib/tts-provider";
 import {
   SkipBack10,
   SkipForward10,
+  Play,
+  Pause,
   X,
   AlertTriangle,
   Lock,
   Crown,
   Headphones,
+  CheckCircle,
 } from "@/components/ui/icons";
 import { type ArticleExportData } from "@/components/features/export-article";
 import {
@@ -61,7 +67,295 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 
-// ─── TTS Player Controls (used inside TranscriptViewerContainer) ───
+// ─── Simple TTS Audio Player ───
+
+type TTSWord = {
+  text: string;
+  startTime: number;
+  endTime: number;
+  wordIndex: number;
+};
+
+type CharacterAlignment = {
+  characters: string[];
+  characterStartTimesSeconds: number[];
+  characterEndTimesSeconds: number[];
+};
+
+function alignmentToWords(alignment: CharacterAlignment): TTSWord[] {
+  const { characters, characterStartTimesSeconds: starts, characterEndTimesSeconds: ends } = alignment;
+  if (!characters?.length || !starts?.length || !ends?.length) return [];
+  const len = Math.min(characters.length, starts.length, ends.length);
+  const words: TTSWord[] = [];
+  let wordBuffer = "";
+  let wordStart = 0;
+  let wordEnd = 0;
+  let wordIndex = 0;
+  for (let i = 0; i < len; i++) {
+    const char = characters[i];
+    if (/\s/.test(char)) {
+      if (wordBuffer) {
+        words.push({ text: wordBuffer, startTime: wordStart, endTime: wordEnd, wordIndex: wordIndex++ });
+        wordBuffer = "";
+      }
+      continue;
+    }
+    if (!wordBuffer) {
+      wordBuffer = char;
+      wordStart = starts[i] ?? 0;
+      wordEnd = ends[i] ?? wordStart;
+    } else {
+      wordBuffer += char;
+      wordEnd = ends[i] ?? wordEnd;
+    }
+  }
+  if (wordBuffer) {
+    words.push({ text: wordBuffer, startTime: wordStart, endTime: wordEnd, wordIndex: wordIndex });
+  }
+  return words;
+}
+
+function findWordAtTime(words: TTSWord[], time: number): number {
+  if (!words.length) return -1;
+  let lo = 0, hi = words.length - 1, answer = -1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (time >= words[mid].startTime && time < words[mid].endTime) return mid;
+    if (time < words[mid].startTime) hi = mid - 1;
+    else { answer = mid; lo = mid + 1; }
+  }
+  return answer >= 0 ? answer : 0;
+}
+
+interface TTSPlayerContextValue {
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+  currentTime: number;
+  duration: number;
+  isPlaying: boolean;
+  isBuffering: boolean;
+  currentWordIndex: number;
+  words: TTSWord[];
+  seekToTime: (time: number) => void;
+  toggle: () => void;
+  play: () => void;
+  pause: () => void;
+  resume: () => void;
+  startScrubbing: () => void;
+  endScrubbing: () => void;
+}
+
+const TTSPlayerContext = createContext<TTSPlayerContextValue | null>(null);
+
+function useTTSPlayer() {
+  const ctx = useContext(TTSPlayerContext);
+  if (!ctx) throw new Error("useTTSPlayer must be used within TTSPlayerProvider");
+  return ctx;
+}
+
+function TTSPlayerProvider({
+  audioSrc,
+  alignment,
+  onAudioError,
+  onBuffering: onBufferingProp,
+  className,
+  style,
+  children,
+}: {
+  audioSrc: string;
+  alignment: CharacterAlignment;
+  onAudioError?: (error: MediaError | null) => void;
+  onBuffering?: (isBuffering: boolean) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+}) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const reachedEndRef = useRef(false);
+  const isScrubbingRef = useRef(false);
+
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBufferingState] = useState(false);
+
+  const words = useMemo(() => alignmentToWords(alignment), [alignment]);
+
+  const guessedDuration = useMemo(() => {
+    const ends = alignment?.characterEndTimesSeconds;
+    if (Array.isArray(ends) && ends.length) return ends[ends.length - 1] ?? 0;
+    return 0;
+  }, [alignment]);
+
+  const contentEndRef = useRef(guessedDuration);
+  useEffect(() => { contentEndRef.current = guessedDuration; }, [guessedDuration]);
+
+  // Reset on alignment change
+  const [prevAlignment, setPrevAlignment] = useState(alignment);
+  if (prevAlignment !== alignment) {
+    setPrevAlignment(alignment);
+    setCurrentTime(0);
+    setDuration(guessedDuration);
+    setIsPlaying(false);
+  }
+
+  const currentWordIndex = useMemo(() => findWordAtTime(words, currentTime), [words, currentTime]);
+
+  const onAudioErrorRef = useRef(onAudioError);
+  useEffect(() => { onAudioErrorRef.current = onAudioError; }, [onAudioError]);
+  const onBufferingRef = useRef(onBufferingProp);
+  useEffect(() => { onBufferingRef.current = onBufferingProp; }, [onBufferingProp]);
+
+  const stopRaf = useCallback(() => {
+    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+  }, []);
+
+  const startRaf = useCallback(() => {
+    if (rafRef.current != null) return;
+    const tick = () => {
+      const audio = audioRef.current;
+      if (!audio || audio.paused) { rafRef.current = null; return; }
+      if (!isScrubbingRef.current) {
+        const contentEnd = contentEndRef.current;
+        const t = audio.currentTime;
+        setCurrentTime(contentEnd > 0 ? Math.min(t, contentEnd) : t);
+        if (contentEnd > 0 && t >= contentEnd) {
+          reachedEndRef.current = true;
+          audio.pause();
+          rafRef.current = null;
+          return;
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handlePlay = () => { setIsPlaying(true); startRaf(); };
+    const handlePause = () => { setIsPlaying(false); stopRaf(); };
+    const handleEnded = () => { reachedEndRef.current = true; setIsPlaying(false); stopRaf(); };
+    const handleTimeUpdate = () => {
+      // Fallback sync when RAF is not running (e.g. during scrubbing or after pause)
+      if (!isScrubbingRef.current && rafRef.current == null) {
+        const contentEnd = contentEndRef.current;
+        const t = audio.currentTime;
+        setCurrentTime(contentEnd > 0 ? Math.min(t, contentEnd) : t);
+      }
+    };
+    const handleDurationChange = () => {
+      const contentEnd = contentEndRef.current;
+      const raw = Number.isFinite(audio.duration) ? audio.duration : 0;
+      setDuration(contentEnd > 0 ? contentEnd : raw);
+    };
+    const handleError = () => { stopRaf(); setIsPlaying(false); setIsBufferingState(false); onAudioErrorRef.current?.(audio.error); };
+    const handleWaiting = () => { setIsBufferingState(true); onBufferingRef.current?.(true); };
+    const handlePlaying = () => {
+      setIsBufferingState(false);
+      onBufferingRef.current?.(false);
+      if (!audio.paused && rafRef.current == null) startRaf();
+    };
+
+    if (!audio.paused) startRaf();
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("durationchange", handleDurationChange);
+    audio.addEventListener("loadedmetadata", handleDurationChange);
+    audio.addEventListener("error", handleError);
+    audio.addEventListener("waiting", handleWaiting);
+    audio.addEventListener("playing", handlePlaying);
+
+    return () => {
+      stopRaf();
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("durationchange", handleDurationChange);
+      audio.removeEventListener("loadedmetadata", handleDurationChange);
+      audio.removeEventListener("error", handleError);
+      audio.removeEventListener("waiting", handleWaiting);
+      audio.removeEventListener("playing", handlePlaying);
+    };
+  }, [startRaf, stopRaf]);
+
+  const seekToTime = useCallback((time: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const contentEnd = contentEndRef.current;
+    const maxTime = Math.min(
+      Number.isFinite(audio.duration) ? audio.duration - 0.1 : Infinity,
+      contentEnd > 0.2 ? contentEnd - 0.1 : contentEnd > 0 ? contentEnd : Infinity,
+    );
+    const clamped = Math.max(0, Math.min(time, maxTime));
+    reachedEndRef.current = false;
+    audio.currentTime = clamped;
+    setCurrentTime(clamped);
+  }, []);
+
+  const play = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (reachedEndRef.current) {
+      reachedEndRef.current = false;
+      audio.currentTime = 0;
+      setCurrentTime(0);
+    }
+    if (audio.paused) void audio.play();
+  }, []);
+
+  const pause = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && !audio.paused) audio.pause();
+  }, []);
+
+  const resume = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    reachedEndRef.current = false;
+    if (audio.paused) void audio.play();
+  }, []);
+
+  const toggle = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      if (reachedEndRef.current) play();
+      else resume();
+    } else {
+      audio.pause();
+    }
+  }, [play, resume]);
+
+  const startScrubbing = useCallback(() => { isScrubbingRef.current = true; stopRaf(); }, [stopRaf]);
+  const endScrubbing = useCallback(() => {
+    isScrubbingRef.current = false;
+    const audio = audioRef.current;
+    if (audio && !audio.paused) startRaf();
+  }, [startRaf]);
+
+  const contextValue = useMemo<TTSPlayerContextValue>(() => ({
+    audioRef, currentTime, duration, isPlaying, isBuffering, currentWordIndex, words,
+    seekToTime, toggle, play, pause, resume, startScrubbing, endScrubbing,
+  }), [currentTime, duration, isPlaying, isBuffering, currentWordIndex, words, seekToTime, toggle, play, pause, resume, startScrubbing, endScrubbing]);
+
+  return (
+    <TTSPlayerContext.Provider value={contextValue}>
+      <div className={className} style={style} data-tts-player>
+        <audio ref={audioRef} src={audioSrc} preload="metadata" />
+        {children}
+      </div>
+    </TTSPlayerContext.Provider>
+  );
+}
+
+// ─── TTS Player Controls ───
 
 const RATE_PRESETS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -80,11 +374,16 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
     currentTime,
     duration,
     audioRef,
-  } = useTranscriptViewerContext();
+    isPlaying,
+    toggle,
+    startScrubbing,
+    endScrubbing,
+  } = useTTSPlayer();
 
   const [rate, setRate] = React.useState(1);
   const [showSpeed, setShowSpeed] = React.useState(false);
   const [showVoice, setShowVoice] = React.useState(false);
+  const [showPremiumUpsell, setShowPremiumUpsell] = React.useState(false);
   const speedRef = React.useRef<HTMLDivElement>(null);
   const voiceRef = React.useRef<HTMLDivElement>(null);
 
@@ -127,18 +426,47 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
 
   return (
     <div className="flex flex-col">
-      {/* Credits banner for free users — flush at top of player */}
-      {!isPremium && (
-        <div className="flex items-center gap-2 rounded-t-2xl bg-amber-500/10 border-b border-amber-500/20 px-4 py-2">
-          <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
-          <span className="text-[11px] text-amber-700 dark:text-amber-400">
-            You only have <span className="font-semibold">{Math.max(0, usageLimit - usageCount)}</span> credit{usageLimit - usageCount !== 1 ? "s" : ""} remaining.
-          </span>
-          <Link href="/pricing" className="text-[11px] font-medium text-amber-600 dark:text-amber-300 hover:underline ml-auto shrink-0 whitespace-nowrap">
-            Subscribe now
-          </Link>
-        </div>
-      )}
+      {/* Credits banner for free users — color shifts from green → amber → red as credits run out */}
+      {!isPremium && (() => {
+        const remaining = Math.max(0, usageLimit - usageCount);
+        const isLow = remaining === 0;
+        const isOk = remaining >= 2;
+        return (
+          <div className={cn(
+            "flex items-center gap-2 rounded-t-2xl border-b px-4 py-2",
+            isOk && "bg-emerald-500/10 border-emerald-500/20",
+            !isOk && !isLow && "bg-amber-500/10 border-amber-500/20",
+            isLow && "bg-red-500/10 border-red-500/20",
+          )}>
+            <AlertTriangle className={cn(
+              "size-3.5 shrink-0",
+              isOk && "text-emerald-500",
+              !isOk && !isLow && "text-amber-500",
+              isLow && "text-red-500",
+            )} />
+            <span className={cn(
+              "text-[11px]",
+              isOk && "text-emerald-700 dark:text-emerald-400",
+              !isOk && !isLow && "text-amber-700 dark:text-amber-400",
+              isLow && "text-red-700 dark:text-red-400",
+            )}>
+              {isLow
+                ? <>No credits remaining. <button type="button" onClick={() => setShowPremiumUpsell(true)} className="font-medium underline cursor-pointer">Upgrade for unlimited.</button></>
+                : <>You have <span className="font-semibold">{remaining}</span> credit{remaining !== 1 ? "s" : ""} remaining.</>
+              }
+            </span>
+            {!isLow && (
+              <button type="button" onClick={() => setShowPremiumUpsell(true)} className={cn(
+                "text-[11px] font-medium hover:underline ml-auto shrink-0 whitespace-nowrap cursor-pointer",
+                isOk && "text-emerald-600 dark:text-emerald-300",
+                !isOk && "text-amber-600 dark:text-amber-300",
+              )}>
+                Subscribe now
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Header row: label + close button */}
       <div className={cn("flex items-center justify-between px-3 pb-0", isPremium ? "pt-2.5" : "pt-1.5")}>
@@ -152,26 +480,44 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
         </button>
       </div>
 
-      {/* Scrub bar — top */}
-      <div className="px-3 pb-1.5">
-        <TranscriptViewerScrubBar className="w-full" />
+      {/* Scrub bar — compact */}
+      <div className="px-4 pb-1">
+        <ScrubBarContainer
+          duration={duration}
+          value={currentTime}
+          onScrubStart={startScrubbing}
+          onScrubEnd={endScrubbing}
+          onScrub={seekToTime}
+          className="w-full"
+        >
+          <div className="flex flex-1 flex-col gap-0.5">
+            <ScrubBarTrack className="h-[3px]">
+              <ScrubBarProgress />
+              <ScrubBarThumb className="h-2.5 w-2.5" />
+            </ScrubBarTrack>
+            <div className="text-muted-foreground flex items-center justify-between text-[10px]">
+              <ScrubBarTimeLabel time={currentTime} />
+              <ScrubBarTimeLabel time={duration} />
+            </div>
+          </div>
+        </ScrubBarContainer>
       </div>
 
-      {/* Controls row — bottom */}
-      <div className="flex items-center justify-center gap-3 px-3 pb-3">
+      {/* Controls row — bottom. Touch targets ≥ 44px per iOS HIG / WCAG 2.2 */}
+      <div className="flex items-center justify-center gap-2 px-3 pb-3">
         {/* Voice picker */}
         <div className="relative" ref={voiceRef}>
           <button
             onClick={() => { setShowVoice((p) => !p); setShowSpeed(false); }}
             className={cn(
-              "h-9 sm:h-11 px-2.5 flex items-center gap-1.5 rounded-full text-xs font-medium transition-colors truncate max-w-[90px] active:scale-95 transition-transform duration-100",
+              "h-11 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium transition-colors truncate max-w-[100px] active:scale-95 transition-transform duration-100",
               "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
               showVoice && "bg-accent text-foreground",
             )}
             aria-label="Change voice"
           >
             <span
-              className="size-[18px] rounded-full shrink-0"
+              className="size-5 rounded-full shrink-0"
               style={{ background: getVoiceAvatarGradient(voice) }}
             />
             {VOICE_PRESETS.find((v) => v.id === voice)?.name ?? "Voice"}
@@ -188,7 +534,8 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
                         key={v.id}
                         onClick={() => {
                           if (locked) {
-                            window.location.href = "/pricing";
+                            setShowPremiumUpsell(true);
+                            setShowVoice(false);
                             return;
                           }
                           onVoiceChange(v.id);
@@ -239,22 +586,31 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
         {/* Skip backward */}
         <button
           onClick={skipBackward}
-          className="size-9 sm:size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
+          className="size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
           aria-label="Skip backward 10 seconds"
         >
-          <SkipBack10 className="size-5" />
+          <SkipBack10 className="size-[22px]" />
         </button>
 
         {/* Play/Pause */}
-        <TranscriptViewerPlayPauseButton size="icon" variant="ghost" className="size-10 sm:size-12 active:scale-95 transition-transform duration-100" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={isPlaying ? "Pause audio" : "Play audio"}
+          className="size-12 active:scale-95 transition-transform duration-100 cursor-pointer"
+          onClick={() => toggle()}
+        >
+          {isPlaying ? <Pause className="size-6" /> : <Play className="size-6" />}
+        </Button>
 
         {/* Skip forward */}
         <button
           onClick={skipForward}
-          className="size-9 sm:size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
+          className="size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
           aria-label="Skip forward 10 seconds"
         >
-          <SkipForward10 className="size-5" />
+          <SkipForward10 className="size-[22px]" />
         </button>
 
         {/* Speed button */}
@@ -262,7 +618,7 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
           <button
             onClick={() => { setShowSpeed((p) => !p); setShowVoice(false); }}
             className={cn(
-              "size-9 sm:size-11 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors active:scale-95 transition-transform duration-100",
+              "size-11 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors active:scale-95 transition-transform duration-100",
               "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
               showSpeed && "bg-accent text-foreground",
             )}
@@ -302,17 +658,74 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
           )}
         </div>
       </div>
+
+      {/* Premium upsell overlay — portalled to body to avoid clipping */}
+      {showPremiumUpsell && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setShowPremiumUpsell(false)}>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative z-10 w-full max-w-sm rounded-2xl bg-card border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative h-28 bg-gradient-to-br from-primary via-primary/80 to-primary/60 flex items-center justify-center">
+              <Logo size="lg" className="text-white" />
+              <button
+                onClick={() => setShowPremiumUpsell(false)}
+                className="absolute top-3 right-3 size-8 flex items-center justify-center rounded-full bg-black/20 text-white/80 hover:text-white hover:bg-black/30 transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">You&apos;re missing out on the best voices</h3>
+                <p className="text-sm text-muted-foreground mt-1">Unlock everything SMRY has to offer:</p>
+              </div>
+              <ul className="space-y-2.5">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle className="size-4 text-primary shrink-0 mt-0.5" />
+                  <span className="text-sm">8 premium natural-sounding voices</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle className="size-4 text-primary shrink-0 mt-0.5" />
+                  <span className="text-sm">AI-powered article summaries</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle className="size-4 text-primary shrink-0 mt-0.5" />
+                  <span className="text-sm">Chat with any article using AI</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle className="size-4 text-primary shrink-0 mt-0.5" />
+                  <span className="text-sm">Unlimited text-to-speech listening</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle className="size-4 text-primary shrink-0 mt-0.5" />
+                  <span className="text-sm">Highlights, annotations &amp; full history</span>
+                </li>
+              </ul>
+              <Link
+                href="/pricing"
+                className="block w-full text-center rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Try Free for 7 Days
+              </Link>
+              <p className="text-xs text-center text-muted-foreground">No commitment. Cancel anytime.</p>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
 
 /**
- * Bridge component: lives inside TranscriptViewerContainer, reads the current
+ * Bridge component: lives inside TTSPlayerProvider, reads the current
  * word index from context and highlights it on the article DOM via <mark>.
  */
 function TTSArticleHighlight() {
-  const { currentWordIndex, seekToTime, resume, toggle, words, isPlaying, currentTime, duration } = useTranscriptViewerContext();
-  useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play: resume, words });
+  const { audioRef, currentWordIndex, seekToTime, resume, toggle, words, isPlaying, currentTime, duration } = useTTSPlayer();
+  useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play: resume, words, audioRef });
 
   // Use refs for volatile values so the handler reads latest without re-registering
   const currentTimeRef = useRef(currentTime);
@@ -528,11 +941,9 @@ function TTSFloatingPlayer({
   // Ready — full player
   if (tts.isReady && tts.audioSrc && tts.alignment) {
     return (
-      <TranscriptViewerContainer
+      <TTSPlayerProvider
         audioSrc={tts.audioSrc}
-        audioType="audio/mpeg"
         alignment={tts.alignment}
-        hideAudioTags={false}
         onAudioError={handleAudioError}
         onBuffering={handleBuffering}
         className={cn(
@@ -544,7 +955,6 @@ function TTSFloatingPlayer({
         )}
         style={isMobile ? MOBILE_TTS_BOTTOM_STYLE : undefined}
       >
-        <TranscriptViewerAudio />
         <TTSArticleHighlight />
         {/* Inline audio error with retry */}
         {audioError && (
@@ -565,7 +975,7 @@ function TTSFloatingPlayer({
           </div>
         )}
         <TTSControls onClose={onClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
-      </TranscriptViewerContainer>
+      </TTSPlayerProvider>
     );
   }
 
@@ -742,7 +1152,7 @@ export function ProxyContent({ url }: ProxyContentProps) {
     addArticleToHistory(url, firstSuccessfulArticle.title || "Untitled Article");
   }, [firstSuccessfulArticle, url]);
 
-  // TTS (Text-to-Speech) — TranscriptViewer with word-level highlighting
+  // TTS (Text-to-Speech) — simple audio player with word-level highlighting
   const [ttsOpen, setTTSOpen] = useState(false);
   const tts = useTTS(articleTextContent, url, isPremium);
   const ttsRef = useRef(tts);
