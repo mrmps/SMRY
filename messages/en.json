@@ -340,7 +340,7 @@
   },
   "updateBanner": {
     "new": "New:",
-    "message": "Highlight, annotate, and export — your articles are now truly yours",
+    "message": "Listen to any article with natural AI voices — 3 free listens, no signup needed",
     "changelog": "Changelog"
   },
   "changelog": {
@@ -353,6 +353,15 @@
     "upgrade": "Upgrade"
   },
   "changelogEntries": {
+    "entryTTS_date": "Feb 26, 2026",
+    "entryTTS_change1_text": "Listen to any article with AI voices",
+    "entryTTS_change1_detail": "Turn any article into a natural-sounding podcast. Hit play and listen while you commute, cook, or work out — your eyes get a break while your brain keeps learning.",
+    "entryTTS_change2_text": "Word-by-word highlight sync",
+    "entryTTS_change2_detail": "Every word highlights in real time as the audio plays. Tap any word to jump straight to that moment — like karaoke for articles. Never lose your place again.",
+    "entryTTS_change3_text": "10 natural-sounding voices",
+    "entryTTS_change3_detail": "Choose from 10 AI voices across male and female options. 2 voices are free forever — upgrade to unlock all 10 with different accents and tones to match your listening style.",
+    "entryTTS_change4_text": "Playback speed & skip controls",
+    "entryTTS_change4_detail": "Speed up to 2x for quick consumption or slow down for deep reading. Skip forward and back 10 seconds with a tap. A compact floating player stays with you as you scroll.",
     "entryExport_date": "Feb 23, 2026",
     "entryExport_change1_text": "Export full articles to your knowledge base",
     "entryExport_change1_detail": "Save any article to Notion, Obsidian, or Roam Research with one click — complete with title, author, date, and full text. Your reading never stays trapped in a browser tab again.",

@@ -170,7 +170,6 @@ function TTSPlayerProvider({
   children?: React.ReactNode;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const rafRef = useRef<number | null>(null);
   const reachedEndRef = useRef(false);
   const isScrubbingRef = useRef(false);
 
@@ -206,60 +205,141 @@ function TTSPlayerProvider({
   const onBufferingRef = useRef(onBufferingProp);
   useEffect(() => { onBufferingRef.current = onBufferingProp; }, [onBufferingProp]);
 
-  const stopRaf = useCallback(() => {
-    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-  }, []);
-
-  const startRaf = useCallback(() => {
-    if (rafRef.current != null) return;
-    const tick = () => {
-      const audio = audioRef.current;
-      if (!audio || audio.paused) { rafRef.current = null; return; }
-      if (!isScrubbingRef.current) {
-        const contentEnd = contentEndRef.current;
-        const t = audio.currentTime;
-        setCurrentTime(contentEnd > 0 ? Math.min(t, contentEnd) : t);
-        if (contentEnd > 0 && t >= contentEnd) {
-          reachedEndRef.current = true;
-          audio.pause();
-          rafRef.current = null;
-          return;
-        }
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
+  // ── Audio sync: throttled React state + end-of-content detection ──
+  // Word highlighting runs at 60fps via its own RAF loop in useTTSHighlight
+  // (reads audio.currentTime directly, zero React overhead).
+  // Here we ONLY update React state for the scrub bar / time labels at ~15fps.
+  // This prevents 60 re-renders/sec that saturate the main thread on
+  // Android / desktop, starving the highlight RAF loop.
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handlePlay = () => { setIsPlaying(true); startRaf(); };
-    const handlePause = () => { setIsPlaying(false); stopRaf(); };
-    const handleEnded = () => { reachedEndRef.current = true; setIsPlaying(false); stopRaf(); };
-    const handleTimeUpdate = () => {
-      // Fallback sync when RAF is not running (e.g. during scrubbing or after pause)
-      if (!isScrubbingRef.current && rafRef.current == null) {
-        const contentEnd = contentEndRef.current;
-        const t = audio.currentTime;
-        setCurrentTime(contentEnd > 0 ? Math.min(t, contentEnd) : t);
+    let lastFlush = 0;
+    let raf: number | null = null;
+
+    /** Flush currentTime to React state (throttled to ~15fps / 66ms). */
+    const flushTime = (force?: boolean) => {
+      if (isScrubbingRef.current) return;
+      const contentEnd = contentEndRef.current;
+      const t = audio.currentTime;
+      const clamped = contentEnd > 0 ? Math.min(t, contentEnd) : t;
+
+      // End-of-content: always flush immediately
+      if (contentEnd > 0 && t >= contentEnd) {
+        reachedEndRef.current = true;
+        audio.pause();
+        setCurrentTime(clamped);
+        return;
       }
+
+      if (force) {
+        lastFlush = performance.now();
+        setCurrentTime(clamped);
+        return;
+      }
+
+      // Throttle: only update React state every 66ms (~15fps)
+      const now = performance.now();
+      if (now - lastFlush >= 66) {
+        lastFlush = now;
+        setCurrentTime(clamped);
+      }
+    };
+
+    // Lightweight RAF loop — only for end-of-content detection + throttled state
+    const tick = () => {
+      raf = null;
+      if (!audio || audio.paused) return;
+      flushTime();
+      schedule();
+    };
+    function schedule() {
+      if (audio && !audio.paused && raf == null) {
+        raf = requestAnimationFrame(tick);
+      }
+    }
+    function stopRaf() {
+      if (raf != null) { cancelAnimationFrame(raf); raf = null; }
+    }
+
+    const handlePlay = () => { setIsPlaying(true); schedule(); };
+    const handlePause = () => { setIsPlaying(false); stopRaf(); };
+    const handleEnded = () => {
+      const contentEnd = contentEndRef.current;
+      // Guard against false "ended" from concatenated MP3 chunk boundaries
+      if (contentEnd > 0 && audio.currentTime < contentEnd - 2) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[TTS] False ended at", audio.currentTime.toFixed(1) + "s", "expected:", contentEnd.toFixed(1) + "s — resuming");
+        }
+        const pos = audio.currentTime;
+        void audio.play().then(() => {
+          if (Math.abs(audio.currentTime - pos) > 1) {
+            audio.currentTime = pos;
+          }
+        }).catch(() => {
+          reachedEndRef.current = true;
+          setIsPlaying(false);
+          stopRaf();
+        });
+        return;
+      }
+      reachedEndRef.current = true;
+      setIsPlaying(false);
+      stopRaf();
+    };
+    const handleTimeUpdate = () => {
+      // timeupdate fires ~4/sec — always flush (well within 15fps budget)
+      flushTime(true);
+      if (!audio.paused && raf == null) schedule();
     };
     const handleDurationChange = () => {
       const contentEnd = contentEndRef.current;
       const raw = Number.isFinite(audio.duration) ? audio.duration : 0;
       setDuration(contentEnd > 0 ? contentEnd : raw);
     };
-    const handleError = () => { stopRaf(); setIsPlaying(false); setIsBufferingState(false); onAudioErrorRef.current?.(audio.error); };
+    const handleError = () => {
+      const contentEnd = contentEndRef.current;
+      if (!audio.paused && contentEnd > 0 && audio.currentTime < contentEnd - 2) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[TTS] Non-fatal error at", audio.currentTime.toFixed(1) + "s — ignoring");
+        }
+        return;
+      }
+      stopRaf();
+      setIsPlaying(false);
+      setIsBufferingState(false);
+      onAudioErrorRef.current?.(audio.error);
+    };
     const handleWaiting = () => { setIsBufferingState(true); onBufferingRef.current?.(true); };
     const handlePlaying = () => {
       setIsBufferingState(false);
       onBufferingRef.current?.(false);
-      if (!audio.paused && rafRef.current == null) startRaf();
+      if (!audio.paused && raf == null) schedule();
     };
+    const handleSeeked = () => { flushTime(true); };
 
-    if (!audio.paused) startRaf();
+    // ── Watchdog: 150ms interval as final safety net ──
+    // Catches edge cases where both RAF and timeupdate stop firing.
+    // Also auto-resets stuck scrubbing state after 5s.
+    let lastScrubStart = 0;
+    const watchdog = setInterval(() => {
+      if (isScrubbingRef.current) {
+        if (lastScrubStart === 0) lastScrubStart = Date.now();
+        else if (Date.now() - lastScrubStart > 5000) {
+          isScrubbingRef.current = false;
+          lastScrubStart = 0;
+        }
+        return;
+      }
+      lastScrubStart = 0;
+      if (audio.paused || reachedEndRef.current) return;
+      flushTime(true);
+      if (raf == null) schedule();
+    }, 150);
+
+    if (!audio.paused) schedule();
 
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
@@ -270,8 +350,10 @@ function TTSPlayerProvider({
     audio.addEventListener("error", handleError);
     audio.addEventListener("waiting", handleWaiting);
     audio.addEventListener("playing", handlePlaying);
+    audio.addEventListener("seeked", handleSeeked);
 
     return () => {
+      clearInterval(watchdog);
       stopRaf();
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
@@ -282,8 +364,9 @@ function TTSPlayerProvider({
       audio.removeEventListener("error", handleError);
       audio.removeEventListener("waiting", handleWaiting);
       audio.removeEventListener("playing", handlePlaying);
+      audio.removeEventListener("seeked", handleSeeked);
     };
-  }, [startRaf, stopRaf]);
+  }, []);
 
   const seekToTime = useCallback((time: number) => {
     const audio = audioRef.current;
@@ -333,12 +416,11 @@ function TTSPlayerProvider({
     }
   }, [play, resume]);
 
-  const startScrubbing = useCallback(() => { isScrubbingRef.current = true; stopRaf(); }, [stopRaf]);
+  const startScrubbing = useCallback(() => { isScrubbingRef.current = true; }, []);
   const endScrubbing = useCallback(() => {
     isScrubbingRef.current = false;
-    const audio = audioRef.current;
-    if (audio && !audio.paused) startRaf();
-  }, [startRaf]);
+    // RAF will restart on next timeupdate/play event
+  }, []);
 
   const contextValue = useMemo<TTSPlayerContextValue>(() => ({
     audioRef, currentTime, duration, isPlaying, isBuffering, currentWordIndex, words,
@@ -480,8 +562,8 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
         </button>
       </div>
 
-      {/* Scrub bar — compact */}
-      <div className="px-4 pb-1">
+      {/* Scrub bar — mobile-optimized touch targets (44px+ hit area per iOS HIG / WCAG 2.2) */}
+      <div className="px-4 pb-1.5 pt-1">
         <ScrubBarContainer
           duration={duration}
           value={currentTime}
@@ -490,12 +572,12 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
           onScrub={seekToTime}
           className="w-full"
         >
-          <div className="flex flex-1 flex-col gap-0.5">
-            <ScrubBarTrack className="h-[3px]">
+          <div className="flex flex-1 flex-col gap-1">
+            <ScrubBarTrack className="h-1.5 sm:h-1 before:absolute before:inset-x-0 before:-inset-y-4 before:content-['']">
               <ScrubBarProgress />
-              <ScrubBarThumb className="h-2.5 w-2.5" />
+              <ScrubBarThumb className="h-5 w-5 sm:h-4 sm:w-4 shadow-sm" />
             </ScrubBarTrack>
-            <div className="text-muted-foreground flex items-center justify-between text-[10px]">
+            <div className="text-muted-foreground flex items-center justify-between text-[11px] sm:text-[10px]">
               <ScrubBarTimeLabel time={currentTime} />
               <ScrubBarTimeLabel time={duration} />
             </div>
@@ -857,6 +939,7 @@ function TTSErrorCard({ error, parsedError, onClose, onRetry }: {
 const MOBILE_TTS_BOTTOM_STYLE = { bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' } as const;
 /** Approx height of the TTS player + bottom bar gap so content isn't hidden */
 const MOBILE_TTS_SCROLL_PADDING = 180;
+const DESKTOP_TTS_SCROLL_PADDING = 260;
 
 /** Map MediaError codes to user-friendly messages */
 function mediaErrorMessage(err: MediaError | null): string {
@@ -921,17 +1004,17 @@ function TTSFloatingPlayer({
     };
   }, []);
 
-  // Auto-scroll mobile content so it isn't hidden behind the player
+  // Add bottom padding to scroll container so content isn't hidden behind the fixed player.
+  // No scrollBy here — the word-by-word highlight handles auto-scrolling via scrollToSpan.
   useEffect(() => {
-    if (!isMobile || !ttsOpen) return;
-    const sc = document.querySelector("[data-mobile-scroll]");
+    if (!ttsOpen) return;
+    const sc = isMobile
+      ? document.querySelector("[data-mobile-scroll]")
+      : document.querySelector("[data-desktop-scroll]");
     if (!sc) return;
-    // Add padding so content at bottom isn't obscured
-    (sc as HTMLElement).style.paddingBottom = `${MOBILE_TTS_SCROLL_PADDING}px`;
-    // Scroll up a bit to reveal content behind the player
-    sc.scrollBy({ top: 60, behavior: "smooth" });
+    const padding = isMobile ? MOBILE_TTS_SCROLL_PADDING : DESKTOP_TTS_SCROLL_PADDING;
+    (sc as HTMLElement).style.paddingBottom = `${padding}px`;
     return () => {
-      // Remove padding when player closes
       (sc as HTMLElement).style.paddingBottom = "";
     };
   }, [isMobile, ttsOpen]);

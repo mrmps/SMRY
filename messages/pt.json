@@ -340,7 +340,7 @@
   },
   "updateBanner": {
     "new": "Novo:",
-    "message": "Exporte artigos para Notion, Obsidian e Markdown — seu conhecimento é seu",
+    "message": "Ouça qualquer artigo com vozes IA naturais — 3 escutas grátis, sem cadastro",
     "changelog": "Registro de alterações"
   },
   "changelog": {
@@ -353,6 +353,15 @@
     "upgrade": "Atualizar"
   },
   "changelogEntries": {
+    "entryTTS_date": "26 de fevereiro de 2026",
+    "entryTTS_change1_text": "Ouça qualquer artigo com vozes IA",
+    "entryTTS_change1_detail": "Transforme qualquer artigo em um podcast com som natural. Aperte play e ouça enquanto se desloca, cozinha ou se exercita — seus olhos descansam enquanto seu cérebro continua aprendendo.",
+    "entryTTS_change2_text": "Destaque palavra por palavra",
+    "entryTTS_change2_detail": "Cada palavra é destacada em tempo real conforme o áudio toca. Toque em qualquer palavra para pular direto para aquele momento — como karaokê para artigos.",
+    "entryTTS_change3_text": "10 vozes com som natural",
+    "entryTTS_change3_detail": "Escolha entre 10 vozes IA masculinas e femininas. 2 vozes são gratuitas para sempre — faça upgrade para desbloquear todas as 10.",
+    "entryTTS_change4_text": "Velocidade e controles de reprodução",
+    "entryTTS_change4_detail": "Acelere até 2x ou diminua para leitura profunda. Avance ou retroceda 10 segundos com um toque. Um player compacto flutuante acompanha você enquanto navega.",
     "entryExport_date": "23 de fevereiro de 2026",
     "entryExport_change1_text": "Exporte artigos completos para sua base de conhecimento",
     "entryExport_change1_detail": "Salve qualquer artigo no Notion, Obsidian ou Roam Research com um clique — completo com título, autor, data e texto integral. Sua leitura nunca mais ficará presa em uma aba do navegador.",

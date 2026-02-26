@@ -340,7 +340,7 @@
   },
   "updateBanner": {
     "new": "Nieuw:",
-    "message": "Exporteer artikelen naar Notion, Obsidian en Markdown — je kennis is van jou",
+    "message": "Luister naar elk artikel met natuurlijke AI-stemmen — 3 gratis keer luisteren, geen registratie nodig",
     "changelog": "Wijzigingslogboek"
   },
   "changelog": {
@@ -353,6 +353,15 @@
     "upgrade": "Upgraden"
   },
   "changelogEntries": {
+    "entryTTS_date": "26 februari 2026",
+    "entryTTS_change1_text": "Luister naar elk artikel met AI-stemmen",
+    "entryTTS_change1_detail": "Maak van elk artikel een natuurlijk klinkende podcast. Druk op play en luister terwijl je pendelt, kookt of sport — je ogen krijgen rust terwijl je brein blijft leren.",
+    "entryTTS_change2_text": "Woord-voor-woord markering",
+    "entryTTS_change2_detail": "Elk woord wordt in realtime gemarkeerd terwijl de audio speelt. Tik op een woord om direct naar dat moment te springen — als karaoke voor artikelen.",
+    "entryTTS_change3_text": "10 natuurlijk klinkende stemmen",
+    "entryTTS_change3_detail": "Kies uit 10 AI-stemmen in mannelijke en vrouwelijke opties. 2 stemmen zijn voor altijd gratis — upgrade om alle 10 te ontgrendelen.",
+    "entryTTS_change4_text": "Afspeelsnelheid & bediening",
+    "entryTTS_change4_detail": "Versnel tot 2x of vertraag voor diep lezen. Spring 10 seconden vooruit of terug met een tik. Een compacte zwevende speler blijft zichtbaar terwijl je scrollt.",
     "entryExport_date": "23 februari 2026",
     "entryExport_change1_text": "Exporteer volledige artikelen naar je kennisbank",
     "entryExport_change1_detail": "Sla elk artikel op in Notion, Obsidian of Roam Research met één klik — compleet met titel, auteur, datum en volledige tekst. Je leesmateriaal zit nooit meer vast in een browsertabblad.",

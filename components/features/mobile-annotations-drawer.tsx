@@ -89,14 +89,22 @@ function MobileAnnotationCard({
 
   // Focus textarea and scroll into view when note editor opens.
   // Explicit .focus() is needed because autoFocus is unreliable on iOS.
+  // Two-step delay: first focus (triggers keyboard), then scroll after
+  // the visual viewport has resized to account for the keyboard.
   useEffect(() => {
     if (!editingNote) return;
-    // Short delay lets the drawer + keyboard settle first
-    const timer = setTimeout(() => {
+    // Step 1: focus triggers keyboard open
+    const focusTimer = setTimeout(() => {
       textareaRef.current?.focus();
-      noteEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 150);
-    return () => clearTimeout(timer);
+    }, 100);
+    // Step 2: scroll after keyboard + drawer have settled (~350ms on iOS)
+    const scrollTimer = setTimeout(() => {
+      noteEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 400);
+    return () => {
+      clearTimeout(focusTimer);
+      clearTimeout(scrollTimer);
+    };
   }, [editingNote]);
 
   const bgClass = COLOR_BG[highlight.color] || COLOR_BG.yellow;
@@ -317,8 +325,12 @@ export function MobileAnnotationsDrawer({
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Visual Viewport API: lift drawer above virtual keyboard on iOS/Android.
-  // Only subscribe when the drawer is open; reset offset in cleanup (not in effect body).
+  // Tracks both keyboard offset (to position drawer above keyboard) and available
+  // viewport height (to shrink drawer so it fits the remaining space).
+  // Without height adjustment, the 70dvh drawer extends above the visible area
+  // when keyboard takes ~50% of screen, hiding the textarea off-screen.
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv || !open) return;
@@ -326,14 +338,17 @@ export function MobileAnnotationsDrawer({
     const update = () => {
       const offset = Math.max(0, window.innerHeight - vv.offsetTop - vv.height);
       setKeyboardOffset(offset);
+      setViewportHeight(vv.height);
     };
 
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    update();
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
       setKeyboardOffset(0);
+      setViewportHeight(0);
     };
   }, [open]);
 
@@ -385,9 +400,15 @@ export function MobileAnnotationsDrawer({
         <DrawerPrimitive.Content
           className="fixed inset-x-0 z-50 flex flex-col bg-background border-t border-border rounded-t-2xl"
           style={{
-            height: "70dvh",
+            // When keyboard is visible, shrink to fit available space above keyboard.
+            // Without this, 70dvh extends above the viewport and hides the textarea.
+            height: keyboardOffset > 0 && viewportHeight > 0
+              ? `${viewportHeight}px`
+              : "70dvh",
             bottom: `${keyboardOffset}px`,
-            transition: keyboardOffset > 0 ? "bottom 0.15s ease-out" : undefined,
+            transition: keyboardOffset > 0
+              ? "bottom 0.15s ease-out, height 0.15s ease-out"
+              : undefined,
           }}
         >
           {/* Drag handle — thin bar visual indicator */}

@@ -110,6 +110,7 @@ export function useTTSHighlight({
   const observerRef = useRef<MutationObserver | null>(null)
   const isMutatingRef = useRef(false)
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestSpanRef = useRef<HTMLSpanElement | undefined>(undefined)
 
   // Keep latest callbacks in refs to avoid stale closures in event handlers
   const seekToTimeRef = useRef(seekToTime)
@@ -133,51 +134,30 @@ export function useTTSHighlight({
       domWordCountRef.current = positions.length
       alignWordCountRef.current = alignmentWords?.length ?? 0
 
-      // Build text-based forward matching: DOM word → alignment word.
-      // This is robust against word count mismatches (brackets, normalization, etc.)
-      // and replaces the fragile proportional index mapping.
-      const domToAlign = new Map<number, number>()
-      const alignToDom = new Map<number, number>()
-
-      if (alignmentWords?.length) {
-        let alignPtr = 0
-        for (let domIdx = 0; domIdx < positions.length && alignPtr < alignmentWords.length; domIdx++) {
-          const pos = positions[domIdx]
-          const domWord = (pos.node.textContent || "").slice(pos.start, pos.end)
-
-          // Forward search for matching alignment word (up to 10 ahead)
-          const searchLimit = Math.min(alignPtr + 10, alignmentWords.length)
-          for (let j = alignPtr; j < searchLimit; j++) {
-            if (textMatch(domWord, alignmentWords[j].text)) {
-              domToAlign.set(domIdx, j)
-              alignToDom.set(j, domIdx)
-              alignPtr = j + 1
-              break
-            }
-          }
-        }
-
-        // Fill gaps in alignToDom: unmatched alignment indices → nearest previous matched DOM index
-        let lastDomIdx = 0
-        for (let i = 0; i < alignmentWords.length; i++) {
-          if (alignToDom.has(i)) {
-            lastDomIdx = alignToDom.get(i)!
-          } else {
-            alignToDom.set(i, lastDomIdx)
-          }
-        }
-      }
-
-      domToAlignMapRef.current = domToAlign
-      alignToDomMapRef.current = alignToDom
+      // Use proportional mapping between DOM words and alignment words.
+      // Previous text-based forward matching was fragile — a single false positive
+      // in textMatch (e.g. "in" matching "involved" via containment) would cause
+      // alignPtr to skip ahead, cascading into total matching failure at chunk
+      // boundaries. Proportional mapping avoids this entirely:
+      // - When counts match (common case): 1:1 direct index mapping
+      // - When counts differ: smooth proportional scaling
+      // The alignToDomIdx/domToAlignIdx helpers handle both cases.
+      //
+      // Since buildWordPositions already filters out ad/navigation text via
+      // shouldSkipNode + getProseContainers, DOM word count closely tracks
+      // alignment word count (typically within 1-5%).
+      domToAlignMapRef.current.clear()
+      alignToDomMapRef.current.clear()
 
       if (process.env.NODE_ENV === "development" && alignmentWords?.length) {
-        const matched = domToAlign.size
-        if (positions.length !== alignmentWords.length) {
-          console.warn("[TTS Highlight] word count mismatch — DOM:", positions.length, "alignment:", alignmentWords.length, "text-matched:", matched)
-        } else {
-          console.log("[TTS Highlight] word counts match:", positions.length, "text-matched:", matched)
-        }
+        const ratio = positions.length > 0 ? (alignmentWords.length / positions.length).toFixed(2) : "N/A"
+        const lastWord = alignmentWords[alignmentWords.length - 1]
+        console.log("[TTS Highlight] buildSpans:",
+          "DOM words:", positions.length,
+          "alignment words:", alignmentWords.length,
+          "ratio:", ratio,
+          "lastWordEnd:", lastWord ? lastWord.endTime.toFixed(2) + "s" : "none",
+          "(proportional mapping)")
       }
 
       injectStyles()
@@ -188,14 +168,12 @@ export function useTTSHighlight({
 
       return true
     } finally {
-      // Use setTimeout(250) instead of queueMicrotask so the lock stays held
-      // long enough to cover the useInlineHighlights MutationObserver debounce (150ms).
-      // Generation counter prevents stale timeouts from decrementing the lock
-      // during close→reopen races.
+      // Always decrement the global lock (every ++ must get a --).
+      // Only gate the instance-local isMutatingRef on generation match.
       setTimeout(() => {
+        _ttsMutLockCount = Math.max(0, _ttsMutLockCount - 1)
         if (_ttsMutGeneration === gen) {
           isMutatingRef.current = false
-          _ttsMutLockCount = Math.max(0, _ttsMutLockCount - 1)
         }
       }, 250)
     }
@@ -231,10 +209,9 @@ export function useTTSHighlight({
       prevIndexRef.current = -1
       initializedRef.current = false
       setTimeout(() => {
+        _ttsMutLockCount = Math.max(0, _ttsMutLockCount - 1)
         if (_ttsMutGeneration === gen) {
           isMutatingRef.current = false
-          _ttsMutLockCount = Math.max(0, _ttsMutLockCount - 1)
-          // Notify annotation highlights to re-apply now that TTS cleanup is done
           document.dispatchEvent(new CustomEvent("tts-cleanup-complete"))
         }
       }, 250)
@@ -309,6 +286,11 @@ export function useTTSHighlight({
 
       const seekTime = w[alignIdx].startTime
 
+      if (process.env.NODE_ENV === "development") {
+        console.log("[TTS Click-to-seek] domIdx:", domIdx, "alignIdx:", alignIdx,
+          "seekTime:", seekTime.toFixed(2), "word:", w[alignIdx].text)
+      }
+
       // Clear any pre-existing selection so it doesn't interfere
       window.getSelection()?.removeAllRanges()
       e.stopPropagation()
@@ -351,22 +333,32 @@ export function useTTSHighlight({
       prevIndexRef.current = -1
       initializedRef.current = false
       setTimeout(() => {
+        _ttsMutLockCount = Math.max(0, _ttsMutLockCount - 1)
         if (_ttsMutGeneration === gen) {
           isMutatingRef.current = false
-          _ttsMutLockCount = Math.max(0, _ttsMutLockCount - 1)
           document.dispatchEvent(new CustomEvent("tts-cleanup-complete"))
         }
       }, 250)
     }
   }, [isActive, buildSpans, areSpansValid, tryRebuild])
 
-  // Debounced scroll to avoid excessive layout thrashing
+  // Throttled scroll — fires immediately on first call, then blocks for 600ms
+  // so native smooth scroll finishes before the next one starts.
   const debouncedScrollToSpan = useCallback((span: HTMLSpanElement | undefined) => {
-    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
+    // If a throttle is active, just store the latest span for trailing call
+    if (scrollTimerRef.current) {
+      latestSpanRef.current = span
+      return
+    }
+    // Fire immediately
+    scrollToSpan(span)
+    // Block for 600ms, then fire trailing call if any
     scrollTimerRef.current = setTimeout(() => {
       scrollTimerRef.current = null
-      scrollToSpan(span)
-    }, 300)
+      const trailing = latestSpanRef.current
+      latestSpanRef.current = undefined
+      if (trailing) scrollToSpan(trailing)
+    }, 600)
   }, [])
 
   // Clean up scroll timer on unmount
@@ -385,7 +377,10 @@ export function useTTSHighlight({
     spanIdx: number,
     map: Map<number, HTMLSpanElement>,
   ) => {
-    if (spanIdx < 0 || spanIdx >= map.size) return
+    if (spanIdx < 0) return
+    // Clamp to last valid span instead of bailing — alignment can have more words
+    // than DOM spans (due to TTS normalization, e.g. "$100" → "one hundred dollars").
+    if (spanIdx >= map.size) spanIdx = map.size - 1
 
     if (!initializedRef.current) {
       initializedRef.current = true
@@ -457,30 +452,29 @@ export function useTTSHighlight({
       : alignToDomIdx(wordIdx, domWordCountRef.current, alignWordCountRef.current)
   }, [])
 
-  // Primary sync: RAF-based direct audio read (bypasses React state entirely).
-  // When audioElement is provided, reads audio.currentTime directly every frame,
-  // computes word index via binary search, and updates DOM classes synchronously.
-  // Falls back to React state-driven currentWordIndex when audioElement is absent.
+  // ── Hybrid RAF + timeupdate highlight sync ──
+  // RAF provides smooth 60fps DOM updates. timeupdate (~4/sec) acts as a
+  // never-die fallback — on mobile, RAF silently stops at MP3 chunk boundaries
+  // but timeupdate keeps firing from the browser's audio stack.
+  // applyHighlight is idempotent (early-exits when spanIdx unchanged), so
+  // running from both sources has zero overhead.
   useEffect(() => {
     if (!isActive) return
 
-    // Read .current inside effect (not during render) to avoid "Cannot access refs during render"
     const audio = audioRef?.current
-    // When no direct audio access, fall back to React-driven currentWordIndex
     if (!audio) return
 
     let raf: number | null = null
 
-    const tick = () => {
-      raf = null
+    const syncHighlight = () => {
       const w = wordsRef.current
       let map = spanMapRef.current
 
-      if (!w?.length) return schedule()
+      if (!w?.length) return
       if (map.size === 0 || !areSpansValid()) {
         tryRebuild()
         map = spanMapRef.current
-        if (map.size === 0) return schedule()
+        if (map.size === 0) return
       }
 
       const t = audio.currentTime
@@ -490,28 +484,52 @@ export function useTTSHighlight({
       if (spanIdx !== prevIndexRef.current || !initializedRef.current) {
         applyHighlight(spanIdx, map)
       }
-
-      schedule()
     }
 
+    // RAF loop: smooth 60fps updates when browser allows
+    const tick = () => {
+      raf = null
+      syncHighlight()
+      schedule()
+    }
     function schedule() {
       if (audio && !audio.paused && raf == null) {
         raf = requestAnimationFrame(tick)
       }
     }
 
-    const onPlay = () => schedule()
-    const onSeeked = () => { tick() } // One-shot update on seek
+    // Event listeners: timeupdate is the reliable backbone (~4/sec)
+    const onTimeUpdate = () => {
+      syncHighlight()
+      // Watchdog: restart RAF if it died while audio is playing
+      if (raf == null && !audio.paused) schedule()
+    }
+    const onPlay = () => { schedule() }
+    const onSeeked = () => { syncHighlight() }
 
+    audio.addEventListener("timeupdate", onTimeUpdate)
     audio.addEventListener("play", onPlay)
     audio.addEventListener("seeked", onSeeked)
 
+    // Watchdog interval: force-sync highlight every 100ms.
+    // On mobile, both RAF and timeupdate can silently stop at MP3 chunk
+    // boundaries while audio continues from pre-decoded buffer. This
+    // interval ensures highlighting never stalls for more than 100ms.
+    // Also restarts RAF if it died (e.g. Chrome throttles RAF during scroll).
+    const watchdog = setInterval(() => {
+      if (audio.paused) return
+      syncHighlight()
+      if (raf == null) schedule()
+    }, 100)
+
     // Initial sync
     if (!audio.paused) schedule()
-    else tick()
+    else syncHighlight()
 
     return () => {
+      clearInterval(watchdog)
       if (raf != null) cancelAnimationFrame(raf)
+      audio.removeEventListener("timeupdate", onTimeUpdate)
       audio.removeEventListener("play", onPlay)
       audio.removeEventListener("seeked", onSeeked)
     }
@@ -520,7 +538,7 @@ export function useTTSHighlight({
   // Fallback: React state-driven sync for when audioRef is not available.
   // This path is only used if no direct audio reference is provided.
   useEffect(() => {
-    if (!isActive || audioRef?.current) return // Skip when RAF path is active
+    if (!isActive || audioRef?.current) return // Skip when event-driven path is active
 
     let map = spanMapRef.current
     if (map.size === 0 || !areSpansValid()) {
@@ -539,44 +557,30 @@ export function useTTSHighlight({
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Compare two words for matching, handling punctuation and case differences */
-function textMatch(a: string, b: string): boolean {
-  if (a === b) return true
-  const aNorm = a.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()
-  const bNorm = b.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()
-  if (!aNorm || !bNorm) return false
-  if (aNorm === bNorm) return true
-  // Containment check for partial matches (e.g., "[1]," vs "1")
-  if (aNorm.length >= 2 && bNorm.length >= 2) {
-    if (aNorm.includes(bNorm) || bNorm.includes(aNorm)) return true
-  }
-  return false
-}
-
 function injectStyles() {
   if (document.getElementById(STYLE_ID)) return
   const style = document.createElement("style")
   style.id = STYLE_ID
   style.textContent = `
 [data-tts-idx] {
-  transition: color 0.08s ease-out, background-color 0.08s ease-out, opacity 0.08s ease-out;
   cursor: pointer;
   background-color: transparent;
-  padding: 0;
+  padding: 1px 2px;
   margin: 0;
   border: none;
+  border-radius: 3px;
 }
 [data-article-content] .tts-spoken {
   color: var(--foreground) !important;
+  opacity: 1 !important;
 }
 [data-article-content] .tts-current {
-  background-color: color-mix(in srgb, var(--primary) 30%, transparent) !important;
-  border-radius: 3px;
-  padding: 1px 2px;
+  background-color: color-mix(in srgb, var(--primary) 25%, transparent) !important;
   color: var(--foreground) !important;
+  opacity: 1 !important;
 }
 [data-article-content] .tts-unspoken {
-  opacity: 0.35 !important;
+  opacity: 0.3 !important;
 }
 
 /* ── Annotation marks during TTS playback ── */
@@ -694,22 +698,22 @@ function scrollToSpan(span: HTMLSpanElement | undefined) {
   const rect = span.getBoundingClientRect()
   const containerRect = sc.getBoundingClientRect()
 
-  // Measure the actual TTS player so we know what's obscured.
+  // Visible bottom = whichever is smaller: container bottom or player top.
+  // The player is fixed-positioned and can overlap the scroll container.
   const player = document.querySelector<HTMLElement>("[data-tts-player]")
-  const playerTop = player
-    ? player.getBoundingClientRect().top
-    : containerRect.bottom - 200
+  const playerTop = player ? player.getBoundingClientRect().top : Infinity
+  const effectiveBottom = Math.min(containerRect.bottom, playerTop) - 24
 
-  const topBuffer = 60
-  const visibleBottom = playerTop - 16
+  const topEdge = containerRect.top + 40
 
-  const isVisible =
-    rect.top >= containerRect.top + topBuffer &&
-    rect.bottom <= visibleBottom
+  const isVisible = rect.top >= topEdge && rect.bottom <= effectiveBottom
 
   if (!isVisible) {
-    // Use native smooth scroll — scroll word to top of visible area above the player
-    const offset = rect.top - (containerRect.top + topBuffer)
-    sc.scrollBy({ top: offset, behavior: "smooth" })
+    // Use absolute scrollTo instead of relative scrollBy.
+    // scrollTo to the same target is a no-op, so overlapping calls don't compound.
+    const visibleHeight = effectiveBottom - topEdge
+    const offsetFromTarget = rect.top - (topEdge + visibleHeight * 0.3)
+    const targetScrollTop = sc.scrollTop + offsetFromTarget
+    sc.scrollTo({ top: targetScrollTop, behavior: "smooth" })
   }
 }

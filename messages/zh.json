@@ -340,7 +340,7 @@
   },
   "updateBanner": {
     "new": "新功能：",
-    "message": "将文章导出到 Notion、Obsidian 和 Markdown — 你的知识属于你",
+    "message": "用自然 AI 语音收听任何文章 — 免费收听 3 次，无需注册",
     "changelog": "更新日志"
   },
   "changelog": {
@@ -353,6 +353,15 @@
     "upgrade": "升级"
   },
   "changelogEntries": {
+    "entryTTS_date": "2026年2月26日",
+    "entryTTS_change1_text": "用 AI 语音收听任何文章",
+    "entryTTS_change1_detail": "将任何文章变成自然发音的播客。按下播放，在通勤、做饭或锻炼时收听——让眼睛休息，大脑继续学习。",
+    "entryTTS_change2_text": "逐词高亮同步",
+    "entryTTS_change2_detail": "音频播放时每个词实时高亮显示。点击任意词跳转到该时刻——就像文章版的卡拉OK。",
+    "entryTTS_change3_text": "10 种自然发音的语音",
+    "entryTTS_change3_detail": "从 10 种男女 AI 语音中选择。2 种语音永久免费——升级解锁全部 10 种。",
+    "entryTTS_change4_text": "播放速度和跳转控制",
+    "entryTTS_change4_detail": "加速到 2 倍或放慢深度阅读。点击即可前进或后退 10 秒。紧凑的悬浮播放器在滚动时始终可见。",
     "entryExport_date": "2026年2月23日",
     "entryExport_change1_text": "将完整文章导出到你的知识库",
     "entryExport_change1_detail": "一键将任何文章保存到 Notion、Obsidian 或 Roam Research——包括标题、作者、日期和全文。你的阅读内容再也不会被困在浏览器标签页中。",

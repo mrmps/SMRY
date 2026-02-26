@@ -20,7 +20,7 @@ import type { ChunkAlignment, MergedAlignment } from "./tts-provider";
 const logger = createLogger("tts-redis-cache");
 
 const REDIS_KEY_PREFIX = "tts:chunk:";
-const ARTICLE_KEY_PREFIX = "tts:article:";
+const ARTICLE_KEY_PREFIX = "tts:article:v2:";
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const MAX_CHUNK_BYTES = 2 * 1024 * 1024; // 2MB per chunk
 const MAX_ARTICLE_BYTES = 10 * 1024 * 1024; // 10MB per article

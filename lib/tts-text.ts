@@ -2,16 +2,15 @@
  * Shared TTS text extraction and word position mapping.
  *
  * `extractTTSText()` returns raw DOM text (pre-cleaning) for server submission.
- * `buildWordPositions()` returns DOM positions filtered through `cleanTextForTTS`,
- * guaranteeing that word index N in the TTS alignment (based on cleaned text)
- * corresponds to word position N in the DOM highlight spans.
+ * `buildWordPositions()` returns ALL raw DOM word positions. The DOM↔alignment
+ * mapping is handled separately by buildSpans in use-tts-highlight.ts via
+ * text-based forward matching.
  *
  * Walking strategy:
  * 1. Find `[data-article-content]` element
  * 2. Walk only `.prose` containers (skip ad components between them)
  * 3. Skip elements with ad/navigation classes or hidden elements
  * 4. Enumerate words via `\S+` regex on text nodes
- * 5. (buildWordPositions only) Filter positions to match `cleanTextForTTS` output
  */
 
 import { cleanTextForTTS } from "./tts-chunk";
@@ -72,13 +71,17 @@ export interface TimedWordPosition extends WordPosition {
 /**
  * Build a flat array of word positions from the article's prose containers.
  * Walks text nodes in DOM order, skipping ad/navigation elements.
- * Positions are filtered through `cleanTextForTTS` so that word index N
- * here matches word index N in the TTS character alignment.
+ *
+ * Returns ALL raw DOM word positions. The caller (buildSpans in
+ * use-tts-highlight.ts) handles DOM↔alignment mapping via its own
+ * text-based matching. Filtering through cleanTextForTTS is NOT done
+ * here because it drops DOM words, causing alignment words past the
+ * drop point to lose their DOM mapping and the highlight to freeze.
  *
  * Used by useTTSHighlight for span-wrapping and click-to-seek.
  */
 export function buildWordPositions(articleEl: Element): WordPosition[] {
-  const rawPositions: WordPosition[] = [];
+  const positions: WordPosition[] = [];
   const containers = getProseContainers(articleEl);
 
   for (const container of containers) {
@@ -96,7 +99,7 @@ export function buildWordPositions(articleEl: Element): WordPosition[] {
       const regex = /\S+/g;
       let match: RegExpExecArray | null;
       while ((match = regex.exec(text)) !== null) {
-        rawPositions.push({
+        positions.push({
           node,
           start: match.index,
           end: match.index + match[0].length,
@@ -105,38 +108,7 @@ export function buildWordPositions(articleEl: Element): WordPosition[] {
     }
   }
 
-  // Filter to match cleaned text (TTS alignment is based on cleaned text)
-  const rawWords = rawPositions.map(
-    (p) => (p.node.textContent || "").slice(p.start, p.end),
-  );
-  const rawText = rawWords.join(" ");
-  const cleanedText = cleanTextForTTS(rawText);
-  const cleanedWords = cleanedText.match(/\S+/g) || [];
-
-  // If cleaning didn't change anything, return raw (fast path)
-  if (cleanedWords.length === rawPositions.length) return rawPositions;
-
-  // Forward-match cleaned words to raw positions.
-  // Uses startsWith for robustness: if cleanTextForTTS partially removes
-  // text from a word (e.g. "ADVERTISEMENT." → "."), we still match.
-  const result: WordPosition[] = [];
-  let rawIdx = 0;
-  for (const cleanedWord of cleanedWords) {
-    let matched = false;
-    while (rawIdx < rawPositions.length) {
-      const raw = rawWords[rawIdx];
-      if (raw === cleanedWord || raw.includes(cleanedWord) || cleanedWord.includes(raw)) {
-        result.push(rawPositions[rawIdx]);
-        rawIdx++;
-        matched = true;
-        break;
-      }
-      rawIdx++;
-    }
-    // Safety: if no raw match found, stop — indices would be misaligned
-    if (!matched) break;
-  }
-  return result;
+  return positions;
 }
 
 /**

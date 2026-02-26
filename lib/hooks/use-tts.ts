@@ -205,7 +205,7 @@ function addLocalUsage(articleUrl: string, voiceId: string): void {
 
 // ─── Cache key for combined audio (SHA-256 of cleaned text + voice) ───
 // Version must match CHUNK_CACHE_VERSION in tts-chunk.ts — bump both together.
-const CLIENT_CACHE_VERSION = "v2";
+const CLIENT_CACHE_VERSION = "v3";
 
 async function computeCacheKey(text: string, voice: string): Promise<string> {
   const data = new TextEncoder().encode(CLIENT_CACHE_VERSION + "\0" + text + "\0" + voice);
@@ -395,15 +395,16 @@ export function useTTS(
       setDurationMs(serverDuration);
       setStatus("ready");
 
-      // Sync usage count with server (server deduplicates by article+voice)
+      // Track usage — each article+voice combo = 1 credit (deduped by addLocalUsage)
+      if (!isPremium) {
+        addLocalUsage(articleUrl, voice);
+      }
+
+      // Sync usage count: prefer server count (authoritative), fall back to local
       const serverUsageCount = parseInt(response.headers.get("X-TTS-Usage-Count") || "", 10);
       if (!isNaN(serverUsageCount) && !isPremium) {
         setUsageCount(serverUsageCount);
-      }
-
-      // Track usage — each article+voice combo = 1 credit
-      if (!isPremium) {
-        addLocalUsage(articleUrl, voice);
+      } else if (!isPremium) {
         setUsageCount(getLocalUsage().length);
       }
 

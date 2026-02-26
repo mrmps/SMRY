@@ -24,9 +24,11 @@ import { Elysia, t } from "elysia";
 import {
   initTTSProvider,
   generateSpeechForChunk,
+  stripMp3Metadata,
   DEFAULT_VOICE_ID,
   VOICE_PRESETS,
   isVoiceAllowed,
+  generateXingFrame,
   type ChunkAlignment,
   type MergedAlignment,
 } from "../../lib/tts-provider";
@@ -546,14 +548,26 @@ async function generateCombined(
     }
   }
 
-  // Concatenate audio buffers
-  const totalSize = results.reduce((sum, r) => sum + r.audio.length, 0);
-  const combined = Buffer.alloc(totalSize);
+  // Strip ALL metadata (ID3v2 tags, Xing/Info/VBRI frames) from every chunk,
+  // then prepend a single correct Xing header for the full concatenated stream.
+  // Without this, iOS Safari reads the first chunk's metadata and thinks the
+  // total duration equals just the first chunk — causing playback to "end" at
+  // the chunk boundary while audio continues from pre-decoded buffers.
+  const strippedBuffers = results.map((r) => stripMp3Metadata(r.audio));
+  const audioOnlySize = strippedBuffers.reduce((sum, b) => sum + b.length, 0);
+  const audioOnly = Buffer.alloc(audioOnlySize);
   let offset = 0;
-  for (const r of results) {
-    r.audio.copy(combined, offset);
-    offset += r.audio.length;
+  for (const buf of strippedBuffers) {
+    buf.copy(audioOnly, offset);
+    offset += buf.length;
   }
+
+  // Generate a Xing VBR header frame with the correct total frame count
+  // and byte size. iOS Safari uses this to determine the real duration.
+  const xingFrame = generateXingFrame(audioOnly);
+  const combined = xingFrame.length > 0
+    ? Buffer.concat([xingFrame, audioOnly])
+    : audioOnly;
 
   // Merge alignments with cumulative time offsets
   const mergedAlignment = mergeChunkAlignments(
@@ -569,7 +583,8 @@ async function generateCombined(
       chunksTotal: chunks.length,
       cacheHits,
       uncached: uncachedIndices.length,
-      totalSizeMB: Math.round(totalSize / 1024 / 1024 * 10) / 10,
+      totalSizeMB: Math.round(combined.length / 1024 / 1024 * 10) / 10,
+      xingFrameBytes: xingFrame.length,
       totalDurationMs,
       perChunkDurationsMs: results.map((r) => Math.round(r.durationMs)),
       alignmentChars: mergedAlignment.characters.length,

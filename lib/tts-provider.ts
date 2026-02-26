@@ -157,8 +157,8 @@ export async function generateSpeechForChunk(
       applyTextNormalization: "OFF",
     }),
     signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(60_000)])
-      : AbortSignal.timeout(60_000),
+      ? AbortSignal.any([signal, AbortSignal.timeout(90_000)])
+      : AbortSignal.timeout(90_000),
   });
 
   if (!response.ok) {
@@ -376,6 +376,269 @@ function parseMp3DurationMs(buffer: Buffer): number {
 /** Rough MP3 duration estimate (fallback): 64kbps = 8000 bytes/sec */
 function estimateMp3DurationMs(byteLength: number): number {
   return (byteLength / 8000) * 1000;
+}
+
+/**
+ * Check if an MPEG frame at `offset` is a Xing/Info/VBRI encoder metadata frame.
+ * These frames look like valid audio frames but contain stream metadata (total
+ * frames count, byte offsets, TOC). When present in concatenated chunks, mobile
+ * decoders (iOS Safari) read the metadata and think the stream ends after that
+ * chunk's frame count — causing playback to "end" at chunk boundaries while
+ * audio from pre-decoded buffers continues playing.
+ *
+ * Xing/Info marker offsets depend on MPEG version + channel mode:
+ * - MPEG1 stereo/joint/dual: byte 36
+ * - MPEG1 mono: byte 21
+ * - MPEG2/2.5 stereo/joint/dual: byte 21
+ * - MPEG2/2.5 mono: byte 13
+ * VBRI is always at byte 36.
+ */
+function isEncoderInfoFrame(buffer: Buffer, frameOffset: number): boolean {
+  const markerOffsets = [13, 21, 36];
+  for (const off of markerOffsets) {
+    const pos = frameOffset + off;
+    if (pos + 4 > buffer.length) continue;
+    const tag =
+      String.fromCharCode(buffer[pos]) +
+      String.fromCharCode(buffer[pos + 1]) +
+      String.fromCharCode(buffer[pos + 2]) +
+      String.fromCharCode(buffer[pos + 3]);
+    if (tag === "Xing" || tag === "Info" || tag === "VBRI") return true;
+  }
+  return false;
+}
+
+/**
+ * Compute the byte size of a single MPEG frame starting at `offset`.
+ * Returns 0 if the frame header is invalid.
+ */
+function mpegFrameSize(buffer: Buffer, offset: number): number {
+  if (offset + 4 > buffer.length) return 0;
+  const b1 = buffer[offset + 1];
+  const b2 = buffer[offset + 2];
+  const ver = (b1 >> 3) & 0x03;
+  const layer = (b1 >> 1) & 0x03;
+  const brIdx = (b2 >> 4) & 0x0f;
+  const srIdx = (b2 >> 2) & 0x03;
+  const pad = (b2 >> 1) & 0x01;
+
+  if (ver === 1 || layer === 0 || brIdx === 0 || brIdx === 15 || srIdx === 3) return 0;
+
+  const brV1 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1];
+  const brV2 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, -1];
+  const srV1 = [44100, 48000, 32000, -1];
+  const srV2 = [22050, 24000, 16000, -1];
+  const srV25 = [11025, 12000, 8000, -1];
+
+  let bitrate: number;
+  let sampleRate: number;
+
+  if (ver === 3) { bitrate = brV1[brIdx]; sampleRate = srV1[srIdx]; }
+  else if (ver === 2) { bitrate = brV2[brIdx]; sampleRate = srV2[srIdx]; }
+  else { bitrate = brV2[brIdx]; sampleRate = srV25[srIdx]; }
+
+  if (bitrate <= 0 || sampleRate <= 0) return 0;
+  return ver === 3
+    ? Math.floor((144 * bitrate * 1000) / sampleRate) + pad
+    : Math.floor((72 * bitrate * 1000) / sampleRate) + pad;
+}
+
+/**
+ * Strip non-audio metadata (ID3v2 tags, Xing/Info/VBRI encoder frames) from
+ * an MP3 buffer. Returns a sub-buffer starting at the first *real* audio frame.
+ *
+ * Used when concatenating multiple MP3 chunks: the first chunk keeps its
+ * full headers, but chunks 2+ must have their headers stripped. Without this,
+ * mobile audio decoders (especially iOS Safari) interpret the duplicate
+ * headers mid-stream as corruption or a new stream, causing:
+ * - False `ended` events at chunk boundaries
+ * - `currentTime` freezing while audio continues from pre-decoded buffer
+ * - Scrub bar and highlight animation stopping mid-playback
+ */
+export function stripMp3Metadata(buffer: Buffer): Buffer {
+  let offset = 0;
+
+  // Skip ID3v2 tag if present (starts with "ID3")
+  if (
+    buffer.length >= 10 &&
+    buffer[0] === 0x49 && // 'I'
+    buffer[1] === 0x44 && // 'D'
+    buffer[2] === 0x33    // '3'
+  ) {
+    const tagSize =
+      ((buffer[6] & 0x7f) << 21) |
+      ((buffer[7] & 0x7f) << 14) |
+      ((buffer[8] & 0x7f) << 7) |
+      (buffer[9] & 0x7f);
+    offset = 10 + tagSize;
+  }
+
+  // Scan for first valid MPEG frame sync (11 set bits: 0xFF followed by 0xE0+)
+  while (offset + 1 < buffer.length) {
+    if (buffer[offset] === 0xff && (buffer[offset + 1] & 0xe0) === 0xe0) {
+      // Verify it's a valid frame header (not just random data matching the pattern)
+      if (offset + 3 < buffer.length) {
+        const b1 = buffer[offset + 1];
+        const b2 = buffer[offset + 2];
+        const ver = (b1 >> 3) & 0x03;
+        const layer = (b1 >> 1) & 0x03;
+        const brIdx = (b2 >> 4) & 0x0f;
+        const srIdx = (b2 >> 2) & 0x03;
+        // Skip reserved version (01), reserved layer (00), bad bitrate/samplerate
+        if (ver !== 1 && layer !== 0 && brIdx !== 0 && brIdx !== 15 && srIdx !== 3) {
+          // Check if this is a Xing/Info/VBRI encoder metadata frame.
+          // These contain "total frames" metadata that causes mobile decoders
+          // to stop at chunk boundaries in concatenated streams.
+          if (isEncoderInfoFrame(buffer, offset)) {
+            // Skip this frame entirely — advance past it to the next frame
+            const frameLen = mpegFrameSize(buffer, offset);
+            if (frameLen > 0) {
+              offset += frameLen;
+              continue; // Look for the next valid (non-metadata) frame
+            }
+          }
+          return buffer.subarray(offset);
+        }
+      }
+    }
+    offset++;
+  }
+
+  // No valid frame found — return as-is (shouldn't happen with valid MP3)
+  return buffer;
+}
+
+// --- Xing header generation for concatenated MP3 ---
+
+/**
+ * Generate a Xing VBR header frame for a concatenated MP3 stream.
+ *
+ * iOS Safari (and most mobile audio decoders) determine MP3 duration by reading
+ * the Xing/Info header from the first MPEG frame. Without this header, iOS
+ * estimates duration from the first chunk's bitrate + file size, producing a
+ * wildly wrong duration that equals only the first chunk's length.
+ *
+ * The Xing frame is a valid MPEG audio frame with zeroed side info, containing:
+ * - Total frame count (so iOS knows the real duration)
+ * - Total byte count (so iOS knows the real file size)
+ * - TOC seek table (so scrubbing works correctly)
+ *
+ * Uses "Xing" tag (not "Info") because iOS Safari has had bugs where "Info"
+ * frames are not skipped properly for CBR content.
+ *
+ * @param audioBuffer - Raw MPEG audio data (all metadata stripped, no ID3/Xing)
+ * @returns A single Xing header frame to prepend, or empty Buffer on failure
+ */
+export function generateXingFrame(audioBuffer: Buffer): Buffer {
+  // Find the first valid MPEG frame to extract stream parameters
+  let scanOffset = 0;
+  while (scanOffset + 4 <= audioBuffer.length) {
+    if (audioBuffer[scanOffset] !== 0xff || (audioBuffer[scanOffset + 1] & 0xe0) !== 0xe0) {
+      scanOffset++;
+      continue;
+    }
+
+    const b1 = audioBuffer[scanOffset + 1];
+    const b2 = audioBuffer[scanOffset + 2];
+    const b3 = audioBuffer[scanOffset + 3];
+    const ver = (b1 >> 3) & 0x03;
+    const layer = (b1 >> 1) & 0x03;
+    const brIdx = (b2 >> 4) & 0x0f;
+    const srIdx = (b2 >> 2) & 0x03;
+    const channelMode = (b3 >> 6) & 0x03;
+
+    if (ver === 1 || layer === 0 || brIdx === 0 || brIdx === 15 || srIdx === 3) {
+      scanOffset++;
+      continue;
+    }
+
+    // Skip any existing Xing/Info/VBRI frames
+    if (isEncoderInfoFrame(audioBuffer, scanOffset)) {
+      const fs = mpegFrameSize(audioBuffer, scanOffset);
+      if (fs > 0) { scanOffset += fs; continue; }
+    }
+
+    // Found first valid audio frame — extract stream parameters
+    const srV1 = [44100, 48000, 32000];
+    const srV2 = [22050, 24000, 16000];
+    const srV25 = [11025, 12000, 8000];
+
+    let sampleRate: number;
+    if (ver === 3) sampleRate = srV1[srIdx];
+    else if (ver === 2) sampleRate = srV2[srIdx];
+    else sampleRate = srV25[srIdx];
+
+    if (sampleRate <= 0) return Buffer.alloc(0);
+
+    // Count total MPEG frames in the audio buffer
+    let totalFrames = 0;
+    let countOffset = scanOffset;
+    while (countOffset + 4 <= audioBuffer.length) {
+      if (audioBuffer[countOffset] !== 0xff || (audioBuffer[countOffset + 1] & 0xe0) !== 0xe0) {
+        countOffset++;
+        continue;
+      }
+      const fs = mpegFrameSize(audioBuffer, countOffset);
+      if (fs < 4 || countOffset + fs > audioBuffer.length) break;
+      totalFrames++;
+      countOffset += fs;
+    }
+    if (totalFrames === 0) return Buffer.alloc(0);
+
+    // Build the Xing frame header using 128kbps (LAME convention — provides
+    // plenty of room for the Xing data inside the frame).
+    // For MPEG1 L3 128kbps 44100Hz: frame = floor(144*128000/44100) = 417 bytes
+    const xingBrIdx = ver === 3 ? 9 : 8; // 128kbps for MPEG1, 64kbps for MPEG2/2.5
+    const brV1 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+    const brV2 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+    const xingBitrate = ver === 3 ? brV1[xingBrIdx] : brV2[xingBrIdx];
+    const xingFrameSize = ver === 3
+      ? Math.floor((144 * xingBitrate * 1000) / sampleRate)
+      : Math.floor((72 * xingBitrate * 1000) / sampleRate);
+
+    // Xing tag offset = 4 (header) + side info size
+    const isMono = channelMode === 3;
+    const xingTagOffset = ver === 3
+      ? (isMono ? 21 : 36)
+      : (isMono ? 13 : 21);
+
+    // Verify frame is large enough: tag(4) + flags(4) + frames(4) + bytes(4) + TOC(100) = 116
+    if (xingFrameSize < xingTagOffset + 116) return Buffer.alloc(0);
+
+    // Allocate zero-filled frame (side info = zeroed = silence)
+    const frame = Buffer.alloc(xingFrameSize, 0);
+
+    // Write frame header (4 bytes)
+    frame[0] = 0xff;
+    frame[1] = b1; // Same MPEG version, layer, CRC
+    frame[2] = (xingBrIdx << 4) | (srIdx << 2); // Xing bitrate + same sample rate, no padding
+    frame[3] = b3; // Same channel mode
+
+    // Write "Xing" tag at the correct offset
+    frame.write("Xing", xingTagOffset, "ascii");
+
+    // Flags: frames + bytes + TOC = 0x0007
+    frame.writeUInt32BE(0x00000007, xingTagOffset + 4);
+
+    // Total frame count (audio frames + this Xing frame itself)
+    frame.writeUInt32BE(totalFrames + 1, xingTagOffset + 8);
+
+    // Total byte count (audio bytes + this Xing frame)
+    frame.writeUInt32BE(audioBuffer.length + xingFrameSize, xingTagOffset + 12);
+
+    // TOC: 100-entry seek table (linear for CBR content)
+    const tocOffset = xingTagOffset + 16;
+    const audioOnlySize = audioBuffer.length;
+    const totalBytes = xingFrameSize + audioOnlySize;
+    for (let i = 0; i < 100; i++) {
+      const bytePos = xingFrameSize + Math.round((i / 100) * audioOnlySize);
+      frame[tocOffset + i] = Math.min(255, Math.round((bytePos / totalBytes) * 256));
+    }
+
+    return frame;
+  }
+
+  return Buffer.alloc(0);
 }
 
 // --- Voice avatar helpers ---
