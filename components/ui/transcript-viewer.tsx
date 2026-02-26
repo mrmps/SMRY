@@ -9,7 +9,11 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from "react"
-import type { CharacterAlignmentResponseModel } from "@elevenlabs/elevenlabs-js/api/types/CharacterAlignmentResponseModel"
+type CharacterAlignmentResponseModel = {
+  characters: string[]
+  characterStartTimesSeconds: number[]
+  characterEndTimesSeconds: number[]
+}
 import { Pause, Play } from "@/components/ui/icons"
 
 import { cn } from "@/lib/utils"
@@ -83,7 +87,7 @@ type TranscriptViewerContainerProps = {
 } & Omit<ComponentPropsWithoutRef<"div">, "children"> &
   Pick<
     Parameters<typeof useTranscriptViewer>[0],
-    "onPlay" | "onPause" | "onTimeUpdate" | "onEnded" | "onDurationChange"
+    "onPlay" | "onPause" | "onTimeUpdate" | "onEnded" | "onDurationChange" | "onAudioError" | "onBuffering"
   >
 
 function TranscriptViewerContainer({
@@ -99,6 +103,8 @@ function TranscriptViewerContainer({
   onTimeUpdate,
   onEnded,
   onDurationChange,
+  onAudioError,
+  onBuffering,
   ...props
 }: TranscriptViewerContainerProps) {
   const viewerState = useTranscriptViewer({
@@ -110,6 +116,8 @@ function TranscriptViewerContainer({
     onTimeUpdate,
     onEnded,
     onDurationChange,
+    onAudioError,
+    onBuffering,
   })
 
   const { audioRef } = viewerState
@@ -318,12 +326,11 @@ function TranscriptViewerPlayPauseButton({
   onClick,
   ...props
 }: TranscriptViewerPlayPauseButtonProps) {
-  const { isPlaying, play, pause } = useTranscriptViewerContext()
+  const { isPlaying, toggle } = useTranscriptViewerContext()
   const Icon = isPlaying ? Pause : Play
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (isPlaying) pause()
-    else play()
+    toggle()
     onClick?.(event)
   }
 

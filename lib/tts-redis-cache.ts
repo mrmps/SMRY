@@ -6,16 +6,16 @@
  *   L1: Server article LRU (200MB, 2h TTL)
  *   L2: Server chunk LRU (300MB, 1h TTL)
  *   L3: Redis chunk cache (7d TTL) ← THIS
- *   L4: ElevenLabs API (last resort)
+ *   L4: Inworld API (last resort)
  *
  * Stores gzip-compressed JSON with base64 audio per chunk hash.
- * Silent degradation: all errors → cache miss → fall through to ElevenLabs.
+ * Silent degradation: all errors → cache miss → fall through to Inworld.
  */
 
 import { Redis } from "@upstash/redis";
 import { compressAsync, decompressAsync } from "./redis-compression";
 import { createLogger } from "./logger";
-import type { ChunkAlignment } from "./elevenlabs-tts";
+import type { ChunkAlignment } from "./tts-provider";
 
 const logger = createLogger("tts-redis-cache");
 

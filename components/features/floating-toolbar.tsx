@@ -13,7 +13,7 @@ import {
   Bug,
   ArrowUpRight,
   Play,
-  Loader2,
+  LoaderCircle,
 } from "@/components/ui/icons";
 import { Link } from "@/i18n/navigation";
 import { FeedbackIcon } from "@/components/ui/custom-icons";
@@ -322,7 +322,7 @@ export function FloatingToolbar({
       {/* Listen (TTS) */}
       <ToolbarButton
         icon={isTTSLoading
-          ? <Loader2 className="size-5 animate-spin" />
+          ? <LoaderCircle className="size-5 animate-spin" />
           : <Play className="size-5" />
         }
         label={isTTSActive ? "Stop listening" : "Listen"}

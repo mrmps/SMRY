@@ -44,13 +44,15 @@ import {
   useTranscriptViewerContext,
 } from "@/components/ui/transcript-viewer";
 import { useTTSHighlight } from "@/components/hooks/use-tts-highlight";
-import { VOICE_PRESETS, getVoiceAvatarGradient, isVoiceAllowed } from "@/lib/elevenlabs-tts";
+import { VOICE_PRESETS, getVoiceAvatarGradient, isVoiceAllowed } from "@/lib/tts-provider";
 import {
-  Forward,
-  Backward,
+  SkipBack10,
+  SkipForward10,
   X,
   AlertTriangle,
   Lock,
+  Crown,
+  Headphones,
 } from "@/components/ui/icons";
 import { type ArticleExportData } from "@/components/features/export-article";
 import {
@@ -61,7 +63,7 @@ import {
 
 // ─── TTS Player Controls (used inside TranscriptViewerContainer) ───
 
-const RATE_PRESETS = [0.75, 1, 1.25, 1.5, 2, 2.5];
+const RATE_PRESETS = [0.75, 1, 1.25, 1.5, 2];
 
 interface TTSControlsProps {
   onClose: () => void;
@@ -139,25 +141,30 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
       )}
 
       {/* Header row: label + close button */}
-      <div className={cn("flex items-center justify-between px-3 pb-1", isPremium ? "pt-2.5" : "pt-1.5")}>
+      <div className={cn("flex items-center justify-between px-3 pb-0", isPremium ? "pt-2.5" : "pt-1.5")}>
         <span className="text-[11px] font-medium text-muted-foreground tracking-wide uppercase">Now Playing</span>
         <button
           onClick={onClose}
-          className="size-7 flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent transition-colors"
+          className="size-9 flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
           aria-label="Close"
         >
           <X className="size-3.5" />
         </button>
       </div>
 
-      {/* Controls row */}
-      <div className="flex items-center gap-2 px-3 pb-2.5">
+      {/* Scrub bar — top */}
+      <div className="px-3 pb-1.5">
+        <TranscriptViewerScrubBar className="w-full" />
+      </div>
+
+      {/* Controls row — bottom */}
+      <div className="flex items-center justify-center gap-3 px-3 pb-3">
         {/* Voice picker */}
         <div className="relative" ref={voiceRef}>
           <button
             onClick={() => { setShowVoice((p) => !p); setShowSpeed(false); }}
             className={cn(
-              "h-9 px-2.5 flex items-center gap-1.5 rounded-full text-xs font-medium transition-colors truncate max-w-[90px]",
+              "h-9 sm:h-11 px-2.5 flex items-center gap-1.5 rounded-full text-xs font-medium transition-colors truncate max-w-[90px] active:scale-95 transition-transform duration-100",
               "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
               showVoice && "bg-accent text-foreground",
             )}
@@ -207,11 +214,9 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
                         {locked && (
                           <span className="shrink-0 flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5">
                             <Lock className="size-3" />
-                            {/* Badge text: always visible on mobile (no hover), acts as tooltip context */}
                             <span className="text-[9px] font-medium text-muted-foreground leading-none">PRO</span>
                           </span>
                         )}
-                        {/* Desktop hover tooltip — hidden on touch devices */}
                         {locked && (
                           <span className="pointer-events-none absolute right-0 -top-7 z-50 hidden group-hover/voice:block rounded-md bg-foreground text-background px-2 py-1 text-[10px] font-medium shadow-lg whitespace-nowrap">
                             Upgrade to unlock
@@ -234,33 +239,30 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
         {/* Skip backward */}
         <button
           onClick={skipBackward}
-          className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="size-9 sm:size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
           aria-label="Skip backward 10 seconds"
         >
-          <Backward className="size-4" />
+          <SkipBack10 className="size-5" />
         </button>
 
         {/* Play/Pause */}
-        <TranscriptViewerPlayPauseButton size="icon" variant="ghost" className="size-10" />
+        <TranscriptViewerPlayPauseButton size="icon" variant="ghost" className="size-10 sm:size-12 active:scale-95 transition-transform duration-100" />
 
         {/* Skip forward */}
         <button
           onClick={skipForward}
-          className="size-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="size-9 sm:size-11 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors active:scale-95 transition-transform duration-100"
           aria-label="Skip forward 10 seconds"
         >
-          <Forward className="size-4" />
+          <SkipForward10 className="size-5" />
         </button>
-
-        {/* Scrub bar */}
-        <TranscriptViewerScrubBar className="flex-1" />
 
         {/* Speed button */}
         <div className="relative" ref={speedRef}>
           <button
             onClick={() => { setShowSpeed((p) => !p); setShowVoice(false); }}
             className={cn(
-              "size-9 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors",
+              "size-9 sm:size-11 flex items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors active:scale-95 transition-transform duration-100",
               "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
               showSpeed && "bg-accent text-foreground",
             )}
@@ -276,7 +278,7 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
                 >−</button>
                 <span className="text-lg font-bold tabular-nums min-w-[40px] text-center">{rate}×</span>
                 <button
-                  onClick={() => handleRateChange(Math.min(3, Math.round((rate + 0.25) * 100) / 100))}
+                  onClick={() => handleRateChange(Math.min(2, Math.round((rate + 0.25) * 100) / 100))}
                   className="size-8 flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-accent hover:text-foreground text-sm font-medium"
                 >+</button>
               </div>
@@ -309,8 +311,29 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
  * word index from context and highlights it on the article DOM via <mark>.
  */
 function TTSArticleHighlight() {
-  const { currentWordIndex, seekToTime, play, words, isPlaying, currentTime } = useTranscriptViewerContext();
-  useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play, words });
+  const { currentWordIndex, seekToTime, resume, toggle, words, isPlaying, currentTime, duration } = useTranscriptViewerContext();
+  useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play: resume, words });
+
+  // Listen for keyboard-dispatched TTS commands (Space, ArrowLeft, ArrowRight)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.action) return;
+      switch (detail.action) {
+        case "toggle":
+          toggle();
+          break;
+        case "seek-backward":
+          seekToTime(Math.max(currentTime - 10, 0));
+          break;
+        case "seek-forward":
+          seekToTime(Math.min(currentTime + 10, duration));
+          break;
+      }
+    };
+    document.addEventListener("tts-command", handler);
+    return () => document.removeEventListener("tts-command", handler);
+  }, [toggle, seekToTime, currentTime, duration]);
 
   // Debug: log word index updates to diagnose desktop vs mobile sync
   const prevRef = useRef({ wordIndex: -1, loggedAt: 0 });
@@ -327,17 +350,17 @@ function TTSArticleHighlight() {
   return null;
 }
 
-/** Animated waveform bars for TTS loading state */
+/** Subtle animated waveform bars for TTS loading state */
 function TTSWaveAnimation() {
   return (
-    <div className="flex items-center justify-center gap-[2.5px] h-8">
-      {Array.from({ length: 20 }, (_, i) => (
+    <div className="flex items-center justify-center gap-[2px] h-6">
+      {Array.from({ length: 16 }, (_, i) => (
         <div
           key={i}
-          className="tts-wave-bar"
+          className="tts-wave-bar-subtle"
           style={{
-            animationDelay: `${i * 0.06}s`,
-            animationDuration: `${0.8 + 0.4 * Math.sin((i / 19) * Math.PI)}s`,
+            animationDelay: `${i * 0.07}s`,
+            animationDuration: `${1.2 + 0.3 * Math.sin((i / 15) * Math.PI)}s`,
           }}
         />
       ))}
@@ -353,6 +376,37 @@ function TTSErrorCard({ error, parsedError, onClose, onRetry }: {
   onRetry: () => void;
 }) {
   const display = parsedError ?? { message: error, canRetry: true, showUpgrade: false };
+
+  // Show a richer upgrade prompt for credit/limit errors
+  if (display.showUpgrade) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 py-2">
+        <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <Headphones className="size-6 text-primary" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold text-foreground">{display.message}</p>
+          <p className="text-xs text-muted-foreground">Upgrade to Premium for unlimited listening with all voices.</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors active:scale-95 transition-transform duration-100"
+          >
+            <Crown className="size-3.5" />
+            Upgrade to Premium
+          </Link>
+          <button
+            onClick={onClose}
+            className="rounded-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-start gap-2.5">
@@ -374,14 +428,6 @@ function TTSErrorCard({ error, parsedError, onClose, onRetry }: {
         >
           Close
         </button>
-        {display.showUpgrade && (
-          <Link
-            href="/pricing"
-            className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ml-auto"
-          >
-            Upgrade to Premium
-          </Link>
-        )}
       </div>
     </div>
   );
@@ -392,6 +438,18 @@ function TTSErrorCard({ error, parsedError, onClose, onRetry }: {
 const MOBILE_TTS_BOTTOM_STYLE = { bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' } as const;
 /** Approx height of the TTS player + bottom bar gap so content isn't hidden */
 const MOBILE_TTS_SCROLL_PADDING = 180;
+
+/** Map MediaError codes to user-friendly messages */
+function mediaErrorMessage(err: MediaError | null): string {
+  if (!err) return "Audio playback failed.";
+  switch (err.code) {
+    case MediaError.MEDIA_ERR_ABORTED: return "Audio playback was interrupted.";
+    case MediaError.MEDIA_ERR_NETWORK: return "Network error while loading audio.";
+    case MediaError.MEDIA_ERR_DECODE: return "Audio could not be decoded.";
+    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: return "Audio format not supported.";
+    default: return "Audio playback failed.";
+  }
+}
 
 function TTSFloatingPlayer({
   tts,
@@ -406,6 +464,44 @@ function TTSFloatingPlayer({
   isPremium: boolean;
   isMobile: boolean;
 }) {
+  const [audioError, setAudioError] = React.useState<string | null>(null);
+  const [bufferingState, setBufferingState] = React.useState(false);
+  const bufferingTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAudioError = React.useCallback((err: MediaError | null) => {
+    setAudioError(mediaErrorMessage(err));
+  }, []);
+
+  const handleBuffering = React.useCallback((isBuffering: boolean) => {
+    setBufferingState(isBuffering);
+    // Clear previous slow-connection timer
+    if (bufferingTimerRef.current) {
+      clearTimeout(bufferingTimerRef.current);
+      bufferingTimerRef.current = null;
+    }
+    if (isBuffering) {
+      // After 10s of buffering, the message will naturally show via bufferingState
+      bufferingTimerRef.current = setTimeout(() => {
+        bufferingTimerRef.current = null;
+      }, 10000);
+    }
+  }, []);
+
+  // Reset error/buffering state when player closes or audio changes
+  React.useEffect(() => {
+    if (!ttsOpen) {
+      setAudioError(null);
+      setBufferingState(false);
+    }
+  }, [ttsOpen]);
+
+  // Clean up buffering timer
+  React.useEffect(() => {
+    return () => {
+      if (bufferingTimerRef.current) clearTimeout(bufferingTimerRef.current);
+    };
+  }, []);
+
   // Auto-scroll mobile content so it isn't hidden behind the player
   useEffect(() => {
     if (!isMobile || !ttsOpen) return;
@@ -430,8 +526,12 @@ function TTSFloatingPlayer({
         audioSrc={tts.audioSrc}
         audioType="audio/mpeg"
         alignment={tts.alignment}
+        hideAudioTags={false}
+        onAudioError={handleAudioError}
+        onBuffering={handleBuffering}
         className={cn(
           "fixed left-1/2 -translate-x-1/2 z-40 rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl space-y-0 p-0",
+          "animate-in slide-in-from-bottom-4 fade-in duration-300",
           isMobile
             ? "w-[calc(100vw-1.5rem)] max-w-[520px]"
             : "bottom-6 w-[520px] max-w-[calc(100vw-2rem)]"
@@ -440,6 +540,24 @@ function TTSFloatingPlayer({
       >
         <TranscriptViewerAudio />
         <TTSArticleHighlight />
+        {/* Inline audio error with retry */}
+        {audioError && (
+          <div className="px-3 pb-2">
+            <TTSErrorCard
+              error={audioError}
+              parsedError={{ message: audioError, canRetry: true, showUpgrade: false }}
+              onClose={() => setAudioError(null)}
+              onRetry={() => { setAudioError(null); tts.stop(); tts.load(); }}
+            />
+          </div>
+        )}
+        {/* Buffering indicator */}
+        {bufferingState && !audioError && (
+          <div className="flex items-center justify-center gap-2 px-3 pb-1.5">
+            <div className="size-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+            <span className="text-[11px] text-muted-foreground">Buffering...</span>
+          </div>
+        )}
         <TTSControls onClose={onClose} voice={tts.voice} onVoiceChange={tts.setVoice} isPremium={isPremium} usageCount={tts.usageCount} usageLimit={tts.usageLimit} />
       </TranscriptViewerContainer>
     );
@@ -451,23 +569,38 @@ function TTSFloatingPlayer({
       <div
         className={cn(
           "fixed z-40 rounded-xl bg-card/95 backdrop-blur-xl border px-6 py-4 shadow-2xl flex flex-col items-center gap-2",
+          "animate-in slide-in-from-bottom-4 fade-in duration-300",
           isMobile ? "left-3 right-3" : "bottom-6 left-1/2 -translate-x-1/2"
         )}
         style={isMobile ? MOBILE_TTS_BOTTOM_STYLE : undefined}
       >
-        <TTSWaveAnimation />
-        <p className="text-xs text-muted-foreground">Generating audio...</p>
+        <div className="flex items-center gap-3">
+          <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Headphones className="size-4 text-primary animate-pulse" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xs font-medium text-foreground">Generating audio</p>
+            <TTSWaveAnimation />
+          </div>
+        </div>
       </div>
     );
   }
 
   // Error
   if (tts.error) {
+    const isUpgradeError = tts.parsedError?.showUpgrade;
     return (
       <div
         className={cn(
-          "fixed z-40 rounded-xl bg-card/95 backdrop-blur-xl border border-destructive/20 shadow-2xl",
-          isMobile ? "left-3 right-3 px-4 py-3.5" : "bottom-6 left-1/2 -translate-x-1/2 px-5 py-3.5 max-w-[400px]"
+          "fixed z-40 rounded-2xl bg-card/95 backdrop-blur-xl border shadow-2xl",
+          "animate-in slide-in-from-bottom-4 fade-in duration-300",
+          isUpgradeError ? "border-primary/20" : "border-destructive/20",
+          isMobile
+            ? "left-3 right-3 px-4 py-3.5"
+            : isUpgradeError
+              ? "bottom-6 left-1/2 -translate-x-1/2 px-6 py-4 max-w-[420px]"
+              : "bottom-6 left-1/2 -translate-x-1/2 px-5 py-3.5 max-w-[400px]"
         )}
         style={isMobile ? MOBILE_TTS_BOTTOM_STYLE : undefined}
       >
@@ -1173,11 +1306,29 @@ export function ProxyContent({ url }: ProxyContentProps) {
         handleTTSToggle();
         return;
       }
+      // Space — Play/Pause TTS (when TTS player is open)
+      if (e.key === " " && !mod && ttsOpen) {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("tts-command", { detail: { action: "toggle" } }));
+        return;
+      }
+      // ArrowLeft — Seek backward 10s (when TTS player is open)
+      if (e.key === "ArrowLeft" && !mod && ttsOpen) {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("tts-command", { detail: { action: "seek-backward" } }));
+        return;
+      }
+      // ArrowRight — Seek forward 10s (when TTS player is open)
+      if (e.key === "ArrowRight" && !mod && ttsOpen) {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("tts-command", { detail: { action: "seek-forward" } }));
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI, setAnnotationsSidebarOpen, handleTTSToggle]);
+  }, [sidebarOpen, sidebarActiveTab, handleSidebarChange, handleNewChat, viewMode, handleViewModeChange, url, handleCopyPage, handleOpenInAI, setAnnotationsSidebarOpen, handleTTSToggle, ttsOpen]);
 
   // Measure combined banner height so fixed sidebars can start below it
   const bannerRef = useRef<HTMLDivElement>(null);

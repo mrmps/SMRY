@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Check,
   Play,
-  Loader2,
+  LoaderCircle,
   ShareIos,
   ArrowLeft,
 } from "@/components/ui/icons";
@@ -439,7 +439,7 @@ export function MobileBottomBar({
           )}
         >
           {isTTSLoading ? (
-            <Loader2 className="size-5 animate-spin" />
+            <LoaderCircle className="size-5 animate-spin" />
           ) : (
             <Play className="size-5" />
           )}

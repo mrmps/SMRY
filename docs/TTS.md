@@ -1,6 +1,6 @@
 # TTS (Text-to-Speech) Dictation System
 
-AI-powered article dictation with word-by-word highlighting. Uses ElevenLabs TTS (Flash v2.5 model) for high-quality neural voices with character-level alignment and MP3 audio.
+AI-powered article dictation with word-by-word highlighting. Uses Inworld AI TTS (TTS 1.5 Mini model) for high-quality neural voices with character-level alignment and MP3 audio.
 
 ## Architecture
 
@@ -11,19 +11,18 @@ Browser                          Next.js Proxy              Elysia API Server
    { text, voice }               (120s timeout)              │
                                                              ├─ IP rate limit (10/min)
                                                              ├─ Auth check (premium vs free limit)
-                                                             ├─ Voice gating (free: Rachel/Brian only)
+                                                             ├─ Voice gating (free: Ashley/Dennis only)
                                                              ├─ Concurrency slot (max 20 global, 2/user)
                                                              ├─ Clean text (strip ads, junk patterns)
                                                              ├─ Article-level LRU cache lookup
                                                              ├─ Article cache hit → instant replay
-                                                             ├─ Split into ~5000-char chunks
+                                                             ├─ Split into ~1800-char chunks
                                                              ├─ Per-chunk LRU cache lookup (SHA-256 key)
                                                              ├─ Per-chunk Redis cache lookup (L3)
                                                              ├─ Cache hits → skip synthesis
-                                                             ├─ Cache misses → parallel synthesis (max 3)
-                                                             │   └─ ElevenLabs convertWithTimestamps()
+                                                             ├─ Cache misses → parallel synthesis (max 5)
+                                                             │   └─ Inworld TTS API (REST)
                                                              │       → MP3 audio + character alignment
-                                                             │       → previousText/nextText for prosody
                                                              ├─ Write to memory + Redis caches
                                                              ├─ Concatenate audio chunks, merge alignment
 2. ← JSON response          ←    Forward JSON          ←    └─ Return { audioBase64, alignment, durationMs }
@@ -37,37 +36,37 @@ Browser                          Next.js Proxy              Elysia API Server
 ### Key design decisions
 
 - **Single JSON response (not SSE)**: One API call returns all audio + alignment as JSON. Simpler than SSE streaming — the multi-tier cache makes subsequent plays instant.
-- **Four-tier server caching**: L1 article LRU (200MB, 2h) → L2 chunk LRU (300MB, 1h) → L3 Redis chunk cache (7d TTL) → L4 ElevenLabs API. Redis survives server restarts.
+- **Four-tier server caching**: L1 article LRU (200MB, 2h) → L2 chunk LRU (300MB, 1h) → L3 Redis chunk cache (7d TTL) → L4 Inworld API. Redis survives server restarts.
 - **Client-side voice cache**: In-memory `Map<voiceId, {blobUrl, alignment, durationMs}>` so switching between previously-heard voices is instant — no API call, no IndexedDB lookup.
-- **Voice tier gating**: Free users restricted to Rachel + Brian (2 voices). Premium users get all 10. Enforced server-side (403) and client-side (UI lock icons, redirect to /pricing).
-- **Large chunks (5000 chars)**: ~5000-char chunks on sentence boundaries. Fewer API calls = lower cost + better prosody. ElevenLabs Flash v2.5 handles 5K+ chars efficiently.
-- **Cross-chunk prosody**: `previousText`/`nextText` context (250 chars) passed to ElevenLabs for smooth transitions between chunks.
-- **Parallel chunk synthesis**: Up to 3 concurrent ElevenLabs API calls for uncached chunks, reducing total generation time.
-- **Character-level alignment**: ElevenLabs `convertWithTimestamps()` returns per-character start/end times. Converted to word boundaries via `alignmentToWordBoundaries()`.
+- **Voice tier gating**: Free users restricted to Ashley + Dennis (2 voices). Premium users get all 10. Enforced server-side (403) and client-side (UI lock icons, redirect to /pricing).
+- **1800-char chunks**: ~1800-char chunks on sentence boundaries (Inworld limit: 2000 chars with safety margin). Fewer API calls = lower cost + better prosody.
+- **Parallel chunk synthesis**: Up to 5 concurrent Inworld API calls for uncached chunks, reducing total generation time.
+- **Character-level alignment**: Inworld returns per-character start/end times via `timestampType: "CHARACTER"`. Converted to word boundaries via `alignmentToWordBoundaries()`.
 - **Seek-safe playback**: `seekTargetRef` guard prevents stale `timeupdate`/`pause` events from overriding seek state. Seeks resume playback immediately without RAF delay.
 - **Span-wrapping highlighting**: Words wrapped in `<span data-tts-idx="N">` with CSS class toggling (`tts-spoken`, `tts-current`, `tts-unspoken`). MutationObserver re-wraps on article DOM changes. Explicit CSS resets (`background: transparent; padding: 0; margin: 0`) prevent visual artifacts inside annotation `<mark>` elements.
-- **TTS/Highlight coordination**: Global `_ttsMutating` flag (exported as `isTTSMutating()`) prevents the annotation `useInlineHighlights` MutationObserver from interfering during TTS span mutations. Uses `setTimeout(250ms)` to outlast the highlights observer's 150ms debounce.
-- **Click-to-seek**: Clicking any highlighted word seeks audio to that word's start time and starts playback immediately.
-- **Content-based duration**: Audio duration derived from alignment end times (not raw MP3 duration). Auto-pauses when spoken content finishes (player stays open for replay).
+- **Direct index mapping for sync**: DOM word spans and alignment words both derive from the same cleaned text, so they map 1:1 by index. `alignToDomIdx()` and `domToAlignIdx()` handle the common case (same count) as a direct passthrough, with proportional scaling fallback when counts differ. This replaced the fragile `matchTimingsToPositions()` forward-search approach that would cascade mismatches.
+- **TTS/Highlight coordination**: Numeric lock counter (`_ttsMutLockCount`) with generation tracking (exported as `isTTSMutating()`) prevents the annotation `useInlineHighlights` MutationObserver from interfering during TTS span mutations. Uses `setTimeout(250ms)` to outlast the highlights observer's 150ms debounce. Multiple concurrent operations (buildSpans, cleanup) each hold their own lock.
+- **Click-to-seek**: Clicking any highlighted word maps DOM span index → alignment word index → seek time, then seeks audio and starts playback immediately.
+- **MP3 frame-based duration**: Chunk duration computed by parsing MPEG audio frames (`parseMp3DurationMs()`) rather than using alignment end times. Handles MPEG1/2/2.5 Layer III, both CBR and VBR. Falls back to bitrate-based estimate if parsing fails. This eliminates cumulative time drift when merging multi-chunk alignments — the old boundary-based estimate excluded trailing silence/padding in each chunk.
 - **Restart from beginning**: When `play()` is called after audio reaches content end, automatically seeks to 0 and restarts playback.
 - **Mobile auto-scroll**: When TTS player opens on mobile, adds 180px bottom padding to scroll container and scrolls down 60px so content behind the player is visible. Padding removed on close.
 - **Client-side IndexedDB cache**: Audio blobs cached for 7 days (max 50 entries), avoiding repeat server calls. Cache-first: cached replays don't consume daily credits.
 - **Shared TTSFloatingPlayer component**: Desktop and mobile views use a single `TTSFloatingPlayer` component (ready/loading/error states) with `isMobile` flag for positioning differences.
 - **TranscriptViewer compound components**: `TranscriptViewerContainer` + context provides `play()`, `pause()`, `seekToTime()`, `currentWordIndex` etc. to child controls.
 - **Browser playback rate for speed**: Generate at 1.0x, let `audio.playbackRate` handle 0.5x–3x.
-- **60s per-chunk timeout**: Each ElevenLabs call has `AbortSignal.timeout(60_000)` to accommodate larger 5K-char chunks.
+- **60s per-chunk timeout**: Each Inworld call has `AbortSignal.timeout(60_000)`.
 
 ## Files
 
 ### Server
 | File | Purpose |
 |------|---------|
-| `lib/elevenlabs-tts.ts` | ElevenLabs API client — `convertWithTimestamps()`, character→word alignment, voice presets, tier gating (`isVoiceAllowed`) |
+| `lib/tts-provider.ts` | Inworld AI TTS client — REST API, character→word alignment, MP3 frame parser (`parseMp3DurationMs`), voice presets, tier gating (`isVoiceAllowed`) |
 | `server/routes/tts.ts` | Elysia endpoint — auth, voice gating, rate limiting, concurrency, multi-tier caching, text chunking |
 | `lib/tts-redis-cache.ts` | Redis L3 chunk cache — gzip-compressed, 7-day TTL, batch lookups, silent degradation |
 | `lib/tts-concurrency.ts` | Bounded concurrency limiter with per-user queuing, abort support, /health stats |
 | `lib/tts-chunk.ts` | Shared text cleaning (`cleanTextForTTS`), chunking (`splitTTSChunks`), SHA-256 hashing |
-| `lib/tts-text.ts` | DOM text extraction (`extractTTSText`) and word position mapping (`buildWordPositions`) |
+| `lib/tts-text.ts` | DOM text extraction (`extractTTSText`), word position mapping (`buildWordPositions`), fuzzy timing match (`matchTimingsToPositions` — legacy, unused by highlight hook) |
 | `app/api/tts/route.ts` | Next.js JSON proxy with 120s timeout and IP forwarding |
 | `app/api/tts/voices/route.ts` | Next.js proxy for voice list — forwards auth, returns voices with `locked` boolean |
 
@@ -75,7 +74,7 @@ Browser                          Next.js Proxy              Elysia API Server
 | File | Purpose |
 |------|---------|
 | `lib/hooks/use-tts.ts` | React hook — API calls, in-memory voice cache, IndexedDB caching, usage tracking, voice gating |
-| `components/hooks/use-tts-highlight.ts` | Word highlighting via span-wrapping with MutationObserver recovery, click-to-seek, `_ttsMutating` coordination flag |
+| `components/hooks/use-tts-highlight.ts` | Word highlighting via span-wrapping with direct 1:1 index mapping (`alignToDomIdx`/`domToAlignIdx`), MutationObserver recovery, click-to-seek, `_ttsMutating` coordination flag |
 | `components/hooks/use-transcript-viewer.ts` | Audio playback state, seek-safe word timing sync (RAF + binary search), segment composition, restart-from-end |
 | `components/ui/transcript-viewer.tsx` | Compound component system — Container, Audio, PlayPauseButton, ScrubBar, Words |
 
@@ -89,7 +88,7 @@ Browser                          Next.js Proxy              Elysia API Server
 | `lib/hooks/use-inline-highlights.ts` | Annotation highlights — checks `isTTSMutating()` to skip TTS DOM mutations |
 | `components/article/content.tsx` | `data-article-content` attribute for word highlighting |
 | `server/index.ts` | Route registration, TTS concurrency config, /health TTS stats |
-| `server/env.ts` | `ELEVENLABS_API_KEY` (optional), concurrency env vars |
+| `server/env.ts` | `INWORLD_API_KEY` (optional), concurrency env vars |
 
 ## Cache Hierarchy
 
@@ -99,7 +98,7 @@ L1: Client IndexedDB              (7d TTL, 50 entries)  — per-user, no server 
 L2: Server article LRU            (200MB, 2h TTL)       — instant replay, no chunking
 L3: Server chunk LRU              (300MB, 1h TTL)       — per-chunk, partial hits
 L4: Redis chunk cache             (7d TTL, per-chunk)    — survives restarts
-L5: ElevenLabs API                (last resort)          — actual credit spend
+L5: Inworld TTS API               (last resort)          — actual credit spend
 ```
 
 ### Write-through promotion
@@ -109,20 +108,20 @@ L5: ElevenLabs API                (last resort)          — actual credit spend
 
 ## Voice Tiers
 
-10 curated voices stored in `VOICE_PRESETS` (`lib/elevenlabs-tts.ts`):
+10 curated voices stored in `VOICE_PRESETS` (`lib/tts-provider.ts`):
 
 | Name | Gender | Accent | Description | Tier |
 |------|--------|--------|-------------|------|
-| Rachel (default) | Female | American | Calm, clear | Free |
-| Brian | Male | American | Deep, narration | Free |
-| Sarah | Female | American | Soft, news | Premium |
-| Matilda | Female | American | Warm | Premium |
-| Lily | Female | British | Raspy | Premium |
-| Alice | Female | British | Confident | Premium |
-| Adam | Male | American | Deep | Premium |
-| Daniel | Male | British | News presenter | Premium |
-| Josh | Male | American | Deep, young | Premium |
-| Antoni | Male | American | Well-rounded | Premium |
+| Ashley (default) | Female | American | Warm, natural | Free |
+| Dennis | Male | American | Deep, narration | Free |
+| Sarah | Female | American | Soft, warm | Premium |
+| Olivia | Female | British | Upbeat, friendly | Premium |
+| Julia | Female | American | Bright, clear | Premium |
+| Elizabeth | Female | British | Confident, refined | Premium |
+| Alex | Male | American | Well-rounded | Premium |
+| Craig | Male | American | Deep, clear | Premium |
+| Edward | Male | American | Emphatic, expressive | Premium |
+| Timothy | Male | American | Young, natural | Premium |
 
 ### Voice gating enforcement
 
@@ -131,36 +130,62 @@ L5: ElevenLabs API                (last resort)          — actual credit spend
 3. **UI** (`proxy-content.tsx`): Locked voices show grayscale avatar, lock icon, "PRO" badge, "Upgrade to unlock" tooltip on hover. Clicking redirects to `/pricing`.
 4. **Voices endpoint** (`/api/tts/voices`): Returns all presets with `locked` boolean per voice based on auth. Cache: `private, max-age=300`.
 
-## ElevenLabs API Details
+## How Inworld AI TTS Makes This Work
+
+Inworld AI TTS returns **character-level alignment timestamps** alongside MP3 audio in a single API call — the same behavior as ElevenLabs but at ~5x lower cost ($5/1M chars vs ~$24/1M chars).
+
+1. **Single REST call does everything**: `POST https://api.inworld.ai/tts/v1/voice` with `timestampType: "CHARACTER"` returns both the MP3 audio (base64-encoded) and a character-level alignment object in one response. No second pass or forced-alignment step needed.
+
+2. **Character-level granularity**: Inworld returns per-character start/end times via `timestampInfo.characterAlignment`, which we convert to word boundaries. This gives precise highlighting — we know exactly when each character is spoken.
+
+3. **MP3 output directly**: Inworld generates MP3 at the specified config (44.1kHz, 64kbps). No server-side audio encoding needed.
+
+4. **TTS 1.5 Mini model**: ~100ms median latency, $5/1M characters. Handles long text chunks efficiently.
+
+5. **Alignment offset tracking**: After generating audio for multiple chunks, we merge the alignment data by offsetting timestamps based on cumulative audio duration (computed via MP3 frame parsing for accuracy). Each chunk's character positions are adjusted by the total text length of previous chunks. This produces a single continuous alignment for the full article.
+
+6. **Text normalization disabled**: `applyTextNormalization: "OFF"` ensures Inworld returns alignment characters that exactly match the input text. With normalization ON, numbers/symbols could be expanded (e.g. "$100" → "one hundred dollars"), causing word count mismatches between the DOM and alignment.
+
+**Note**: Unlike ElevenLabs, Inworld does not support cross-chunk prosody context (`previousText`/`nextText`). Each chunk is synthesized independently. With 1800-char chunks on sentence boundaries, this produces acceptable results.
+
+## Inworld AI TTS API Details
 
 ### Speech Generation
 
 ```
-POST via ElevenLabs SDK: textToSpeech.convertWithTimestamps(voiceId, options)
+POST https://api.inworld.ai/tts/v1/voice
+Authorization: Basic {INWORLD_API_KEY}
+Content-Type: application/json
 
-Options:
 {
-  text: "Text to speak...",
-  modelId: "eleven_flash_v2_5",
-  outputFormat: "mp3_44100_64",
-  previousText: "...last 250 chars of previous chunk...",  // optional, for prosody
-  nextText: "...first 250 chars of next chunk..."          // optional, for prosody
+  "text": "Text to speak...",
+  "voiceId": "Ashley",
+  "modelId": "inworld-tts-1.5-mini",
+  "audioConfig": {
+    "audioEncoding": "MP3",
+    "sampleRateHertz": 44100,
+    "bitRate": 64000
+  },
+  "timestampType": "CHARACTER",
+  "applyTextNormalization": "OFF"
 }
 ```
 
 Returns:
-- `audioBase64` — MP3 audio encoded as base64
-- `alignment` — Character-level timing data
+- `audioContent` — MP3 audio encoded as base64
+- `timestampInfo.characterAlignment` — Character-level timing data
 
 ### Character Alignment
 
-ElevenLabs returns per-character timestamps:
+Inworld returns per-character timestamps (note: singular field names):
 ```json
 {
-  "alignment": {
-    "characters": ["H", "e", "l", "l", "o", " ", "w", "o", "r", "l", "d"],
-    "characterStartTimesSeconds": [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.55, 0.6, 0.65, 0.7],
-    "characterEndTimesSeconds":   [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.55, 0.6, 0.65, 0.7, 0.9]
+  "timestampInfo": {
+    "characterAlignment": {
+      "characters": ["H", "e", "l", "l", "o", " ", "w", "o", "r", "l", "d"],
+      "characterStartTimeSeconds": [0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.55, 0.6, 0.65, 0.7],
+      "characterEndTimeSeconds":   [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.55, 0.6, 0.65, 0.7, 0.9]
+    }
   }
 }
 ```
@@ -178,7 +203,7 @@ Converted to word-level `WordBoundary` objects with forward-search for `textOffs
 - Codec: MP3
 - Sample rate: 44.1 kHz
 - Bitrate: 64 kbps
-- Typical size per chunk: ~300-600 KB (5000 chars → ~35-50s audio)
+- Typical size per chunk: ~100-300 KB (1800 chars)
 - Total per article: ~500 KB per minute of audio
 
 ## Control Layout
@@ -218,6 +243,49 @@ The seek implementation uses a `seekTargetRef` guard pattern to prevent stale br
 4. **seeked event**: Clears `seekTargetRef`, syncs final `audio.currentTime` to React state. Re-seeks if browser jumped away (>0.5s tolerance)
 5. **RAF loop**: Skips state updates while seek is in progress
 
+### Click-to-seek flow
+
+1. User clicks a word span (`<span data-tts-idx="N">`)
+2. `useTTSHighlight` click handler extracts DOM index `N`
+3. Maps DOM index → alignment index via `domToAlignIdx(N, domCount, alignCount)`
+4. Looks up `words[alignIdx].startTime` for the seek target
+5. Immediately updates CSS classes on all spans (synchronous DOM mutation for instant visual feedback)
+6. Calls `seekToTime(time)` then `play()`
+
+## Highlight Sync Architecture
+
+### How word highlighting stays in sync with audio
+
+The highlight system maps between two word arrays:
+1. **DOM words**: Extracted from article prose containers via `buildWordPositions()` → filtered through `cleanTextForTTS()`
+2. **Alignment words**: Returned by Inworld TTS API (character-level timestamps grouped into words by `composeSegments()`)
+
+Both arrays derive from the same cleaned text, so word counts should match (1:1 index mapping). The `alignToDomIdx()` / `domToAlignIdx()` helpers handle both cases:
+- **Same count** (common): Direct passthrough (`alignIdx` = `domIdx`)
+- **Different count** (rare): Proportional scaling `Math.round(idx * (targetCount-1) / (sourceCount-1))`
+
+### Why not fuzzy word matching?
+
+The previous approach used `matchTimingsToPositions()` — a forward-search that compared normalized DOM words against alignment words. Problems:
+1. **Cascade failure**: One mismatched word caused all subsequent words to shift
+2. **Normalization sensitivity**: Even with `applyTextNormalization: "OFF"`, minor differences could break the chain
+3. **No recovery**: Once matching fell out of sync, all remaining words had wrong timing
+
+The direct index approach is robust because both word arrays come from the same source text, making index correspondence inherent.
+
+### MP3 frame duration parsing
+
+Multi-chunk TTS merges alignment timestamps by offsetting each chunk by the cumulative duration of previous chunks. The old approach used the last word boundary's end time as chunk duration — but this excluded trailing silence/padding in the MP3 data. Over 10+ chunks, the cumulative error grew to 3-7 seconds.
+
+`parseMp3DurationMs()` in `lib/tts-provider.ts` computes exact duration by:
+1. Skipping ID3v2 tag if present
+2. Scanning for MPEG frame sync bytes (0xFF 0xE0 mask)
+3. Decoding version (MPEG1/2/2.5), layer (III), bitrate, sample rate, padding
+4. Counting frames × samples-per-frame (1152 for MPEG1-L3, 576 for MPEG2/2.5-L3)
+5. Duration = totalSamples / sampleRate
+
+This works correctly for both CBR and VBR because sample count per frame is constant regardless of bitrate. Falls back to `estimateMp3DurationMs()` (bitrate-based estimate) if parsing returns 0.
+
 ### Auto-end behavior
 
 When audio reaches the content end time (last character alignment), the player **pauses** (stays open for replay). It does NOT close — user can seek back or replay. Pressing play after content end automatically restarts from the beginning (seeks to 0, resets word index).
@@ -237,6 +305,7 @@ When the TTS player opens on mobile:
 1. Adds `paddingBottom: 180px` to `[data-mobile-scroll]` container so content isn't obscured
 2. Scrolls container down 60px smoothly to reveal content behind the player
 3. On close, padding is removed via cleanup effect
+4. `scrollToSpan()` uses a 200px bottom buffer on mobile (vs 100px on desktop) to keep the current word above the floating player
 
 ## Scalability Design (30K DAU, 100+ concurrent)
 
@@ -250,7 +319,7 @@ When the TTS player opens on mobile:
 │ Per-user:    2 concurrent requests      │
 │ Queue:       FIFO with 15s timeout      │
 │ Abort:       Client disconnect cleanup  │
-│ ElevenLabs:  3 concurrent API calls     │
+│ Inworld:     5 concurrent API calls     │
 │ Metrics:     /health endpoint stats     │
 └─────────────────────────────────────────┘
 ```
@@ -301,10 +370,10 @@ When the TTS player opens on mobile:
 
 | Concern | Mitigation |
 |---------|-----------|
-| Audio buffer growth | ~5000 chars per ElevenLabs call (not full article). MP3 much smaller than WAV |
+| Audio buffer growth | ~1800 chars per Inworld call (not full article). MP3 much smaller than WAV |
 | Blob URL leaks | Voice cache tracks all blob URLs. `stop()` revokes all. Cleanup on unmount |
-| Client disconnect | AbortSignal cancels ElevenLabs request, releases concurrency slot |
-| Per-chunk timeout | 60s `AbortSignal.timeout` per ElevenLabs call |
+| Client disconnect | AbortSignal cancels Inworld request, releases concurrency slot |
+| Per-chunk timeout | 60s `AbortSignal.timeout` per Inworld call |
 | Per-request tracking | `startMemoryTrack()` instruments every TTS synthesis |
 | Client-side cache | IndexedDB, max 50 entries, 7-day TTL |
 | Redis cache | 2MB per-chunk cap, gzip compression, silent degradation on errors |
@@ -328,14 +397,14 @@ Per user:
 
 | Scenario | Behavior |
 |----------|----------|
-| ElevenLabs API error | Error returned in JSON, displayed in player |
-| ElevenLabs service down | 503 returned, error displayed in player |
+| Inworld API error | Error returned in JSON, displayed in player |
+| Inworld service down | 503 returned, error displayed in player |
 | Server overloaded (20 slots full) | Queue with 15s timeout, then 503 "TTS service busy" |
 | User spamming requests | IP rate limit (429), per-user concurrency limit (429) |
-| Client disconnects mid-generation | AbortSignal cancels ElevenLabs request, releases slot |
+| Client disconnects mid-generation | AbortSignal cancels Inworld request, releases slot |
 | Single chunk hangs | 60s per-chunk timeout aborts that call; error propagated |
 | Premium voice + free user | 403 "Premium voice requires subscription", UI shows upgrade prompt |
-| Redis down | Silent degradation — treated as cache miss, falls through to ElevenLabs |
+| Redis down | Silent degradation — treated as cache miss, falls through to Inworld |
 
 ## Configuration
 
@@ -343,7 +412,7 @@ Per user:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ELEVENLABS_API_KEY` | — | ElevenLabs API key (TTS disabled when absent) |
+| `INWORLD_API_KEY` | — | Inworld AI API key (TTS disabled when absent) |
 | `MAX_CONCURRENT_TTS` | 20 | Global max simultaneous TTS requests |
 | `MAX_TTS_PER_USER` | 2 | Per-user max concurrent TTS requests |
 | `TTS_SLOT_TIMEOUT_MS` | 15000 | Max wait time in concurrency queue (ms) |
@@ -381,8 +450,9 @@ Per user:
 | Pattern | Logger | Meaning |
 |---------|--------|---------|
 | `TTS synthesis started` | `api:tts` | New TTS request accepted |
-| `TTS streaming error` | `api:tts` | Synthesis failed mid-stream |
-| `TTS stream cancelled by client` | `api:tts` | Client disconnected |
+| `TTS synthesis error` | `api:tts` | Synthesis failed |
+| `TTS article cache hit` | `api:tts` | Full article served from cache |
+| `TTS chunk cache hit` | `api:tts` | All chunks served from cache |
 | `TTS request queued` | `tts:concurrency` | All slots full, request waiting |
 | `TTS pre-synthesis memory snapshot` | `api:tts` | RSS, heap, cache stats before synthesis |
 | `memory_operation` name=`tts-synthesis` | `memory-tracker` | Per-request memory delta |
@@ -402,11 +472,11 @@ Per user:
 |--------|-------------|
 | `X-TTS-Usage-Count` | Current daily usage count (free users only) |
 | `X-TTS-Usage-Limit` | Daily limit (3 for free, Infinity for premium) |
-| `X-TTS-Cache` | "article-hit" (article cache), "full-hit" (all chunks cached), "partial-hit" or "miss" |
+| `X-TTS-Cache` | "article-hit" (article cache), "chunk-hit" (all chunks cached) |
 
 ## Free Tier Limits
 
-**Free users**: 3 articles/day, 2 voices (Rachel + Brian)
+**Free users**: 3 articles/day, 2 voices (Ashley + Dennis)
 
 ### Enforcement layers
 
@@ -416,7 +486,7 @@ Per user:
 4. **Anonymous users**: Client-side only enforcement
 5. **Voice gating**: `isVoiceAllowed()` checks both server and client side
 
-**Important**: The daily quota counter is incremented *after* successful audio generation only. If generation fails (e.g., concurrency timeout, ElevenLabs error), the user's count is not consumed.
+**Important**: The daily quota counter is incremented *after* successful audio generation only. If generation fails (e.g., concurrency timeout, Inworld error), the user's count is not consumed.
 
 ## Keyboard Shortcuts
 
@@ -433,3 +503,15 @@ Per user:
 | MutationObserver (highlight recovery) | All modern browsers |
 | Click-to-seek on words | All modern browsers |
 | IndexedDB audio caching | All modern browsers |
+
+## Cost Comparison (ElevenLabs → Inworld)
+
+| | ElevenLabs (previous) | Inworld AI (current) |
+|--|-----------|----------|
+| **Model** | Flash v2.5 | TTS 1.5 Mini |
+| **Cost** | ~$24/1M chars | $5/1M chars |
+| **Latency** | ~75ms | ~100ms |
+| **Timestamps** | Character-level | Character-level |
+| **Audio format** | MP3 (direct) | MP3 (direct) |
+| **Cross-chunk context** | Yes (previousText/nextText) | No |
+| **Savings** | — | ~5x cheaper |

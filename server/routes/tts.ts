@@ -1,18 +1,18 @@
 /**
  * TTS Routes - POST /api/tts, GET /api/tts/voices
  *
- * /api/tts - Generates speech audio via ElevenLabs TTS API.
+ * /api/tts - Generates speech audio via Inworld TTS API.
  *            Returns JSON: { audioBase64, alignment, durationMs }
  *            All chunks generated in parallel, merged server-side.
  * /api/tts/voices - Returns available voice list.
  *
  * Scalability design (30K DAU, 100+ concurrent):
  * - Server-side per-chunk LRU cache: SHA-256(text+voice) → audio + alignment
- *   Cache hit = instant, no ElevenLabs call, no concurrency slot
+ *   Cache hit = instant, no Inworld call, no concurrency slot
  * - Parallel chunk generation via Promise.all (uncached chunks only)
  * - Bounded concurrency: max 20 global connections, max 2 per user
  * - Memory tracking: all operations instrumented via memory-tracker
- * - Client disconnect cleanup: AbortSignal propagated to ElevenLabs request
+ * - Client disconnect cleanup: AbortSignal propagated to Inworld request
  * - Rate limiting: per-IP via in-memory sliding window + daily Redis quota
  * - Audio size cap: max 50KB text (~30 min audio, ~50MB buffer)
  * - Graceful error handling with explicit cleanup
@@ -22,13 +22,13 @@
 
 import { Elysia, t } from "elysia";
 import {
-  initElevenLabsTTS,
+  initTTSProvider,
   generateSpeechForChunk,
   DEFAULT_VOICE_ID,
   VOICE_PRESETS,
   isVoiceAllowed,
   type ChunkAlignment,
-} from "../../lib/elevenlabs-tts";
+} from "../../lib/tts-provider";
 import { TTSRedisCache } from "../../lib/tts-redis-cache";
 import { getAuthInfo } from "../middleware/auth";
 import { createLogger } from "../../lib/logger";
@@ -54,7 +54,7 @@ const logger = createLogger("api:tts");
 // ─── Server-side per-chunk LRU cache for TTS ───
 // Key: SHA-256(chunkText + voice). Value: audio buffer + alignment.
 // Per-chunk caching: each ~5000-char chunk is independently cached.
-// Cache hit = instant replay per chunk, no ElevenLabs call.
+// Cache hit = instant replay per chunk, no Inworld call.
 // 300 MB cap, 1 hour TTL, Map-based LRU (insertion order = access order).
 
 interface ChunkCacheEntry {
@@ -181,11 +181,11 @@ class ArticleLRUCache {
 
 const articleCache = new ArticleLRUCache();
 
-// Initialize ElevenLabs TTS with validated env vars (optional — TTS disabled when absent)
-if (env.ELEVENLABS_API_KEY) {
-  initElevenLabsTTS(env.ELEVENLABS_API_KEY);
+// Initialize Inworld AI TTS with validated env vars (optional — TTS disabled when absent)
+if (env.INWORLD_API_KEY) {
+  initTTSProvider(env.INWORLD_API_KEY);
 } else {
-  logger.warn("ElevenLabs API key not set — TTS routes will return 503");
+  logger.warn("Inworld API key not set — TTS routes will return 503");
 }
 
 // Free user daily limit
@@ -395,12 +395,8 @@ function mergeChunkAlignments(
   return merged;
 }
 
-// ElevenLabs concurrent request limit varies by plan.
-// Use 3 to leave headroom and avoid 429s from race conditions.
-const ELEVENLABS_MAX_CONCURRENT = 3;
-
-// Cross-chunk context for prosody continuity (chars from adjacent chunks)
-const CONTEXT_CHARS = 250;
+// Inworld allows more concurrent requests than Inworld
+const TTS_PROVIDER_MAX_CONCURRENT = 5;
 
 /**
  * Run async tasks with bounded concurrency.
@@ -438,7 +434,7 @@ interface ChunkGenResult {
 /**
  * Generate chunks with bounded concurrency and return combined audio + alignment.
  * Each chunk is checked against server-side LRU cache first (cache hits are free).
- * Uncached chunks are generated via ElevenLabs with max 3 concurrent API calls.
+ * Uncached chunks are generated via Inworld with max 3 concurrent API calls.
  * Cross-chunk context (previousText/nextText) is passed for prosody continuity.
  */
 async function generateCombined(
@@ -504,18 +500,12 @@ async function generateCombined(
     uncachedIndices.push(...stillUncached);
   }
 
-  // L4: Generate uncached chunks via ElevenLabs with bounded concurrency
+  // L4: Generate uncached chunks via Inworld with bounded concurrency
   if (uncachedIndices.length > 0) {
     const tasks = uncachedIndices.map((i) => async () => {
       if (signal?.aborted) throw new Error("Aborted");
 
-      // Pass surrounding text for prosody continuity at chunk boundaries
-      const context = {
-        previousText: i > 0 ? chunks[i - 1].slice(-CONTEXT_CHARS) : undefined,
-        nextText: i < chunks.length - 1 ? chunks[i + 1].slice(0, CONTEXT_CHARS) : undefined,
-      };
-
-      const result = await generateSpeechForChunk(chunks[i], voice, signal, context);
+      const result = await generateSpeechForChunk(chunks[i], voice, signal);
 
       // Cache immediately to L2 (in-memory)
       if (result.audioBuffer.length > 0) {
@@ -541,7 +531,7 @@ async function generateCombined(
       } satisfies ChunkGenResult;
     });
 
-    const generated = await pooled(tasks, ELEVENLABS_MAX_CONCURRENT);
+    const generated = await pooled(tasks, TTS_PROVIDER_MAX_CONCURRENT);
     for (let j = 0; j < uncachedIndices.length; j++) {
       results[uncachedIndices[j]] = generated[j];
     }
@@ -565,8 +555,19 @@ async function generateCombined(
   const totalDurationMs = results.reduce((sum, r) => sum + r.durationMs, 0);
   const cacheHits = results.filter((r) => r.fromCache).length;
 
-  logger.debug(
-    { chunksTotal: chunks.length, cacheHits, uncached: uncachedIndices.length, totalSizeMB: Math.round(totalSize / 1024 / 1024 * 10) / 10 },
+  logger.info(
+    {
+      chunksTotal: chunks.length,
+      cacheHits,
+      uncached: uncachedIndices.length,
+      totalSizeMB: Math.round(totalSize / 1024 / 1024 * 10) / 10,
+      totalDurationMs,
+      perChunkDurationsMs: results.map((r) => Math.round(r.durationMs)),
+      alignmentChars: mergedAlignment.characters.length,
+      lastAlignEndS: mergedAlignment.characterEndTimesSeconds.length > 0
+        ? mergedAlignment.characterEndTimesSeconds[mergedAlignment.characterEndTimesSeconds.length - 1].toFixed(2)
+        : "0",
+    },
     "TTS combined generation completed",
   );
 

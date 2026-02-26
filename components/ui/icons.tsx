@@ -348,6 +348,48 @@ export const Backward = createIcon(Backward01Icon, "Backward");
 export const Speed = createIcon(DashboardSpeed01Icon, "Speed");
 export const Headphones = createIcon(HeadphonesIcon, "Headphones");
 
+/** Skip backward 10s — circular arrow (counter-clockwise) with "10" */
+export const SkipBack10: FC<IconProps> = ({ className, size, strokeWidth = 1.8, color = "currentColor" }) => {
+  let computedSize = size;
+  if (!computedSize && className) {
+    const sizeMatch = className.match(/size-(\d+(?:\.\d+)?)/);
+    if (sizeMatch) computedSize = parseFloat(sizeMatch[1]) * 4;
+  }
+  const s = computedSize || 24;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" className={cn(className)} xmlns="http://www.w3.org/2000/svg">
+      {/* Counter-clockwise circular arrow (open arc from top) */}
+      <path d="M12 5C8.13 5 5 8.13 5 12s3.13 7 7 7 7-3.13 7-7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" fill="none" />
+      {/* Arrowhead pointing left at the top of the arc */}
+      <path d="M12 5L9 2M12 5L9 8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      {/* "10" text */}
+      <text x="12" y="13.5" textAnchor="middle" fill={color} fontSize="7.5" fontWeight="700" fontFamily="system-ui, sans-serif" style={{ userSelect: "none" }}>10</text>
+    </svg>
+  );
+};
+SkipBack10.displayName = "SkipBack10";
+
+/** Skip forward 10s — circular arrow (clockwise) with "10" */
+export const SkipForward10: FC<IconProps> = ({ className, size, strokeWidth = 1.8, color = "currentColor" }) => {
+  let computedSize = size;
+  if (!computedSize && className) {
+    const sizeMatch = className.match(/size-(\d+(?:\.\d+)?)/);
+    if (sizeMatch) computedSize = parseFloat(sizeMatch[1]) * 4;
+  }
+  const s = computedSize || 24;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" className={cn(className)} xmlns="http://www.w3.org/2000/svg">
+      {/* Clockwise circular arrow (open arc from top) */}
+      <path d="M12 5c3.87 0 7 3.13 7 7s-3.13 7-7 7-7-3.13-7-7" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" fill="none" />
+      {/* Arrowhead pointing right at the top of the arc */}
+      <path d="M12 5l3-3M12 5l3 3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      {/* "10" text */}
+      <text x="12" y="13.5" textAnchor="middle" fill={color} fontSize="7.5" fontWeight="700" fontFamily="system-ui, sans-serif" style={{ userSelect: "none" }}>10</text>
+    </svg>
+  );
+};
+SkipForward10.displayName = "SkipForward10";
+
 // Security Icons
 export const Lock = createIcon(LockPasswordIcon, "Lock");
 

@@ -8,7 +8,11 @@ import {
   useState,
   type RefObject,
 } from "react"
-import type { CharacterAlignmentResponseModel } from "@elevenlabs/elevenlabs-js/api/types/CharacterAlignmentResponseModel"
+type CharacterAlignmentResponseModel = {
+  characters: string[]
+  characterStartTimesSeconds: number[]
+  characterEndTimesSeconds: number[]
+}
 
 type ComposeSegmentsOptions = {
   hideAudioTags?: boolean
@@ -50,6 +54,20 @@ function composeSegments(
     characterStartTimesSeconds: starts,
     characterEndTimesSeconds: ends,
   } = alignment
+
+  // Validate alignment arrays — truncate to shortest if mismatched
+  if (!characters?.length || !starts?.length || !ends?.length) {
+    return { segments: [], words: [] }
+  }
+  const minLen = Math.min(characters.length, starts.length, ends.length)
+  if (characters.length !== starts.length || characters.length !== ends.length) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[TTS Player] alignment array length mismatch — chars:", characters.length, "starts:", starts.length, "ends:", ends.length, "truncating to:", minLen)
+    }
+    characters.length = minLen
+    starts.length = minLen
+    ends.length = minLen
+  }
 
   const segments: TranscriptSegment[] = []
   const words: TranscriptWord[] = []
@@ -143,6 +161,8 @@ type UseTranscriptViewerProps = {
   onTimeUpdate?: (time: number) => void
   onEnded?: () => void
   onDurationChange?: (duration: number) => void
+  onAudioError?: (error: MediaError | null) => void
+  onBuffering?: (isBuffering: boolean) => void
 }
 
 type UseTranscriptViewerResult = {
@@ -157,11 +177,14 @@ type UseTranscriptViewerResult = {
   seekToWord: (word: number | TranscriptWord) => void
   audioRef: RefObject<HTMLAudioElement | null>
   isPlaying: boolean
+  isBuffering: boolean
   isScrubbing: boolean
   duration: number
   currentTime: number
   play: () => void
   pause: () => void
+  toggle: () => void
+  resume: () => void
   startScrubbing: () => void
   endScrubbing: () => void
 }
@@ -175,6 +198,8 @@ function useTranscriptViewer({
   onTimeUpdate,
   onEnded,
   onDurationChange,
+  onAudioError,
+  onBuffering,
 }: UseTranscriptViewerProps): UseTranscriptViewerResult {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const rafRef = useRef<number | null>(null)
@@ -184,13 +209,16 @@ function useTranscriptViewer({
   const onPauseRef = useRef<(() => void) | undefined>(onPause)
   const onEndedRef = useRef<(() => void) | undefined>(onEnded)
   const onTimeUpdateCallbackRef = useRef<((time: number) => void) | undefined>(onTimeUpdate)
-  const seekTargetRef = useRef<number | null>(null)
+  const onErrorRef = useRef<((error: MediaError | null) => void) | undefined>(onAudioError)
+  const onBufferingRef = useRef<((isBuffering: boolean) => void) | undefined>(onBuffering)
   /** Set to true when audio auto-pauses at content end; cleared on seek */
   const reachedEndRef = useRef(false)
-  /** Timestamp of last seek completion — used to suppress auto-pause briefly after seeking */
-  const lastSeekDoneRef = useRef(0)
+  /** Timestamp of last programmatic seek — used to suppress auto-pause and
+   *  prevent browser seeked/timeupdate events from overwriting the optimistic update */
+  const lastSeekTimeRef = useRef(0)
 
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isBuffering, setIsBuffering] = useState(false)
   const [isScrubbing, setIsScrubbing] = useState(false)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
@@ -225,6 +253,11 @@ function useTranscriptViewer({
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(() =>
     words.length ? 0 : -1
   )
+  const currentWordIndexRef = useRef(currentWordIndex)
+  const updateWordIndex = useCallback((idx: number) => {
+    currentWordIndexRef.current = idx
+    setCurrentWordIndex(idx)
+  }, [])
 
   // Reset playback state when alignment changes (during render, not in effect)
   // Uses the useState-based pattern from React docs:
@@ -235,8 +268,14 @@ function useTranscriptViewer({
     setCurrentTime(0)
     setDuration(guessedDuration)
     setIsPlaying(false)
+    // Set word index directly (not via updateWordIndex which accesses a ref during render)
     setCurrentWordIndex(words.length ? 0 : -1)
   }
+
+  // Keep ref in sync after render-phase reset
+  useEffect(() => {
+    currentWordIndexRef.current = currentWordIndex
+  }, [currentWordIndex])
 
   const findWordIndex = useCallback(
     (time: number) => {
@@ -257,6 +296,10 @@ function useTranscriptViewer({
           lo = mid + 1
         }
       }
+      // When time falls in a gap between words, keep the preceding word highlighted
+      if (answer === -1 && lo > 0) {
+        answer = lo - 1
+      }
       return answer
     },
     [words]
@@ -266,48 +309,40 @@ function useTranscriptViewer({
     (currentTime: number) => {
       if (!words.length) return
 
+      const idx = currentWordIndexRef.current
       const currentWord =
-        currentWordIndex >= 0 && currentWordIndex < words.length
-          ? words[currentWordIndex]
-          : undefined
+        idx >= 0 && idx < words.length ? words[idx] : undefined
 
       if (!currentWord) {
         const found = findWordIndex(currentTime)
-        if (found !== -1) setCurrentWordIndex(found)
+        if (found !== -1) updateWordIndex(found)
         return
       }
 
-      let next = currentWordIndex
-      if (
-        currentTime >= currentWord.endTime &&
-        currentWordIndex + 1 < words.length
-      ) {
+      let next = idx
+      if (currentTime >= currentWord.endTime && idx + 1 < words.length) {
         while (
           next + 1 < words.length &&
           currentTime >= words[next + 1].startTime
         ) {
           next++
         }
-        if (currentTime < words[next].endTime) {
-          setCurrentWordIndex(next)
-          return
-        }
-        setCurrentWordIndex(next)
+        updateWordIndex(next)
         return
       }
 
       if (currentTime < currentWord.startTime) {
         const found = findWordIndex(currentTime)
-        if (found !== -1) setCurrentWordIndex(found)
+        if (found !== -1) updateWordIndex(found)
         return
       }
 
       const found = findWordIndex(currentTime)
-      if (found !== -1 && found !== currentWordIndex) {
-        setCurrentWordIndex(found)
+      if (found !== -1 && found !== idx) {
+        updateWordIndex(found)
       }
     },
-    [findWordIndex, currentWordIndex, words]
+    [findWordIndex, words, updateWordIndex]
   )
 
   useEffect(() => {
@@ -322,6 +357,8 @@ function useTranscriptViewer({
   useEffect(() => { onPauseRef.current = onPause }, [onPause])
   useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
   useEffect(() => { onTimeUpdateCallbackRef.current = onTimeUpdate }, [onTimeUpdate])
+  useEffect(() => { onErrorRef.current = onAudioError }, [onAudioError])
+  useEffect(() => { onBufferingRef.current = onBuffering }, [onBuffering])
 
   const stopRaf = useCallback(() => {
     if (rafRef.current != null) {
@@ -341,26 +378,29 @@ function useTranscriptViewer({
         return
       }
 
-      // Skip RAF state updates while a seek is in progress —
-      // browser may report stale currentTime until the seek completes
-      if (seekTargetRef.current != null) {
-        rafRef.current = requestAnimationFrame(tick)
+      // If audio was paused externally (not by us), stop the RAF loop cleanly
+      if (node.paused) {
+        rafRef.current = null
         return
       }
 
       const time = node.currentTime
       const contentEnd = contentEndRef.current
 
-      setCurrentTime(contentEnd > 0 ? Math.min(time, contentEnd) : time)
-      handleTimeUpdateRef.current(time)
+      // Skip time/word updates during the 150ms suppression window after a
+      // programmatic seek — the optimistic values from seekToTime are correct;
+      // the browser's intermediate currentTime may not be.
+      const msSinceSeek = Date.now() - lastSeekTimeRef.current
+      if (msSinceSeek >= 150) {
+        setCurrentTime(contentEnd > 0 ? Math.min(time, contentEnd) : time)
+        handleTimeUpdateRef.current(time)
+      }
 
       // Auto-pause when all article text has been spoken (skip trailing silence).
-      // The player stays open — user can re-play or seek back.
-      // Skip auto-pause within 500ms of a seek completing — the user explicitly
-      // scrubbed near the end and expects playback to continue from there.
+      // After a seek, give 2s grace so scrubbing near the end doesn't
+      // immediately auto-pause — the user expects to hear audio from that point.
       if (contentEnd > 0 && time >= contentEnd && !node.paused) {
-        const msSinceSeek = Date.now() - lastSeekDoneRef.current
-        if (msSinceSeek > 500) {
+        if (msSinceSeek > 2000) {
           reachedEndRef.current = true
           node.pause()
           rafRef.current = null
@@ -371,7 +411,6 @@ function useTranscriptViewer({
       if (Number.isFinite(node.duration) && node.duration > 0) {
         setDuration((prev) => {
           if (!prev) {
-            // Use content-based duration, not raw audio duration
             const effective = contentEnd > 0 ? contentEnd : node.duration
             onDurationChangeRef.current(effective)
             return effective
@@ -396,9 +435,6 @@ function useTranscriptViewer({
 
     const syncPlayback = () => setIsPlaying(!audio.paused)
     const syncTime = () => {
-      // Never override React state while a seek is in flight — the browser
-      // may report a stale currentTime until the `seeked` event fires.
-      if (seekTargetRef.current != null) return
       const contentEnd = contentEndRef.current
       const raw = audio.currentTime
       setCurrentTime(contentEnd > 0 ? Math.min(raw, contentEnd) : raw)
@@ -416,48 +452,38 @@ function useTranscriptViewer({
       onPlayRef.current?.()
     }
     const handlePause = () => {
-      if (process.env.NODE_ENV === "development") console.log("[TTS Player] pause at", audio.currentTime.toFixed(2), seekTargetRef.current != null ? "(seek in progress)" : "")
+      if (process.env.NODE_ENV === "development") console.log("[TTS Player] pause at", audio.currentTime.toFixed(2))
       syncPlayback()
-      // Don't sync time during an active seek — pause can fire transiently
-      // when the browser interrupts playback to fulfil a seek request.
-      if (seekTargetRef.current == null) {
-        syncTime()
-      }
+      syncTime()
       stopRaf()
       onPauseRef.current?.()
     }
     const handleEnded = () => {
       if (process.env.NODE_ENV === "development") console.log("[TTS Player] ended at", audio.currentTime.toFixed(2))
+      reachedEndRef.current = true
       syncPlayback()
       syncTime()
       stopRaf()
       onEndedRef.current?.()
     }
     const handleTimeUpdateEvt = () => {
-      // Skip stale timeupdate events fired during an active seek
-      if (seekTargetRef.current != null) return
+      // During programmatic seeks, skip browser time updates for 150ms to
+      // prevent the optimistic state from being reverted to a stale position
+      const msSinceSeek = Date.now() - lastSeekTimeRef.current
+      if (msSinceSeek < 150) return
       syncTime()
       onTimeUpdateCallbackRef.current?.(audio.currentTime)
     }
     const handleSeeked = () => {
-      if (seekTargetRef.current != null) {
-        const target = seekTargetRef.current
-        seekTargetRef.current = null
-        // Browser quirk: if audio jumped away from target, re-seek
-        if (Math.abs(audio.currentTime - target) > 0.5) {
-          seekTargetRef.current = target // re-arm guard for the retry
-          audio.currentTime = target
-          return
-        }
+      // The browser finished seeking — sync to the actual audio position.
+      // Only update word index if NOT in the immediate aftermath of a
+      // programmatic seek (which already did an optimistic update).
+      const msSinceSeek = Date.now() - lastSeekTimeRef.current
+      lastSeekTimeRef.current = Date.now()
+      syncTime()
+      if (msSinceSeek > 150) {
+        handleTimeUpdateRef.current(audio.currentTime)
       }
-      // Record seek completion time — used to suppress auto-pause briefly
-      // so scrubbing near content end doesn't immediately kill playback.
-      lastSeekDoneRef.current = Date.now()
-      // Now safe to sync — seekTargetRef is cleared, audio.currentTime is final
-      const contentEnd = contentEndRef.current
-      const raw = audio.currentTime
-      setCurrentTime(contentEnd > 0 ? Math.min(raw, contentEnd) : raw)
-      handleTimeUpdateRef.current(audio.currentTime)
     }
     const handleDuration = () => {
       syncDuration()
@@ -475,6 +501,21 @@ function useTranscriptViewer({
       stopRaf()
     }
 
+    const handleError = () => {
+      stopRaf()
+      syncPlayback()
+      setIsBuffering(false)
+      onErrorRef.current?.(audio.error)
+    }
+    const handleWaiting = () => {
+      setIsBuffering(true)
+      onBufferingRef.current?.(true)
+    }
+    const handlePlaying = () => {
+      setIsBuffering(false)
+      onBufferingRef.current?.(false)
+    }
+
     audio.addEventListener("play", handlePlay)
     audio.addEventListener("pause", handlePause)
     audio.addEventListener("ended", handleEnded)
@@ -482,6 +523,9 @@ function useTranscriptViewer({
     audio.addEventListener("seeked", handleSeeked)
     audio.addEventListener("durationchange", handleDuration)
     audio.addEventListener("loadedmetadata", handleDuration)
+    audio.addEventListener("error", handleError)
+    audio.addEventListener("waiting", handleWaiting)
+    audio.addEventListener("playing", handlePlaying)
 
     return () => {
       stopRaf()
@@ -492,6 +536,9 @@ function useTranscriptViewer({
       audio.removeEventListener("seeked", handleSeeked)
       audio.removeEventListener("durationchange", handleDuration)
       audio.removeEventListener("loadedmetadata", handleDuration)
+      audio.removeEventListener("error", handleError)
+      audio.removeEventListener("waiting", handleWaiting)
+      audio.removeEventListener("playing", handlePlaying)
     }
   }, [audioRef, startRaf, stopRaf])
 
@@ -500,18 +547,44 @@ function useTranscriptViewer({
       const node = audioRef.current
       if (!node) return
       const wasPlaying = !node.paused
+
+      // Clamp to valid range — stay 0.1s before both audio end and content end
+      // to prevent the browser from firing 'ended' and the auto-pause from
+      // immediately triggering, which causes the "click end breaks audio" bug.
+      const audioDuration = Number.isFinite(node.duration) ? node.duration : Infinity
+      const contentEnd = contentEndRef.current
+      const effectiveMax = Math.min(
+        audioDuration > 0.2 ? audioDuration - 0.1 : audioDuration,
+        contentEnd > 0.2 ? contentEnd - 0.1 : contentEnd > 0 ? contentEnd : Infinity,
+      )
+      const clamped = Math.max(0, Math.min(time, effectiveMax))
+
       reachedEndRef.current = false
-      seekTargetRef.current = time
-      setCurrentTime(time)
-      node.currentTime = time
-      handleTimeUpdateRef.current(time)
-      // Resume playback immediately if audio was playing — don't defer to
-      // a RAF callback which creates a window for stale events to interfere.
+      lastSeekTimeRef.current = Date.now()
+
+      // Optimistic UI update — React state updates immediately so the
+      // scrub bar and word highlights respond without waiting for the
+      // browser's async seek to complete.
+      setCurrentTime(clamped)
+      handleTimeUpdateRef.current(clamped)
+
+      // Set the actual audio position
+      node.currentTime = clamped
+
+      // Resume playback if it was playing before the seek.
+      // Some browsers briefly pause during seeking, so check paused state.
       if (wasPlaying && node.paused) {
         void node.play()
       }
+
+      // Ensure RAF is running when audio should be playing.
+      // This handles edge cases where the RAF stopped (auto-pause, event race)
+      // but audio is still active after the seek.
+      if (!node.paused && rafRef.current == null) {
+        startRaf()
+      }
     },
-    [audioRef]
+    [audioRef, startRaf]
   )
 
   const seekToWord = useCallback(
@@ -523,24 +596,35 @@ function useTranscriptViewer({
     [seekToTime, words]
   )
 
+  /** Resume playback from current position — never restarts from beginning */
+  const resume = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    reachedEndRef.current = false
+    if (audio.paused) {
+      void audio.play()
+    }
+    // Safety: ensure RAF is running whenever audio is playing
+    if (!audio.paused && rafRef.current == null) {
+      startRaf()
+    }
+  }, [audioRef, startRaf])
+
+  /** Start playback — only restarts from beginning if audio reached the end */
   const play = useCallback(() => {
     const audio = audioRef.current
     if (!audio) return
-    // Only restart from beginning if audio naturally reached the end
-    // (reachedEndRef is set by the RAF auto-pause). If the user manually
-    // scrubbed near the end, play from the current position instead.
     if (reachedEndRef.current) {
       reachedEndRef.current = false
-      seekTargetRef.current = 0
       audio.currentTime = 0
       setCurrentTime(0)
-      setCurrentWordIndex(words.length ? 0 : -1)
+      updateWordIndex(words.length ? 0 : -1)
       handleTimeUpdateRef.current(0)
     }
     if (audio.paused) {
       void audio.play()
     }
-  }, [audioRef, words.length])
+  }, [audioRef, words.length, updateWordIndex])
 
   const pause = useCallback(() => {
     const audio = audioRef.current
@@ -548,6 +632,25 @@ function useTranscriptViewer({
       audio.pause()
     }
   }, [audioRef])
+
+  /**
+   * Toggle play/pause — used by the play button and keyboard shortcuts.
+   * If audio reached the end, restarts. Otherwise resumes from current position.
+   */
+  const toggle = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (audio.paused) {
+      // Only restart from beginning if the audio actually finished
+      if (reachedEndRef.current) {
+        play()
+      } else {
+        resume()
+      }
+    } else {
+      audio.pause()
+    }
+  }, [audioRef, play, resume])
 
   const startScrubbing = useCallback(() => {
     setIsScrubbing(true)
@@ -557,10 +660,14 @@ function useTranscriptViewer({
   const endScrubbing = useCallback(() => {
     setIsScrubbing(false)
     const node = audioRef.current
-    if (node && !node.paused) {
+    if (!node) return
+    // Always restart RAF when audio is playing after scrub.
+    // Stop first to reset any stale tick, then start fresh.
+    if (!node.paused) {
+      stopRaf()
       startRaf()
     }
-  }, [audioRef, startRaf])
+  }, [audioRef, startRaf, stopRaf])
 
   const currentWord =
     currentWordIndex >= 0 && currentWordIndex < words.length
@@ -592,11 +699,14 @@ function useTranscriptViewer({
     seekToWord,
     audioRef,
     isPlaying,
+    isBuffering,
     isScrubbing,
     duration,
     currentTime,
     play,
     pause,
+    toggle,
+    resume,
     startScrubbing,
     endScrubbing,
   }

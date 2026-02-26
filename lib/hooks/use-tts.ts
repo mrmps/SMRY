@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect, type MutableRefObject } from 
 import { useAuth } from "@clerk/nextjs";
 import { extractTTSText } from "@/lib/tts-text";
 import { cleanTextForTTS } from "@/lib/tts-chunk";
-import { isVoiceAllowed } from "@/lib/elevenlabs-tts";
+import { isVoiceAllowed, DEFAULT_VOICE_ID } from "@/lib/tts-provider";
 
 // Free user daily limit
 const FREE_TTS_LIMIT = 3;
@@ -186,21 +186,29 @@ function getLocalUsage(): string[] {
   }
 }
 
-function addLocalUsage(articleUrl: string): void {
+/**
+ * Record a TTS usage entry. Each article+voice combination counts as one
+ * credit because each generates a separate set of Inworld API calls.
+ * Re-listening to the same article+voice is free (deduped).
+ */
+function addLocalUsage(articleUrl: string, voiceId: string): void {
   try {
     const key = `tts-usage-${getDayKey()}`;
-    const urls = getLocalUsage();
-    if (!urls.includes(articleUrl)) {
-      urls.push(articleUrl);
-      localStorage.setItem(key, JSON.stringify(urls));
+    const entries = getLocalUsage();
+    const entry = `${articleUrl}|${voiceId}`;
+    if (!entries.includes(entry)) {
+      entries.push(entry);
+      localStorage.setItem(key, JSON.stringify(entries));
     }
   } catch { /* ignore */ }
 }
 
 // ─── Cache key for combined audio (SHA-256 of cleaned text + voice) ───
+// Version must match CHUNK_CACHE_VERSION in tts-chunk.ts — bump both together.
+const CLIENT_CACHE_VERSION = "v2";
 
 async function computeCacheKey(text: string, voice: string): Promise<string> {
-  const data = new TextEncoder().encode(text + "\0" + voice);
+  const data = new TextEncoder().encode(CLIENT_CACHE_VERSION + "\0" + text + "\0" + voice);
   const buf = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -215,7 +223,7 @@ export function useTTS(
   const { getToken } = useAuth();
 
   const [status, setStatus] = useState<TTSStatus>("idle");
-  const [voice, setVoiceState] = useState("21m00Tcm4TlvDq8ikWAM");
+  const [voice, setVoiceState] = useState(DEFAULT_VOICE_ID);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [alignment, setAlignment] = useState<CombinedAlignment | null>(null);
   const [durationMs, setDurationMs] = useState(0);
@@ -320,7 +328,12 @@ export function useTTS(
       }
 
       // ─── No cache hit — enforce credit limit before API call ───
-      if (!canUse) {
+      // Re-check usage count fresh (not from stale closure) to prevent
+      // rapid voice switches from bypassing the limit.
+      const freshUsage = getLocalUsage().length;
+      const freshCanUse = process.env.NODE_ENV === "development" || isPremium || freshUsage < FREE_TTS_LIMIT;
+      if (!freshCanUse) {
+        setUsageCount(freshUsage);
         setError("Daily TTS limit reached. Upgrade to Premium for unlimited listening.");
         setStatus("error");
         return;
@@ -382,9 +395,9 @@ export function useTTS(
       setDurationMs(serverDuration);
       setStatus("ready");
 
-      // Track usage
+      // Track usage — each article+voice combo = 1 credit
       if (!isPremium) {
-        addLocalUsage(articleUrl);
+        addLocalUsage(articleUrl, voice);
         setUsageCount(getLocalUsage().length);
       }
 
@@ -404,7 +417,9 @@ export function useTTS(
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
-    revokeAllBlobUrls();
+    // Defer blob URL revocation to prevent MEDIA_ERR_SRC_NOT_SUPPORTED
+    // during React's unmount cycle when audio element still references the URL
+    queueMicrotask(() => revokeAllBlobUrls());
     setAudioSrc(null);
     setAlignment(null);
     setDurationMs(0);

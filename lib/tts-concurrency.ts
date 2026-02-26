@@ -1,8 +1,8 @@
 /**
  * TTS Concurrency Limiter
  *
- * Caps concurrent API requests to ElevenLabs to prevent:
- * - Rate limit errors from ElevenLabs (429s)
+ * Caps concurrent API requests to Inworld to prevent:
+ * - Rate limit errors from Inworld (429s)
  * - Memory exhaustion (each request holds audio buffer in memory)
  * - Worker thread starvation (other API requests get blocked)
  *
@@ -19,7 +19,7 @@ import { createLogger } from "./logger";
 const logger = createLogger("tts:concurrency");
 
 // --- Configuration ---
-let maxConcurrentTTS = 20; // Global max simultaneous ElevenLabs API requests
+let maxConcurrentTTS = 20; // Global max simultaneous Inworld API requests
 let maxPerUser = 2; // Per-user max concurrent TTS requests
 let slotTimeoutMs = 15_000; // Max wait time in queue before 503
 

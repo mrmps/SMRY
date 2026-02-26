@@ -283,6 +283,8 @@ export function useInlineHighlights(
   const appliedColorsRef = useRef<Map<string, string>>(new Map());
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafIdRef = useRef<number | null>(null);
+  /** Highlights that couldn't be applied because TTS spans were active */
+  const pendingHighlightsRef = useRef<Highlight[] | null>(null);
 
   // Stable applyMarks function stored in ref so MutationObserver doesn't need to re-subscribe
   const applyMarksRef = useRef<(container: HTMLElement, hl: Highlight[]) => void>(null!);
@@ -340,6 +342,13 @@ export function useInlineHighlights(
       }
     } else {
       // Full re-application (content was replaced)
+      // Skip if TTS spans are active — DOM is wrapped in <span data-tts-idx>
+      // which breaks charmap/range wrapping. Save as pending and re-apply when TTS deactivates.
+      if (container.querySelector('[data-tts-idx]')) {
+        pendingHighlightsRef.current = [...hl];
+        isApplyingRef.current = false;
+        return;
+      }
       clearMarks(container);
       for (const highlight of hl) {
         // Rebuild charmap before each wrap because wrapRangeInMark modifies
@@ -384,6 +393,10 @@ export function useInlineHighlights(
         debounceTimerRef.current = null;
         if (isApplyingRef.current || isTTSMutating()) return;
 
+        // Skip re-application while TTS spans exist — the CSS rules
+        // handle visual coexistence. Marks will be re-applied when TTS deactivates.
+        if (container.querySelector('[data-tts-idx]')) return;
+
         const hasMarks = container.querySelector(`mark[${MARK_ATTR}]`);
         if (!hasMarks && highlightsRef.current.length > 0) {
           appliedIdsRef.current.clear();
@@ -398,8 +411,26 @@ export function useInlineHighlights(
 
     observer.observe(container, { childList: true, subtree: true });
 
+    // Re-apply highlights when TTS cleanup finishes (spans removed from DOM)
+    const handleTTSCleanup = () => {
+      const pending = pendingHighlightsRef.current;
+      const hl = pending ?? highlightsRef.current;
+      pendingHighlightsRef.current = null;
+      if (hl.length > 0) {
+        // Clear applied state so applyMarks does a full re-application
+        appliedIdsRef.current.clear();
+        appliedColorsRef.current.clear();
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          applyMarksRef.current(container, hl);
+        });
+      }
+    };
+    document.addEventListener("tts-cleanup-complete", handleTTSCleanup);
+
     return () => {
       observer.disconnect();
+      document.removeEventListener("tts-cleanup-complete", handleTTSCleanup);
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;

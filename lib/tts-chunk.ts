@@ -46,12 +46,12 @@ export function cleanTextForTTS(text: string): string {
 
 // --- Chunk splitting ---
 
-const MAX_CHUNK_SIZE = 5000;
+const MAX_CHUNK_SIZE = 1800; // Inworld limit: 2000 chars per request (with safety margin)
 
 /**
- * Split text into ~5000-char chunks on sentence boundaries.
- * ElevenLabs flash v2.5 handles 5K+ chars per request efficiently.
- * Larger chunks = fewer API calls = lower cost + better prosody.
+ * Split text into ~1800-char chunks on sentence boundaries.
+ * Inworld TTS has a 2000-char per-request limit.
+ * Smaller chunks = more API calls, but each call is cheaper.
  * Identical algorithm on client and server ensures matching chunk keys.
  */
 export function splitTTSChunks(text: string): string[] {
@@ -79,14 +79,24 @@ export function splitTTSChunks(text: string): string[] {
 // --- Chunk key computation ---
 
 /**
+ * Cache key version — bump this when the chunk audio/alignment format changes.
+ * This invalidates all stale server-side (LRU + Redis) and client-side (IndexedDB)
+ * cached chunks, forcing re-generation with the corrected logic.
+ *
+ * v2: MP3 frame-based durationMs (parseMp3DurationMs) replaces boundary-based estimate.
+ *     Old cached chunks had wrong durationMs causing cumulative alignment drift.
+ */
+const CHUNK_CACHE_VERSION = "v2";
+
+/**
  * Compute a per-chunk cache key (async, browser-compatible via Web Crypto).
- * SHA-256(chunkText + "\0" + voice) — works in both browser and server.
+ * SHA-256(version + "\0" + chunkText + "\0" + voice) — works in both browser and server.
  */
 export async function computeChunkKey(
   chunkText: string,
   voice: string,
 ): Promise<string> {
-  const data = new TextEncoder().encode(chunkText + "\0" + voice);
+  const data = new TextEncoder().encode(CHUNK_CACHE_VERSION + "\0" + chunkText + "\0" + voice);
   const buf = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(buf), (b) =>
     b.toString(16).padStart(2, "0"),
@@ -102,7 +112,7 @@ export function computeChunkKeySync(
   voice: string,
 ): string {
   const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(chunkText + "\0" + voice);
+  hasher.update(CHUNK_CACHE_VERSION + "\0" + chunkText + "\0" + voice);
   return hasher.digest("hex");
 }
 
