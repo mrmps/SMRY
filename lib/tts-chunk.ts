@@ -150,16 +150,24 @@ export async function computeChunkKey(
 }
 
 /**
- * Compute a per-chunk cache key (sync, server-only via Bun.CryptoHasher).
+ * Compute a per-chunk cache key (sync, server-only).
+ * Uses Bun.CryptoHasher when available, falls back to Node.js crypto.
  * Same hash as computeChunkKey — produces identical keys.
  */
 export function computeChunkKeySync(
   chunkText: string,
   voice: string,
 ): string {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(CHUNK_CACHE_VERSION + "\0" + chunkText + "\0" + voice);
-  return hasher.digest("hex");
+  const input = CHUNK_CACHE_VERSION + "\0" + chunkText + "\0" + voice;
+  if (typeof Bun !== "undefined") {
+    const hasher = new Bun.CryptoHasher("sha256");
+    hasher.update(input);
+    return hasher.digest("hex");
+  }
+  // Node.js fallback
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createHash } = require("crypto") as typeof import("crypto");
+  return createHash("sha256").update(input).digest("hex");
 }
 
 // --- Types ---
