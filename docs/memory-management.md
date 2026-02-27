@@ -22,23 +22,19 @@ Memory-intensive operations:
 - Article fetching and parsing (Diffbot)
 - Ad requests (Gravity + ZeroClick waterfall)
 - Chat streaming (LLM responses)
-- Analytics buffering (ClickHouse)
+- Analytics (PostHog SDK manages its own buffer)
 
 ---
 
 ## Memory-Safe Components
 
-### 1. ClickHouse Event Buffer
-**Location:** `lib/clickhouse.ts`
+### 1. PostHog Event Buffer
+**Location:** `lib/posthog.ts`
 
-```typescript
-const MAX_BUFFER_SIZE = 500;      // Max events before forced flush
-const FLUSH_INTERVAL_MS = 5000;   // Auto-flush every 5 seconds
-```
-
-- Events buffered in memory, flushed to ClickHouse periodically
-- Oldest events dropped if buffer overflows
-- Timer uses `.unref()` to not block process exit
+PostHog SDK handles batching internally:
+- `flushAt: 50` events triggers a batch send
+- `flushInterval: 5000ms` auto-flush every 5 seconds
+- SDK manages retries and connection pooling
 
 ### 2. Auth Billing Cache
 **Location:** `server/middleware/auth.ts`
@@ -345,7 +341,7 @@ The `/health` endpoint returns memory stats:
 | ZeroClick Clients | 100 | 5 min | 1 min |
 | Auth Cache | 1000 | 5 min | 1 min |
 | Rate Limiter | 10,000 | varies | 1 min |
-| ClickHouse Buffer | 500 events | - | 5 sec flush |
+| PostHog Buffer | SDK-managed | - | 5 sec flush |
 | Article htmlContent | 500KB | - | per-response truncation |
 
 ---
@@ -354,6 +350,6 @@ The `/health` endpoint returns memory stats:
 
 - `lib/memory-monitor.ts` — Memory monitoring and alerts
 - `lib/zeroclick.ts` — ZeroClick client pool
-- `lib/clickhouse.ts` — Event buffering
+- `lib/posthog.ts` — PostHog analytics client
 - `lib/rate-limit-memory.ts` — Rate limiting
 - `server/middleware/auth.ts` — Billing cache

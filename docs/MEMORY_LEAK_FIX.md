@@ -57,7 +57,7 @@ See `docs/ARTICLE_RACE_OPTIMIZATION.md` for full architecture details.
 | Resource | Limit | Notes |
 |----------|-------|-------|
 | Auth cache | 1,000 entries | LRU |
-| ClickHouse buffer | 500 events | Flushed periodically |
+| PostHog buffer | SDK-managed | Flushed automatically |
 | Rate limiter | 10,000 IPs | Sliding window |
 | ZeroClick clients | 50 sessions | 2-min TTL |
 | Response body | 25MB | `lib/safe-fetch.ts` |

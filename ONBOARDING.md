@@ -11,7 +11,7 @@ Welcome to SMRY (internally "13ft") - an AI-powered article summarizer that bypa
 bun install
 
 # Start development environment
-bun run dev  # Starts ClickHouse + Elysia server + Next.js
+bun run dev  # Starts Elysia server + Next.js
 
 # Or with full Docker stack
 bun run dev:docker
@@ -58,7 +58,7 @@ SMRY fetches articles from behind paywalls using multiple extraction sources and
          │                  │                    │
          ▼                  ▼                    ▼
     ┌─────────┐       ┌──────────┐         ┌──────────┐
-    │ Diffbot │       │OpenRouter│         │ClickHouse│
+    │ Diffbot │       │OpenRouter│         │ PostHog  │
     │  (API)  │       │  (AI)    │         │(Analytics)│
     └─────────┘       └──────────┘         └──────────┘
          │
@@ -98,7 +98,7 @@ SMRY/
 │   └── validation/         # Zod schemas
 ├── types/                  # TypeScript type definitions
 ├── tests/                  # Unit and integration tests
-├── docker/                 # Docker and ClickHouse setup
+├── docker/                 # Docker setup
 ├── messages/               # i18n translation files
 └── docs/                   # Additional documentation
 ```
@@ -124,7 +124,7 @@ SMRY/
 | Elysia | Lightweight TypeScript HTTP framework |
 | Clerk | Authentication and billing |
 | Upstash Redis | Serverless caching (with zlib compression) |
-| ClickHouse | Analytics database |
+| PostHog | Product analytics, session recording, heatmaps |
 | OpenRouter | AI model access (300+ models) |
 | Diffbot | AI-powered article extraction |
 
@@ -185,11 +185,13 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 CLERK_WEBHOOK_SECRET=
 
-# Analytics
-CLICKHOUSE_HOST=         # ClickHouse for analytics
-CLICKHOUSE_DATABASE=
-CLICKHOUSE_USERNAME=
-CLICKHOUSE_PASSWORD=
+# Analytics (PostHog)
+POSTHOG_API_KEY=                  # Server-side PostHog key
+POSTHOG_HOST=                     # PostHog instance URL
+POSTHOG_PROJECT_ID=               # Project ID for HogQL queries
+POSTHOG_PERSONAL_API_KEY=         # Personal key for analytics dashboard
+NEXT_PUBLIC_POSTHOG_KEY=          # Client-side PostHog key
+NEXT_PUBLIC_POSTHOG_HOST=         # Client-side PostHog host
 
 # Optional
 NEXT_PUBLIC_API_URL=     # API URL for client (default: /api)
@@ -427,7 +429,6 @@ bun run pages:deploy  # Deploy to Cloudflare Pages
 - [README.md](./README.md) - Project overview and motivation
 - [DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md) - UI/UX guidelines
 - [MIGRATION_PLAN.md](./MIGRATION_PLAN.md) - Deployment guide
-- [docs/clickhouse-schema.sql](./docs/clickhouse-schema.sql) - Analytics schema
 - [docs/MEMORY_LEAK_FIX.md](./docs/MEMORY_LEAK_FIX.md) - Performance optimizations
 
 ---

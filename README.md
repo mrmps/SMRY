@@ -225,11 +225,13 @@ DIFFBOT_API_KEY=           # https://diffbot.com
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 
-# Analytics - ClickHouse (use docker-compose for local dev)
-CLICKHOUSE_URL=http://localhost:8123
-CLICKHOUSE_USER=default
-CLICKHOUSE_PASSWORD=
-CLICKHOUSE_DATABASE=smry_analytics
+# Analytics - PostHog
+POSTHOG_API_KEY=
+POSTHOG_HOST=
+POSTHOG_PROJECT_ID=
+POSTHOG_PERSONAL_API_KEY=
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=
 
 # Alerting - https://resend.com
 RESEND_API_KEY=
@@ -250,7 +252,7 @@ pnpm install
 2. **Set up environment variables**:
    - Copy `.env.example` to `.env.local`
    - Get API keys from: Clerk, OpenRouter, Diffbot, Upstash, Resend
-   - Run `docker-compose up -d clickhouse` for local analytics
+   - PostHog analytics is cloud-hosted (no local setup needed)
 
 3. **Run development server**:
 ```bash

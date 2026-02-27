@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAnalytics } from "@/lib/hooks/use-analytics";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -142,7 +143,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   // Track whether user has manually scrolled away from the bottom
   const isUserScrolledUpRef = useRef(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const rafIdRef = useRef<number>(0);
   // Track programmatic scrolling to avoid race conditions with scroll handler
   const isProgrammaticScrollRef = useRef(false);
 
@@ -152,6 +152,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const isLimitReached = !isPremium && usageData?.remaining === 0;
 
   const { language: preferredLanguage } = useChatLanguage();
+  const { track, markFeatureUsed } = useAnalytics();
 
   const {
     messages,
@@ -182,10 +183,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       await navigator.clipboard.writeText(text);
       setCopiedMessageId(messageId);
       setTimeout(() => setCopiedMessageId(null), 2000);
+      track("chat_message_copied", { message_length: text.length });
     } catch (err) {
       console.error("Failed to copy:", err);
     }
-  }, []);
+  }, [track]);
 
   const handleReload = useCallback(() => {
     reload();
@@ -197,15 +199,20 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       const messageWithQuote = `> ${quotedText.replace(/\n/g, "\n> ")}\n\n${input.trim()}`;
       setQuotedText(null);
       sendMessage(messageWithQuote);
+      track("chat_message_sent", { message_length: messageWithQuote.length, language: preferredLanguage });
+      markFeatureUsed("chat");
       setInput("");
     } else {
+      track("chat_message_sent", { message_length: input.trim().length, language: preferredLanguage });
+      markFeatureUsed("chat");
       handleSubmit();
     }
-  }, [quotedText, input, sendMessage, setInput, handleSubmit]);
+  }, [quotedText, input, sendMessage, setInput, handleSubmit, track, markFeatureUsed, preferredLanguage]);
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
     sendMessage(suggestion);
-  }, [sendMessage]);
+    track("chat_suggestion_clicked", { suggestion_text: suggestion });
+  }, [sendMessage, track]);
 
   // Slash commands hook
   const {
@@ -408,7 +415,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
               <button
-                onClick={clearMessages}
+                onClick={() => { track("chat_cleared", { message_count: messages.length }); clearMessages(); }}
                 className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground active:bg-muted/70"
                 style={{ touchAction: "manipulation" }}
                 aria-label="Clear chat"
@@ -810,7 +817,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             {variant === "sidebar" && messages.length > 0 && (
               <div className="flex items-center gap-0.5 mr-auto">
                 <button
-                  onClick={clearMessages}
+                  onClick={() => { track("chat_cleared", { message_count: messages.length }); clearMessages(); }}
                   className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
                   aria-label="Clear chat"
                   title="Clear chat"

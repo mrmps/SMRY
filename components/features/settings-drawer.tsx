@@ -49,6 +49,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { useAnalytics } from "@/lib/hooks/use-analytics";
 
 type ViewMode = "markdown" | "html" | "iframe";
 
@@ -217,8 +218,9 @@ const FONT_PREVIEW_STYLES: Record<ReaderFont, React.CSSProperties> = {
 };
 
 // Style Options Section - opens nested drawer with Theme + Style controls
+// eslint-disable-next-line unused-imports/no-unused-vars
 function StyleOptionsSection() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const {
     preferences,
     hasLoaded,
@@ -232,6 +234,7 @@ function StyleOptionsSection() {
     setFont,
     resetToDefaults,
   } = useReaderPreferences();
+  const { track } = useAnalytics();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [fontDrawerOpen, setFontDrawerOpen] = React.useState(false);
@@ -266,12 +269,14 @@ function StyleOptionsSection() {
     const actualTheme = mapDropdownToTheme(newTheme);
     setTheme(actualTheme);
     setThemeChanged(actualTheme !== DEFAULT_THEME);
+    track("setting_changed", { setting: "theme", value: actualTheme });
   };
 
   // For palette buttons — theme value is already the actual theme name, no mapping needed
   const handlePaletteChange = (paletteTheme: string) => {
     setTheme(paletteTheme);
     setThemeChanged(paletteTheme !== DEFAULT_THEME);
+    track("setting_changed", { setting: "theme", value: paletteTheme });
   };
 
   // Reset ALL - theme + reader preferences
@@ -613,6 +618,7 @@ function LanguageSectionInner() {
   const switchLocaleInPlace = useSwitchLocale();
   const [languageDrawerOpen, setLanguageDrawerOpen] = React.useState(false);
   const [selectedLocale, setSelectedLocale] = React.useState<Locale | null>(null);
+  const { track } = useAnalytics();
 
   // Clear optimistic state once the locale context has caught up
   React.useEffect(() => {
@@ -627,7 +633,8 @@ function LanguageSectionInner() {
     setSelectedLocale(newLocale);
     // Switch locale in context (no navigation — modal stays open)
     switchLocaleInPlace(newLocale);
-  }, [locale, switchLocaleInPlace]);
+    track("setting_changed", { setting: "language", value: newLocale });
+  }, [locale, switchLocaleInPlace, track]);
 
   return (
     <>

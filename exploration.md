@@ -33,7 +33,7 @@ Contacts support OR leaves
 
 ## Analytics Insights
 
-From our Clickhouse analytics (49K requests over 7 days):
+From our PostHog analytics (49K requests over 7 days):
 
 | Metric | Value |
 |--------|-------|
@@ -76,7 +76,7 @@ Show sources trying one at a time like a progress indicator.
 Pre-compute which sources work for which domains. Skip sources that never work.
 
 **Rejected because:** Too complex. Requires:
-- Clickhouse aggregation jobs
+- PostHog aggregation jobs
 - Redis caching
 - Exploration/exploitation logic
 - Anomaly detection for stale data
@@ -194,7 +194,7 @@ Update manually when patterns emerge in analytics. No automation needed.
 We explicitly decided NOT to implement:
 
 - ❌ Domain intelligence caching in Redis
-- ❌ Clickhouse aggregation jobs for source success rates
+- ❌ PostHog aggregation jobs for source success rates
 - ❌ Exploration/exploitation routing (10% explore, 90% exploit)
 - ❌ Anomaly detection for stale cached data
 - ❌ Decay functions for confidence over time

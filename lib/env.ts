@@ -14,11 +14,11 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_URL: z.string().url(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
 
-    // Analytics
-    CLICKHOUSE_URL: z.string().url(),
-    CLICKHOUSE_USER: z.string().min(1),
-    CLICKHOUSE_PASSWORD: z.string().min(1),
-    CLICKHOUSE_DATABASE: z.string().min(1),
+    // Analytics (PostHog) - optional, gracefully degrades when not set
+    POSTHOG_API_KEY: z.string().optional(),
+    POSTHOG_HOST: z.string().url().optional(),
+    POSTHOG_PROJECT_ID: z.string().optional(),
+    POSTHOG_PERSONAL_API_KEY: z.string().optional(),
 
     // Alerting
     RESEND_API_KEY: z.string().min(1),
@@ -35,6 +35,8 @@ export const env = createEnv({
     NEXT_PUBLIC_URL: z.string().url(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
     NEXT_PUBLIC_CLERK_PATRON_PLAN_ID: z.string().min(1),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
   },
 
   runtimeEnv: {
@@ -43,10 +45,10 @@ export const env = createEnv({
     DIFFBOT_API_KEY: process.env.DIFFBOT_API_KEY,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
-    CLICKHOUSE_URL: process.env.CLICKHOUSE_URL,
-    CLICKHOUSE_USER: process.env.CLICKHOUSE_USER,
-    CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD,
-    CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE,
+    POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
+    POSTHOG_HOST: process.env.POSTHOG_HOST,
+    POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
+    POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     ALERT_EMAIL: process.env.ALERT_EMAIL,
     CORS_ORIGIN: process.env.CORS_ORIGIN,
@@ -56,6 +58,8 @@ export const env = createEnv({
     NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     NEXT_PUBLIC_CLERK_PATRON_PLAN_ID: process.env.NEXT_PUBLIC_CLERK_PATRON_PLAN_ID,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
 
   emptyStringAsUndefined: true,

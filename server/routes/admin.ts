@@ -6,7 +6,7 @@
 
 import { Elysia, t } from "elysia";
 import { timingSafeEqual } from "crypto";
-import { queryClickhouse, getBufferStats } from "../../lib/clickhouse";
+import { queryPostHog, getBufferStats } from "../../lib/posthog";
 import { env } from "../env";
 
 /**
@@ -420,7 +420,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
     const outcomeFilter = query.outcome || "";
     const urlSearch = query.urlSearch || "";
 
-    // Build WHERE clause for filtered queries
+    // Build WHERE clause for filtered queries (HogQL – properties.* prefix)
     const buildWhereClause = (options: {
       timeInterval?: string;
       includeFilters?: boolean;
@@ -428,29 +428,30 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
       const { timeInterval = `${hours} HOUR`, includeFilters = true } = options;
       const conditions: string[] = [];
 
+      // Event type filter for PostHog events table
+      conditions.push(`event = 'request_event'`);
+
       // Always include time filter
       conditions.push(`timestamp > now() - INTERVAL ${timeInterval}`);
 
       // Always filter out empty hostnames
-      conditions.push(`hostname != ''`);
+      conditions.push(`properties.hostname != ''`);
 
       if (includeFilters) {
-        // Escape backslashes first, then single quotes (order matters for SQL injection prevention)
-        const escapeForClickhouse = (str: string) => str.replace(/\\/g, "\\\\").replace(/'/g, "''");
-        // For LIKE patterns, also escape % and _ wildcards (after backslash escaping)
-        const escapeForClickhouseLike = (str: string) =>
-          escapeForClickhouse(str).replace(/%/g, "\\%").replace(/_/g, "\\_");
+        const escapeStr = (str: string) => str.replace(/\\/g, "\\\\").replace(/'/g, "''");
+        const escapeForLike = (str: string) =>
+          escapeStr(str).replace(/%/g, "\\%").replace(/_/g, "\\_");
         if (hostnameFilter) {
-          conditions.push(`hostname = '${escapeForClickhouse(hostnameFilter)}'`);
+          conditions.push(`properties.hostname = '${escapeStr(hostnameFilter)}'`);
         }
         if (sourceFilter) {
-          conditions.push(`source = '${escapeForClickhouse(sourceFilter)}'`);
+          conditions.push(`properties.source = '${escapeStr(sourceFilter)}'`);
         }
         if (outcomeFilter) {
-          conditions.push(`outcome = '${escapeForClickhouse(outcomeFilter)}'`);
+          conditions.push(`properties.outcome = '${escapeStr(outcomeFilter)}'`);
         }
         if (urlSearch) {
-          conditions.push(`url LIKE '%${escapeForClickhouseLike(urlSearch)}%'`);
+          conditions.push(`properties.url LIKE '%${escapeForLike(urlSearch)}%'`);
         }
       }
 
@@ -506,206 +507,216 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         adFunnelTimeSeries,
       ] = await Promise.all([
         // 1. Which sites consistently error (top 200 by volume)
-        queryClickhouse<HostnameStats>(`
+        queryPostHog<HostnameStats>(`
           SELECT
-            hostname,
+            properties.hostname as hostname,
             count() AS total_requests,
-            round(countIf(outcome = 'success') / count() * 100, 2) AS success_rate,
-            countIf(outcome = 'error') AS error_count,
-            round(avg(duration_ms)) AS avg_duration_ms
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
+            round(countIf(properties.outcome = 'success') / count() * 100, 2) AS success_rate,
+            countIf(properties.outcome = 'error') AS error_count,
+            round(avg(toFloat64(properties.duration_ms))) AS avg_duration_ms
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
           GROUP BY hostname
           ORDER BY total_requests DESC
           LIMIT 200
         `),
 
         // 2. Which sources work for which sites (show all with at least 1 request)
-        queryClickhouse<SourceEffectiveness>(`
+        queryPostHog<SourceEffectiveness>(`
           SELECT
-            hostname,
-            source,
-            round(countIf(outcome = 'success') / count() * 100, 2) AS success_rate,
+            properties.hostname as hostname,
+            properties.source as source,
+            round(countIf(properties.outcome = 'success') / count() * 100, 2) AS success_rate,
             count() AS request_count
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
-            AND source != ''
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
+            AND properties.source != ''
           GROUP BY hostname, source
           ORDER BY hostname, request_count DESC
         `),
 
         // 3. Hourly traffic pattern
-        queryClickhouse<HourlyTraffic>(`
+        queryPostHog<HourlyTraffic>(`
           SELECT
             formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
             count() AS request_count,
-            countIf(outcome = 'success') AS success_count,
-            countIf(outcome = 'error') AS error_count
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
+            countIf(properties.outcome = 'success') AS success_count,
+            countIf(properties.outcome = 'error') AS error_count
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
           GROUP BY hour
           ORDER BY hour
         `),
 
         // 4. Error breakdown by hostname and type with error messages and upstream context
-        queryClickhouse<ErrorBreakdown>(`
+        queryPostHog<ErrorBreakdown>(`
           SELECT
-            hostname,
-            error_type,
-            any(error_message) AS error_message,
+            properties.hostname as hostname,
+            properties.error_type as error_type,
+            any(properties.error_message) AS error_message,
             '' AS error_severity,
             count() AS error_count,
             formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS latest_timestamp,
-            any(upstream_hostname) AS upstream_hostname,
-            any(upstream_status_code) AS upstream_status_code
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND outcome = 'error'
-            AND error_type != ''
+            any(properties.upstream_hostname) AS upstream_hostname,
+            any(properties.upstream_status_code) AS upstream_status_code
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.outcome = 'error'
+            AND properties.error_type != ''
           GROUP BY hostname, error_type
           ORDER BY error_count DESC
           LIMIT 100
         `),
 
         // 4b. Upstream service breakdown - which external services are causing errors
-        queryClickhouse<UpstreamBreakdown>(`
+        queryPostHog<UpstreamBreakdown>(`
           SELECT
-            upstream_hostname,
-            upstream_status_code,
+            properties.upstream_hostname as upstream_hostname,
+            properties.upstream_status_code as upstream_status_code,
             count() AS error_count,
-            uniq(hostname) AS affected_hostnames,
-            any(error_type) AS sample_error_type
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND outcome = 'error'
-            AND upstream_hostname != ''
+            uniq(properties.hostname) AS affected_hostnames,
+            any(properties.error_type) AS sample_error_type
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.outcome = 'error'
+            AND properties.upstream_hostname != ''
           GROUP BY upstream_hostname, upstream_status_code
           ORDER BY error_count DESC
           LIMIT 50
         `),
 
         // 5. Overall health metrics
-        queryClickhouse<HealthMetrics>(`
+        queryPostHog<HealthMetrics>(`
           SELECT
             count() AS total_requests_24h,
-            round(countIf(outcome = 'success') / count() * 100, 2) AS success_rate_24h,
-            round(countIf(cache_hit = 1) / count() * 100, 2) AS cache_hit_rate_24h,
-            round(avg(duration_ms)) AS avg_duration_ms_24h,
-            round(quantile(0.95)(duration_ms)) AS p95_duration_ms_24h,
-            round(avg(heap_used_mb)) AS avg_heap_mb,
-            uniq(hostname) AS unique_hostnames_24h
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
+            round(countIf(properties.outcome = 'success') / count() * 100, 2) AS success_rate_24h,
+            round(countIf(toFloat64(properties.cache_hit) = 1) / count() * 100, 2) AS cache_hit_rate_24h,
+            round(avg(toFloat64(properties.duration_ms))) AS avg_duration_ms_24h,
+            round(quantile(0.95)(toFloat64(properties.duration_ms))) AS p95_duration_ms_24h,
+            round(avg(toFloat64(properties.heap_used_mb))) AS avg_heap_mb,
+            uniq(properties.hostname) AS unique_hostnames_24h
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
         `),
 
         // 6. Real-time popular pages (last 5 minutes)
-        queryClickhouse<PopularPage>(`
+        queryPostHog<PopularPage>(`
           SELECT
-            url,
-            hostname,
+            properties.url as url,
+            properties.hostname as hostname,
             count() AS count
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL 5 MINUTE
-            AND url != ''
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL 5 MINUTE
+            AND properties.url != ''
           GROUP BY url, hostname
           ORDER BY count DESC
           LIMIT 20
         `),
 
         // 7. Request explorer - individual requests for debugging (applies filters)
-        queryClickhouse<RequestEvent>(`
+        queryPostHog<RequestEvent>(`
           SELECT
-            request_id,
+            properties.request_id as request_id,
             formatDateTime(timestamp, '%Y-%m-%d %H:%i:%S') AS event_time,
-            url,
-            hostname,
-            source,
-            outcome,
-            status_code,
-            error_type,
-            error_message,
-            duration_ms,
-            fetch_ms,
-            cache_lookup_ms,
-            cache_save_ms,
-            cache_hit,
-            cache_status,
-            article_length,
-            article_title
-          FROM request_events
+            properties.url as url,
+            properties.hostname as hostname,
+            properties.source as source,
+            properties.outcome as outcome,
+            properties.status_code as status_code,
+            properties.error_type as error_type,
+            properties.error_message as error_message,
+            properties.duration_ms as duration_ms,
+            properties.fetch_ms as fetch_ms,
+            properties.cache_lookup_ms as cache_lookup_ms,
+            properties.cache_save_ms as cache_save_ms,
+            properties.cache_hit as cache_hit,
+            properties.cache_status as cache_status,
+            properties.article_length as article_length,
+            properties.article_title as article_title
+          FROM events
           WHERE ${buildWhereClause()}
           ORDER BY timestamp DESC
           LIMIT 200
         `),
 
         // 8. Live requests (last 60 seconds for live feed - also applies filters)
-        queryClickhouse<LiveRequest>(`
+        queryPostHog<LiveRequest>(`
           SELECT
-            request_id,
+            properties.request_id as request_id,
             formatDateTime(timestamp, '%H:%i:%S') AS event_time,
-            url,
-            hostname,
-            source,
-            outcome,
-            duration_ms,
-            error_type,
-            cache_hit
-          FROM request_events
+            properties.url as url,
+            properties.hostname as hostname,
+            properties.source as source,
+            properties.outcome as outcome,
+            properties.duration_ms as duration_ms,
+            properties.error_type as error_type,
+            properties.cache_hit as cache_hit
+          FROM events
           WHERE ${buildWhereClause({ timeInterval: "60 SECOND" })}
           ORDER BY timestamp DESC
           LIMIT 50
         `),
 
         // 9. Endpoint statistics (article, summary)
-        queryClickhouse<EndpointStats>(`
+        queryPostHog<EndpointStats>(`
           SELECT
-            endpoint,
+            properties.endpoint as endpoint,
             count() AS total_requests,
-            countIf(outcome = 'success') AS success_count,
-            countIf(outcome = 'error') AS error_count,
-            round(countIf(outcome = 'success') / count() * 100, 2) AS success_rate,
-            round(avg(duration_ms)) AS avg_duration_ms,
-            sum(input_tokens) AS total_input_tokens,
-            sum(output_tokens) AS total_output_tokens
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND endpoint != ''
+            countIf(properties.outcome = 'success') AS success_count,
+            countIf(properties.outcome = 'error') AS error_count,
+            round(countIf(properties.outcome = 'success') / count() * 100, 2) AS success_rate,
+            round(avg(toFloat64(properties.duration_ms))) AS avg_duration_ms,
+            sum(toFloat64(properties.input_tokens)) AS total_input_tokens,
+            sum(toFloat64(properties.output_tokens)) AS total_output_tokens
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.endpoint != ''
           GROUP BY endpoint
           ORDER BY total_requests DESC
         `),
 
         // 10. Hourly traffic by endpoint (for trends)
-        queryClickhouse<HourlyEndpointTraffic>(`
+        queryPostHog<HourlyEndpointTraffic>(`
           SELECT
             formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
-            endpoint,
+            properties.endpoint as endpoint,
             count() AS request_count,
-            countIf(outcome = 'success') AS success_count,
-            countIf(outcome = 'error') AS error_count
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND endpoint != ''
+            countIf(properties.outcome = 'success') AS success_count,
+            countIf(properties.outcome = 'error') AS error_count
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.endpoint != ''
           GROUP BY hour, endpoint
           ORDER BY hour, endpoint
         `),
 
         // 11. Universally broken hostnames - sites where ALL sources fail
-        queryClickhouse<UniversallyBrokenHostname>(`
+        queryPostHog<UniversallyBrokenHostname>(`
           SELECT
-            hostname,
+            properties.hostname as hostname,
             count() AS total_requests,
-            uniq(source) AS sources_tried,
-            arrayStringConcat(groupArray(DISTINCT source), ', ') AS sources_list,
-            round(countIf(outcome = 'success') / count() * 100, 2) AS overall_success_rate,
-            any(url) AS sample_url
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
-            AND source != ''
+            uniq(properties.source) AS sources_tried,
+            arrayStringConcat(groupArray(DISTINCT properties.source), ', ') AS sources_list,
+            round(countIf(properties.outcome = 'success') / count() * 100, 2) AS overall_success_rate,
+            any(properties.url) AS sample_url
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
+            AND properties.source != ''
           GROUP BY hostname
           HAVING
             sources_tried >= 2
@@ -716,172 +727,182 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         `),
 
         // 12. Source error rates over time - for observability/regression detection
-        queryClickhouse<SourceErrorRateTimeSeries>(`
+        queryPostHog<SourceErrorRateTimeSeries>(`
           SELECT
             formatDateTime(toStartOfFifteenMinutes(timestamp), '%Y-%m-%d %H:%i') AS time_bucket,
-            source,
+            properties.source as source,
             count() AS total_requests,
-            countIf(outcome = 'error') AS error_count,
-            round(countIf(outcome = 'error') / count() * 100, 2) AS error_rate
-          FROM request_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
-            AND source != ''
+            countIf(properties.outcome = 'error') AS error_count,
+            round(countIf(properties.outcome = 'error') / count() * 100, 2) AS error_rate
+          FROM events
+          WHERE event = 'request_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
+            AND properties.source != ''
           GROUP BY time_bucket, source
           ORDER BY time_bucket, source
         `),
 
         // =============================================================================
-        // Ad Analytics Queries (from ad_events table)
+        // Ad Analytics Queries (from events WHERE event = 'ad_event')
         // =============================================================================
 
         // 13. Ad health metrics - overall fill rate and performance (minute-based + device filter)
-        queryClickhouse<AdHealthMetrics>(`
+        queryPostHog<AdHealthMetrics>(`
           SELECT
             count() AS total_requests,
-            countIf(status = 'filled') AS filled_count,
-            countIf(status = 'no_fill') AS no_fill_count,
-            countIf(status = 'premium_user') AS premium_count,
-            countIf(status = 'error' OR status = 'gravity_error') AS error_count,
-            countIf(status = 'timeout') AS timeout_count,
-            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate,
-            round(avg(duration_ms)) AS avg_duration_ms,
-            uniq(session_id) AS unique_sessions,
-            uniqIf(brand_name, brand_name != '') AS unique_brands
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
-            AND event_type = 'request'
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+            countIf(properties.status = 'filled') AS filled_count,
+            countIf(properties.status = 'no_fill') AS no_fill_count,
+            countIf(properties.status = 'premium_user') AS premium_count,
+            countIf(properties.status = 'error' OR properties.status = 'gravity_error') AS error_count,
+            countIf(properties.status = 'timeout') AS timeout_count,
+            round(countIf(properties.status = 'filled') / countIf(properties.status != 'premium_user') * 100, 2) AS fill_rate,
+            round(avg(toFloat64(properties.duration_ms))) AS avg_duration_ms,
+            uniq(properties.session_id) AS unique_sessions,
+            uniqIf(properties.brand_name, properties.brand_name != '') AS unique_brands
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${minutes} MINUTE
+            AND properties.event_type = 'request'
+            ${adDeviceFilter ? `AND properties.device_type = '${adDeviceFilter}'` : ''}
         `).catch(() => [] as AdHealthMetrics[]),
 
         // 14. Ad status breakdown - only count request events
-        queryClickhouse<AdStatusBreakdown>(`
+        queryPostHog<AdStatusBreakdown>(`
           SELECT
-            status,
+            properties.status as status,
             count() AS count,
-            round(count() / (SELECT count() FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR AND event_type = 'request') * 100, 2) AS percentage,
-            round(avg(duration_ms)) AS avg_duration_ms
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND event_type = 'request'
+            round(count() / (SELECT count() FROM events WHERE event = 'ad_event' AND timestamp > now() - INTERVAL ${hours} HOUR AND properties.event_type = 'request') * 100, 2) AS percentage,
+            round(avg(toFloat64(properties.duration_ms))) AS avg_duration_ms
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.event_type = 'request'
           GROUP BY status
           ORDER BY count DESC
         `).catch(() => [] as AdStatusBreakdown[]),
 
         // 15. Ad fill rate by hostname - only count request events
-        queryClickhouse<AdHostnameStats>(`
+        queryPostHog<AdHostnameStats>(`
           SELECT
-            hostname,
+            properties.hostname as hostname,
             count() AS total_requests,
-            countIf(status = 'filled') AS filled_count,
-            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate,
-            anyIf(brand_name, brand_name != '') AS top_brand
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
-            AND event_type = 'request'
+            countIf(properties.status = 'filled') AS filled_count,
+            round(countIf(properties.status = 'filled') / countIf(properties.status != 'premium_user') * 100, 2) AS fill_rate,
+            anyIf(properties.brand_name, properties.brand_name != '') AS top_brand
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
+            AND properties.event_type = 'request'
           GROUP BY hostname
-          HAVING countIf(status != 'premium_user') > 0
+          HAVING countIf(properties.status != 'premium_user') > 0
           ORDER BY total_requests DESC
           LIMIT 100
         `).catch(() => [] as AdHostnameStats[]),
 
         // 16. Ad fill rate by device/browser/OS - only count request events
-        queryClickhouse<AdDeviceStats>(`
+        queryPostHog<AdDeviceStats>(`
           SELECT
-            device_type,
-            os,
-            browser,
+            properties.device_type as device_type,
+            properties.os as os,
+            properties.browser as browser,
             count() AS total_requests,
-            countIf(status = 'filled') AS filled_count,
-            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND device_type != ''
-            AND event_type = 'request'
+            countIf(properties.status = 'filled') AS filled_count,
+            round(countIf(properties.status = 'filled') / countIf(properties.status != 'premium_user') * 100, 2) AS fill_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.device_type != ''
+            AND properties.event_type = 'request'
           GROUP BY device_type, os, browser
-          HAVING countIf(status != 'premium_user') > 0
+          HAVING countIf(properties.status != 'premium_user') > 0
           ORDER BY total_requests DESC
           LIMIT 50
         `).catch(() => [] as AdDeviceStats[]),
 
         // 17. Top brands by impressions
-        queryClickhouse<AdBrandStats>(`
+        queryPostHog<AdBrandStats>(`
           SELECT
-            brand_name,
+            properties.brand_name as brand_name,
             count() AS impressions,
-            uniq(hostname) AS unique_hostnames,
-            uniq(session_id) AS unique_sessions,
-            round(avg(article_content_length)) AS avg_article_length
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND status = 'filled'
-            AND brand_name != ''
+            uniq(properties.hostname) AS unique_hostnames,
+            uniq(properties.session_id) AS unique_sessions,
+            round(avg(toFloat64(properties.article_content_length))) AS avg_article_length
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.status = 'filled'
+            AND properties.brand_name != ''
           GROUP BY brand_name
           ORDER BY impressions DESC
           LIMIT 50
         `).catch(() => [] as AdBrandStats[]),
 
         // 18. Hourly ad traffic - only count request events
-        queryClickhouse<AdHourlyTraffic>(`
+        queryPostHog<AdHourlyTraffic>(`
           SELECT
             formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour,
             count() AS total_requests,
-            countIf(status = 'filled') AS filled_count,
-            countIf(status = 'no_fill') AS no_fill_count,
-            round(countIf(status = 'filled') / countIf(status != 'premium_user') * 100, 2) AS fill_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND event_type = 'request'
+            countIf(properties.status = 'filled') AS filled_count,
+            countIf(properties.status = 'no_fill') AS no_fill_count,
+            round(countIf(properties.status = 'filled') / countIf(properties.status != 'premium_user') * 100, 2) AS fill_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.event_type = 'request'
           GROUP BY hour
           ORDER BY hour
         `).catch(() => [] as AdHourlyTraffic[]),
 
         // 19. Ad error breakdown
-        queryClickhouse<AdErrorBreakdown>(`
+        queryPostHog<AdErrorBreakdown>(`
           SELECT
-            status,
-            gravity_status_code,
-            any(error_message) AS error_message,
+            properties.status as status,
+            properties.gravity_status_code as gravity_status_code,
+            any(properties.error_message) AS error_message,
             count() AS count,
             formatDateTime(max(timestamp), '%Y-%m-%d %H:%i:%S') AS latest_timestamp
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND status IN ('error', 'gravity_error', 'timeout')
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.status IN ('error', 'gravity_error', 'timeout')
           GROUP BY status, gravity_status_code
           ORDER BY count DESC
           LIMIT 50
         `).catch(() => [] as AdErrorBreakdown[]),
 
         // 20. Recent ad events (for live debugging)
-        queryClickhouse<AdRecentEvent>(`
+        queryPostHog<AdRecentEvent>(`
           SELECT
-            event_id,
+            properties.event_id as event_id,
             formatDateTime(timestamp, '%Y-%m-%d %H:%i:%S') AS event_time,
-            hostname,
-            article_title,
-            status,
-            brand_name,
-            duration_ms,
-            device_type
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL 1 HOUR
+            properties.hostname as hostname,
+            properties.article_title as article_title,
+            properties.status as status,
+            properties.brand_name as brand_name,
+            properties.duration_ms as duration_ms,
+            properties.device_type as device_type
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL 1 HOUR
           ORDER BY timestamp DESC
           LIMIT 100
         `).catch(() => [] as AdRecentEvent[]),
 
         // 21. CTR by Brand - click-through rate for each advertiser (minute-based + device filter)
-        queryClickhouse<AdCTRByBrand>(`
+        queryPostHog<AdCTRByBrand>(`
           SELECT
-            brand_name,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
-            AND event_type IN ('impression', 'click')
-            AND brand_name != ''
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+            properties.brand_name as brand_name,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${minutes} MINUTE
+            AND properties.event_type IN ('impression', 'click')
+            AND properties.brand_name != ''
+            ${adDeviceFilter ? `AND properties.device_type = '${adDeviceFilter}'` : ''}
           GROUP BY brand_name
           HAVING impressions > 0
           ORDER BY impressions DESC
@@ -889,8 +910,7 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         `).catch(() => [] as AdCTRByBrand[]),
 
         // 22. Funnel by time bucket - adapts granularity based on time range
-        // <1h: 5-minute buckets, <6h: 15-minute buckets, <24h: hourly, else: daily
-        queryClickhouse<AdHourlyFunnel>(`
+        queryPostHog<AdHourlyFunnel>(`
           SELECT
             ${minutes <= 60
               ? `formatDateTime(toStartOfFiveMinutes(timestamp), '%Y-%m-%d %H:%i') AS hour`
@@ -900,27 +920,29 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
                   ? `formatDateTime(toStartOfHour(timestamp), '%Y-%m-%d %H:00') AS hour`
                   : `formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') AS hour`
             },
-            countIf(event_type = 'request' AND status = 'filled') AS requests,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            countIf(event_type = 'dismiss') AS dismissals
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+            countIf(properties.event_type = 'request' AND properties.status = 'filled') AS requests,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            countIf(properties.event_type = 'dismiss') AS dismissals
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${minutes} MINUTE
+            ${adDeviceFilter ? `AND properties.device_type = '${adDeviceFilter}'` : ''}
           GROUP BY hour
           ORDER BY hour
         `).catch(() => [] as AdHourlyFunnel[]),
 
-        // 23. Dismiss Rate by Device - see which devices dismiss ads most
-        queryClickhouse<AdDismissRateByDevice>(`
+        // 23. Dismiss Rate by Device
+        queryPostHog<AdDismissRateByDevice>(`
           SELECT
-            device_type,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'dismiss') AS dismissals,
-            round(countIf(event_type = 'dismiss') / countIf(event_type = 'impression') * 100, 2) AS dismiss_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND device_type != ''
+            properties.device_type as device_type,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'dismiss') AS dismissals,
+            round(countIf(properties.event_type = 'dismiss') / countIf(properties.event_type = 'impression') * 100, 2) AS dismiss_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.device_type != ''
           GROUP BY device_type
           HAVING impressions > 0
           ORDER BY impressions DESC
@@ -930,24 +952,25 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         // Enhanced Granular Ad Analytics
         // =============================================================================
 
-        // 24. Performance by Hour of Day - identify best performing hours
-        queryClickhouse<AdPerformanceByHour>(`
+        // 24. Performance by Hour of Day
+        queryPostHog<AdPerformanceByHour>(`
           SELECT
             toHour(timestamp) AS hour_of_day,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
-            round(countIf(event_type = 'request' AND status = 'filled') /
-                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(properties.event_type = 'request' AND properties.status = 'filled') /
+                  countIf(properties.event_type = 'request' AND properties.status != 'premium_user') * 100, 2) AS fill_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
           GROUP BY hour_of_day
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY hour_of_day
         `).catch(() => [] as AdPerformanceByHour[]),
 
         // 25. Performance by Day of Week
-        queryClickhouse<AdPerformanceByDay>(`
+        queryPostHog<AdPerformanceByDay>(`
           SELECT
             toDayOfWeek(timestamp) AS day_of_week,
             CASE toDayOfWeek(timestamp)
@@ -959,126 +982,133 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
               WHEN 6 THEN 'Saturday'
               WHEN 7 THEN 'Sunday'
             END AS day_name,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
           GROUP BY day_of_week, day_name
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY day_of_week
         `).catch(() => [] as AdPerformanceByDay[]),
 
         // 26. Enhanced Brand Performance with engagement metrics
-        queryClickhouse<AdBrandPerformance>(`
+        queryPostHog<AdBrandPerformance>(`
           SELECT
-            brand_name,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            countIf(event_type = 'dismiss') AS dismissals,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
-            round(countIf(event_type = 'dismiss') / countIf(event_type = 'impression') * 100, 2) AS dismiss_rate,
-            round(avgIf(duration_ms, event_type = 'click' AND duration_ms > 0)) AS avg_time_to_click_ms,
-            uniq(session_id) AS unique_sessions
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND brand_name != ''
+            properties.brand_name as brand_name,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            countIf(properties.event_type = 'dismiss') AS dismissals,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(properties.event_type = 'dismiss') / countIf(properties.event_type = 'impression') * 100, 2) AS dismiss_rate,
+            round(avgIf(toFloat64(properties.duration_ms), properties.event_type = 'click' AND toFloat64(properties.duration_ms) > 0)) AS avg_time_to_click_ms,
+            uniq(properties.session_id) AS unique_sessions
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.brand_name != ''
           GROUP BY brand_name
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY impressions DESC
           LIMIT 25
         `).catch(() => [] as AdBrandPerformance[]),
 
-        // 27. Detailed Device Breakdown (uses minute-based time + device filter)
-        queryClickhouse<AdDeviceBreakdown>(`
+        // 27. Detailed Device Breakdown
+        queryPostHog<AdDeviceBreakdown>(`
           SELECT
-            device_type,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            countIf(event_type = 'dismiss') AS dismissals,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr,
-            round(countIf(event_type = 'dismiss') / countIf(event_type = 'impression') * 100, 2) AS dismiss_rate,
-            round(countIf(event_type = 'request' AND status = 'filled') /
-                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 2) AS fill_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
-            AND device_type != ''
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+            properties.device_type as device_type,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            countIf(properties.event_type = 'dismiss') AS dismissals,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr,
+            round(countIf(properties.event_type = 'dismiss') / countIf(properties.event_type = 'impression') * 100, 2) AS dismiss_rate,
+            round(countIf(properties.event_type = 'request' AND properties.status = 'filled') /
+                  countIf(properties.event_type = 'request' AND properties.status != 'premium_user') * 100, 2) AS fill_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${minutes} MINUTE
+            AND properties.device_type != ''
+            ${adDeviceFilter ? `AND properties.device_type = '${adDeviceFilter}'` : ''}
           GROUP BY device_type
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY impressions DESC
         `).catch(() => [] as AdDeviceBreakdown[]),
 
         // 28. Browser Performance
-        queryClickhouse<AdBrowserStats>(`
+        queryPostHog<AdBrowserStats>(`
           SELECT
-            browser,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND browser != ''
+            properties.browser as browser,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.browser != ''
           GROUP BY browser
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY impressions DESC
           LIMIT 10
         `).catch(() => [] as AdBrowserStats[]),
 
         // 29. OS Performance
-        queryClickhouse<AdOSStats>(`
+        queryPostHog<AdOSStats>(`
           SELECT
-            os,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND os != ''
+            properties.os as os,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.os != ''
           GROUP BY os
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY impressions DESC
           LIMIT 10
         `).catch(() => [] as AdOSStats[]),
 
         // 30. Hostname Performance with full funnel
-        queryClickhouse<AdHostnamePerformance>(`
+        queryPostHog<AdHostnamePerformance>(`
           SELECT
-            hostname,
-            countIf(event_type = 'request') AS requests,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(if(countIf(event_type = 'impression') > 0, countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 0), 2) AS ctr,
-            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0, countIf(event_type = 'request' AND status = 'filled') /
-                  countIf(event_type = 'request' AND status != 'premium_user') * 100, 0), 2) AS fill_rate,
-            anyIf(brand_name, brand_name != '' AND event_type = 'impression') AS top_brand
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND hostname != ''
+            properties.hostname as hostname,
+            countIf(properties.event_type = 'request') AS requests,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(if(countIf(properties.event_type = 'impression') > 0, countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 0), 2) AS ctr,
+            round(if(countIf(properties.event_type = 'request' AND properties.status != 'premium_user') > 0, countIf(properties.event_type = 'request' AND properties.status = 'filled') /
+                  countIf(properties.event_type = 'request' AND properties.status != 'premium_user') * 100, 0), 2) AS fill_rate,
+            anyIf(properties.brand_name, properties.brand_name != '' AND properties.event_type = 'impression') AS top_brand
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND properties.hostname != ''
           GROUP BY hostname
-          HAVING countIf(event_type = 'request') > 0
+          HAVING countIf(properties.event_type = 'request') > 0
           ORDER BY requests DESC
           LIMIT 50
         `).catch(() => [] as AdHostnamePerformance[]),
 
-        // 31. Content Length Correlation - do longer articles perform better?
-        queryClickhouse<AdContentCorrelation>(`
+        // 31. Content Length Correlation
+        queryPostHog<AdContentCorrelation>(`
           SELECT
             CASE
-              WHEN article_content_length < 500 THEN '< 500 chars'
-              WHEN article_content_length < 1500 THEN '500-1.5k chars'
-              WHEN article_content_length < 3000 THEN '1.5k-3k chars'
-              WHEN article_content_length < 5000 THEN '3k-5k chars'
+              WHEN toFloat64(properties.article_content_length) < 500 THEN '< 500 chars'
+              WHEN toFloat64(properties.article_content_length) < 1500 THEN '500-1.5k chars'
+              WHEN toFloat64(properties.article_content_length) < 3000 THEN '1.5k-3k chars'
+              WHEN toFloat64(properties.article_content_length) < 5000 THEN '3k-5k chars'
               ELSE '5k+ chars'
             END AS article_length_bucket,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 2) AS ctr
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            AND article_content_length > 0
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 2) AS ctr
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            AND toFloat64(properties.article_content_length) > 0
           GROUP BY article_length_bucket
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY
             CASE article_length_bucket
               WHEN '< 500 chars' THEN 1
@@ -1089,8 +1119,8 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             END
         `).catch(() => [] as AdContentCorrelation[]),
 
-        // 32. Session Depth Analysis - do users who see more ads click more?
-        queryClickhouse<AdSessionDepth>(`
+        // 32. Session Depth Analysis
+        queryPostHog<AdSessionDepth>(`
           SELECT
             session_ad_count,
             count() AS session_count,
@@ -1099,13 +1129,14 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
             round(if(sum(impressions) > 0, sum(clicks) / sum(impressions) * 100, 0), 2) AS avg_ctr
           FROM (
             SELECT
-              session_id,
-              countIf(event_type = 'impression') AS session_ad_count,
-              countIf(event_type = 'impression') AS impressions,
-              countIf(event_type = 'click') AS clicks
-            FROM ad_events
-            WHERE timestamp > now() - INTERVAL ${hours} HOUR
-              AND session_id != ''
+              properties.session_id as session_id,
+              countIf(properties.event_type = 'impression') AS session_ad_count,
+              countIf(properties.event_type = 'impression') AS impressions,
+              countIf(properties.event_type = 'click') AS clicks
+            FROM events
+            WHERE event = 'ad_event'
+              AND timestamp > now() - INTERVAL ${hours} HOUR
+              AND properties.session_id != ''
             GROUP BY session_id
             HAVING session_ad_count > 0
           )
@@ -1115,99 +1146,101 @@ export const adminRoutes = new Elysia({ prefix: "/api" }).get(
         `).catch(() => [] as AdSessionDepth[]),
 
         // 33. Conversion Funnel Summary
-        queryClickhouse<AdConversionFunnel>(`
+        queryPostHog<AdConversionFunnel>(`
           SELECT
             stage,
             count,
             round(if(first_value(count) OVER (ORDER BY stage_order) > 0, count / first_value(count) OVER (ORDER BY stage_order) * 100, 0), 2) AS rate_from_previous
           FROM (
-            SELECT 'Requests' AS stage, 1 AS stage_order, countIf(event_type = 'request') AS count
-            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            SELECT 'Requests' AS stage, 1 AS stage_order, countIf(properties.event_type = 'request') AS count
+            FROM events WHERE event = 'ad_event' AND timestamp > now() - INTERVAL ${hours} HOUR
             UNION ALL
-            SELECT 'Filled' AS stage, 2 AS stage_order, countIf(event_type = 'request' AND status = 'filled') AS count
-            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            SELECT 'Filled' AS stage, 2 AS stage_order, countIf(properties.event_type = 'request' AND properties.status = 'filled') AS count
+            FROM events WHERE event = 'ad_event' AND timestamp > now() - INTERVAL ${hours} HOUR
             UNION ALL
-            SELECT 'Impressions' AS stage, 3 AS stage_order, countIf(event_type = 'impression') AS count
-            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            SELECT 'Impressions' AS stage, 3 AS stage_order, countIf(properties.event_type = 'impression') AS count
+            FROM events WHERE event = 'ad_event' AND timestamp > now() - INTERVAL ${hours} HOUR
             UNION ALL
-            SELECT 'Clicks' AS stage, 4 AS stage_order, countIf(event_type = 'click') AS count
-            FROM ad_events WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            SELECT 'Clicks' AS stage, 4 AS stage_order, countIf(properties.event_type = 'click') AS count
+            FROM events WHERE event = 'ad_event' AND timestamp > now() - INTERVAL ${hours} HOUR
           )
           ORDER BY stage_order
         `).catch(() => [] as AdConversionFunnel[]),
 
-        // 34. Bot Detection - identify filled requests without device info (likely bots/curl)
-        queryClickhouse<AdBotDetection>(`
+        // 34. Bot Detection
+        queryPostHog<AdBotDetection>(`
           SELECT
             CASE
-              WHEN device_type = '' OR browser = '' THEN 'No Device Info (Likely Bot)'
+              WHEN properties.device_type = '' OR properties.browser = '' THEN 'No Device Info (Likely Bot)'
               ELSE 'Has Device Info (Real User)'
             END as category,
-            countIf(event_type = 'request' AND status = 'filled') AS filled_count,
-            countIf(event_type = 'impression') AS impression_count,
-            round(if(countIf(event_type = 'request' AND status = 'filled') > 0,
-              countIf(event_type = 'impression') / countIf(event_type = 'request' AND status = 'filled') * 100, 0), 1) AS impression_rate,
-            uniq(session_id) AS unique_sessions
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            countIf(properties.event_type = 'request' AND properties.status = 'filled') AS filled_count,
+            countIf(properties.event_type = 'impression') AS impression_count,
+            round(if(countIf(properties.event_type = 'request' AND properties.status = 'filled') > 0,
+              countIf(properties.event_type = 'impression') / countIf(properties.event_type = 'request' AND properties.status = 'filled') * 100, 0), 1) AS impression_rate,
+            uniq(properties.session_id) AS unique_sessions
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
           GROUP BY category
           ORDER BY filled_count DESC
         `).catch(() => [] as AdBotDetection[]),
 
         // 35. CTR by Hour of Day with Device Breakdown
-        queryClickhouse<AdCTRByHourDevice>(`
+        queryPostHog<AdCTRByHourDevice>(`
           SELECT
             toHour(timestamp) AS hour_of_day,
-            if(device_type = '', 'unknown', device_type) AS device_type,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            round(if(countIf(event_type = 'impression') > 0,
-              countIf(event_type = 'click') / countIf(event_type = 'impression') * 100, 0), 2) AS ctr,
-            round(if(countIf(event_type = 'request' AND status != 'premium_user') > 0,
-              countIf(event_type = 'request' AND status = 'filled') /
-              countIf(event_type = 'request' AND status != 'premium_user') * 100, 0), 2) AS fill_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+            if(properties.device_type = '', 'unknown', properties.device_type) AS device_type,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            round(if(countIf(properties.event_type = 'impression') > 0,
+              countIf(properties.event_type = 'click') / countIf(properties.event_type = 'impression') * 100, 0), 2) AS ctr,
+            round(if(countIf(properties.event_type = 'request' AND properties.status != 'premium_user') > 0,
+              countIf(properties.event_type = 'request' AND properties.status = 'filled') /
+              countIf(properties.event_type = 'request' AND properties.status != 'premium_user') * 100, 0), 2) AS fill_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
+            ${adDeviceFilter ? `AND properties.device_type = '${adDeviceFilter}'` : ''}
           GROUP BY hour_of_day, device_type
-          HAVING countIf(event_type = 'impression') > 0
+          HAVING countIf(properties.event_type = 'impression') > 0
           ORDER BY hour_of_day, device_type
         `).catch(() => [] as AdCTRByHourDevice[]),
 
-        // 36. Filled vs Impression Gap Analysis - identify where impressions are lost
-        queryClickhouse<AdFilledImpressionGap>(`
+        // 36. Filled vs Impression Gap Analysis
+        queryPostHog<AdFilledImpressionGap>(`
           SELECT
-            if(device_type = '', 'unknown', device_type) AS device_type,
-            if(browser = '', 'unknown', browser) AS browser,
-            countIf(event_type = 'request' AND status = 'filled') AS filled_count,
-            countIf(event_type = 'impression') AS impression_count,
-            countIf(event_type = 'request' AND status = 'filled') - countIf(event_type = 'impression') AS gap_count,
-            round(if(countIf(event_type = 'request' AND status = 'filled') > 0,
-              countIf(event_type = 'impression') / countIf(event_type = 'request' AND status = 'filled') * 100, 0), 1) AS impression_rate
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${hours} HOUR
+            if(properties.device_type = '', 'unknown', properties.device_type) AS device_type,
+            if(properties.browser = '', 'unknown', properties.browser) AS browser,
+            countIf(properties.event_type = 'request' AND properties.status = 'filled') AS filled_count,
+            countIf(properties.event_type = 'impression') AS impression_count,
+            countIf(properties.event_type = 'request' AND properties.status = 'filled') - countIf(properties.event_type = 'impression') AS gap_count,
+            round(if(countIf(properties.event_type = 'request' AND properties.status = 'filled') > 0,
+              countIf(properties.event_type = 'impression') / countIf(properties.event_type = 'request' AND properties.status = 'filled') * 100, 0), 1) AS impression_rate
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${hours} HOUR
           GROUP BY device_type, browser
-          HAVING countIf(event_type = 'request' AND status = 'filled') > 0
+          HAVING countIf(properties.event_type = 'request' AND properties.status = 'filled') > 0
           ORDER BY gap_count DESC
           LIMIT 20
         `).catch(() => [] as AdFilledImpressionGap[]),
 
-        // 37. Ad Funnel Time Series - minute-level granularity for real-time monitoring
-        // Tracks the full funnel: requests -> filled -> impressions -> clicks/dismissals
-        // Also tracks Gravity forwarding success for revenue assurance
-        queryClickhouse<AdFunnelTimeSeries>(`
+        // 37. Ad Funnel Time Series
+        queryPostHog<AdFunnelTimeSeries>(`
           SELECT
             formatDateTime(toStartOfMinute(timestamp), '%Y-%m-%d %H:%i') AS time_bucket,
-            countIf(event_type = 'request') AS requests,
-            countIf(event_type = 'request' AND status = 'filled') AS filled,
-            countIf(event_type = 'impression') AS impressions,
-            countIf(event_type = 'click') AS clicks,
-            countIf(event_type = 'dismiss') AS dismissals,
-            countIf(event_type = 'impression' AND gravity_forwarded = 1) AS fwd_success,
-            countIf(event_type = 'impression' AND gravity_forwarded = 0) AS fwd_failed
-          FROM ad_events
-          WHERE timestamp > now() - INTERVAL ${minutes} MINUTE
-            ${adDeviceFilter ? `AND device_type = '${adDeviceFilter}'` : ''}
+            countIf(properties.event_type = 'request') AS requests,
+            countIf(properties.event_type = 'request' AND properties.status = 'filled') AS filled,
+            countIf(properties.event_type = 'impression') AS impressions,
+            countIf(properties.event_type = 'click') AS clicks,
+            countIf(properties.event_type = 'dismiss') AS dismissals,
+            countIf(properties.event_type = 'impression' AND toFloat64(properties.gravity_forwarded) = 1) AS gravity_forwarded,
+            countIf(properties.event_type = 'impression' AND toFloat64(properties.gravity_forwarded) = 0) AS gravity_failed
+          FROM events
+          WHERE event = 'ad_event'
+            AND timestamp > now() - INTERVAL ${minutes} MINUTE
+            ${adDeviceFilter ? `AND properties.device_type = '${adDeviceFilter}'` : ''}
           GROUP BY time_bucket
           ORDER BY time_bucket
         `).catch(() => [] as AdFunnelTimeSeries[]),

@@ -3,7 +3,7 @@
  *
  * /api/context - Fetches contextual ads. ZeroClick is primary, Gravity is fallback.
  * /api/px - Unified tracking for impressions, clicks, dismissals.
- *           For impressions, wraps Gravity forwarding + ClickHouse logging atomically.
+ *           For impressions, wraps Gravity forwarding + PostHog logging atomically.
  *
  * Endpoint names are neutral to avoid content blockers (no "ad" or "track" in names).
  */
@@ -13,7 +13,7 @@ import { getAuthInfo } from "../middleware/auth";
 import { env } from "../env";
 import { extractClientIp } from "../../lib/request-context";
 import { createLogger } from "../../lib/logger";
-import { trackAdEvent, type AdEventStatus } from "../../lib/clickhouse";
+import { trackAdEvent, type AdEventStatus } from "../../lib/posthog";
 import {
   fetchZeroClickOffers,
   mapZeroClickOfferToAd,
@@ -140,7 +140,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
    * Unified tracking endpoint for impressions, clicks, and dismissals.
    *
    * CRITICAL: For impressions, this endpoint WRAPS the Gravity impression pixel call.
-   * This ensures ClickHouse accurately reflects whether Gravity received the impression.
+   * This ensures PostHog accurately reflects whether Gravity received the impression.
    * Without this, we'd log impressions locally without knowing if we got paid.
    *
    * Named "/px" to avoid ad blocker detection (no "ad" or "track" in the name).
@@ -148,12 +148,12 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
   .post(
     "/px",
     async ({ body, set }) => {
-      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser, adProvider } = body;
+      const { type, sessionId, hostname, brandName, adTitle, adText, clickUrl, impUrl, cta, favicon, deviceType, os, browser, adProvider: _adProvider, placement, adIndex } = body;
 
       // Derive provider from impUrl prefix only — never trust client-sent adProvider
       // for forwarding decisions (prevents spoofing to skip Gravity billing)
       const isZeroClick = impUrl?.startsWith("zeroclick://") ?? false;
-      // adProvider from client is used only for ClickHouse logging, not forwarding logic
+      // adProvider from client is used only for PostHog logging, not forwarding logic
       const provider = isZeroClick ? "zeroclick" : "gravity";
 
       // For impressions with impUrl, forward to the appropriate provider
@@ -165,7 +165,7 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         gravityResult = await forwardImpressionToGravity(impUrl);
       }
 
-      // Now track to ClickHouse WITH the Gravity result
+      // Now track to PostHog WITH the Gravity result
       try {
         trackAdEvent({
           event_type: type,
@@ -187,6 +187,9 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
           gravity_forwarded: gravityResult?.forwarded ? 1 : 0,
           gravity_status_code: gravityResult?.statusCode ?? 0,
           error_message: gravityResult?.error ?? "",
+          // Placement attribution — which slot + position was interacted with
+          placement: placement || "unknown",
+          ad_index: adIndex ?? -1,
         });
 
         logger.debug({
@@ -225,6 +228,8 @@ export const gravityRoutes = new Elysia({ prefix: "/api" })
         os: t.Optional(t.String()),
         browser: t.Optional(t.String()),
         adProvider: t.Optional(t.String()),
+        placement: t.Optional(t.String()),
+        adIndex: t.Optional(t.Number()),
       }),
     }
   )

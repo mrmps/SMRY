@@ -4,11 +4,11 @@
  * Logs memory stats every 30 seconds to help identify memory leaks.
  * Triggers garbage collection (Node.js --expose-gc) when memory grows.
  *
- * When RSS exceeds threshold, logs to ClickHouse for post-mortem analysis.
+ * When RSS exceeds threshold, logs to PostHog for post-mortem analysis.
  * Railway's healthcheck on /health will detect the unhealthy status and restart.
  */
 
-import { trackEvent } from "./clickhouse";
+import { trackEvent } from "./posthog";
 import { getAllCacheStats } from "./memory-tracker";
 
 const INTERVAL_MS = 30_000; // 30 seconds
@@ -118,7 +118,7 @@ function logMemory(): void {
       })
     );
 
-    // Log to ClickHouse for analysis
+    // Log to PostHog for analysis
     trackEvent({
       request_id: `gc_${Date.now()}`,
       endpoint: "/internal/gc",
@@ -175,7 +175,7 @@ function logMemory(): void {
       })
     );
 
-    // Log to ClickHouse for post-mortem analysis
+    // Log to PostHog for post-mortem analysis
     trackEvent({
       request_id: `memory_spike_${Date.now()}`,
       endpoint: "/internal/memory",
@@ -208,7 +208,7 @@ function logMemory(): void {
       })
     );
 
-    // Log to ClickHouse for post-mortem analysis
+    // Log to PostHog for post-mortem analysis
     trackEvent({
       request_id: `memory_critical_${Date.now()}`,
       endpoint: "/internal/memory",

@@ -86,7 +86,7 @@ The system tracks these bounded caches:
 | ZeroClick MCP Clients | 50 | `lib/zeroclick.ts` |
 | Session Failures | 200 | `lib/zeroclick.ts` |
 | Auth/Billing Cache | 1000 | `server/middleware/auth.ts` |
-| ClickHouse Buffer | 500 events | `lib/clickhouse.ts` |
+| PostHog Buffer | SDK-managed | `lib/posthog.ts` |
 | Rate Limiter IPs | 10,000 | `lib/rate-limit-memory.ts` |
 
 ## Instrumented Operations
@@ -168,8 +168,8 @@ Response now includes cache stats:
     "zeroclick_client_cache": 12,
     "zeroclick_session_failures": 5,
     "zeroclick_orphaned": 0,
-    "clickhouse_buffer": 45,
-    "clickhouse_active_queries": 2,
+    "posthog_buffer": 45,
+    "posthog_active_queries": 2,
     "rate_limiter_ips": 1234,
     "active_operations": 3
   }
@@ -196,7 +196,7 @@ grep "memory_operation" logs.json | jq 'select(.duration_ms > 5000)'
 grep "cache_stats_snapshot" logs.json | jq '{
   time: .timestamp,
   zc_clients: .zeroclick_client_cache,
-  ch_buffer: .clickhouse_buffer,
+  ph_buffer: .posthog_buffer,
   rate_ips: .rate_limiter_ips
 }'
 ```

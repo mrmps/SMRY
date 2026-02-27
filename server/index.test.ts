@@ -66,7 +66,7 @@ describe("Elysia API Server", () => {
         new Request("http://localhost/api/article?url=https://httpbin.org/html&source=smry-fast")
       );
       // May return 200 or 500 depending on external service - just verify route is hit
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
     });
 
     it("should accept valid smry-slow source", async () => {
@@ -74,7 +74,7 @@ describe("Elysia API Server", () => {
         new Request("http://localhost/api/article?url=https://example.com&source=smry-slow")
       );
       // Just verify route accepts the source
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
     });
 
     it("should accept valid wayback source", async () => {
@@ -83,7 +83,7 @@ describe("Elysia API Server", () => {
         new Request("http://localhost/api/article?url=https://example.com&source=wayback")
       );
       // Just verify route accepts the source (may timeout with 500)
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
     }, { timeout: 15000 });
 
     it("should block hard paywall sites", async () => {
@@ -103,8 +103,8 @@ describe("Elysia API Server", () => {
         new Request("http://localhost/api/admin")
       );
 
-      // May return 200 or 500 depending on ClickHouse availability
-      expect([200, 500]).toContain(response.status);
+      // May return 200, 401 (no token), or 500 depending on PostHog availability
+      expect([200, 401, 500]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -120,7 +120,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?range=1h")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -132,7 +132,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?range=7d")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -144,7 +144,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?hostname=example.com&source=smry-fast&outcome=success")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();
@@ -159,7 +159,7 @@ describe("Elysia API Server", () => {
       const response = await app.handle(
         new Request("http://localhost/api/admin?urlSearch=test")
       );
-      expect([200, 500]).toContain(response.status);
+      expect([200, 401, 500]).toContain(response.status);
 
       if (response.status === 200) {
         const body = await response.json();

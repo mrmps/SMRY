@@ -138,9 +138,9 @@ export interface UseGravityAdResult {
   ad: ContextAd | null;
   ads: ContextAd[];
   isLoading: boolean;
-  fireImpression: (ad?: ContextAd) => void;
-  fireClick: (ad?: ContextAd) => void;
-  fireDismiss: (ad?: ContextAd) => void;
+  fireImpression: (ad?: ContextAd, placement?: string, adIndex?: number) => void;
+  fireClick: (ad?: ContextAd, placement?: string, adIndex?: number) => void;
+  fireDismiss: (ad?: ContextAd, placement?: string, adIndex?: number) => void;
 }
 
 // Ad refresh interval — keep ads visible long enough for users to engage.
@@ -314,7 +314,12 @@ export function useGravityAd({
 
   // Helper to send tracking events via sendBeacon (non-blocking)
   // Uses /api/px endpoint (named to avoid ad blocker detection)
-  const sendTrackingEvent = useCallback((type: "impression" | "click" | "dismiss", ad: ContextAd | null) => {
+  const sendTrackingEvent = useCallback((
+    type: "impression" | "click" | "dismiss",
+    ad: ContextAd | null,
+    placement?: string,
+    adIndex?: number,
+  ) => {
     if (!ad || !sessionId) return;
 
     // Extract hostname from current page URL
@@ -340,9 +345,11 @@ export function useGravityAd({
       os: deviceInfo?.os,
       browser: deviceInfo?.browser,
       adProvider: ad.ad_provider,
+      placement: placement || "unknown",
+      adIndex: adIndex ?? -1,
     });
 
-    // /api/px handles Gravity forwarding (for impressions) and ClickHouse logging
+    // /api/px handles Gravity forwarding (for impressions) and PostHog logging
     const trackUrl = getApiUrl("/api/px");
 
     // Use sendBeacon for reliable non-blocking tracking
@@ -359,12 +366,12 @@ export function useGravityAd({
     }
   }, [sessionId, url, deviceInfo]);
 
-  const fireImpression = useCallback((targetAd?: ContextAd) => {
+  const fireImpression = useCallback((targetAd?: ContextAd, placement?: string, adIndex?: number) => {
     const ad = targetAd ?? query.data?.[0];
     if (!ad) return;
 
-    // Send to /api/px for Gravity forwarding + ClickHouse logging
-    sendTrackingEvent("impression", ad);
+    // Send to /api/px for Gravity forwarding + PostHog logging
+    sendTrackingEvent("impression", ad, placement, adIndex);
 
     // For ZeroClick ads, track impressions via ZeroClick v2 API (client-side only)
     // Docs: https://developer.zeroclick.ai/docs/api-reference/tracking/track-offer-impressions
@@ -380,14 +387,14 @@ export function useGravityAd({
     }
   }, [query.data, sendTrackingEvent]);
 
-  const fireClick = useCallback((targetAd?: ContextAd) => {
+  const fireClick = useCallback((targetAd?: ContextAd, placement?: string, adIndex?: number) => {
     const ad = targetAd ?? query.data?.[0];
-    sendTrackingEvent("click", ad ?? null);
+    sendTrackingEvent("click", ad ?? null, placement, adIndex);
   }, [query.data, sendTrackingEvent]);
 
-  const fireDismiss = useCallback((targetAd?: ContextAd) => {
+  const fireDismiss = useCallback((targetAd?: ContextAd, placement?: string, adIndex?: number) => {
     const ad = targetAd ?? query.data?.[0];
-    sendTrackingEvent("dismiss", ad ?? null);
+    sendTrackingEvent("dismiss", ad ?? null, placement, adIndex);
   }, [query.data, sendTrackingEvent]);
 
   const ads = query.data ?? [];
