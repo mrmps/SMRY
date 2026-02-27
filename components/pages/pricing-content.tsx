@@ -312,6 +312,7 @@ export function PricingContent() {
 
   const premiumFeatures = [
     t("premiumAiModels"),
+    { label: t("premiumVoices"), isNew: true },
     t("bypassIndicator"),
     t("unlimitedHistory"),
     t("adFreeReading"),
@@ -495,12 +496,21 @@ export function PricingContent() {
               {/* Features */}
               <div className="mt-4 pt-4">
                 <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5" aria-label="Pro features">
-                  {premiumFeatures.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-[12px] text-foreground/70">
-                      <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
-                      {feature}
-                    </li>
-                  ))}
+                  {premiumFeatures.map((feature) => {
+                    const label = typeof feature === "string" ? feature : feature.label;
+                    const isNew = typeof feature !== "string" && feature.isNew;
+                    return (
+                      <li key={label} className="flex items-center gap-2 text-[12px] text-foreground/70">
+                        <Check className="size-3 shrink-0 text-[var(--p3-emerald)]" aria-hidden="true" />
+                        {label}
+                        {isNew && (
+                          <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full leading-none">
+                            {t("newBadge")}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </div>
@@ -546,12 +556,13 @@ export function PricingContent() {
                 {t("featureCompareDesc", { price: billingPeriod === "annual" ? annualMonthly : monthlyPrice })}
               </p>
             </div>
-            <div className="order-4 lg:order-4 flex h-[180px] sm:h-[220px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
+            <div className="order-4 lg:order-4 flex h-[210px] sm:h-[250px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
               <div className="w-full max-w-[280px] overflow-hidden rounded-xl bg-card p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)] mx-4">
                 <div className="space-y-2 sm:space-y-2.5">
                   {[
                     { feature: t("compareAiSummaries"), free: t("comparePerDay", { count: 20 }), pro: t("statUnlimited") },
                     { feature: t("compareAiQuality"), free: t("compareBasic"), pro: t("comparePremium") },
+                    { feature: t("compareVoices"), free: t("compareVoicesFree"), pro: t("compareVoicesPro") },
                     { feature: t("compareBypassDetection"), free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
                     { feature: t("compareAdFree"), free: "—", pro: <Check className="size-3.5 text-emerald-500" /> },
                   ].map((row, i) => (
@@ -567,8 +578,43 @@ export function PricingContent() {
               </div>
             </div>
 
-            {/* Section 3: Publications - Desktop: Visual left, Text right */}
+            {/* Section 3: Listen - Desktop: Visual left, Text right (zigzag) */}
             <div className="order-5 lg:order-6 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
+              <div className="flex items-center gap-2">
+                <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
+                  {t("featureListenTitle")}
+                </h2>
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full leading-none">
+                  {t("newBadge")}
+                </span>
+              </div>
+              <p className="max-w-[280px] text-[14px] leading-5 text-muted-foreground">
+                {t("featureListenDesc")}
+              </p>
+            </div>
+            <div className="order-6 lg:order-5 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
+              <div className="flex flex-col items-center gap-4 px-6">
+                {/* Audio waveform visual */}
+                <div className="flex items-center gap-1" aria-hidden="true">
+                  {[3, 5, 8, 12, 7, 10, 14, 9, 6, 11, 4, 8, 13, 7, 5, 9, 12, 6, 10, 3].map((h, i) => (
+                    <div
+                      key={i}
+                      className="w-1 rounded-full bg-foreground/20"
+                      style={{ height: `${h * 3}px` }}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex items-center gap-3 text-sm text-foreground">
+                    <span className="text-muted-foreground/50">{t("listenFreeVoices")}</span>
+                    <span className="text-foreground font-medium">{t("listenProVoices")}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Publications - Desktop: Text left, Visual right (zigzag) */}
+            <div className="order-7 lg:order-7 flex flex-col items-center justify-center gap-2.5 px-6 py-6 lg:py-0 text-center lg:h-[300px]">
               <h2 className="max-w-[280px] text-lg font-medium leading-6 tracking-[-0.2px] text-foreground">
                 {t("featurePubsTitle")}
               </h2>
@@ -576,7 +622,7 @@ export function PricingContent() {
                 {t("featurePubsDesc")}
               </p>
             </div>
-            <div className="order-6 lg:order-5 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
+            <div className="order-8 lg:order-8 flex h-[200px] sm:h-[240px] lg:h-[300px] items-center justify-center rounded-2xl bg-surface-1">
               <div className="grid grid-cols-2 gap-2 sm:gap-3 px-4 sm:px-6 w-full max-w-[320px]">
                 {getPublicationCategories(t).map((cat) => (
                   <div key={cat.label} className="rounded-lg bg-card/80 p-2 sm:p-2.5">
