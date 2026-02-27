@@ -3,29 +3,24 @@
 import React, { useState, useRef, useEffect, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { LANGUAGES } from "@/types/api";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
-import useLocalStorage from "@/lib/hooks/use-local-storage";
+import { useChatLanguage } from "@/lib/hooks/use-chat-language";
 import { useArticleChat, UsageData } from "@/lib/hooks/use-chat";
 import { Response } from "../ai/response";
 import { isTextUIPart, UIMessage } from "ai";
 import {
   ArrowUp,
+  ArrowDown,
   Square,
   Zap,
   Trash,
   X,
   Copy,
   Check,
-  RotateCcw,
-} from "lucide-react";
-import { LanguageIcon } from "@/components/ui/custom-icons";
+  ReloadIcon,
+  CornerDownRight,
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -44,16 +39,21 @@ import type { GravityAd as GravityAdType } from "@/lib/hooks/use-gravity-ad";
 
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
-// Default suggestions for article chat - Cursor-style concise prompts
+// Short, bounded prompts relevant to article reading.
+// Avoid open-ended summary requests — they generate long responses prone to mid-stream hangs.
 const DEFAULT_SUGGESTIONS: Suggestion[] = [
-  { text: "Summarize this" },
-  { text: "Key takeaways" },
-  { text: "Important facts" },
+  { text: "What's the main argument?" },
+  { text: "Any surprising facts?" },
+  { text: "Is it worth reading fully?" },
 ];
 
-// Bouncing dots loader (CSS in globals.css)
+// Pulsing dot indicator (CSS in globals.css)
 function ChatLoader() {
-  return <div className="chat-loader text-muted-foreground/60" />;
+  return (
+    <div className="flex items-center h-6 py-1">
+      <span className="thinking-pulse" />
+    </div>
+  );
 }
 
 function getMessageText(message: UIMessage): string {
@@ -65,7 +65,12 @@ function getMessageText(message: UIMessage): string {
 
 export interface ArticleChatHandle {
   clearMessages: () => void;
+  setMessages: (messages: import("ai").UIMessage[]) => void;
   hasMessages: boolean;
+  focusInput: () => void;
+  stopGeneration: () => void;
+  copyLastResponse: () => void;
+  setQuotedText: (text: string | null) => void;
 }
 
 interface ArticleChatProps {
@@ -75,10 +80,16 @@ interface ArticleChatProps {
   onOpenChange: (open: boolean) => void;
   variant?: "inline" | "sidebar";
   hideHeader?: boolean;
-  language?: string;
-  onLanguageChange?: (language: string) => void;
   onHasMessagesChange?: (hasMessages: boolean) => void;
-  // Header ad (compact variant)
+  isPremium?: boolean;
+  onMessagesChange?: (messages: import("ai").UIMessage[]) => void;
+  initialMessages?: import("ai").UIMessage[];
+  // Header ad (above prompt input)
+  headerAd?: GravityAdType | null;
+  onHeaderAdVisible?: () => void;
+  onHeaderAdClick?: () => void;
+  onHeaderAdDismiss?: () => void;
+  // Inline ad after messages
   ad?: GravityAdType | null;
   onAdVisible?: () => void;
   onAdClick?: () => void;
@@ -89,6 +100,10 @@ interface ArticleChatProps {
   onMicroAdClick?: () => void;
   // Ref for input container (used for mobile keyboard scrolling)
   inputContainerRef?: React.RefObject<HTMLDivElement | null>;
+  // Thread indicator - shows which history thread is loaded
+  activeThreadTitle?: string;
+  // Mobile keyboard state - used to adapt layout when keyboard is open
+  isKeyboardOpen?: boolean;
 }
 
 export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(function ArticleChat({
@@ -98,38 +113,49 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   onOpenChange,
   variant = "inline",
   hideHeader = false,
-  language: languageProp,
-  onLanguageChange,
   onHasMessagesChange,
+  isPremium: isPremiumProp = false,
+  onMessagesChange,
+  initialMessages: initialMessagesProp,
+  headerAd,
+  onHeaderAdVisible,
+  onHeaderAdClick,
+  onHeaderAdDismiss,
   ad,
   onAdVisible,
   onAdClick,
-  onAdDismiss,
-  microAd,
-  onMicroAdVisible,
-  onMicroAdClick,
+  onAdDismiss: _onAdDismiss,
+  microAd: _microAd,
+  onMicroAdVisible: _onMicroAdVisible,
+  onMicroAdClick: _onMicroAdClick,
   inputContainerRef,
+  activeThreadTitle: _activeThreadTitle,
+  isKeyboardOpen = false,
 }, ref) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const floatingInput = isMobile && variant === "sidebar";
+  const [headerAdDismissed, setHeaderAdDismissed] = useState(false);
+  const [quotedText, setQuotedText] = useState<string | null>(null);
+  // Track whether user has manually scrolled away from the bottom
+  const isUserScrolledUpRef = useRef(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const rafIdRef = useRef<number>(0);
+  // Track programmatic scrolling to avoid race conditions with scroll handler
+  const isProgrammaticScrollRef = useRef(false);
 
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const isPremium = usageData?.isPremium ?? false;
   const showUsageCounter = usageData?.limit != null && usageData.limit > 0;
   const isLimitReached = !isPremium && usageData?.remaining === 0;
 
-  const [storedLanguage, setStoredLanguage] = useLocalStorage(
-    "chat-language",
-    "en",
-  );
-
-  // Use prop if provided, otherwise use localStorage
-  const preferredLanguage = languageProp ?? storedLanguage;
-  const setPreferredLanguage = onLanguageChange ?? setStoredLanguage;
+  const { language: preferredLanguage } = useChatLanguage();
 
   const {
     messages,
+    setMessages,
     input,
     setInput,
     handleSubmit,
@@ -142,10 +168,11 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
     articleContent,
     articleTitle,
     language: preferredLanguage,
+    isPremium: isPremiumProp,
     onUsageUpdate: setUsageData,
+    initialMessages: initialMessagesProp,
   });
 
-  const [justSubmitted, setJustSubmitted] = useState(false);
 
   // Copy state for messages
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -163,6 +190,18 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
   const handleReload = useCallback(() => {
     reload();
   }, [reload]);
+
+  // Wrap handleSubmit to prepend quoted text as context
+  const handleSubmitWithQuote = useCallback(() => {
+    if (quotedText && input.trim()) {
+      const messageWithQuote = `> ${quotedText.replace(/\n/g, "\n> ")}\n\n${input.trim()}`;
+      setQuotedText(null);
+      sendMessage(messageWithQuote);
+      setInput("");
+    } else {
+      handleSubmit();
+    }
+  }, [quotedText, input, sendMessage, setInput, handleSubmit]);
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
     sendMessage(suggestion);
@@ -191,43 +230,123 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       
       // Handle Enter key from mobile keyboard
       if (e.key === "Enter" && !e.shiftKey && !isSlashMenuOpen && input.trim()) {
-        setJustSubmitted(true);
-        // Blur textarea to close keyboard on mobile
-        setTimeout(() => {
-          textareaRef.current?.blur();
-        }, 100);
+        isUserScrolledUpRef.current = false;
+        if (isMobile) {
+          // Blur textarea to close keyboard on mobile
+          setTimeout(() => {
+            textareaRef.current?.blur();
+          }, 100);
+        }
       }
     },
-    [handleSlashKeyDown, isSlashMenuOpen, input]
+    [handleSlashKeyDown, isSlashMenuOpen, input, isMobile]
   );
 
-  // Expose clearMessages and hasMessages to parent via ref
+  // Refs for imperative handle methods (avoids changing dep array size)
+  const messagesRef = useRef(messages);
+  const isLoadingRef = useRef(isLoading);
+  const stopRef = useRef(stop);
+  useEffect(() => {
+    messagesRef.current = messages;
+    isLoadingRef.current = isLoading;
+    stopRef.current = stop;
+  });
+
+  // Expose clearMessages, setMessages, and hasMessages to parent via ref
   useImperativeHandle(ref, () => ({
     clearMessages,
+    setMessages,
     hasMessages: messages.length > 0,
-  }), [clearMessages, messages.length]);
+    focusInput: () => {
+      textareaRef.current?.focus();
+    },
+    stopGeneration: () => {
+      if (isLoadingRef.current) stopRef.current();
+    },
+    copyLastResponse: () => {
+      const msgs = messagesRef.current;
+      const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant");
+      if (!lastAssistant) return;
+      const text = getMessageText(lastAssistant);
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        toast.success("Copied AI response to clipboard");
+      });
+    },
+    setQuotedText,
+  }), [clearMessages, setMessages, messages.length]);
 
   // Notify parent when hasMessages changes
   useEffect(() => {
     onHasMessagesChange?.(messages.length > 0);
   }, [messages.length, onHasMessagesChange]);
 
-  // Get the last message text for scroll dependency
-  const lastMessageText = messages.length > 0
-    ? getMessageText(messages[messages.length - 1])
-    : "";
-
-  // Auto-scroll to bottom when messages change or during streaming
+  // Ref for callback to avoid effect re-firing when callback reference changes
+  const onMessagesChangeRef = useRef(onMessagesChange);
   useEffect(() => {
-    const delay = justSubmitted ? 450 : 150;
-    const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      if (justSubmitted) {
-        setJustSubmitted(false);
-      }
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [messages, lastMessageText, isLoading, justSubmitted]);
+    onMessagesChangeRef.current = onMessagesChange;
+  }, [onMessagesChange]);
+
+  // Notify parent when messages change (for thread syncing)
+  useEffect(() => {
+    onMessagesChangeRef.current?.(messages);
+  }, [messages]);
+
+  // Track user scroll: if they scroll up, pause auto-scroll and show scroll-to-bottom button
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      // Skip during programmatic scroll to avoid race conditions
+      if (isProgrammaticScrollRef.current) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // Floating input adds ~120px of bottom padding/spacer that sits below the last message.
+      // Use a larger threshold so the user is considered "at bottom" even when they haven't
+      // scrolled past all the padding beneath the content.
+      const threshold = floatingInput ? 150 : 80;
+      const scrolledUp = scrollHeight - scrollTop - clientHeight > threshold;
+      isUserScrolledUpRef.current = scrolledUp;
+      setShowScrollButton(scrolledUp);
+    };
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [floatingInput]);
+
+  // During streaming: scroll to bottom after each message commit.
+  // No RAF — useEffect already fires after layout/paint so scrollHeight is accurate.
+  // RAF was the bug: on slow devices a frame takes >50ms, so the RAF got cancelled
+  // by the next messages update before it could fire → scroll never happened.
+  // Also: set isProgrammaticScrollRef around the scroll so the scroll event handler
+  // doesn't misread stale scrollTop and incorrectly mark isUserScrolledUpRef=true,
+  // which would silently stop all further auto-scrolling mid-stream.
+  useEffect(() => {
+    if (!isLoading || isUserScrolledUpRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    isProgrammaticScrollRef.current = true;
+    container.scrollTop = container.scrollHeight;
+    // Reset flag after any pending scroll events have fired (next task, not microtask)
+    const id = setTimeout(() => { isProgrammaticScrollRef.current = false; }, 0);
+    return () => { clearTimeout(id); isProgrammaticScrollRef.current = false; };
+  }, [messages, isLoading]);
+
+  // Post-stream scroll: after streaming ends, content like the inline ad renders.
+  // Do a final scroll-to-bottom so the ad is visible without manual scrolling.
+  const prevIsLoadingRef = useRef(false);
+  useEffect(() => {
+    if (prevIsLoadingRef.current && !isLoading && !isUserScrolledUpRef.current) {
+      // Small delay so the ad DOM has rendered
+      const timer = setTimeout(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   // Auto-focus textarea when chat opens
   useEffect(() => {
@@ -239,13 +358,6 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       return () => clearTimeout(timer);
     }
   }, [isOpen, isMobile]);
-
-  const handleLanguageChange = useCallback(
-    (newLang: string | null) => {
-      if (newLang) setPreferredLanguage(newLang);
-    },
-    [setPreferredLanguage],
-  );
 
   // Don't render if closed in sidebar mode
   if (!isOpen && variant === "sidebar") {
@@ -259,9 +371,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         <button
           onClick={() => onOpenChange(true)}
           disabled={!articleContent}
+          style={{ touchAction: "manipulation" }}
           className={cn(
-            "flex w-full items-center justify-between rounded-xl px-3 py-2.5 transition-all",
-            "bg-card hover:bg-muted/50",
+            "flex w-full items-center justify-between rounded-xl px-4 py-3 min-h-[48px] transition-all",
+            "bg-card hover:bg-muted/50 active:bg-muted/70 active:scale-[0.99]",
             "border border-border shadow-sm",
             "text-sm font-medium text-foreground",
             !articleContent && "cursor-not-allowed opacity-50",
@@ -281,8 +394,8 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
       className={cn(
         "overflow-hidden",
         variant === "sidebar"
-          ? "flex h-full w-full flex-col bg-card"
-          : "rounded-xl border border-border bg-card shadow-sm mb-6",
+          ? cn("flex h-full w-full flex-col", floatingInput && "relative")
+          : "rounded-xl border border-border bg-surface-1 shadow-sm mb-6",
       )}
     >
       {/* Header - only show for non-sidebar variant (sidebar moves controls to footer) */}
@@ -296,32 +409,13 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground active:bg-muted/70"
+                style={{ touchAction: "manipulation" }}
                 aria-label="Clear chat"
               >
-                <Trash className="size-3" />
+                <Trash className="size-4" />
               </button>
             )}
-
-            <Select
-              value={preferredLanguage}
-              onValueChange={handleLanguageChange}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="h-6 w-auto min-w-0 gap-1 rounded-md border-0 bg-muted/50 px-2 text-[11px] font-medium shadow-none hover:bg-muted/70 transition-colors">
-                <LanguageIcon className="size-2.5" />
-                <span className="truncate text-muted-foreground">
-                  {LANGUAGES.find((l) => l.code === preferredLanguage)?.name || "Lang"}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
             <button
               type="button"
@@ -329,7 +423,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               onPointerDown={(e) => {
                 e.stopPropagation();
               }}
-              className="ml-0.5 flex size-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground cursor-pointer select-none"
+              className="ml-0.5 flex size-9 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground active:bg-muted/70 cursor-pointer select-none"
               style={{ touchAction: 'manipulation' }}
               aria-label="Close chat"
             >
@@ -339,46 +433,50 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
         </div>
       )}
 
-
       {/* Messages - Mobile-first conversation container */}
-      <div className="relative flex-1 min-h-0 overflow-hidden">
+      <div className="relative flex-1 min-h-0 overflow-hidden bg-background">
         <div
+          ref={scrollContainerRef}
           className={cn(
-            "h-full overflow-y-auto",
+            "h-full overflow-y-auto scrollbar-hide bg-background",
             variant !== "sidebar" && "max-h-[300px] sm:max-h-[400px]",
+            floatingInput && "pb-[88px]",
           )}
         >
         {messages.length === 0 ? (
-          <div className="flex min-h-[200px] h-full flex-col px-3 py-4 sm:px-4 sm:py-6">
-            <div className="flex-1 flex flex-col items-center justify-center text-center mb-6">
-              <div className="relative mb-3">
-                <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
-                <Logo size="lg" className="text-primary/70 relative" />
+          <div className={cn(
+            "flex h-full flex-col px-3 sm:px-4",
+            isKeyboardOpen && isMobile ? "py-2" : "py-4 sm:py-6",
+            !(isMobile && variant === "sidebar") && "min-h-[200px]"
+          )}>
+            {/* Logo/branding - hidden when keyboard is open on mobile to maximize space */}
+            {!(isKeyboardOpen && isMobile) && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center mb-3 sm:mb-6">
+                <div className="relative mb-3">
+                  <div className="absolute inset-0 bg-primary/5 blur-2xl rounded-full scale-150" />
+                  <Logo size="lg" className="text-primary/70 relative" />
+                </div>
+                <p className="text-[13px] text-muted-foreground/60">
+                  Ask anything about this article
+                </p>
               </div>
-              <p className="text-[13px] text-muted-foreground/60">
-                Ask anything about this article
-              </p>
-            </div>
-            <ChatSuggestions
-              suggestions={DEFAULT_SUGGESTIONS}
-              onSuggestionClick={handleSuggestionClick}
-              variant="default"
-            />
+            )}
+            {isKeyboardOpen && isMobile && <div className="flex-1" />}
           </div>
         ) : (
-          <div className="px-3 py-1 sm:px-4 sm:py-3 space-y-4 overflow-x-hidden">
+          <div className="px-3 py-1 sm:px-4 sm:py-2 space-y-2 overflow-x-hidden">
             {messages.map((message, messageIndex) => {
               const messageText = getMessageText(message);
               const isLastMessage = messageIndex === messages.length - 1;
               const isAssistant = message.role === "assistant";
-              const showActions = isAssistant && messageText && !isLoading;
+              const showActions = isAssistant && messageText && !(isLoading && isLastMessage);
 
               return (
                 <div
                   key={message.id}
                   className={cn(
                     "group relative",
-                    message.role === "user" ? "mb-4" : "",
+                    isAssistant && !messageText && "!mt-0 h-0 overflow-hidden",
                   )}
                 >
                   {/* User message - Cursor-style with border and semi-transparent bg */}
@@ -392,7 +490,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           "rounded-[10px]",
                         )}
                       >
-                        <p className="text-[14px] leading-[20px] whitespace-pre-wrap break-words overflow-hidden">
+                        <p className="font-sans text-[15px] leading-[1.6] whitespace-pre-wrap break-words overflow-hidden">
                           {messageText}
                         </p>
                       </div>
@@ -400,7 +498,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   ) : (
                     /* Assistant message - Cursor-style clean content */
                     <div className="px-2 overflow-hidden">
-                      <div className="text-[14px] leading-[22.75px] overflow-x-auto">
+                      <div className="font-sans text-[17px] sm:text-[15px] leading-[1.65] overflow-x-auto">
                         <Response
                           dir={RTL_LANGUAGES.has(preferredLanguage) ? "rtl" : "ltr"}
                           lang={preferredLanguage}
@@ -410,37 +508,42 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                         </Response>
                       </div>
 
-                      {/* Action buttons - Cursor-style subtle actions */}
-                      {showActions && (
-                        <div className="flex items-center gap-0.5 mt-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      {/* Action buttons - Cursor-style subtle actions with 44px touch targets */}
+                      {isAssistant && messageText && (
+                        <div className={cn(
+                          "flex items-center gap-0 -ml-2 mt-1 transition-opacity",
+                          showActions ? "opacity-100 md:opacity-0 md:group-hover:opacity-100" : "opacity-0 pointer-events-none"
+                        )}>
                           <button
                             type="button"
                             onClick={() => handleCopyMessage(message.id, messageText)}
-                            className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                            className="flex size-9 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                            style={{ touchAction: "manipulation" }}
                             aria-label="Copy message"
                           >
                             {copiedMessageId === message.id ? (
-                              <Check className="size-3 text-green-500" />
+                              <Check className="size-4 text-green-500" />
                             ) : (
-                              <Copy className="size-3" />
+                              <Copy className="size-4" />
                             )}
                           </button>
                           {isLastMessage && (
                             <button
                               type="button"
                               onClick={handleReload}
-                              className="flex size-6 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors"
+                              className="flex size-9 items-center justify-center rounded-md text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                              style={{ touchAction: "manipulation" }}
                               aria-label="Regenerate response"
                             >
-                              <RotateCcw className="size-3" />
+                              <ReloadIcon className="size-4" />
                             </button>
                           )}
                         </div>
                       )}
 
-                      {/* Inline ad after last assistant message - elegant sponsored suggestion */}
+                      {/* Inline ad after last assistant message */}
                       {isLastMessage && !isLoading && ad && variant === "sidebar" && (
-                        <div className="mt-3">
+                        <div className="my-5">
                           <GravityAd
                             ad={ad}
                             variant="inline-chat"
@@ -454,33 +557,143 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 </div>
               );
             })}
-            {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+            {/* Loading indicator - show while waiting for first token */}
             {isLoading && messages.length > 0 && (
               messages[messages.length - 1]?.role === "user" ||
               (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
             ) && (
-              <div className="flex justify-start px-1">
+              <div className="px-2">
                 <ChatLoader />
               </div>
             )}
+            {/* Upgrade card when daily limit is reached */}
+            {isLimitReached && (
+              <div className="mx-1 my-4 rounded-xl border border-border/60 bg-muted/30 dark:bg-muted/20 p-4">
+                <p className="text-[15px] font-medium text-foreground">
+                  Want unlimited summaries?
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                  Pro readers get unlimited AI conversations, premium models, and ad-free reading.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <Link
+                    href="/pricing"
+                    className="inline-flex items-center justify-center rounded-lg bg-foreground px-3.5 py-1.5 text-[13px] font-medium text-background transition-colors hover:bg-foreground/90"
+                  >
+                    Try Pro free for 7 days
+                  </Link>
+                  <span className="text-[11px] text-muted-foreground/60">
+                    Cancel anytime
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} data-messages-end />
+            {floatingInput && <div className={headerAd && !headerAdDismissed ? "h-16" : "h-8"} aria-hidden="true" />}
           </div>
         )}
         </div>
-        {/* Fog effect at bottom */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent" />
+        {/* Fog effect at bottom (hidden when input floats — it has its own gradient) */}
+        {!floatingInput && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-background/0" />
+        )}
       </div>
 
-      {/* Input area - Cursor-style clean design */}
-      <div className="shrink-0" ref={inputContainerRef}>
-        <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
-          {/* Cursor-style input container with subtle border */}
+      {/* Input area - floating on mobile, static on desktop */}
+      <div
+        className={cn(
+          "bg-background",
+          floatingInput
+            ? "absolute bottom-0 inset-x-0 z-10"
+            : "shrink-0"
+        )}
+        ref={inputContainerRef}
+        data-vaul-no-drag
+      >
+        {/* Scroll to bottom button - shows on both mobile and desktop */}
+        {showScrollButton && messages.length > 0 && (
+          <div className="flex justify-center pb-2">
+            <button
+              type="button"
+              onClick={() => {
+                const container = scrollContainerRef.current;
+                if (container) {
+                  // Prevent race condition with scroll handler during smooth scroll
+                  isProgrammaticScrollRef.current = true;
+                  container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+                  // Re-enable scroll detection after animation completes (~400ms for smooth scroll)
+                  setTimeout(() => {
+                    isProgrammaticScrollRef.current = false;
+                  }, 400);
+                }
+                isUserScrolledUpRef.current = false;
+                setShowScrollButton(false);
+              }}
+              className="flex size-8 items-center justify-center transition-all active:scale-95"
+              style={{ touchAction: "manipulation" }}
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown className="size-4 text-foreground/70" />
+            </button>
+          </div>
+        )}
+        <div
+          className={cn(
+            "px-3 pt-1 sm:px-4 bg-background",
+            floatingInput ? "pb-3" : (isMobile && variant === "sidebar" ? "pb-5" : "pb-3 sm:pb-4")
+          )}
+          data-vaul-no-drag
+        >
+          {/* Suggestions above input - only on empty state */}
+          {messages.length === 0 && (
+            <div className="pb-2">
+              <ChatSuggestions
+                suggestions={DEFAULT_SUGGESTIONS}
+                onSuggestionClick={handleSuggestionClick}
+              />
+            </div>
+          )}
+          {/* Ad above input */}
+          {headerAd && variant === "sidebar" && !headerAdDismissed && (
+            <div className="mt-1 mb-1">
+              <GravityAd
+                ad={headerAd}
+                variant="chat-prompt"
+                onVisible={onHeaderAdVisible ?? (() => {})}
+                onClick={onHeaderAdClick}
+                onDismiss={() => {
+                  setHeaderAdDismissed(true);
+                  onHeaderAdDismiss?.();
+                }}
+              />
+            </div>
+          )}
+
+          {/* Quoted text block - shown when Ask AI is used from highlight toolbar */}
+          {quotedText && (
+            <div className="flex items-center gap-2.5 rounded-full border border-border/70 bg-muted/40 pl-3.5 pr-2 py-2 mb-2">
+              <CornerDownRight className="size-4 text-muted-foreground/60 shrink-0" />
+              <p className="flex-1 text-[13px] text-foreground/80 truncate">&ldquo;{quotedText}&rdquo;</p>
+              <button
+                type="button"
+                onClick={() => setQuotedText(null)}
+                className="shrink-0 flex size-7 items-center justify-center rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors"
+                style={{ touchAction: "manipulation" }}
+                aria-label="Dismiss quote"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Input container */}
           <div
-            className="relative rounded-[10px] border border-border/60 bg-background overflow-hidden"
+            className="relative rounded-2xl border border-border overflow-hidden bg-background"
+            style={{ touchAction: "pan-x pan-y" }}
           >
             {/* Slash Commands Menu - inside the container */}
             {isSlashMenuOpen && !isLoading && (
-              <div className="px-2 pt-2">
+              <div className="px-2 pt-2 bg-background">
                 <SlashCommands
                   isOpen={true}
                   onClose={handleSlashClose}
@@ -493,25 +706,51 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
               </div>
             )}
 
-            {/* Inner content wrapper with semi-transparent bg like Cursor */}
-            <div className="bg-muted/30 dark:bg-muted/20">
+            {/* Inner content wrapper */}
+            <div className="bg-background">
               <PromptInput
                 value={input}
                 onValueChange={setInput}
                 isLoading={isLoading}
-                onSubmit={isSlashMenuOpen ? undefined : handleSubmit}
+                onSubmit={isSlashMenuOpen ? undefined : handleSubmitWithQuote}
                 disabled={isLimitReached}
                 className="rounded-none border-0 shadow-none bg-transparent"
+                maxHeight={isMobile ? 120 : 240}
                 textareaRef={textareaRef}
               >
                 <PromptInputTextarea
                   placeholder={isLimitReached ? "Daily limit reached" : "Ask anything..."}
-                  className="text-[14px] min-h-[40px]"
+                  className="text-base sm:text-[14px] min-h-[40px] bg-transparent"
                   onKeyDown={handleTextareaKeyDown}
                 />
                 <PromptInputActions className="justify-between px-2 pb-2">
-                  {/* Left side - could add mode/model selector here later */}
-                  <div className="flex items-center gap-1" />
+                  {/* Left side - usage counter on mobile */}
+                  <div className="flex items-center gap-1 text-[11px] font-mono tracking-tight text-muted-foreground/50">
+                    {isMobile && !isPremium && showUsageCounter && usageData && (
+                      <>
+                        <span className={cn(usageData.remaining === 0 ? "text-destructive/60" : "")}>
+                          {usageData.limit - usageData.remaining}/{usageData.limit}
+                        </span>
+                        <Link
+                          href="/pricing"
+                          className={cn(
+                            "font-sans text-[11px] font-medium transition-colors",
+                            usageData.remaining === 0
+                              ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
+                              : "text-primary/70 hover:text-primary hover:underline"
+                          )}
+                        >
+                          Upgrade
+                        </Link>
+                      </>
+                    )}
+                    {isMobile && isPremium && usageData?.model && (
+                      <span className="flex items-center gap-1">
+                        <Zap className="size-2" />
+                        {usageData.model}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Right side - submit button */}
                   <div className="flex items-center">
@@ -532,7 +771,10 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                           type="button"
                           size="icon"
                           disabled={!input.trim() || isLimitReached || isSlashMenuOpen}
-                          onClick={() => handleSubmit()}
+                          onClick={() => {
+                            handleSubmitWithQuote();
+                            textareaRef.current?.focus();
+                          }}
                           className={cn(
                             "size-7 rounded-full transition-all duration-150",
                             input.trim() && !isLimitReached && !isSlashMenuOpen
@@ -550,66 +792,31 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
             </div>
           </div>
 
-          {/* Micro ad below input - subtle text ad (desktop sidebar only) */}
-          {microAd && variant === "sidebar" && (
-            <div className="pt-1 px-1">
-              <GravityAd
-                ad={microAd}
-                variant="micro"
-                onVisible={onMicroAdVisible ?? (() => {})}
-                onClick={onMicroAdClick}
-              />
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Footer - controls + usage counter (always show for sidebar) */}
-      {(variant === "sidebar" || isPremium || showUsageCounter) && (
+      {/* Footer - controls + usage counter (hidden on mobile to save space) */}
+      {!isMobile && (variant === "sidebar" || isPremium || showUsageCounter) && (
         <div
           className={cn(
-            "px-3 py-1.5 shrink-0",
+            "px-3 py-2 shrink-0 bg-background",
             variant === "sidebar"
-              ? "bg-muted/15 border-t border-border/20"
+              ? "border-t border-border/20"
               : "border-t border-border/50",
           )}
         >
-          <div className="flex items-center gap-2 text-[10px] font-mono tracking-tight text-muted-foreground/50">
+          <div className="flex items-center gap-2 text-[11px] font-mono tracking-tight text-muted-foreground/50">
             {/* Controls for sidebar variant */}
-            {variant === "sidebar" && (
+            {variant === "sidebar" && messages.length > 0 && (
               <div className="flex items-center gap-0.5 mr-auto">
-                {messages.length > 0 && (
-                  <button
-                    onClick={clearMessages}
-                    className="flex size-5 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
-                    aria-label="Clear chat"
-                    title="Clear chat"
-                  >
-                    <Trash className="size-2.5" />
-                  </button>
-                )}
-                <Select
-                  value={preferredLanguage}
-                  onValueChange={handleLanguageChange}
-                  disabled={isLoading}
+                <button
+                  onClick={clearMessages}
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                  aria-label="Clear chat"
+                  title="Clear chat"
                 >
-                  <SelectTrigger
-                    className="h-5 w-auto min-w-0 gap-0.5 rounded border-0 bg-transparent px-1 shadow-none text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-                    title="Response language"
-                  >
-                    <LanguageIcon className="size-2.5" />
-                    <span className="text-[10px] font-sans">
-                      {LANGUAGES.find((l) => l.code === preferredLanguage)?.code.toUpperCase() || "EN"}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Trash className="size-3" />
+                </button>
               </div>
             )}
 
@@ -630,7 +837,7 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                 <Link
                   href="/pricing"
                   className={cn(
-                    "font-sans text-[9px] font-medium transition-colors",
+                    "font-sans text-[11px] font-medium transition-colors",
                     usageData.remaining === 0
                       ? "rounded-sm bg-primary px-1.5 py-0.5 text-primary-foreground hover:bg-primary/90"
                       : "text-primary/70 hover:text-primary hover:underline"
@@ -639,6 +846,16 @@ export const ArticleChat = memo(forwardRef<ArticleChatHandle, ArticleChatProps>(
                   Upgrade
                 </Link>
               </>
+            )}
+
+            {/* Free user hint - saved history upsell */}
+            {!isPremiumProp && !showUsageCounter && messages.length > 0 && variant === "sidebar" && (
+              <Link
+                href="/pricing"
+                className="ml-auto font-sans text-[11px] text-muted-foreground/40 hover:text-primary/70 transition-colors"
+              >
+                Pro users get saved history
+              </Link>
             )}
           </div>
         </div>

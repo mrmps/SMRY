@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
+import { CornerDownRight } from "@/components/ui/icons";
 
 export interface Suggestion {
   text: string;
@@ -13,8 +13,8 @@ interface ChatSuggestionsProps {
   onSuggestionClick: (suggestion: string) => void;
   title?: string;
   className?: string;
-  /** Variant style - 'default' shows as pills, 'list' shows as a simple list */
-  variant?: "default" | "list";
+  /** Variant style - 'default' shows as clean list, 'pills' shows as rounded pill buttons */
+  variant?: "default" | "pills";
 }
 
 export function ChatSuggestions({
@@ -28,59 +28,62 @@ export function ChatSuggestions({
     return null;
   }
 
-  if (variant === "list") {
+  if (variant === "pills") {
     return (
-      <div className={cn("space-y-1.5", className)}>
+      <div className={cn("space-y-2", className)}>
         {title && (
-          <p className="text-xs font-medium text-muted-foreground/70 mb-2">{title}</p>
+          <p className="text-xs font-medium text-muted-foreground/70">{title}</p>
         )}
-        {suggestions.map((suggestion, index) => (
-          <button
-            key={suggestion.id || index}
-            type="button"
-            onClick={() => onSuggestionClick(suggestion.text)}
-            className={cn(
-              "group flex w-full items-center gap-2 text-left",
-              "text-sm text-muted-foreground",
-              "py-1 px-0",
-              "hover:text-foreground",
-              "transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
-            )}
-          >
-            <ArrowRight className="size-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all duration-200" />
-            <span>{suggestion.text}</span>
-          </button>
-        ))}
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={suggestion.id || index}
+              type="button"
+              onClick={() => onSuggestionClick(suggestion.text)}
+              className={cn(
+                "inline-flex items-center",
+                "text-[14px] text-foreground/80",
+                "min-h-[44px] px-4 py-2.5",
+                "bg-muted/40 hover:bg-muted/60 active:bg-muted/80",
+                "border border-border/50 hover:border-border/70",
+                "rounded-full",
+                "transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              )}
+              style={{ touchAction: "manipulation" }}
+            >
+              {suggestion.text}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
 
+  // Default: clean list style (matches Speechify-style suggestion UI)
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("flex flex-col", className)}>
       {title && (
-        <p className="text-xs font-medium text-muted-foreground/70">{title}</p>
+        <p className="text-xs font-medium text-muted-foreground/50 mb-2 px-1">{title}</p>
       )}
-      <div className="flex flex-wrap gap-2">
-        {suggestions.map((suggestion, index) => (
-          <button
-            key={suggestion.id || index}
-            type="button"
-            onClick={() => onSuggestionClick(suggestion.text)}
-            className={cn(
-              "inline-flex items-center",
-              "text-[13px] text-foreground/80",
-              "px-3 py-1.5",
-              "bg-muted/40 hover:bg-muted/60",
-              "border border-border/50 hover:border-border/70",
-              "rounded-full",
-              "transition-all duration-150",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-            )}
-          >
-            {suggestion.text}
-          </button>
-        ))}
-      </div>
+      {suggestions.map((suggestion, index) => (
+        <button
+          key={suggestion.id || index}
+          type="button"
+          onClick={() => onSuggestionClick(suggestion.text)}
+          className={cn(
+            "flex w-full items-center gap-3 text-left",
+            "min-h-[44px] py-2.5 px-1",
+            "text-[15px] text-foreground/60 hover:text-foreground/90",
+            "active:opacity-70 transition-colors",
+            "focus:outline-none"
+          )}
+          style={{ touchAction: "manipulation" }}
+        >
+          <CornerDownRight className="size-3.5 shrink-0 text-muted-foreground/40" />
+          <span>{suggestion.text}</span>
+        </button>
+      ))}
     </div>
   );
 }

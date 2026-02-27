@@ -1,0 +1,34 @@
+# SMRY (smry.ai)
+
+> Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension.
+
+SMRY is an AI-powered paywall bypass and article reader trusted by 300,000+ readers monthly. It fetches articles from 3 sources simultaneously (direct access, premium proxy, Wayback Machine) and works with 1,000+ publications including NYT, WSJ, Bloomberg, The Atlantic, Washington Post, and Medium.
+
+## Pages
+
+- [Homepage](https://smry.ai): Main page with article URL input
+- [Pricing](https://smry.ai/pricing): Free and Pro plan details
+- [Paywall Bypass Guide](https://smry.ai/guide): How paywall bypass works, soft vs hard paywalls
+- [Understanding Hard Paywalls](https://smry.ai/hard-paywalls): Why some paywalls cannot be bypassed
+- [Changelog](https://smry.ai/changelog): Recent features and improvements
+
+## Full Documentation
+
+- [llms-full.txt](https://smry.ai/llms-full.txt): Comprehensive documentation including features, pricing, FAQ, and supported publications
+
+## Quick Start
+
+Prepend `smry.ai/` to any article URL:
+
+    smry.ai/nytimes.com/2025/01/some-article
+
+Or paste a URL at https://smry.ai
+
+## Pricing
+
+- Free: 20 articles/day, limited AI summaries
+- Pro (~$3-5/month): Unlimited articles, unlimited AI summaries, ad-free, full history
+
+## Open Source
+
+Source code: https://github.com/mrmps/SMRY

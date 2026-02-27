@@ -1,4 +1,4 @@
-import { ArticleResponse, Source, ErrorResponse, ArticleAutoResponse, ArticleEnhancedResponse } from "@/types/api";
+import { ArticleResponse, Source, ErrorResponse, ArticleAutoResponse, ArticleEnhancedResponse, ArticleHtmlResponse } from "@/types/api";
 import { DebugContext } from "@/lib/errors/types";
 import { getApiUrl } from "./config";
 
@@ -91,6 +91,23 @@ export const articleAPI = {
 
     const data = await response.json();
     return data as ArticleEnhancedResponse;
+  },
+
+  /**
+   * Fetch the full HTML content for an article (lazy-loaded from cache)
+   * Only called when user switches to "html" view mode
+   */
+  async getArticleHtml(url: string, source: Source): Promise<ArticleHtmlResponse | null> {
+    const params = new URLSearchParams({ url, source });
+
+    const response = await fetch(getApiUrl(`/api/article/html?${params.toString()}`));
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data as ArticleHtmlResponse;
   },
 };
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { GripVertical, PanelLeftOpen, PanelLeftClose } from "lucide-react"
+import { GripVertical, PanelLeftOpen, PanelLeftClose } from "@/components/ui/icons"
 import * as ResizablePrimitive from "react-resizable-panels"
 
 import { cn } from "@/lib/utils"
@@ -44,7 +44,7 @@ const ResizableHandle = ({
 }: ResizableHandleProps) => (
   <ResizablePrimitive.PanelResizeHandle
     className={cn(
-      "group/handle relative flex w-px items-center justify-center bg-border/60 hover:bg-border",
+      "group/handle relative flex w-px items-center justify-center bg-neutral-500/15 hover:bg-neutral-500/30",
       "after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2",
       "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1",
       "data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full",

@@ -10,15 +10,15 @@ const emptySubscribe = () => () => {};
 /**
  * Hook to check if user has premium using Clerk Billing
  * Returns stable values to prevent hydration mismatches
- * 
+ *
  * Uses useSyncExternalStore to safely handle the SSR/client boundary
  * without causing cascading renders from useEffect + setState
- * 
+ *
  * @returns { isPremium: boolean, isLoading: boolean }
  */
 export function useIsPremium(): { isPremium: boolean, isLoading: boolean } {
   const { isLoaded, has } = useAuth();
-  
+
   // Returns true on client, false during SSR - prevents hydration mismatch
   const isClient = useSyncExternalStore(
     emptySubscribe,

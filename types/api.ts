@@ -47,10 +47,17 @@ export const ArticleSchema = z.object({
   publishedTime: z.string().nullable().optional(),
   image: z.string().nullable().optional(), // Preview image URL
   htmlContent: z.string().optional(), // Original page HTML (full DOM)
+  htmlContentPreview: z.string().optional(), // First 50KB of HTML (for bypass detection)
   // Bypass detection (cached with article for instant results on reload)
   bypassStatus: BypassStatusSchema.optional(),
 });
 export type Article = z.infer<typeof ArticleSchema>;
+
+// Response for /article/html endpoint (lazy-loaded HTML content)
+export const ArticleHtmlResponseSchema = z.object({
+  htmlContent: z.string(),
+});
+export type ArticleHtmlResponse = z.infer<typeof ArticleHtmlResponseSchema>;
 
 // API Request schema
 export const ArticleRequestSchema = z.object({
@@ -205,7 +212,7 @@ export const ContextRequestSchema = z.object({
 });
 export type ContextRequest = z.infer<typeof ContextRequestSchema>;
 
-// Ad data from Gravity
+// Ad data from Gravity / ZeroClick
 export const ContextAdSchema = z.object({
   adText: z.string(),
   title: z.string(),
@@ -215,6 +222,7 @@ export const ContextAdSchema = z.object({
   url: z.string().optional(),
   favicon: z.string().optional(),
   cta: z.string().optional(),
+  ad_provider: z.enum(["gravity", "zeroclick"]).default("gravity"),
 });
 export type ContextAd = z.infer<typeof ContextAdSchema>;
 

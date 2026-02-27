@@ -1,24 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
-import { Highlighter, X, StickyNote, Copy, Check } from "lucide-react";
+import { Copy, StickyNote, AiMagic, Check } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { HighlightPopover, HIGHLIGHT_COLORS } from "@/components/features/highlight-popover";
 import type { Highlight } from "@/lib/hooks/use-highlights";
 
-const HIGHLIGHT_COLORS = [
-  { name: "yellow", bg: "bg-yellow-200/70 dark:bg-yellow-500/30", border: "border-yellow-400" },
-  { name: "green", bg: "bg-green-200/70 dark:bg-green-500/30", border: "border-green-400" },
-  { name: "blue", bg: "bg-blue-200/70 dark:bg-blue-500/30", border: "border-blue-400" },
-  { name: "pink", bg: "bg-pink-200/70 dark:bg-pink-500/30", border: "border-pink-400" },
-] as const;
+// Re-export for consumers that import from here
+export { HIGHLIGHT_COLORS };
 
 interface HighlightToolbarProps {
   onHighlight: (highlight: Omit<Highlight, "id" | "createdAt">) => void;
   containerRef: React.RefObject<HTMLElement | null>;
+  onAskAI?: (text: string) => void;
 }
 
-export function HighlightToolbar({ onHighlight, containerRef }: HighlightToolbarProps) {
+export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: HighlightToolbarProps) {
   const [selection, setSelection] = useState<{
     text: string;
     range: Range;
@@ -28,218 +26,227 @@ export function HighlightToolbar({ onHighlight, containerRef }: HighlightToolbar
   const [note, setNote] = useState("");
   const [selectedColor, setSelectedColor] = useState<Highlight["color"]>("yellow");
   const [copied, setCopied] = useState(false);
-  const toolbarRef = useRef<HTMLDivElement>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
+  const lastSelectedTextRef = useRef("");
+  const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Handle text selection
+  // Debounced selection change handler
   const handleSelectionChange = useCallback(() => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) {
-      // Don't clear if we're in the note input
-      if (!showNoteInput) {
-        setSelection(null);
+    if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+
+    selectionTimerRef.current = setTimeout(() => {
+      selectionTimerRef.current = null;
+      const sel = window.getSelection();
+
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        if (!showNoteInput) {
+          setSelection(null);
+          lastSelectedTextRef.current = "";
+        }
+        return;
       }
-      return;
-    }
 
-    const range = sel.getRangeAt(0);
-    const text = sel.toString().trim();
+      const text = sel.toString().trim();
+      if (text === lastSelectedTextRef.current) return;
+      lastSelectedTextRef.current = text;
 
-    // Only show toolbar if selection is within the container
-    if (!containerRef.current?.contains(range.commonAncestorContainer)) {
-      setSelection(null);
-      return;
-    }
+      const range = sel.getRangeAt(0);
+      if (!containerRef.current?.contains(range.commonAncestorContainer)) {
+        setSelection(null);
+        return;
+      }
 
-    if (text.length < 3) {
-      setSelection(null);
-      return;
-    }
+      if (text.length < 3) {
+        setSelection(null);
+        return;
+      }
 
-    const rect = range.getBoundingClientRect();
-    setSelection({ text, range, rect });
-    setShowNoteInput(false);
-    setNote("");
+      setSelection({ text, range, rect: range.getBoundingClientRect() });
+      setShowNoteInput(false);
+      setNote("");
+    }, 50);
   }, [containerRef, showNoteInput]);
 
   useEffect(() => {
     document.addEventListener("selectionchange", handleSelectionChange);
-    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+      if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+    };
   }, [handleSelectionChange]);
 
-  // Focus note input when shown
   useEffect(() => {
-    if (showNoteInput && noteInputRef.current) {
-      noteInputRef.current.focus();
-    }
+    if (showNoteInput && noteInputRef.current) noteInputRef.current.focus();
   }, [showNoteInput]);
 
-  // Handle click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        setSelection(null);
-        setShowNoteInput(false);
-      }
-    };
+  // Highlight with a specific color (instant on color click)
+  const highlightWithColor = useCallback(
+    (color: Highlight["color"]) => {
+      if (!selection) return;
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+      const range = selection.range;
+      const contextBefore = range.startContainer.textContent?.slice(
+        Math.max(0, range.startOffset - 30),
+        range.startOffset
+      );
+      const contextAfter = range.endContainer.textContent?.slice(
+        range.endOffset,
+        range.endOffset + 30
+      );
 
-  const handleHighlight = useCallback(() => {
-    if (!selection) return;
+      onHighlight({
+        text: selection.text,
+        note: note.trim() || undefined,
+        color,
+        contextBefore,
+        contextAfter,
+      });
 
-    // Get context for better re-finding
-    const range = selection.range;
-    const contextBefore = range.startContainer.textContent?.slice(
-      Math.max(0, range.startOffset - 30),
-      range.startOffset
-    );
-    const contextAfter = range.endContainer.textContent?.slice(
-      range.endOffset,
-      range.endOffset + 30
-    );
-
-    onHighlight({
-      text: selection.text,
-      note: note.trim() || undefined,
-      color: selectedColor,
-      contextBefore,
-      contextAfter,
-    });
-
-    // Clear selection
-    window.getSelection()?.removeAllRanges();
-    setSelection(null);
-    setShowNoteInput(false);
-    setNote("");
-  }, [selection, note, selectedColor, onHighlight]);
+      window.getSelection()?.removeAllRanges();
+      setSelection(null);
+      setShowNoteInput(false);
+      setNote("");
+    },
+    [selection, note, onHighlight]
+  );
 
   const handleCopy = useCallback(async () => {
     if (!selection) return;
-    await navigator.clipboard.writeText(selection.text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(selection.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
   }, [selection]);
+
+  const handleAskAI = useCallback(() => {
+    if (!selection) return;
+    onAskAI?.(selection.text);
+    window.getSelection()?.removeAllRanges();
+    setSelection(null);
+  }, [selection, onAskAI]);
+
+  const handleSaveNote = useCallback(() => {
+    highlightWithColor(selectedColor);
+  }, [highlightWithColor, selectedColor]);
+
+  const handleClose = useCallback(() => {
+    setSelection(null);
+    setShowNoteInput(false);
+  }, []);
 
   if (!selection) return null;
 
-  // Position toolbar above selection
-  const toolbarStyle: React.CSSProperties = {
-    position: "fixed",
-    left: `${selection.rect.left + selection.rect.width / 2}px`,
-    top: `${selection.rect.top - 8}px`,
-    transform: "translate(-50%, -100%)",
-    zIndex: 9999,
-  };
+  return (
+    <HighlightPopover anchorRect={selection.rect} onClose={handleClose}>
+      <div className="bg-popover border border-border rounded-2xl shadow-2xl w-56 overflow-hidden">
+        {/* Color picker — click to highlight instantly, or select color when note input is open */}
+        <div className="flex items-center justify-center gap-2.5 px-4 pt-3.5 pb-2.5">
+          {HIGHLIGHT_COLORS.map((color) => (
+            <button
+              key={color.name}
+              onClick={() => {
+                const colorName = color.name as Highlight["color"];
+                if (showNoteInput) {
+                  // When note input is open, just select the color
+                  setSelectedColor(colorName);
+                } else {
+                  // Instant highlight on color click
+                  highlightWithColor(colorName);
+                }
+              }}
+              className={cn(
+                "size-8 rounded-full transition-transform hover:scale-110 active:scale-95",
+                color.solid,
+                showNoteInput && selectedColor === color.name && "ring-2 ring-foreground/40 ring-offset-2 ring-offset-popover"
+              )}
+              title={`Highlight ${color.name}`}
+            />
+          ))}
+        </div>
 
-  return createPortal(
-    <div
-      ref={toolbarRef}
-      style={toolbarStyle}
-      className="animate-in fade-in zoom-in-95 duration-150"
-    >
-      <div className="bg-popover border border-border rounded-lg shadow-lg p-1.5 flex items-center gap-1">
-        {/* Color options */}
-        {HIGHLIGHT_COLORS.map((color) => (
+        {/* Divider */}
+        <div className="mx-3 border-t border-border/50" />
+
+        {/* Actions */}
+        <div className="py-1.5">
           <button
-            key={color.name}
-            onClick={() => setSelectedColor(color.name as Highlight["color"])}
-            className={cn(
-              "size-6 rounded-full transition-all",
-              color.bg,
-              selectedColor === color.name && `ring-2 ring-offset-1 ${color.border}`
+            onClick={handleCopy}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-foreground/10 transition-colors"
+          >
+            {copied ? (
+              <Check className="size-5 text-green-400" />
+            ) : (
+              <Copy className="size-5 text-muted-foreground" />
             )}
-            title={`Highlight ${color.name}`}
-          />
-        ))}
+            <span>{copied ? "Copied" : "Copy"}</span>
+          </button>
 
-        <div className="w-px h-5 bg-border mx-1" />
+          <button
+            onClick={() => setShowNoteInput(!showNoteInput)}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-foreground/10 transition-colors",
+              showNoteInput && "bg-foreground/10"
+            )}
+          >
+            <StickyNote className="size-5 text-muted-foreground" />
+            <span>Add a Note</span>
+          </button>
 
-        {/* Highlight button */}
-        <button
-          onClick={handleHighlight}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted transition-colors text-sm font-medium"
-          title="Save highlight"
-        >
-          <Highlighter className="size-4" />
-          <span className="hidden sm:inline">Highlight</span>
-        </button>
-
-        {/* Add note button */}
-        <button
-          onClick={() => setShowNoteInput(!showNoteInput)}
-          className={cn(
-            "p-1.5 rounded-md hover:bg-muted transition-colors",
-            showNoteInput && "bg-muted"
+          {onAskAI && (
+            <button
+              onClick={handleAskAI}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-popover-foreground hover:bg-foreground/10 transition-colors"
+            >
+              <AiMagic className="size-5 text-muted-foreground" />
+              <span>Ask AI</span>
+            </button>
           )}
-          title="Add note"
-        >
-          <StickyNote className="size-4" />
-        </button>
-
-        {/* Copy button */}
-        <button
-          onClick={handleCopy}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors"
-          title="Copy text"
-        >
-          {copied ? (
-            <Check className="size-4 text-green-500" />
-          ) : (
-            <Copy className="size-4" />
-          )}
-        </button>
-
-        {/* Close button */}
-        <button
-          onClick={() => setSelection(null)}
-          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
-          title="Close"
-        >
-          <X className="size-4" />
-        </button>
+        </div>
       </div>
 
       {/* Note input */}
       {showNoteInput && (
-        <div className="mt-2 bg-popover border border-border rounded-lg shadow-lg p-2 w-64">
+        <div className="mt-2 bg-popover border border-border rounded-xl shadow-2xl p-3 w-56">
           <textarea
             ref={noteInputRef}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Add a note..."
-            className="w-full text-sm bg-transparent border-none outline-none resize-none"
+            placeholder="Write a note..."
+            style={{ fontSize: '16px' }}
+            className="w-full bg-foreground/5 border border-border rounded-lg px-2.5 py-2 text-popover-foreground placeholder:text-muted-foreground outline-none resize-none focus:border-foreground/20"
             rows={2}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                handleHighlight();
+                handleSaveNote();
               }
             }}
           />
-          <div className="flex justify-end mt-1">
+          <div className="flex justify-end mt-2">
             <button
-              onClick={handleHighlight}
-              className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+              onClick={handleSaveNote}
+              className="text-xs px-3 py-1.5 bg-foreground/15 text-popover-foreground rounded-lg hover:bg-foreground/25 transition-colors font-medium"
             >
-              Save
+              Save & Highlight
             </button>
           </div>
         </div>
       )}
-    </div>,
-    document.body
+    </HighlightPopover>
   );
 }
 
 // Get CSS class for highlight color
 export function getHighlightClass(color: Highlight["color"]): string {
-  const colors = {
+  const colors: Record<string, string> = {
     yellow: "bg-yellow-200/70 dark:bg-yellow-500/30",
     green: "bg-green-200/70 dark:bg-green-500/30",
     blue: "bg-blue-200/70 dark:bg-blue-500/30",
     pink: "bg-pink-200/70 dark:bg-pink-500/30",
+    orange: "bg-orange-200/70 dark:bg-orange-500/30",
   };
   return colors[color] || colors.yellow;
 }

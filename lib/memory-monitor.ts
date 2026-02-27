@@ -9,6 +9,7 @@
  */
 
 import { trackEvent } from "./posthog";
+import { getAllCacheStats } from "./memory-tracker";
 
 const INTERVAL_MS = 30_000; // 30 seconds
 const CRITICAL_RSS_MB = 1500; // 1.5GB - force restart above this
@@ -135,6 +136,7 @@ function logMemory(): void {
   }
 
   const snapshot = getMemorySnapshot();
+  const caches = getAllCacheStats();
 
   // Log as structured JSON for easy parsing
   console.log(
@@ -142,6 +144,7 @@ function logMemory(): void {
       level: "info",
       message: "memory_snapshot",
       ...snapshot,
+      ...caches,
     })
   );
 
@@ -168,6 +171,7 @@ function logMemory(): void {
         heap_used_mb: snapshot.heap_used_mb,
         external_mb: snapshot.external_mb,
         array_buffers_mb: snapshot.array_buffers_mb,
+        ...caches,
       })
     );
 
@@ -200,6 +204,7 @@ function logMemory(): void {
         external_mb: snapshot.external_mb,
         array_buffers_mb: snapshot.array_buffers_mb,
         action: "healthcheck_will_restart",
+        ...caches,
       })
     );
 

@@ -24,6 +24,7 @@ export const APP_ROUTES = [
   "/changelog",
   "/guide",
   "/auth",
+  "/chat",
 ];
 
 /**
@@ -97,12 +98,14 @@ function isAppRouteWithoutLocale(pathname: string): boolean {
  * @param pathname - The pathname from the request (e.g., "/https://foo.com/article")
  * @param search - The search/query string from the request (e.g., "?x=1&sidebar=open")
  * @param origin - The origin of the request (e.g., "https://smry.ai")
+ * @param locale - The user's locale (e.g., "en", "pt"). Defaults to "en".
  * @returns The redirect URL, or null if this is an app route
  */
 export function buildProxyRedirectUrl(
   pathname: string,
   search: string,
-  origin: string
+  origin: string,
+  locale: string = 'en'
 ): string | null {
   // Don't redirect app routes
   if (isAppRoute(pathname)) {
@@ -151,8 +154,11 @@ export function buildProxyRedirectUrl(
       : `https://${externalUrlRaw}`;
   }
 
-  // Build the redirect URL: /proxy?url=externalUrl&smryParam1=value1
-  const redirectUrl = new URL("/proxy", origin);
+  // Build the redirect URL: /{locale}/proxy?url=externalUrl&smryParam1=value1
+  // Note: We use /{locale}/proxy because the proxy page is at app/[locale]/proxy/page.tsx
+  // and the rewrite bypasses i18n middleware. Using the explicit locale segment ensures
+  // the page is found AND respects the user's language preference.
+  const redirectUrl = new URL(`/${locale}/proxy`, origin);
   redirectUrl.searchParams.set("url", normalizedExternalUrl);
 
   // Add SMRY params back

@@ -24,6 +24,10 @@ interface AuthBarProps {
   variant?: "default" | "compact";
   /** Show the "No Ads" or "Upgrade" link for non-premium users */
   showUpgrade?: boolean;
+  /** Show the golden "Get Pro" button for signed-out users */
+  showGetPro?: boolean;
+  /** Show the "Sign In" button for signed-out users */
+  showSignIn?: boolean;
   /** Custom class name */
   className?: string;
 }
@@ -40,6 +44,8 @@ interface AuthBarProps {
 export function AuthBar({
   variant = "default",
   showUpgrade = true,
+  showGetPro = true,
+  showSignIn = true,
   className
 }: AuthBarProps) {
   const isClient = useIsClient();
@@ -86,35 +92,43 @@ export function AuthBar({
 
       <SignedOut>
         {/* Sign In button - redirects to /auth/redirect for server-side premium check */}
-        <SignInButton
-          mode="modal"
-          fallbackRedirectUrl={authRedirectUrl}
-        >
-          <button
-            className={cn(
-              "font-medium transition-colors",
-              "text-muted-foreground hover:text-foreground",
-              isCompact ? "text-xs" : "text-sm"
-            )}
+        {showSignIn && (
+          <SignInButton
+            mode="modal"
+            fallbackRedirectUrl={authRedirectUrl}
           >
-            Sign In
-          </button>
-        </SignInButton>
+            <button
+              className={cn(
+                "font-medium transition-colors",
+                "text-muted-foreground hover:text-foreground",
+                isCompact ? "text-xs" : "text-sm"
+              )}
+            >
+              Sign In
+            </button>
+          </SignInButton>
+        )}
 
         {/* Get Pro link */}
-        <Link
-          href="/pricing"
-          onClick={() => storeReturnUrl()}
-          className={cn(
-            "font-medium rounded-full border transition-colors",
-            "border-border bg-background text-foreground hover:bg-accent",
-            isCompact
-              ? "px-2.5 py-0.5 text-xs"
-              : "px-3 py-1 text-sm"
-          )}
-        >
-          Get Pro
-        </Link>
+        {showGetPro && (
+          <Link
+            href="/pricing"
+            onClick={() => storeReturnUrl()}
+            className={cn(
+              "group relative font-semibold rounded-full overflow-hidden transition-all",
+              "bg-linear-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%]",
+              "text-black shadow-[0_0_12px_rgba(251,191,36,0.3)]",
+              "hover:shadow-[0_0_20px_rgba(251,191,36,0.5)] hover:scale-105",
+              "active:scale-95",
+              "animate-[shimmer_2.5s_ease-in-out_infinite]",
+              isCompact
+                ? "px-2.5 py-0.5 text-xs"
+                : "px-3.5 py-1.5 text-sm"
+            )}
+          >
+            Get Pro
+          </Link>
+        )}
       </SignedOut>
     </div>
   );

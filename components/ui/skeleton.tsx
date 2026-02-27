@@ -1,13 +1,22 @@
 import { cn } from "@/lib/utils";
 
-function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
+interface SkeletonProps extends React.ComponentProps<"div"> {
+  /** Delay before animation starts (for staggered effect) */
+  delay?: number;
+}
+
+function Skeleton({ className, delay = 0, style, ...props }: SkeletonProps) {
   return (
     <div
       className={cn(
-        "animate-skeleton rounded-sm bg-foreground/10 dark:bg-foreground/30 ring-1 ring-foreground/5 dark:ring-foreground/20",
+        "skeleton-shimmer rounded-sm",
         className,
       )}
       data-slot="skeleton"
+      style={{
+        ...style,
+        animationDelay: delay ? `${delay}ms` : undefined,
+      }}
       {...props}
     />
   );

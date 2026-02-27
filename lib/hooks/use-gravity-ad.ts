@@ -143,8 +143,13 @@ export interface UseGravityAdResult {
   fireDismiss: (ad?: ContextAd) => void;
 }
 
-// Ad refresh interval in milliseconds (45 seconds)
-const AD_REFRESH_INTERVAL_MS = 45_000;
+// Ad refresh interval — keep ads visible long enough for users to engage.
+// 90s balances revenue (impression value) with user experience (not too stale).
+const AD_REFRESH_INTERVAL_MS = 90_000;
+
+// Fetch counter for debugging — tracks total ad requests in this session
+let adFetchCount = 0;
+let lastFetchTime = 0;
 
 // SSR-safe store subscriptions for immediate client-side values
 const emptySubscribe = () => () => {};
@@ -207,6 +212,20 @@ export function useGravityAd({
   const query = useQuery({
     queryKey: ["context", url, sessionId, title, prompt],
     queryFn: async (): Promise<ContextAd[] | null> => {
+      adFetchCount++;
+      const now = Date.now();
+      const timeSinceLastFetch = lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 0;
+      lastFetchTime = now;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[useGravityAd] fetch #${adFetchCount}`,
+          `| gap: ${timeSinceLastFetch}s`,
+          `| url: ${url.slice(0, 60)}`,
+          `| title: ${(title || "").slice(0, 40)}`
+        );
+      }
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -257,22 +276,34 @@ export function useGravityAd({
 
       // Log the response status for debugging
       if (data.status !== "filled") {
-        console.log("[useGravityAd] No ad:", data.status, data.debug);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[useGravityAd] No ad:", data.status, data.debug);
+        }
       }
 
       // Only return ads if status is "filled"
       if (data.status !== "filled") return null;
       // Prefer the ads array, fall back to single ad
-      if (data.ads && data.ads.length > 0) return data.ads;
-      if (data.ad) return [data.ad];
-      return null;
+      const ads = (data.ads && data.ads.length > 0) ? data.ads : data.ad ? [data.ad] : null;
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[useGravityAd] fetch #${adFetchCount} result`,
+          `| status: ${data.status}`,
+          `| ads: ${ads?.length ?? 0}`,
+          `| brands: ${ads?.map(a => a.brandName).join(", ") ?? "none"}`
+        );
+      }
+      return ads;
     },
-    // Never cache - always fetch fresh ads
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
+    // Keep ads stable for the full refresh interval — prevents duplicate fetches
+    // from component remounts, drawer open/close, tab switches, etc.
+    // On full page reload: cache is wiped → always fetches fresh.
+    // Within same session: reuses cached ad until refetchInterval triggers rotation.
+    staleTime: AD_REFRESH_INTERVAL_MS,
+    gcTime: AD_REFRESH_INTERVAL_MS * 2,
+    refetchOnMount: true, // Respects staleTime — only refetches if data is stale
     refetchOnWindowFocus: false,
-    // Refresh ads every 45 seconds for users who stay on the page
+    // Rotate ads on schedule for users who stay on the page
     refetchInterval: AD_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false, // Don't refresh when tab is hidden
     // Only fetch when we have session info, article content, and user is not premium
@@ -308,9 +339,10 @@ export function useGravityAd({
       deviceType: deviceInfo?.deviceType,
       os: deviceInfo?.os,
       browser: deviceInfo?.browser,
+      adProvider: ad.ad_provider,
     });
 
-    // /api/px handles both Gravity forwarding (for impressions) and ClickHouse logging
+    // /api/px handles Gravity forwarding (for impressions) and ClickHouse logging
     const trackUrl = getApiUrl("/api/px");
 
     // Use sendBeacon for reliable non-blocking tracking
@@ -331,11 +363,21 @@ export function useGravityAd({
     const ad = targetAd ?? query.data?.[0];
     if (!ad) return;
 
-    // Single unified call to /api/px which:
-    // 1. Forwards impression to Gravity (for billing)
-    // 2. Logs to ClickHouse WITH the Gravity result
-    // This ensures ClickHouse accurately reflects if we got paid
+    // Send to /api/px for Gravity forwarding + ClickHouse logging
     sendTrackingEvent("impression", ad);
+
+    // For ZeroClick ads, track impressions via ZeroClick v2 API (client-side only)
+    // Docs: https://developer.zeroclick.ai/docs/api-reference/tracking/track-offer-impressions
+    if (ad.ad_provider === "zeroclick" && ad.impUrl) {
+      const match = ad.impUrl.match(/^zeroclick:\/\/offer\/([a-zA-Z0-9_-]+)$/);
+      if (match) {
+        fetch("https://zeroclick.dev/api/v2/impressions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [match[1]] }),
+        }).catch(() => {});
+      }
+    }
   }, [query.data, sendTrackingEvent]);
 
   const fireClick = useCallback((targetAd?: ContextAd) => {

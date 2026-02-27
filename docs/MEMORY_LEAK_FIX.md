@@ -1,116 +1,75 @@
 # Memory Leak Fixes
 
-## Issue (2026-01-05)
+## Fix History
 
-The service experienced memory exhaustion on Railway, with memory climbing from ~2GB to 5GB+ causing 502 errors across all endpoints.
+### Phase 1: JSDOM Migration (2026-01)
 
-## Root Causes Found
+**Problem:** JSDOM instances created full browser environments (`window` objects) that leaked when not closed. Memory climbed from ~2GB to 5GB+ on Railway.
 
-### 1. JSDOM instances not closed
+**Fix:** Migrated from JSDOM to LinkedOM (`parseHTML`). LinkedOM is a lightweight DOM parser that doesn't require explicit cleanup — no `window.close()` needed. This eliminated the largest class of memory leaks.
 
-JSDOM instances were being created but never properly closed. JSDOM creates a full browser-like environment with a `window` object that holds significant memory. Without calling `window.close()`, these objects remain in memory indefinitely.
+**Files changed:**
+- `server/routes/article.ts` — switched to `import { parseHTML } from "linkedom"`
+- `lib/api/diffbot.ts` — same migration
 
-**Affected Files:**
-- `app/api/article/route.ts` - `fetchArticleWithSmryFast()`
-- `lib/api/diffbot.ts` - `extractWithReadability()` and date/image extraction helpers
+### Phase 2: Singleton Rate Limiters (2026-01)
 
-### 2. Ratelimit instances created per-request
+**Problem:** `new Ratelimit()` created per-request instead of as module-level singletons.
 
-`new Ratelimit()` was being called inside the request handler, creating new instances on every request. These should be module-level singletons.
+**Fix:** Moved to module-level singleton instances.
 
-**Affected Files:**
-- `app/api/summary/route.ts`
+### Phase 3: Request Timeouts (2026-01)
 
-### 3. Missing request timeouts
+**Problem:** Fetch requests had no timeout, causing connections to hang indefinitely.
 
-Fetch requests had no timeout, causing requests to hang indefinitely when external servers were slow, leading to connection/memory pileup.
+**Fix:** Added timeouts to all fetch calls. See Phase 5 for current values.
 
-**Affected Files:**
-- `app/api/article/route.ts` - Added 30s timeout
-- `lib/api/diffbot.ts` - Added 45s timeout
+### Phase 4: MCP Client Pool (2026-02)
 
-### The Problem Pattern
+**Problem:** ZeroClick MCP signal clients created per-request leaked connections and memory.
 
-```typescript
-// BAD: JSDOM instance created but never closed
-const dom = new JSDOM(html, { url, virtualConsole });
-const doc = dom.window.document;
-// ... use document ...
-// Memory leak: dom.window is never closed
-```
+**Fix:** Session-based client pool with max 50 clients, 2-min TTL, 30s cleanup interval. Fire-and-forget close with orphan tracking. See `docs/mcp-client-memory-fix.md`.
 
-## The Fix
+### Phase 5: Race Pattern — Immediate Abort (2026-02)
 
-### Pattern 1: Simple try/finally
+**Problem:** Article race pattern (`/api/article/auto`) races 3 fetch sources. When smry-fast won (typically 1-3s), losing Diffbot calls continued for a 10s grace period + up to 45s timeout. During this time, Diffbot responses arrived and triggered heavy processing (JSON parse, DOM extraction, Readability) consuming 50-180MB RSS per call. With 10 concurrent users, this wasted 600MB-3.6GB.
 
-For straightforward JSDOM usage:
+**Root cause:** Abort signals only cancelled the HTTP `fetch()`. Once the response arrived, all downstream processing (body read, JSON.parse, parseHTML, Readability) ran to completion without checking if the race was already won.
 
-```typescript
-const dom = new JSDOM(html, { url, virtualConsole });
-try {
-  const doc = dom.window.document;
-  // ... use document ...
-  return result;
-} finally {
-  dom.window.close(); // Always release memory
-}
-```
+**Fixes:**
+1. **Immediate abort** — losers killed instantly on winner (was 10s grace period)
+2. **Abort checkpoints** — added `externalSignal?.aborted` checks at every heavy processing step in `diffbot.ts`:
+   - Before reading response body
+   - After JSON parse, before DOM extraction
+   - Before DOM parsing for date/image extraction
+   - Before Readability fallback
+3. **Reduced timeouts** — smry-fast: 12s (was 30s), Diffbot: 15s (was 45s)
+4. **Reference cleanup** — null out `results[]` entries after winner resolves
 
-### Pattern 2: Tracking multiple instances
+**Files changed:**
+- `server/routes/article.ts` — race logic, immediate abort, reference cleanup
+- `lib/api/diffbot.ts` — abort checkpoints, 15s timeout
 
-When multiple JSDOM instances may be created (e.g., in loops):
+See `docs/ARTICLE_RACE_OPTIMIZATION.md` for full architecture details.
 
-```typescript
-const jsdomInstances: JSDOM[] = [];
+## Current Memory Bounds
 
-try {
-  const dom = new JSDOM(html, { url, virtualConsole });
-  jsdomInstances.push(dom);
-
-  // May create more instances in loops
-  for (const selector of selectors) {
-    const cleanDom = new JSDOM(cleanHtml, { url, virtualConsole });
-    jsdomInstances.push(cleanDom);
-    // ...
-  }
-
-  return result;
-} finally {
-  // Close ALL instances
-  for (const instance of jsdomInstances) {
-    try {
-      instance.window.close();
-    } catch {
-      // Ignore cleanup errors
-    }
-  }
-}
-```
-
-### Pattern 3: Inline with null tracking
-
-For optional JSDOM usage:
-
-```typescript
-let tempDom: JSDOM | null = null;
-try {
-  tempDom = new JSDOM(html, { virtualConsole });
-  const doc = tempDom.window.document;
-  // ... extract data ...
-} catch {
-  // Handle errors
-} finally {
-  tempDom?.window.close();
-}
-```
+| Resource | Limit | Notes |
+|----------|-------|-------|
+| Auth cache | 1,000 entries | LRU |
+| ClickHouse buffer | 500 events | Flushed periodically |
+| Rate limiter | 10,000 IPs | Sliding window |
+| ZeroClick clients | 50 sessions | 2-min TTL |
+| Response body | 25MB | `lib/safe-fetch.ts` |
+| smry-fast timeout | 12s | Direct fetch |
+| Diffbot timeout | 15s | API call |
+| Race losers | 0s grace | Aborted immediately |
 
 ## Prevention
 
-1. **Always close JSDOM windows** - Every `new JSDOM()` should have a corresponding `window.close()` in a `finally` block
-2. **Track instances** - When creating multiple instances, track them in an array for cleanup
-3. **Use try/finally** - Ensures cleanup happens even when returning early or on exceptions
-
-## References
-
-- [JSDOM Memory Leaks - GitHub Issue](https://github.com/jsdom/jsdom/issues/1665)
-- [JSDOM window.close() documentation](https://github.com/jsdom/jsdom#closing-a-window)
+1. **Use LinkedOM** — not JSDOM. No cleanup needed, lower memory footprint
+2. **Check abort signals** — at every expensive processing step, not just at fetch
+3. **Singleton resources** — rate limiters, clients, caches at module level
+4. **Bounded caches** — always set max size and TTL
+5. **Kill losers immediately** — in race patterns, don't give grace periods
+6. **Monitor** — `/health` endpoint, `memory_spike_operation` logs, `cache_stats_snapshot` logs

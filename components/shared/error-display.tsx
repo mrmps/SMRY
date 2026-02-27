@@ -1,7 +1,7 @@
 "use client";
 
 import { AppError, getErrorMessage, getErrorTitle, isRetryableError } from "@/lib/errors";
-import { RefreshCw, ExternalLink, Archive, Globe, ArrowRight } from "lucide-react";
+import { RefreshCw, ExternalLink, Archive, Globe, ArrowRight } from "@/components/ui/icons";
 import { useState } from "react";
 
 interface ErrorDisplayProps {

@@ -21,17 +21,171 @@ export interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    dateKey: "entryTTS_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entryTTS_change1_text",
+        detailKey: "entryTTS_change1_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryTTS_change2_text",
+        detailKey: "entryTTS_change2_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryTTS_change3_text",
+        detailKey: "entryTTS_change3_detail",
+        premium: true,
+      },
+      {
+        type: "new",
+        textKey: "entryTTS_change4_text",
+        detailKey: "entryTTS_change4_detail",
+      },
+    ],
+  },
+  {
+    dateKey: "entryExport_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entryExport_change1_text",
+        detailKey: "entryExport_change1_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryExport_change2_text",
+        detailKey: "entryExport_change2_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryExport_change3_text",
+        detailKey: "entryExport_change3_detail",
+      },
+    ],
+  },
+  {
+    dateKey: "entryHighlights_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entryHighlights_change1_text",
+        detailKey: "entryHighlights_change1_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change2_text",
+        detailKey: "entryHighlights_change2_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change3_text",
+        detailKey: "entryHighlights_change3_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change4_text",
+        detailKey: "entryHighlights_change4_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryHighlights_change5_text",
+        detailKey: "entryHighlights_change5_detail",
+        premium: true,
+      },
+    ],
+  },
+  {
+    dateKey: "entrySidebar_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entrySidebar_change1_text",
+        detailKey: "entrySidebar_change1_detail",
+      },
+      {
+        type: "new",
+        textKey: "entrySidebar_change2_text",
+        detailKey: "entrySidebar_change2_detail",
+      },
+      {
+        type: "new",
+        textKey: "entrySidebar_change3_text",
+        detailKey: "entrySidebar_change3_detail",
+      },
+      {
+        type: "new",
+        textKey: "entrySidebar_change4_text",
+        detailKey: "entrySidebar_change4_detail",
+      },
+      {
+        type: "new",
+        textKey: "entrySidebar_change5_text",
+        detailKey: "entrySidebar_change5_detail",
+      },
+    ],
+  },
+  {
+    dateKey: "entryDesign_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entryDesign_change1_text",
+        detailKey: "entryDesign_change1_detail",
+      },
+      {
+        type: "new",
+        textKey: "entryDesign_change2_text",
+        detailKey: "entryDesign_change2_detail",
+      },
+      {
+        type: "improved",
+        textKey: "entryDesign_change3_text",
+        detailKey: "entryDesign_change3_detail",
+      },
+      {
+        type: "improved",
+        textKey: "entryDesign_change4_text",
+        detailKey: "entryDesign_change4_detail",
+      },
+    ],
+  },
+  {
+    dateKey: "entrySync_date",
+    changes: [
+      {
+        type: "new",
+        textKey: "entrySync_change1_text",
+        detailKey: "entrySync_change1_detail",
+        premium: true,
+      },
+      {
+        type: "new",
+        textKey: "entrySync_change2_text",
+        detailKey: "entrySync_change2_detail",
+        premium: true,
+      },
+      {
+        type: "improved",
+        textKey: "entrySync_change3_text",
+        detailKey: "entrySync_change3_detail",
+      },
+      {
+        type: "improved",
+        textKey: "entrySync_change4_text",
+        detailKey: "entrySync_change4_detail",
+      },
+    ],
+  },
+  {
     dateKey: "entry0_date",
     changes: [
       {
         type: "new",
         textKey: "entry0_change1_text",
         detailKey: "entry0_change1_detail",
-      },
-      {
-        type: "new",
-        textKey: "entry0_change2_text",
-        detailKey: "entry0_change2_detail",
       },
       {
         type: "improved",

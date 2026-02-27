@@ -87,50 +87,6 @@ export const chatRoutes = new Elysia({ prefix: "/api" }).post(
       // Track usage for headers - premium users get -1 (unlimited)
       let usageRemaining = isPremium ? -1 : DAILY_LIMIT;
 
-      if (!isPremium) {
-        const dailyResult = await dailyRateLimit.limit(rateLimitKey);
-        usageRemaining = dailyResult.remaining;
-
-        if (!dailyResult.success) {
-          const retryAfter = Math.ceil((dailyResult.reset - Date.now()) / 1000);
-          ctx.error("Daily rate limit exceeded", {
-            error_type: "RATE_LIMIT",
-            status_code: 429,
-          });
-          set.status = 429;
-          set.headers["Retry-After"] = String(retryAfter);
-          set.headers["X-Usage-Remaining"] = "0";
-          set.headers["X-Usage-Limit"] = String(DAILY_LIMIT);
-          set.headers["X-Is-Premium"] = "false";
-          return formatSummaryErrorResponse(
-            createSummaryError("DAILY_LIMIT_REACHED", {
-              retryAfter,
-              usage: DAILY_LIMIT - dailyResult.remaining,
-              limit: DAILY_LIMIT,
-            }),
-          );
-        }
-
-        const minuteResult = await minuteRateLimit.limit(rateLimitKey);
-        if (!minuteResult.success) {
-          const retryAfter = Math.ceil(
-            (minuteResult.reset - Date.now()) / 1000,
-          );
-          ctx.error("Minute rate limit exceeded", {
-            error_type: "RATE_LIMIT",
-            status_code: 429,
-          });
-          set.status = 429;
-          set.headers["Retry-After"] = String(retryAfter);
-          set.headers["X-Usage-Remaining"] = String(usageRemaining);
-          set.headers["X-Usage-Limit"] = String(DAILY_LIMIT);
-          set.headers["X-Is-Premium"] = "false";
-          return formatSummaryErrorResponse(
-            createSummaryError("RATE_LIMITED", { retryAfter }),
-          );
-        }
-      }
-
       // Select model based on premium status
       const model = isPremium ? PREMIUM_MODEL : FREE_MODEL;
       const modelName = model.split("/")[1]?.replace(/:free$/, "") || model;
@@ -159,7 +115,73 @@ Rules:
 - If the answer isn't in the article, say so honestly
 - ${languageInstruction}`;
 
-      // Convert UI messages to model messages format
+      if (!isPremium) {
+        // Run both rate limit checks + message conversion in parallel
+        const [dailyResult, minuteResult, modelMessages] = await Promise.all([
+          dailyRateLimit.limit(rateLimitKey),
+          minuteRateLimit.limit(rateLimitKey),
+          convertToModelMessages(messages as UIMessage[]),
+        ]);
+        usageRemaining = dailyResult.remaining;
+
+        if (!dailyResult.success) {
+          const retryAfter = Math.ceil((dailyResult.reset - Date.now()) / 1000);
+          ctx.error("Daily rate limit exceeded", {
+            error_type: "RATE_LIMIT",
+            status_code: 429,
+          });
+          set.status = 429;
+          set.headers["Retry-After"] = String(retryAfter);
+          set.headers["X-Usage-Remaining"] = "0";
+          set.headers["X-Usage-Limit"] = String(DAILY_LIMIT);
+          set.headers["X-Is-Premium"] = "false";
+          return formatSummaryErrorResponse(
+            createSummaryError("DAILY_LIMIT_REACHED", {
+              retryAfter,
+              usage: DAILY_LIMIT - dailyResult.remaining,
+              limit: DAILY_LIMIT,
+            }),
+          );
+        }
+
+        if (!minuteResult.success) {
+          const retryAfter = Math.ceil(
+            (minuteResult.reset - Date.now()) / 1000,
+          );
+          ctx.error("Minute rate limit exceeded", {
+            error_type: "RATE_LIMIT",
+            status_code: 429,
+          });
+          set.status = 429;
+          set.headers["Retry-After"] = String(retryAfter);
+          set.headers["X-Usage-Remaining"] = String(usageRemaining);
+          set.headers["X-Usage-Limit"] = String(DAILY_LIMIT);
+          set.headers["X-Is-Premium"] = "false";
+          return formatSummaryErrorResponse(
+            createSummaryError("RATE_LIMITED", { retryAfter }),
+          );
+        }
+
+        // Use AI SDK streamText for streaming response
+        const result = streamText({
+          model: openrouter(model),
+          system: systemPrompt,
+          messages: modelMessages,
+        });
+
+        ctx.merge({ message_count: messages.length, status_code: 200 });
+        ctx.success();
+
+        const response = result.toUIMessageStreamResponse();
+        const headers = new Headers(response.headers);
+        headers.set("X-Is-Premium", "false");
+        headers.set("X-Usage-Remaining", String(usageRemaining));
+        headers.set("X-Usage-Limit", String(DAILY_LIMIT));
+        headers.set("X-Model", modelName);
+        return new Response(response.body, { status: response.status, headers });
+      }
+
+      // Premium: no rate limiting, just convert messages
       const modelMessages = await convertToModelMessages(messages as UIMessage[]);
 
       // Use AI SDK streamText for streaming response

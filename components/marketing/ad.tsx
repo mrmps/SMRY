@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { XIcon } from "lucide-react";
+import { XIcon } from "@/components/ui/icons";
 
 interface AdProps {
   link: string;

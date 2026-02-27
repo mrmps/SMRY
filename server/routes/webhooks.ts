@@ -2,7 +2,12 @@
  * Webhook Routes
  *
  * Handles webhook events from:
- * - Clerk: checkout.session.completed → Send welcome email to new paid subscribers
+ * - Clerk billing: checkout.session.completed, subscription.created → Welcome email
+ * - Clerk lifecycle: subscriptionItem.freeTrialEnding → Trial ending soon email
+ *                    subscriptionItem.canceled → Founder feedback request email
+ *                    subscriptionItem.ended → Subscription ended email
+ *                    subscriptionItem.incomplete → Abandoned checkout email
+ * - Clerk auth: user.created → Signup notification to owner
  * - inbound.new: Incoming emails → Forward replies to Gmail
  */
 
@@ -15,6 +20,11 @@ import {
   sendCheckoutNotification,
   sendSignupNotification,
   sendBuyClickNotification,
+  sendTrialEndingSoonEmail,
+  sendCancellationFeedbackEmail,
+  sendSubscriptionEndedEmail,
+  sendAbandonedCheckoutEmail,
+  sendSubscriptionEventNotification,
 } from "../../lib/emails";
 import { env } from "../env";
 
@@ -29,7 +39,32 @@ interface ClerkBillingEvent {
     user_id: string;
     plan_id?: string;
     status?: string;
-    // Additional fields may be present
+    [key: string]: unknown;
+  };
+}
+
+interface ClerkSubscriptionItemEvent {
+  type:
+    | "subscriptionItem.freeTrialEnding"
+    | "subscriptionItem.canceled"
+    | "subscriptionItem.ended"
+    | "subscriptionItem.incomplete";
+  data: {
+    id: string;
+    // Clerk sends user references in multiple formats depending on event type:
+    // - billing events: user_id (user_xxx)
+    // - subscription item events: payer_id/payerId (cpayer_xxx → resolve to user_xxx)
+    // - some events nest it under subscription or payer object
+    user_id?: string;
+    payer_id?: string;
+    payerId?: string;
+    status?: string;
+    plan_id?: string;
+    planId?: string;
+    plan_period?: string;
+    is_free_trial?: boolean;
+    subscription?: { payer_id?: string; payerId?: string; [key: string]: unknown };
+    payer?: { id?: string; user_id?: string; [key: string]: unknown };
     [key: string]: unknown;
   };
 }
@@ -48,7 +83,11 @@ interface ClerkUserCreatedEvent {
   };
 }
 
-type ClerkWebhookEvent = ClerkBillingEvent | ClerkUserCreatedEvent | { type: string; data: Record<string, unknown> };
+type ClerkWebhookEvent =
+  | ClerkBillingEvent
+  | ClerkSubscriptionItemEvent
+  | ClerkUserCreatedEvent
+  | { type: string; data: Record<string, unknown> };
 
 /**
  * Verify Clerk webhook signature using svix
@@ -86,11 +125,41 @@ function verifyWebhook(
 }
 
 /**
- * Fetch user email and name from Clerk API
+ * Fetch user email and name from Clerk API.
+ * Accepts either a user_xxx ID or a cpayer_xxx payer ID.
+ * For payer IDs, lists users and finds the one with a matching subscription.
  */
-async function getUserDetails(userId: string): Promise<{ email: string; firstName?: string } | null> {
+async function getUserDetails(idOrPayerId: string): Promise<{ email: string; firstName?: string } | null> {
   try {
-    const user = await clerk.users.getUser(userId);
+    let user;
+
+    if (idOrPayerId.startsWith("cpayer_")) {
+      // Payer ID — can't call getUser directly. Use the commerce API to resolve.
+      // Clerk commerce payers map to users, so list subscriptions to find the user.
+      try {
+        // The Clerk Backend API exposes commerce payers — try to get the user from it
+        const response = await fetch(
+          `https://api.clerk.com/v1/commerce/payers/${idOrPayerId}`,
+          { headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` } }
+        );
+        if (response.ok) {
+          const payer = await response.json() as { user_id?: string; userId?: string };
+          const resolvedUserId = payer.user_id || payer.userId;
+          if (resolvedUserId) {
+            user = await clerk.users.getUser(resolvedUserId);
+          }
+        }
+      } catch (err) {
+        console.warn(`[webhooks] Failed to resolve payer ${idOrPayerId}:`, err);
+      }
+
+      if (!user) {
+        console.error(`[webhooks] Could not resolve payer ${idOrPayerId} to a user`);
+        return null;
+      }
+    } else {
+      user = await clerk.users.getUser(idOrPayerId);
+    }
 
     // Find primary email
     const primaryEmail = user.emailAddresses.find(
@@ -99,7 +168,7 @@ async function getUserDetails(userId: string): Promise<{ email: string; firstNam
     const email = primaryEmail?.emailAddress || user.emailAddresses[0]?.emailAddress;
 
     if (!email) {
-      console.error(`[webhooks] No email found for user ${userId}`);
+      console.error(`[webhooks] No email found for user ${idOrPayerId}`);
       return null;
     }
 
@@ -108,7 +177,7 @@ async function getUserDetails(userId: string): Promise<{ email: string; firstNam
       firstName: user.firstName || undefined,
     };
   } catch (error) {
-    console.error(`[webhooks] Failed to fetch user ${userId}:`, error);
+    console.error(`[webhooks] Failed to fetch user ${idOrPayerId}:`, error);
     return null;
   }
 }
@@ -159,6 +228,90 @@ async function handleBillingEvent(event: ClerkBillingEvent): Promise<void> {
   }
 }
 
+/**
+ * Handle subscription item lifecycle events (trial ending, canceled, ended, incomplete)
+ * These trigger user-facing emails + owner notifications
+ */
+async function handleSubscriptionItemEvent(event: ClerkSubscriptionItemEvent): Promise<void> {
+  const { data, type } = event;
+  // Clerk sends user references in different formats/locations depending on event type.
+  // Try all known locations: direct fields, nested subscription, nested payer object.
+  const payerId = data.payer_id || data.payerId
+    || data.subscription?.payer_id || data.subscription?.payerId
+    || data.payer?.id;
+
+  // payerId may be a cpayer_ reference — resolve to user_id if available, else use as-is
+  const userId = data.user_id || data.payer?.user_id || payerId;
+
+  if (!userId) {
+    console.error(`[webhooks] No user_id/payer_id in ${type} event`);
+    console.log("[webhooks] Event data keys:", Object.keys(data));
+    console.log("[webhooks] Event data:", JSON.stringify(data, null, 2));
+    return;
+  }
+
+  console.log(`[webhooks] Processing ${type} for user ${userId}`);
+
+  const userDetails = await getUserDetails(userId);
+  if (!userDetails) {
+    return;
+  }
+
+  console.log(`[webhooks] Subscription event ${type} for: ${userDetails.email}`);
+
+  // Send user-facing email based on event type
+  let emailResult: { success: boolean; error?: string };
+
+  switch (type) {
+    case "subscriptionItem.freeTrialEnding":
+      emailResult = await sendTrialEndingSoonEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    case "subscriptionItem.canceled":
+      emailResult = await sendCancellationFeedbackEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    case "subscriptionItem.ended":
+      emailResult = await sendSubscriptionEndedEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    case "subscriptionItem.incomplete":
+      emailResult = await sendAbandonedCheckoutEmail({
+        to: userDetails.email,
+        firstName: userDetails.firstName,
+      });
+      break;
+
+    default:
+      console.log(`[webhooks] No email template for ${type}`);
+      return;
+  }
+
+  if (!emailResult.success) {
+    console.error(`[webhooks] Failed to send ${type} email to ${userDetails.email}:`, emailResult.error);
+  }
+
+  // Also notify owner about the event
+  const notifyResult = await sendSubscriptionEventNotification({
+    eventType: type,
+    customerEmail: userDetails.email,
+    customerName: userDetails.firstName,
+  });
+
+  if (!notifyResult.success) {
+    console.error(`[webhooks] Failed to send ${type} notification:`, notifyResult.error);
+  }
+}
+
 // inbound.new webhook payload types
 interface InboundEmailWebhook {
   id: string;
@@ -201,6 +354,13 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhooks" })
         case "checkout.session.completed":
         case "subscription.created":
           await handleBillingEvent(event as ClerkBillingEvent);
+          break;
+
+        case "subscriptionItem.freeTrialEnding":
+        case "subscriptionItem.canceled":
+        case "subscriptionItem.ended":
+        case "subscriptionItem.incomplete":
+          await handleSubscriptionItemEvent(event as ClerkSubscriptionItemEvent);
           break;
 
         case "user.created": {

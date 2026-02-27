@@ -58,7 +58,36 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ["shiki"],
   serverExternalPackages: ["pino", "pino-pretty", "thread-stream", "undici", "node-fetch"],
+
+  // Security headers to prevent clickjacking and other attacks
+  async headers() {
+    return [
+      {
+        // Apply to all routes
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "SAMEORIGIN",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self'",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ];
+  },
 
   // Redirect auth routes to pricing page (sign-in modal is there)
   async redirects() {

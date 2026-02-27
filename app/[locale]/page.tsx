@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { HomeContent } from "@/components/features/home-content";
-import { setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { generateAlternates } from '@/lib/seo/alternates';
 
@@ -11,34 +11,32 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-export const metadata: Metadata = {
-  title: 'Bypass Paywalls & Read Full Articles Free - No Login | Smry',
-  description: 'Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account, no browser extension. Works on most major news sites.',
-  alternates: generateAlternates('/'),
-  openGraph: {
-    title: 'Bypass Paywalls & Read Full Articles Free | Smry',
-    description: 'Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account required.',
-    url: 'https://smry.ai',
-    images: [
-      {
-        url: 'https://smry.ai/opengraph-image',
-        width: 1200,
-        height: 630,
-        alt: 'smry - Read Anything, Summarize Everything',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Bypass Paywalls & Read Full Articles Free | Smry',
-    description: 'Paste any paywalled article link and get the full text plus an AI summary. Free to use, no account required.',
-    images: ['https://smry.ai/opengraph-image'],
-  },
-};
-
 type Props = {
   params: Promise<{ locale: string }>;
 };
+
+// Translated metadata for the homepage
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'metadata' });
+
+  return {
+    title: t('title'),
+    description: t('description'),
+    alternates: generateAlternates('/'),
+    openGraph: {
+      title: t('ogTitle'),
+      description: t('ogDescription'),
+      url: 'https://smry.ai',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('ogTitle'),
+      description: t('twitterDescription'),
+    },
+  };
+}
 
 export default async function Home({ params }: Props) {
   const { locale } = await params;

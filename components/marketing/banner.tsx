@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Newspaper } from "lucide-react";
+import { Newspaper } from "@/components/ui/icons";
 
 type OutletType = {
   name: string;
@@ -245,8 +245,7 @@ export function Banner() {
   );
 }
 const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
-  // Use DuckDuckGo's icon service - more reliable than Google's favicon service
-  const logoUrl = `https://icons.duckduckgo.com/ip3/${url}.ico`;
+  const logoUrl = `/api/favicon?domain=${url}`;
 
   return (
     <div className="flex flex-col items-center space-y-2">
@@ -257,7 +256,7 @@ const Outlet = ({ name, url, famousArticle: _famousArticle }: OutletType) => {
           src={logoUrl}
           width={48}
           height={48}
-          className="size-12 rounded-full"
+          className="size-12 rounded-full bg-white"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.style.display = "none";

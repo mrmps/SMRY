@@ -3,15 +3,15 @@
 import React, { useEffect, useCallback, useState, useRef, useSyncExternalStore } from "react";
 import { ResizableChatLayout } from "@/components/features/chat-sidebar";
 import { useChatThreads } from "@/lib/hooks/use-chat-threads";
+import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { cn } from "@/lib/utils";
-import { ArrowUp, Square, PanelLeft, Sparkles, Trash } from "lucide-react";
+import { ArrowUp, Square, PanelLeft, MessageSquare, Trash } from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 import { AuthBar } from "@/components/shared/auth-bar";
 import Link from "next/link";
 import Image from "next/image";
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
-import { getApiUrl } from "@/lib/api/config";
 import { useAuth } from "@clerk/nextjs";
 import {
   PromptInput,
@@ -34,9 +34,13 @@ function getMessageText(message: UIMessage): string {
     .join("");
 }
 
-// Bouncing dots loader (CSS in globals.css)
+// Pulsing dot indicator (CSS in globals.css)
 function ChatLoader() {
-  return <div className="chat-loader text-muted-foreground/60" />;
+  return (
+    <div className="flex items-center h-6 py-1">
+      <span className="thinking-pulse" />
+    </div>
+  );
 }
 
 interface ChatPageContentProps {
@@ -47,6 +51,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   const router = useRouter();
   const { getToken } = useAuth();
   const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
+  const { isPremium } = useIsPremium();
 
   const {
     threads,
@@ -54,7 +59,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     setActiveThreadId,
     createThread,
     updateThread,
-  } = useChatThreads();
+    deleteThread,
+    togglePin,
+    renameThread,
+    groupedThreads,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+    searchThreads,
+  } = useChatThreads(isPremium);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [input, setInput] = useState("");
@@ -89,7 +102,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   const transport = React.useMemo(
     () =>
       new DefaultChatTransport({
-        api: getApiUrl("/api/chat"),
+        api: "/api/chat", // Always use Route Handler for streaming (not rewrite proxy)
         fetch: customFetch,
         prepareSendMessagesRequest: ({ messages }) => ({
           body: {
@@ -104,14 +117,10 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
   // Get active thread for initial messages
   const activeThread = threads.find((t) => t.id === activeThreadId);
 
-  // Convert stored messages to UIMessage format
+  // Thread messages are already UIMessage-compatible (ThreadMessage format)
   const getInitialMessages = useCallback((): UIMessage[] => {
     if (!activeThread) return [];
-    return activeThread.messages.map((m, i) => ({
-      id: `${activeThread.id}-${i}`,
-      role: m.role as "user" | "assistant",
-      parts: [{ type: "text" as const, text: m.content }],
-    }));
+    return activeThread.messages as UIMessage[];
   }, [activeThread]);
 
   const {
@@ -127,21 +136,30 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     experimental_throttle: 50,
   });
 
-  // Sync messages back when they change
+  // Ref for threads so the sync effect can read latest state without depending on it
+  const threadsRef = useRef(threads);
+  useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  // Sync messages back when they change (save as ThreadMessage[] directly)
   useEffect(() => {
     if (activeThreadId && messages.length > 0) {
-      const simplifiedMessages = messages.map((m) => ({
+      const threadMessages = messages.map((m) => ({
+        id: m.id,
         role: m.role as "user" | "assistant",
-        content: getMessageText(m),
+        parts: m.parts
+          .filter((p) => isTextUIPart(p))
+          .map((p) => ({ type: "text" as const, text: (p as { text: string }).text })),
       }));
 
       // Generate title from first user message if needed
-      const firstUserMessage = messages.find((m) => m.role === "user");
-      const currentThread = threads.find((t) => t.id === activeThreadId);
+      const firstUserMessage = threadMessages.find((m) => m.role === "user");
+      const currentThread = threadsRef.current.find((t) => t.id === activeThreadId);
 
       if (currentThread) {
         const updates: Parameters<typeof updateThread>[1] = {
-          messages: simplifiedMessages,
+          messages: threadMessages,
         };
 
         // Auto-generate title from first message if still default
@@ -149,7 +167,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
           currentThread.title === "New Chat" &&
           firstUserMessage
         ) {
-          const text = getMessageText(firstUserMessage);
+          const text = firstUserMessage.parts[0]?.text || "";
           if (text) {
             updates.title = text.slice(0, 50) + (text.length > 50 ? "..." : "");
           }
@@ -158,7 +176,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         updateThread(activeThreadId, updates);
       }
     }
-  }, [messages, activeThreadId, updateThread, threads]);
+  }, [messages, activeThreadId, updateThread]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -176,18 +194,13 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
     router.push(`/chat/${newThread.id}`);
   }, [createThread, setMessages, router]);
 
-  // Handle thread selection
+  // Handle thread selection — thread messages are already UIMessage-compatible
   const handleSelectThread = useCallback(
     (id: string) => {
       setActiveThreadId(id);
       const thread = threads.find((t) => t.id === id);
       if (thread) {
-        const msgs: UIMessage[] = thread.messages.map((m, i) => ({
-          id: `${id}-${i}`,
-          role: m.role as "user" | "assistant",
-          parts: [{ type: "text" as const, text: m.content }],
-        }));
-        setMessages(msgs);
+        setMessages(thread.messages as UIMessage[]);
       }
       setInput("");
       router.push(`/chat/${id}`);
@@ -215,6 +228,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         parts: [{ type: "text", text: input.trim() }],
       });
       setInput("");
+      textareaRef.current?.focus();
     },
     [input, activeThreadId, createThread, setActiveThreadId, router, sendMessage]
   );
@@ -252,6 +266,15 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
         onNewChat={handleNewChat}
         onSelectThread={handleSelectThread}
         activeThreadId={activeThreadId}
+        threads={threads}
+        onDeleteThread={deleteThread}
+        onTogglePin={togglePin}
+        onRenameThread={renameThread}
+        groupedThreads={groupedThreads}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMore}
+        searchThreads={searchThreads}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -310,7 +333,7 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-center">
                   <div className="p-4 rounded-full bg-primary/10 mb-4">
-                    <Sparkles className="size-8 text-primary" />
+                    <MessageSquare className="size-8 text-primary" />
                   </div>
                   <h2 className="text-xl font-semibold text-foreground mb-2">
                     How can I help you today?
@@ -330,7 +353,8 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                         key={message.id}
                         className={cn(
                           "group relative",
-                          message.role === "user" ? "mb-4" : ""
+                          message.role === "user" ? "mb-4" : "",
+                          message.role === "assistant" && !messageText && "!mt-0 h-0 overflow-hidden"
                         )}
                       >
                         {message.role === "user" ? (
@@ -360,12 +384,12 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                       </div>
                     );
                   })}
-                  {/* Loading indicator - show when waiting for assistant response OR when assistant message has no content yet */}
+                  {/* Loading indicator - show when waiting for response or empty assistant message */}
                   {isLoading && messages.length > 0 && (
                     messages[messages.length - 1]?.role === "user" ||
                     (messages[messages.length - 1]?.role === "assistant" && !getMessageText(messages[messages.length - 1]))
                   ) && (
-                    <div className="flex justify-start px-2">
+                    <div className="px-2">
                       <ChatLoader />
                     </div>
                   )}
@@ -412,7 +436,10 @@ export function ChatPageContent({ threadId }: ChatPageContentProps) {
                               type="button"
                               size="icon"
                               disabled={!input.trim()}
-                              onClick={() => handleSubmit()}
+                              onClick={() => {
+                                handleSubmit();
+                                textareaRef.current?.focus();
+                              }}
                               className={cn(
                                 "size-7 rounded-full transition-all duration-150",
                                 input.trim()

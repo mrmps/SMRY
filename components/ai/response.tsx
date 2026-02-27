@@ -23,22 +23,19 @@ import {
   Streamdown,
   defaultRehypePlugins,
   type StreamdownProps,
-  type BundledTheme,
 } from 'streamdown';
+import { code } from '@streamdown/code';
 import { harden } from 'rehype-harden';
 
 export type ResponseProps = HTMLAttributes<HTMLDivElement> & {
   children: ComponentProps<typeof Streamdown>['children'];
-  /** Whether the content is currently streaming (enables animation) */
+  /** Whether the content is currently streaming */
   isAnimating?: boolean;
   /** Text direction for RTL language support */
   dir?: 'rtl' | 'ltr';
   /** Language code for the content */
   lang?: string;
 };
-
-// Shiki themes for light and dark mode
-const shikiThemes: [BundledTheme, BundledTheme] = ['github-light', 'github-dark'];
 
 // Security configuration for AI-generated content
 const hardenConfig = {
@@ -55,25 +52,26 @@ const hardenConfig = {
   allowDataImages: false,
 };
 
-// Cursor-style typography: 14px base, 18px h2 with 28px line height
+// Mobile-optimized typography: inherits parent font-size, uses relative line-heights
+// Desktop: 14px, Mobile: 16px (set in parent article-chat.tsx)
 const components: StreamdownProps['components'] = {
   p: ({ node: _node, children, className, ...props }) => (
-    <p className={cn('mb-2 last:mb-0 leading-[22.75px]', className)} {...props}>
+    <p className={cn('mb-2 last:mb-0 leading-[1.65]', className)} {...props}>
       {children}
     </p>
   ),
   ol: ({ node: _node, children, className, ...props }) => (
-    <ol className={cn('ml-5 mb-2 mt-2 list-outside list-decimal space-y-1', className)} {...props}>
+    <ol className={cn('ml-5 mb-2 mt-1.5 list-outside list-decimal space-y-1.5', className)} {...props}>
       {children}
     </ol>
   ),
   li: ({ node: _node, children, className, ...props }) => (
-    <li className={cn('leading-5 my-1', className)} {...props}>
+    <li className={cn('leading-[1.6] my-1', className)} {...props}>
       {children}
     </li>
   ),
   ul: ({ node: _node, children, className, ...props }) => (
-    <ul className={cn('ml-5 mb-2 mt-2 list-outside list-disc space-y-1', className)} {...props}>
+    <ul className={cn('ml-5 mb-2 mt-1.5 list-outside list-disc space-y-1.5', className)} {...props}>
       {children}
     </ul>
   ),
@@ -186,7 +184,7 @@ const components: StreamdownProps['components'] = {
   code: ({ node, className, ...props }) => {
     const inline = node?.position?.start.line === node?.position?.end.line;
     if (!inline) {
-      // Block code is handled by Shiki via shikiTheme prop
+      // Block code is handled by @streamdown/code plugin
       return <code className={className} {...props} />;
     }
     return (
@@ -210,6 +208,9 @@ export const Response = memo(
     lang,
     ...props
   }: ResponseProps) => {
+    // fadeIn (opacity-only) per Streamdown docs — GPU-accelerated, safe on mobile.
+    // blurIn uses filter:blur which is CPU-bound on mobile → avoid.
+
     return (
       <div
         className={cn(
@@ -225,7 +226,8 @@ export const Response = memo(
           isAnimating={isAnimating}
           mode={isAnimating ? 'streaming' : 'static'}
           parseIncompleteMarkdown={isAnimating}
-          shikiTheme={shikiThemes}
+          animated={isAnimating ? { animation: 'fadeIn', duration: 120, easing: 'ease-out', sep: 'word' } : false}
+          plugins={{ code }}
           rehypePlugins={[
             defaultRehypePlugins.raw,
             [harden, hardenConfig],
@@ -246,4 +248,3 @@ export const Response = memo(
 );
 
 Response.displayName = 'Response';
-

@@ -2,38 +2,43 @@ import { setRequestLocale } from 'next-intl/server';
 import { ProxyPageContent } from '@/components/pages/proxy-content';
 import { Metadata } from 'next';
 import { normalizeUrl } from '@/lib/validation/url';
+import { headers } from 'next/headers';
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ url?: string; sidebar?: string }>;
+  searchParams: Promise<{ url?: string }>;
 };
 
+// Base URL for OG images - always use production URL for social sharing
+const OG_BASE_URL = 'https://smry.ai';
+
+// Default metadata
 const DEFAULT_METADATA: Metadata = {
   title: 'Proxy | Smry',
   description: 'Read articles with Smry',
+  robots: { index: false, follow: true },
   openGraph: {
     type: 'website',
     title: 'Proxy | Smry',
     description: 'Read articles with Smry',
     siteName: 'smry.ai',
-    images: [
-      {
-        url: 'https://smry.ai/opengraph-image',
-        width: 1200,
-        height: 630,
-        alt: 'smry - Read Anything, Summarize Everything',
-      },
-    ],
+    images: [{
+      url: `${OG_BASE_URL}/opengraph-image`,
+      width: 1200,
+      height: 630,
+      alt: 'smry - Read Anything, Summarize Everything',
+    }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Proxy | Smry',
     description: 'Read articles with Smry',
-    images: ['https://smry.ai/opengraph-image'],
+    images: [`${OG_BASE_URL}/opengraph-image`],
   },
 };
 
 // Generate dynamic metadata for OG tags
+// OG images are generated via /api/og route handler (supports query params)
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { url: rawUrl } = await searchParams;
 
@@ -49,189 +54,111 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     return DEFAULT_METADATA;
   }
 
-  // Get the API URL - only fetch if we have a proper API URL configured
-  const apiBaseUrl = process.env.NEXT_PUBLIC_URL;
+  // Build URLs
+  const canonicalUrl = `${OG_BASE_URL}/${normalizedUrl}`;
+  const ogImageUrl = `${OG_BASE_URL}/api/og?url=${encodeURIComponent(normalizedUrl)}`;
 
-  // Build the canonical URL (the clean shareable format)
-  const canonicalUrl = `${process.env.NEXT_PUBLIC_URL || 'https://smry.ai'}/${normalizedUrl}`;
+  // Get the API URL for fetching article data
+  const apiBaseUrl = process.env.NEXT_PUBLIC_URL || OG_BASE_URL;
 
-  // If no API URL is configured, return basic metadata with URL info
-  if (!apiBaseUrl) {
-    const hostname = new URL(normalizedUrl).hostname.replace('www.', '');
-    return {
-      title: `Article from ${hostname} | Smry`,
-      description: `Read this article from ${hostname} with Smry`,
-      openGraph: {
-        type: 'article',
-        title: `Article from ${hostname}`,
-        description: `Read this article from ${hostname} with Smry`,
-        siteName: 'smry.ai',
-        url: canonicalUrl,
-        images: [
-          {
-            url: 'https://smry.ai/opengraph-image',
-            width: 1200,
-            height: 630,
-            alt: 'smry - Read Anything, Summarize Everything',
-          },
-        ],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: `Article from ${hostname}`,
-        description: `Read this article from ${hostname} with Smry`,
-        images: ['https://smry.ai/opengraph-image'],
-      },
-    };
-  }
+  // Extract hostname for fallback
+  const hostname = new URL(normalizedUrl).hostname.replace('www.', '');
 
+  // Use lightweight metadata endpoint (~200 bytes, Redis-only, no concurrency slot)
+  // instead of /api/article/auto (2-8MB, uses concurrency slot).
+  // The user's page component already fetches the full article — no need to do it here.
   try {
-    // Fetch article data for metadata with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const metaStart = Date.now();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-    const response = await fetch(
-      `${apiBaseUrl}/api/article/auto?url=${encodeURIComponent(normalizedUrl)}`,
-      {
-        signal: controller.signal,
-        next: { revalidate: 3600 }, // Cache for 1 hour
-      }
+    const metaResponse = await fetch(
+      `${apiBaseUrl}/api/article/meta?url=${encodeURIComponent(normalizedUrl)}`,
+      { signal: controller.signal, cache: 'no-store' }
     );
-
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch article');
-    }
+    if (metaResponse.ok) {
+      const data = await metaResponse.json();
+      const meta = data.meta;
+      console.log(`[metadata] meta hit hostname=${hostname} source=${data.source} duration=${Date.now() - metaStart}ms`);
 
-    const data = await response.json();
-    const article = data.article;
+      const title = meta.title ? `${meta.title} | Smry` : `Article from ${hostname} | Smry`;
+      const description = `Read this article from ${meta.siteName || hostname} with Smry`;
 
-    if (!article) {
-      return DEFAULT_METADATA;
-    }
+      // Include title and image in OG image URL for faster rendering (avoids extra API call in OG route)
+      const ogImageWithTitle = `${OG_BASE_URL}/api/og?url=${encodeURIComponent(normalizedUrl)}&title=${encodeURIComponent(meta.title || '')}${meta.image ? `&image=${encodeURIComponent(meta.image)}` : ''}`;
 
-    const title = article.title ? `${article.title} | Smry` : 'Proxy | Smry';
-    const description = article.textContent
-      ? article.textContent.slice(0, 200).trim() + '...'
-      : 'Read articles with Smry';
-
-    const metadata: Metadata = {
-      title,
-      description,
-      openGraph: {
-        type: 'article',
-        title: article.title || 'Smry',
+      return {
+        title,
         description,
-        siteName: 'smry.ai',
-        url: canonicalUrl,
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: article.title || 'Smry',
-        description,
-      },
-    };
-
-    // Add OG image - use article image if available, otherwise use default
-    const defaultImage = {
-      url: 'https://smry.ai/opengraph-image',
-      width: 1200,
-      height: 630,
-      alt: 'smry - Read Anything, Summarize Everything',
-    };
-
-    if (article.image) {
-      try {
-        // Ensure image URL is absolute
-        let imageUrl: string;
-        if (article.image.startsWith('http://') || article.image.startsWith('https://')) {
-          imageUrl = article.image;
-        } else if (article.image.startsWith('//')) {
-          // Protocol-relative URL
-          imageUrl = `https:${article.image}`;
-        } else if (article.image.startsWith('/')) {
-          // Absolute path - resolve relative to article URL
-          imageUrl = new URL(article.image, normalizedUrl).toString();
-        } else {
-          // Relative path - resolve relative to article URL
-          imageUrl = new URL(article.image, normalizedUrl).toString();
-        }
-
-        // Validate the resulting URL is valid
-        new URL(imageUrl);
-
-        metadata.openGraph = {
-          ...metadata.openGraph,
-          images: [{ url: imageUrl }],
-        };
-        metadata.twitter = {
-          ...metadata.twitter,
-          images: [{ url: imageUrl }],
-        };
-      } catch {
-        // If image URL is invalid, fall back to default
-        metadata.openGraph = {
-          ...metadata.openGraph,
-          images: [defaultImage],
-        };
-        metadata.twitter = {
-          ...metadata.twitter,
-          images: ['https://smry.ai/opengraph-image'],
-        };
-      }
-    } else {
-      // No article image - use default OG image
-      metadata.openGraph = {
-        ...metadata.openGraph,
-        images: [defaultImage],
-      };
-      metadata.twitter = {
-        ...metadata.twitter,
-        images: ['https://smry.ai/opengraph-image'],
-      };
-    }
-
-    return metadata;
-  } catch {
-    // If fetch fails, return basic metadata without logging error
-    // This is expected in development when API URL is not set
-    const hostname = new URL(normalizedUrl).hostname.replace('www.', '');
-    return {
-      title: `Article from ${hostname} | Smry`,
-      description: `Read this article from ${hostname} with Smry`,
-      openGraph: {
-        type: 'article',
-        title: `Article from ${hostname} | Smry`,
-        description: `Read this article from ${hostname} with Smry`,
-        siteName: 'smry.ai',
-        url: canonicalUrl,
-        images: [
-          {
-            url: 'https://smry.ai/opengraph-image',
+        robots: { index: false, follow: true },
+        openGraph: {
+          type: 'article',
+          title: meta.title || `Article from ${hostname}`,
+          description,
+          siteName: 'smry.ai',
+          url: canonicalUrl,
+          images: [{
+            url: ogImageWithTitle,
             width: 1200,
             height: 630,
-            alt: 'smry - Read Anything, Summarize Everything',
-          },
-        ],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: `Article from ${hostname} | Smry`,
-        description: `Read this article from ${hostname} with Smry`,
-        images: ['https://smry.ai/opengraph-image'],
-      },
-    };
+            alt: meta.title || `Article from ${hostname} on Smry`,
+          }],
+        },
+        twitter: {
+          card: 'summary_large_image',
+          title: meta.title || `Article from ${hostname}`,
+          description,
+          images: [ogImageWithTitle],
+        },
+      };
+    }
+    console.log(`[metadata] meta miss hostname=${hostname} status=${metaResponse.status} duration=${Date.now() - metaStart}ms`);
+  } catch (err) {
+    console.log(`[metadata] meta error hostname=${hostname} error=${err instanceof Error ? err.message : String(err)}`);
   }
+
+  // No cached metadata (article never fetched) or meta endpoint failed — use hostname defaults.
+  // Do NOT fall back to /api/article/auto — the page component already fetches the article.
+  console.log(`[metadata] using hostname fallback hostname=${hostname}`);
+  return {
+    title: `Article from ${hostname} | Smry`,
+    description: `Read this article from ${hostname} with Smry`,
+    robots: { index: false, follow: true },
+    openGraph: {
+      type: 'article',
+      title: `Article from ${hostname}`,
+      description: `Read this article from ${hostname} with Smry`,
+      siteName: 'smry.ai',
+      url: canonicalUrl,
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: `Article from ${hostname} on Smry`,
+      }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Article from ${hostname}`,
+      description: `Read this article from ${hostname} with Smry`,
+      images: [ogImageUrl],
+    },
+  };
 }
 
 export default async function ProxyPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { sidebar } = await searchParams;
+  const { url: searchParamUrl } = await searchParams;
   setRequestLocale(locale);
 
-  // Parse sidebar param on server to prevent layout shift
-  const initialSidebarOpen = sidebar === 'true';
+  // Get article URL from header (set by proxy middleware for URL-as-path routing)
+  // or fall back to searchParams (for direct /proxy?url=... access)
+  const headersList = await headers();
+  const headerUrl = headersList.get('x-proxy-article-url');
+  const articleUrl = (headerUrl ? decodeURIComponent(headerUrl) : null) || searchParamUrl || null;
 
-  return <ProxyPageContent initialSidebarOpen={initialSidebarOpen} />;
+
+  return <ProxyPageContent articleUrl={articleUrl} />;
 }

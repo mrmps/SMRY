@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Trash2, StickyNote, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, StickyNote, ChevronDown, ChevronUp } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ExportHighlights } from "./export-highlights";
@@ -128,7 +128,7 @@ export function HighlightsPanel({
                   ) : null}
 
                   {/* Timestamp */}
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {new Date(hl.createdAt).toLocaleDateString()}
                   </p>
                 </div>

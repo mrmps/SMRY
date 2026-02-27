@@ -56,7 +56,7 @@ async function detectBypass(
       source,
       textContent: article.textContent,
       articleLength: article.length,
-      htmlContent: article.htmlContent,
+      htmlContent: article.htmlContentPreview || article.htmlContent,
     }),
     credentials: "include",
   });

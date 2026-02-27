@@ -1,0 +1,67 @@
+/**
+ * TTS JSON Proxy
+ *
+ * Next.js Route Handler that proxies TTS requests to the Elysia server.
+ * Returns JSON: { audioBase64, alignment, durationMs }
+ * - 300s timeout (TTS synthesis can take time for long articles, up to 200K chars)
+ * - Auth forwarding (Bearer token + session cookie)
+ * - Client IP forwarding for rate limiting
+ */
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3001";
+
+export async function POST(req: Request) {
+  const body = await req.text();
+
+  const headers = new Headers();
+  headers.set("Content-Type", "application/json");
+
+  // Forward auth
+  const auth = req.headers.get("Authorization");
+  if (auth) headers.set("Authorization", auth);
+
+  const cookie = req.headers.get("cookie");
+  if (cookie) headers.set("cookie", cookie);
+
+  // Forward client IP for rate limiting
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) headers.set("x-forwarded-for", forwarded);
+
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) headers.set("x-real-ip", realIp);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/tts`, {
+      method: "POST",
+      headers,
+      body,
+      // 300s timeout — long articles (up to 200K chars) take time to synthesize
+      signal: AbortSignal.timeout(300_000),
+    });
+  } catch (err) {
+    if ((err as Error).name === "TimeoutError") {
+      return new Response(
+        JSON.stringify({ error: "TTS synthesis timed out. Try a shorter article." }),
+        { status: 504, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return new Response(
+      JSON.stringify({ error: "TTS service unavailable" }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Forward response with usage headers
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      "Content-Type": "application/json",
+      "X-TTS-Usage-Count": response.headers.get("X-TTS-Usage-Count") || "0",
+      "X-TTS-Usage-Limit": response.headers.get("X-TTS-Usage-Limit") || "3",
+    },
+  });
+}

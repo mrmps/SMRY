@@ -47,7 +47,8 @@ export async function safeText(
     return "";
   }
 
-  const chunks: Uint8Array[] = [];
+  const decoder = new TextDecoder();
+  let result = "";
   let totalSize = 0;
 
   try {
@@ -61,16 +62,17 @@ export async function safeText(
         throw new ResponseTooLargeError(safeUrl, maxSize);
       }
 
-      chunks.push(value);
+      result += decoder.decode(value, { stream: true });
     }
   } catch (error) {
     if (error instanceof ResponseTooLargeError) throw error;
     throw error;
   }
 
-  const decoder = new TextDecoder();
-  return chunks.map((chunk) => decoder.decode(chunk, { stream: true })).join("") +
-    decoder.decode();
+  // Flush any remaining bytes in the decoder
+  result += decoder.decode();
+
+  return result;
 }
 
 /**

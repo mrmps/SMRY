@@ -1,26 +1,19 @@
 "use client";
 
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { usePathname, Link } from "@/i18n/navigation";
-import { routing, type Locale } from "@/i18n/routing";
-import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import {
   Search,
   MessageCircle,
   ChevronRight,
   History,
   CreditCard,
-  Sun,
-  Moon,
-  Monitor,
-  Check,
   Crown,
   BookOpen,
   ArrowUpRight,
   Bookmark,
-} from "lucide-react";
-import { LanguageIcon } from "@/components/ui/custom-icons";
+} from "@/components/ui/icons";
 import type { DragEvent, MouseEvent } from "react";
 import {
   SignedIn,
@@ -35,7 +28,6 @@ import {
   PopoverTrigger,
   PopoverPopup,
 } from "@/components/ui/popover";
-import { stripLocaleFromPathname } from "@/lib/i18n-pathname";
 import { cn } from "@/lib/utils";
 import { getRecentChanges } from "@/lib/changelog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -87,69 +79,6 @@ function useIsClient() {
     emptySubscribe,
     () => true,
     () => false
-  );
-}
-
-const languageNames: Record<Locale, string> = {
-  en: "English",
-  pt: "Português",
-  de: "Deutsch",
-  zh: "中文",
-  es: "Español",
-  nl: "Nederlands",
-};
-
-// ============================================================================
-// Language Popover (separate button)
-// ============================================================================
-
-function LanguagePopover() {
-  const locale = useLocale() as Locale;
-  const rawPathname = usePathname();
-
-  // Normalize pathname because next-intl occasionally leaves the previous locale prefix in place
-  const pathname = stripLocaleFromPathname(rawPathname);
-
-  return (
-    <Popover>
-      <PopoverTrigger
-        className={cn(
-          "flex items-center justify-center size-8 rounded-full",
-          "bg-muted border border-border",
-          "text-muted-foreground hover:text-foreground hover:bg-accent",
-          "shadow-sm transition-all duration-150"
-        )}
-        aria-label="Language"
-      >
-        <LanguageIcon className="size-3.5" />
-      </PopoverTrigger>
-      <PopoverPopup
-        side="top"
-        align="end"
-        sideOffset={8}
-        className="w-44 rounded-lg bg-popover border-border"
-        contentClassName="p-1"
-      >
-        <div className="space-y-0.5">
-          {routing.locales.map((loc) => (
-            <Link
-              key={loc}
-              href={pathname}
-              locale={loc}
-              className={cn(
-                "flex items-center justify-between rounded px-2.5 py-1.5 text-[13px] transition-colors",
-                locale === loc
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <span>{languageNames[loc]}</span>
-              {locale === loc && <Check className="size-3.5 text-muted-foreground" />}
-            </Link>
-          ))}
-        </div>
-      </PopoverPopup>
-    </Popover>
   );
 }
 
@@ -262,93 +191,6 @@ function WhatsNewItem({
   );
 }
 
-function ThemeSubmenu({ inline = false }: { inline?: boolean }) {
-  const { theme, setTheme } = useTheme();
-  const t = useTranslations("nav");
-
-  const themes = [
-    { id: "light", icon: Sun, label: t("light") },
-    { id: "dark", icon: Moon, label: t("dark") },
-    { id: "system", icon: Monitor, label: t("system") },
-  ];
-
-  // Get current theme icon
-  const currentIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
-
-  // Inline mode: show all three options in a row (better for mobile)
-  if (inline) {
-    return (
-      <div className="flex w-full items-center gap-2.5 rounded px-2.5 py-2">
-        {(() => {
-          const Icon = currentIcon;
-          return <Icon className="size-4 text-muted-foreground/70" />;
-        })()}
-        <span className="flex-1 text-[13px] text-foreground/80">{t("theme")}</span>
-        <div className="flex items-center gap-1 rounded-full bg-muted p-0.5">
-          {themes.map(({ id, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTheme(id)}
-              className={cn(
-                "flex items-center justify-center size-7 rounded-full transition-colors",
-                theme === id
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              aria-label={themes.find((themeItem) => themeItem.id === id)?.label}
-            >
-              <Icon className="size-3.5" />
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Desktop: nested popover
-  return (
-    <Popover>
-      <PopoverTrigger
-        className={cn(
-          "flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-[13px] transition-colors",
-          "text-foreground/80 hover:bg-accent hover:text-foreground"
-        )}
-      >
-        {(() => {
-          const Icon = currentIcon;
-          return <Icon className="size-4 text-muted-foreground/70" />;
-        })()}
-        <span className="flex-1 text-left">{t("theme")}</span>
-        <ChevronRight className="size-3.5 text-muted-foreground/50" />
-      </PopoverTrigger>
-      <PopoverPopup
-        side="left"
-        align="end"
-        sideOffset={8}
-        className="w-40 rounded-lg bg-popover border-border"
-        contentClassName="p-1.5"
-      >
-        {themes.map(({ id, icon: Icon, label }) => (
-          <button
-            key={id}
-            onClick={() => setTheme(id)}
-            className={cn(
-              "flex w-full items-center gap-2 rounded px-2 py-1.5 text-[13px] transition-colors",
-              theme === id
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            )}
-          >
-            <Icon className="size-3.5 text-muted-foreground/70" />
-            <span className="flex-1 text-left">{label}</span>
-            {theme === id && <Check className="size-3 text-muted-foreground/70" />}
-          </button>
-        ))}
-      </PopoverPopup>
-    </Popover>
-  );
-}
-
 function HelpPopoverContent() {
   const t = useTranslations("nav");
   const tEntries = useTranslations("changelogEntries");
@@ -395,7 +237,6 @@ function HelpPopoverContent() {
     ? whatsNewItems.filter((item) => item.text.toLowerCase().includes(query))
     : whatsNewItems;
 
-  const showTheme = !query || "theme".includes(query);
   const showWhatsNew = filteredWhatsNew.length > 0;
   // Bookmarklet only makes sense on desktop - can't drag to bookmarks bar on mobile
   const showBookmarklet = !isMobile;
@@ -418,7 +259,7 @@ function HelpPopoverContent() {
       )}
 
       {/* Menu */}
-      {(filteredMenuItems.length > 0 || showTheme) && (
+      {filteredMenuItems.length > 0 && (
         <div className={cn("p-1.5", isMobile && "py-2")}>
           {filteredMenuItems.map((item) => (
             <MenuItem
@@ -429,7 +270,6 @@ function HelpPopoverContent() {
               external={"external" in item ? item.external : undefined}
             />
           ))}
-          {showTheme && <ThemeSubmenu inline={isMobile} />}
         </div>
       )}
 
@@ -525,7 +365,6 @@ export function BottomCornerNav() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 md:bottom-6 md:right-6">
-      <LanguagePopover />
       <Popover>
         <PopoverTrigger
           className={cn(

@@ -9,7 +9,7 @@ import {
   BookOpen,
   Languages,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 export interface SlashCommand {
   command: string;
@@ -25,36 +25,36 @@ export const DEFAULT_SLASH_COMMANDS: SlashCommand[] = [
   {
     command: "/summarize",
     label: "Summarize",
-    description: "Get a concise summary of the article",
-    prompt: "Summarize the article",
+    description: "Get the main point in 2-3 sentences",
+    prompt: "What is the main point of this article? Answer in 2-3 sentences.",
     icon: FileText,
   },
   {
     command: "/keypoints",
     label: "Key Points",
-    description: "Extract the main takeaways",
-    prompt: "What are the key takeaways?",
+    description: "Top 3 takeaways",
+    prompt: "List the top 3 key takeaways from this article.",
     icon: ListChecks,
   },
   {
     command: "/facts",
-    label: "Important Facts",
-    description: "List the important facts mentioned",
-    prompt: "What are the important facts?",
+    label: "Surprising Facts",
+    description: "Any surprising or notable facts",
+    prompt: "What are 2-3 surprising or notable facts from this article?",
     icon: Info,
   },
   {
     command: "/explain",
     label: "Explain Simply",
-    description: "Explain the article in simple terms",
-    prompt: "Explain this article simply",
+    description: "What is this article about?",
+    prompt: "In simple terms, what is this article about?",
     icon: BookOpen,
   },
   {
     command: "/translate",
     label: "Translate",
-    description: "Translate the summary to a language",
-    prompt: "Translate the summary to",
+    description: "Translate the main point to a language",
+    prompt: "Translate the main point of this article to",
     icon: Languages,
     hasArgument: true,
     argumentPlaceholder: "[language]",
@@ -95,12 +95,12 @@ export function SlashCommands({
     );
   });
 
-  // Scroll selected item into view
+  // Scroll selected item into view — instant, no animation
   useEffect(() => {
     if (isOpen && itemRefs.current[selectedIndex]) {
       itemRefs.current[selectedIndex]?.scrollIntoView({
         block: "nearest",
-        behavior: "smooth",
+        behavior: "instant",
       });
     }
   }, [selectedIndex, isOpen]);
@@ -114,7 +114,6 @@ export function SlashCommands({
       ref={listRef}
       className={cn(
         "max-h-[200px] overflow-y-auto",
-        "animate-in fade-in-0 duration-150",
         className
       )}
       role="listbox"
@@ -138,11 +137,10 @@ export function SlashCommands({
               onMouseEnter={() => onSelectedIndexChange(index)}
               className={cn(
                 "flex w-full items-center gap-1.5 rounded-[10px] px-2 py-[7px] text-left",
-                "transition-opacity duration-150 cursor-pointer",
-                "outline-none text-[13px]",
+                "cursor-pointer outline-none text-[13px]",
                 isSelected
-                  ? "bg-muted/80 opacity-100"
-                  : "opacity-80 hover:opacity-100 hover:bg-muted/50"
+                  ? "bg-muted/80"
+                  : "hover:bg-muted/50 active:bg-muted/70"
               )}
             >
               <span className="flex-shrink-0 w-[13px] h-[13px] flex items-center justify-center">

@@ -247,8 +247,8 @@ interface AdFunnelTimeSeries {
   impressions: number;
   clicks: number;
   dismissals: number;
-  gravity_forwarded: number;
-  gravity_failed: number;
+  fwd_success: number;
+  fwd_failed: number;
 }
 
 interface AdDismissRateByDevice {

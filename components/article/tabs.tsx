@@ -73,7 +73,7 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
               id={`article-tab-${source}`}
               value={source}
               className={cn(
-                "group flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 rounded-xl px-1 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors outline-none",
+                "group flex flex-1 sm:flex-none items-center justify-center sm:justify-start gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-3 py-2 text-[13px] sm:text-sm font-medium transition-colors outline-none",
                 // Inactive state
                 "aria-[selected=false]:text-muted-foreground aria-[selected=false]:hover:text-foreground",
                 // Active state
@@ -91,7 +91,7 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
                   <TooltipTrigger
                     render={<span />}
                     className={cn(
-                      "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold transition-colors cursor-help",
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1.5 text-[11px] font-semibold transition-colors cursor-help",
                       "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
                     )}
                   >
@@ -110,7 +110,7 @@ const EnhancedTabsList = memo(function EnhancedTabsList({
               ) : wordCount ? (
                 <span
                   className={cn(
-                    "inline-flex h-4 sm:h-5 min-w-4 sm:min-w-5 items-center justify-center rounded-md sm:rounded-lg px-1 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                    "inline-flex h-5 min-w-5 items-center justify-center rounded-lg px-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors",
                     "bg-muted text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary",
                   )}
                 >

@@ -2,7 +2,7 @@
 
 import { DebugContext } from "@/lib/errors/types";
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Terminal, CheckCircle2, XCircle, AlertTriangle, Info } from "lucide-react";
+import { ChevronDown, ChevronRight, Terminal, CheckCircle2, XCircle, AlertTriangle, Info } from "@/components/ui/icons";
 
 interface DebugPanelProps {
   debugContext?: DebugContext;

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useMediaQuery } from "usehooks-ts";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import {
   Drawer,

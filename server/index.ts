@@ -9,16 +9,27 @@ import { cron } from "@elysiajs/cron";
 import { articleRoutes } from "./routes/article";
 import { adminRoutes } from "./routes/admin";
 import { chatRoutes } from "./routes/chat";
-import { chatHistoryRoutes } from "./routes/chat-history";
+import { chatThreadsRoutes } from "./routes/chat-threads";
 import { webhookRoutes } from "./routes/webhooks";
 import { bypassDetectionRoutes } from "./routes/bypass-detection";
 import { gravityRoutes } from "./routes/gravity";
 import { highlightsRoutes } from "./routes/highlights";
+import { premiumRoutes } from "./routes/premium";
+import { ttsRoutes } from "./routes/tts";
 import { startMemoryMonitor, getCurrentMemory } from "../lib/memory-monitor";
+import { startCacheStatsLogger, getAllCacheStats } from "../lib/memory-tracker";
 import { checkErrorRateAndAlert } from "../lib/alerting";
+import { configureFetchLimiter } from "../lib/article-concurrency";
+import { configureTTSLimiter, getTTSSlotStats } from "../lib/tts-concurrency";
 import { env } from "./env";
 
 startMemoryMonitor();
+startCacheStatsLogger();
+configureFetchLimiter({
+  maxConcurrent: env.MAX_CONCURRENT_ARTICLE_FETCHES,
+  slotTimeout: env.ARTICLE_FETCH_SLOT_TIMEOUT_MS,
+});
+configureTTSLimiter({});
 
 // eslint-disable-next-line unused-imports/no-unused-vars
 const app = new Elysia({ adapter: node() })
@@ -27,6 +38,13 @@ const app = new Elysia({ adapter: node() })
     credentials: true,
     exposeHeaders: ["X-Usage-Remaining", "X-Usage-Limit", "X-Is-Premium", "X-Model"],
   }))
+  // Security headers to prevent clickjacking and other attacks
+  .onBeforeHandle(({ set }) => {
+    set.headers["X-Frame-Options"] = "SAMEORIGIN";
+    set.headers["Content-Security-Policy"] = "frame-ancestors 'self'";
+    set.headers["X-Content-Type-Options"] = "nosniff";
+    set.headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+  })
   .use(
     cron({
       name: "error-rate-alerting",
@@ -41,6 +59,7 @@ const app = new Elysia({ adapter: node() })
   }))
   .get("/health", ({ set }) => {
     const memory = getCurrentMemory();
+    const caches = getAllCacheStats();
     const UNHEALTHY_RSS_MB = 1024; // 1GB
 
     if (memory.rss_mb > UNHEALTHY_RSS_MB) {
@@ -54,6 +73,7 @@ const app = new Elysia({ adapter: node() })
           heapTotalMb: memory.heap_total_mb,
           rssMb: memory.rss_mb,
         },
+        caches,
       };
     }
 
@@ -65,16 +85,20 @@ const app = new Elysia({ adapter: node() })
         heapTotalMb: memory.heap_total_mb,
         rssMb: memory.rss_mb,
       },
+      caches,
+      tts: getTTSSlotStats(),
     };
   })
   .use(articleRoutes)
   .use(adminRoutes)
   .use(chatRoutes)
-  .use(chatHistoryRoutes)
+  .use(chatThreadsRoutes)
   .use(webhookRoutes)
   .use(bypassDetectionRoutes)
   .use(gravityRoutes)
   .use(highlightsRoutes)
+  .use(premiumRoutes)
+  .use(ttsRoutes)
   .onError(({ code, error, set, request }) => {
     // Don't log 404s for common browser requests (favicon, etc)
     if (code === "NOT_FOUND") {

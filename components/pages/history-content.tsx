@@ -26,7 +26,7 @@ import {
   Command,
   CornerDownLeft,
   RotateCcw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { GlobeIcon } from "@/components/ui/custom-icons";
 import Link from "next/link";
 import Image from "next/image";
@@ -41,6 +41,7 @@ import {
   useCallback,
 } from "react";
 import { normalizeUrl } from "@/lib/validation/url";
+import { FaviconImage } from "@/components/shared/favicon-image";
 
 // ============================================================================
 // ROUND 1: Clean typography and visual hierarchy
@@ -163,43 +164,6 @@ function groupByDomain(
   );
 
   return sorted;
-}
-
-function getFaviconUrl(domain: string): string {
-  return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-}
-
-function getGoogleFaviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-}
-
-function FaviconImage({
-  domain,
-  className,
-}: {
-  domain: string;
-  className?: string;
-}) {
-  const [errorCount, setErrorCount] = useState(0);
-
-  const src = useMemo(() => {
-    if (errorCount === 0) return getFaviconUrl(domain);
-    if (errorCount === 1) return getGoogleFaviconUrl(domain);
-    return null;
-  }, [domain, errorCount]);
-
-  if (!src) return null;
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      className={className}
-      loading="lazy"
-      onError={() => setErrorCount((c) => c + 1)}
-    />
-  );
 }
 
 function buildProxyUrlFromHistory(url: string): string {
@@ -488,7 +452,7 @@ function HistoryItemCard({
           <span className="text-xs text-muted-foreground truncate flex-1">
             {item.domain}
           </span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+          <span className="text-[11px] text-muted-foreground tabular-nums">
             {formatRelativeTime(new Date(item.accessedAt))}
           </span>
         </div>
@@ -678,7 +642,7 @@ function CommandBar({
             <X className="size-3.5 text-muted-foreground" />
           </button>
         ) : (
-          <kbd className="hidden sm:flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-medium text-muted-foreground">
+          <kbd className="hidden sm:flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-muted text-[11px] font-medium text-muted-foreground">
             <Command className="size-3" />K
           </kbd>
         )}
@@ -1066,6 +1030,21 @@ function HistoryContent() {
     new Set()
   );
 
+  // Progressive loading — show PAGE_SIZE items initially, load more on demand
+  const PAGE_SIZE = 30;
+  const [visibleState, setVisibleState] = useState({ count: PAGE_SIZE, query: "" });
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Reset visible count when search changes (derived state pattern)
+  const visibleCount = visibleState.query === searchQuery ? visibleState.count : PAGE_SIZE;
+  const setVisibleCount = useCallback((value: number | ((prev: number) => number)) => {
+    setVisibleState((prev) => {
+      const currentCount = prev.query === searchQuery ? prev.count : PAGE_SIZE;
+      const nextCount = typeof value === "function" ? value(currentCount) : value;
+      return { count: nextCount, query: searchQuery };
+    });
+  }, [searchQuery]);
+
   // Filter history based on search
   const filteredHistory = useMemo(() => {
     if (!searchQuery.trim()) return history;
@@ -1078,15 +1057,39 @@ function HistoryContent() {
     );
   }, [history, searchQuery]);
 
-  // Group items
+  // Paginated subset — only render up to visibleCount items
+  const paginatedHistory = useMemo(
+    () => filteredHistory.slice(0, visibleCount),
+    [filteredHistory, visibleCount]
+  );
+  const hasMore = visibleCount < filteredHistory.length;
+
+  // Group items (from paginated subset)
   const groupedByDate = useMemo(
-    () => groupByDate(filteredHistory),
-    [filteredHistory]
+    () => groupByDate(paginatedHistory),
+    [paginatedHistory]
   );
   const groupedByDomain = useMemo(
-    () => groupByDomain(filteredHistory),
-    [filteredHistory]
+    () => groupByDomain(paginatedHistory),
+    [paginatedHistory]
   );
+
+  // Auto-load more when scrolling near bottom
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   const handleClearSearch = useCallback(() => setSearchQuery(""), []);
 
@@ -1111,12 +1114,12 @@ function HistoryContent() {
 
   // Build navigation list that matches rendered order
   const navigationItems = useMemo(() => {
-    if (viewMode === "grid") return filteredHistory;
+    if (viewMode === "grid") return paginatedHistory;
     if (grouping === "domain") {
       return Array.from(groupedByDomain.values()).flatMap(({ items }) => items);
     }
     return Array.from(groupedByDate.values()).flatMap((items) => items);
-  }, [filteredHistory, groupedByDate, groupedByDomain, grouping, viewMode]);
+  }, [paginatedHistory, groupedByDate, groupedByDomain, grouping, viewMode]);
 
   // Keyboard navigation
   useKeyboardNavigation(
@@ -1196,7 +1199,7 @@ function HistoryContent() {
         <NoSearchResults query={searchQuery} />
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {filteredHistory.map((item) => (
+          {paginatedHistory.map((item) => (
             <HistoryItemCard
               key={item.id}
               item={item}
@@ -1269,6 +1272,18 @@ function HistoryContent() {
         </div>
       )}
 
+      {/* Load more sentinel — auto-triggers via IntersectionObserver */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex items-center justify-center py-6">
+          <button
+            onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Show more ({filteredHistory.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
+
       {/* Premium upsell banner */}
       {hiddenCount > 0 && !searchQuery && (
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -1312,24 +1327,18 @@ function SignedOutContent() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="mb-6 relative">
-        <div className="size-20 rounded-2xl bg-gradient-to-br from-amber-400/20 to-orange-500/20 flex items-center justify-center">
-          <Crown className="size-10 text-amber-500" />
+        <div className="size-20 rounded-2xl bg-gradient-to-br from-muted/40 to-muted/60 flex items-center justify-center">
+          <History className="size-10 text-muted-foreground" />
         </div>
       </div>
-      <h3 className="text-xl font-semibold">Sign in to view history</h3>
+      <h3 className="text-xl font-semibold">Sign in to view your history</h3>
       <p className="mt-2 text-sm text-muted-foreground max-w-[300px]">
-        Create an account to save your reading history and access it from any
-        device.
+        Your reading history is saved locally. Sign in to access it.
       </p>
       <div className="flex items-center gap-3 mt-6">
         <SignInButton mode="modal" fallbackRedirectUrl="/auth/redirect?returnUrl=%2Fhistory">
-          <Button variant="outline">
-            Sign In
-          </Button>
+          <Button>Sign In</Button>
         </SignInButton>
-        <Link href="/pricing?returnUrl=/history">
-          <Button>Get Pro</Button>
-        </Link>
       </div>
     </div>
   );

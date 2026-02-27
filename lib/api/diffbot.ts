@@ -8,6 +8,7 @@ import {
 } from "@/lib/errors/types";
 import { createLogger } from "@/lib/logger";
 import { safeText, safeJson } from "@/lib/safe-fetch";
+import { startMemoryTrack, logLargeAllocation } from "@/lib/memory-tracker";
 import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { z } from "zod";
@@ -443,7 +444,7 @@ function extractWithReadability(html: string, url: string, debugContext: DebugCo
  * Fetch structured article data using Diffbot API (no fallback)
  * Returns title, html, text, and siteName with comprehensive debug information
  */
-export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow'): ResultAsync<DiffbotArticle, AppError> {
+export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow', externalSignal?: AbortSignal): ResultAsync<DiffbotArticle, AppError> {
   const debugContext = createDebugContext(url, source);
 
   logger.info({ hostname: new URL(url).hostname }, 'Attempting Diffbot article extraction');
@@ -451,8 +452,18 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
 
   return ResultAsync.fromPromise(
     new Promise<DiffbotArticle>(async (resolve, reject) => {
+      // Early exit if already aborted by race winner
+      if (externalSignal?.aborted) {
+        reject(new Error("Request cancelled (race loser)"));
+        return;
+      }
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for Diffbot
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for Diffbot (reduced from 45s)
+      // Abort on external cancellation (race loser)
+      const onExternalAbort = () => controller.abort();
+      externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
+      const hostname = new URL(url).hostname;
+      const memTracker = startMemoryTrack("diffbot-api-call", { url_host: hostname, source });
 
       try {
         // Use REST API directly to support fields parameter
@@ -466,16 +477,36 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         });
 
         const response = await fetch(apiUrl.toString(), { signal: controller.signal });
-        
+        memTracker.checkpoint("diffbot-response-received");
+
+        // Check abort before reading body — if race winner was found during fetch,
+        // skip the expensive body read + JSON parse entirely
+        if (externalSignal?.aborted) {
+          await response.body?.cancel();
+          memTracker.end({ success: false, reason: "aborted_after_response" });
+          reject(new Error("Request cancelled (race loser)"));
+          return;
+        }
+
         if (!response.ok) {
           const errorText = await safeText(response, 1024 * 1024); // 1MB limit for error responses
           logger.error({ status: response.status, errorText }, 'Diffbot HTTP error');
           addDebugStep(debugContext, 'diffbot_api', 'error', `HTTP ${response.status} error`);
+          memTracker.end({ success: false, reason: "http_error", status: response.status });
           reject(new Error(`Diffbot HTTP error: ${response.status}`));
           return;
         }
 
-        const rawData = await safeJson(response);
+        let rawData = await safeJson(response);
+        memTracker.checkpoint("diffbot-json-parsed");
+
+        // Check abort after JSON parse — if race was won during body read,
+        // bail before expensive DOM extraction and Readability parsing
+        if (externalSignal?.aborted) {
+          memTracker.end({ success: false, reason: "aborted_after_parse" });
+          reject(new Error("Request cancelled (race loser)"));
+          return;
+        }
         
         // Validate Diffbot API response structure
         const responseValidation = DiffbotArticleResponseSchema.safeParse(rawData);
@@ -498,21 +529,23 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         }
         
         const data = responseValidation.data;
+        rawData = null; // Release raw JSON — validated copy is in `data`
 
         // Handle error responses
         if (data.errorCode || data.error) {
           const errorMsg = data.error || `Diffbot error code: ${data.errorCode}`;
-          logger.error({ 
+          logger.error({
             hostname: new URL(url).hostname,
             errorCode: data.errorCode,
             errorMessage: data.error
           }, 'Diffbot returned error response');
-          
+
           addDebugStep(debugContext, 'diffbot_api', 'error', 'Diffbot returned error response', {
             errorCode: data.errorCode,
             errorMessage: data.error,
           });
-          
+
+          memTracker.end({ success: false, reason: "diffbot_error", error_code: data.errorCode });
           reject(new Error(errorMsg));
           return;
         }
@@ -537,9 +570,14 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
         // Try new API format first (objects array)
         if (data?.objects && Array.isArray(data.objects) && data.objects.length > 0) {
           const obj = data.objects[0];
-          
+
           // Store DOM for potential fallback - this is the full page HTML
           domForFallback = obj.dom || null;
+
+          // Track large DOM allocations
+          if (domForFallback && domForFallback.length > 500_000) {
+            logLargeAllocation("diffbot-dom", domForFallback.length, { url_host: hostname });
+          }
           
           // Check if we have complete article data with substantial content
           // Diffbot should return html when it recognizes the article structure
@@ -553,7 +591,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
             }
             
             // If no date/image from Diffbot, try to extract from DOM if available
-            if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback)) {
+            // Skip expensive DOM parsing if we've been aborted (race loser)
+            if ((!extractedDate || !extractedImage) && (obj.dom || domForFallback) && !externalSignal?.aborted) {
                try {
                  const domToUse = (obj.dom || domForFallback) as string;
                  const { document: doc } = parseHTML(domToUse);
@@ -602,6 +641,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
                 extractedTextLength: validatedArticle.text.length,
                 extractedHtmlLength: validatedArticle.html.length,
               });
+              domForFallback = null; // Release DOM — no longer needed
+              memTracker.end({ success: true, text_length: validatedArticle.text.length, html_length: validatedArticle.html.length, method: "diffbot" });
               resolve(validatedArticle);
               return;
             }
@@ -638,7 +679,8 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           }
           
           // If no date/image from Diffbot, try to extract from DOM
-          if ((!extractedDate || !extractedImage) && dom) {
+          // Skip expensive DOM parsing if aborted (race loser)
+          if ((!extractedDate || !extractedImage) && dom && !externalSignal?.aborted) {
              try {
                const { document: doc } = parseHTML(dom);
                if (!extractedDate) extractedDate = extractDateFromDom(doc);
@@ -686,6 +728,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
               extractedTextLength: validatedArticle.text.length,
               extractedHtmlLength: validatedArticle.html.length,
             });
+            memTracker.end({ success: true, text_length: validatedArticle.text.length, html_length: validatedArticle.html.length, method: "diffbot_old_format" });
             resolve(validatedArticle);
             return;
           }
@@ -702,6 +745,14 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           addDebugStep(debugContext, 'diffbot_extraction', 'warning', 'Diffbot response structure unexpected');
         }
 
+        // Bail if aborted before expensive Readability fallback
+        if (externalSignal?.aborted) {
+          domForFallback = null; // Release DOM reference
+          memTracker.end({ success: false, reason: "aborted_before_readability" });
+          reject(new Error("Request cancelled (race loser)"));
+          return;
+        }
+
         // Fallback to Readability if we have DOM
         if (domForFallback) {
           logger.info({ hostname: new URL(url).hostname, domLength: domForFallback.length }, 'Using Readability fallback on DOM');
@@ -710,6 +761,7 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           });
           
           const readabilityResult = extractWithReadability(domForFallback, url, debugContext);
+          domForFallback = null; // Release DOM — consumed by Readability
           if (readabilityResult) {
             // Validate Readability result
             const readabilityValidation = DiffbotArticleSchema.safeParse(readabilityResult);
@@ -731,11 +783,12 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
               });
             } else {
               const validatedResult = readabilityValidation.data;
-              logger.info({ 
+              logger.info({
                 hostname: new URL(url).hostname,
                 title: validatedResult.title,
                 textLength: validatedResult.text.length,
               }, 'Successfully extracted article using Readability fallback');
+              memTracker.end({ success: true, text_length: validatedResult.text.length, html_length: validatedResult.html.length, method: "readability_fallback" });
               resolve(validatedResult);
               return;
             }
@@ -751,23 +804,27 @@ export function fetchArticleWithDiffbot(url: string, source: string = 'smry-slow
           hadDiffbotArticle: !!articleData,
           hadDom: !!domForFallback,
         });
+        memTracker.end({ success: false, reason: "all_methods_failed", had_dom: !!domForFallback });
         reject(new Error(`Could not extract article content for URL: ${url}`));
 
       } catch (error) {
         // Handle timeout/abort errors specifically
         if (error instanceof Error && error.name === 'AbortError') {
-          logger.error({ url }, 'Diffbot request timed out after 45s');
-          addDebugStep(debugContext, 'diffbot_timeout', 'error', 'Request timed out after 45s');
+          logger.error({ url }, 'Diffbot request timed out after 15s');
+          addDebugStep(debugContext, 'diffbot_timeout', 'error', 'Request timed out after 15s');
+          memTracker.end({ success: false, reason: "timeout" });
           reject(new Error('Request timeout'));
         } else {
           logger.error({ url, error }, 'Exception during Diffbot request');
           addDebugStep(debugContext, 'diffbot_exception', 'error', 'Exception during request', {
             errorDetails: error instanceof Error ? error.message : String(error),
           });
+          memTracker.end({ success: false, reason: "exception", error: String(error).slice(0, 100) });
           reject(error);
         }
       } finally {
         clearTimeout(timeoutId);
+        externalSignal?.removeEventListener("abort", onExternalAbort);
       }
     }),
     (error) => {

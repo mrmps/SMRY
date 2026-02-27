@@ -3,12 +3,36 @@ import { ReactScan } from "@/components/shared/react-scan";
 import { ReactGrab } from "@/components/shared/react-grab";
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
-import { Syne } from "next/font/google";
+import { Syne, Literata, Atkinson_Hyperlegible, Merriweather } from "next/font/google";
 import "./globals.css";
+import "streamdown/styles.css";
 
 const syne = Syne({
   subsets: ["latin"],
   variable: "--font-syne",
+  display: "swap",
+});
+
+// Literata - Premium reading font designed for long-form content
+const literata = Literata({
+  subsets: ["latin"],
+  variable: "--font-literata",
+  display: "swap",
+});
+
+// Atkinson Hyperlegible - Optimized for visual clarity and accessibility
+const atkinson = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-atkinson",
+  display: "swap",
+});
+
+// Merriweather - Elegant screen-optimized serif
+const merriweather = Merriweather({
+  subsets: ["latin"],
+  weight: ["300", "400", "700"],
+  variable: "--font-merriweather",
   display: "swap",
 });
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -17,10 +41,13 @@ import { Databuddy } from "@databuddy/sdk/react"
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "@/components/ui/sonner";
 import { getLocale } from 'next-intl/server';
 import { JsonLd, organizationSchema, websiteSchema } from "@/components/seo/json-ld";
 import { PostHogProvider } from "@/components/providers/posthog-provider";
 
+// Root metadata - OG images are handled by file-based convention (opengraph-image.tsx)
+// in each route segment for proper caching and to avoid robots.txt blocking issues
 export const metadata: Metadata = {
   metadataBase: new URL("https://smry.ai"),
   title: "Read Anything, Summarize Everything | Smry",
@@ -36,21 +63,13 @@ export const metadata: Metadata = {
     url: "https://smry.ai",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
-    images: [
-      {
-        url: "https://smry.ai/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "smry - Read Anything, Summarize Everything",
-      },
-    ],
+    // Images handled by opengraph-image.tsx files in route segments for proper caching and reliability
   },
   twitter: {
     card: "summary_large_image",
     title: "Read Anything, Summarize Everything | Smry",
     description:
       "AI-powered reader that bypasses paywalls and summarizes any article. News, research papers, paywalled content—we read it all.",
-    images: ["https://smry.ai/opengraph-image"],
   },
 };
 
@@ -58,9 +77,11 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+    { media: '(prefers-color-scheme: light)', color: '#faf6f1' },
+    { media: '(prefers-color-scheme: dark)', color: '#1c1e21' },
   ],
 };
 
@@ -83,7 +104,7 @@ export default async function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html lang={locale} className="bg-background dark:bg-background" suppressHydrationWarning>
         <body
-          className={`${GeistSans.className} ${syne.variable} bg-background text-foreground`}
+          className={`${GeistSans.className} ${GeistSans.variable} ${syne.variable} ${literata.variable} ${atkinson.variable} ${merriweather.variable} bg-background text-foreground`}
         >
           <PostHogProvider>
           <Databuddy
@@ -99,15 +120,15 @@ export default async function RootLayout({
           <ReactGrab />
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
-            themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "system"]}
+            defaultTheme="light"
+            themes={["light", "pure-light", "dark", "magic-blue", "classic-dark", "carbon", "black", "winter", "forest", "dawn"]}
             disableTransitionOnChange
           >
             <GoogleAnalytics gaId="G-RFC55FX414" />
             <NuqsAdapter>
               <QueryProvider>
                 {children}
+                <Toaster position="top-center" />
               </QueryProvider>
             </NuqsAdapter>
           </ThemeProvider>

@@ -10,6 +10,10 @@ export const env = createEnv({
   server: {
     // Auth
     CLERK_SECRET_KEY: z.string().min(1),
+    // Optional: PEM public key from Clerk Dashboard for networkless JWT verification.
+    // Eliminates JWKS fetch failures and kid mismatch issues from key rotation.
+    // Set via Clerk Dashboard > API Keys > Show JWT Public Key.
+    CLERK_JWT_KEY: z.string().optional(),
 
     // AI/API
     OPENROUTER_API_KEY: z.string().min(1),
@@ -31,6 +35,11 @@ export const env = createEnv({
     // Gravity Ads
     GRAVITY_API_KEY: z.string().min(1),
 
+    // ZeroClick Ads (fallback provider)
+    ZEROCLICK_API_KEY: z.string().min(1),
+    // Kill switch to disable ZeroClick waterfall (for revenue testing)
+    ZEROCLICK_DISABLED: z.string().optional().transform(v => v === "true"),
+
     // Email (inbound.new)
     INBOUND_API_KEY: z.string().min(1),
     INBOUND_WEBHOOK_TOKEN: z.string().optional(),
@@ -44,6 +53,11 @@ export const env = createEnv({
     // Server config
     CORS_ORIGIN: z.string().min(1),
     API_PORT: z.coerce.number().default(3001),
+    MAX_CONCURRENT_ARTICLE_FETCHES: z.coerce.number().default(50),
+    ARTICLE_FETCH_SLOT_TIMEOUT_MS: z.coerce.number().default(30000),
+    // Inworld AI TTS (optional — TTS disabled when absent)
+    INWORLD_API_KEY: z.string().min(1).optional(),
+
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal"])
       .default("info"),
