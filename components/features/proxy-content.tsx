@@ -59,6 +59,8 @@ import {
   Crown,
   Headphones,
   CheckCircle,
+  ArrowDown,
+  ArrowUp,
 } from "@/components/ui/icons";
 import { type ArticleExportData } from "@/components/features/export-article";
 import {
@@ -804,7 +806,7 @@ function TTSControls({ onClose, voice, onVoiceChange, isPremium, usageCount = 0,
  */
 function TTSArticleHighlight() {
   const { audioRef, currentWordIndex, seekToTime, resume, toggle, words, isPlaying, currentTime, duration } = useTTSPlayer();
-  useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play: resume, words, audioRef });
+  const { userScrolledAway, currentWordDirection, scrollBackToCurrent } = useTTSHighlight({ currentWordIndex, isActive: true, seekToTime, play: resume, words, audioRef });
 
   // Use refs for volatile values so the handler reads latest without re-registering
   const currentTimeRef = useRef(currentTime);
@@ -845,7 +847,22 @@ function TTSArticleHighlight() {
     }
   }, [currentWordIndex, currentTime, isPlaying, words.length]);
 
-  return null;
+  // "Scroll to current" pill — shown when user has scrolled away during playback
+  if (!userScrolledAway || !isPlaying) return null;
+
+  const DirectionIcon = currentWordDirection === "up" ? ArrowUp : ArrowDown;
+
+  return createPortal(
+    <button
+      onClick={scrollBackToCurrent}
+      className="fixed left-1/2 -translate-x-1/2 top-16 z-50 flex items-center gap-1.5 rounded-full bg-foreground/90 text-background px-3 py-1.5 text-xs font-medium shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200 motion-reduce:animate-none hover:bg-foreground active:scale-[0.97] transition-all"
+      aria-label={`Scroll ${currentWordDirection} to current position`}
+    >
+      <DirectionIcon className="size-3" />
+      Scroll to current
+    </button>,
+    document.body,
+  );
 }
 
 /** Subtle animated waveform bars for TTS loading state */

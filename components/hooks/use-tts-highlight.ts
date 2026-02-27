@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, type RefObject } from "react"
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { buildWordPositions, type WordPosition } from "@/lib/tts-text"
 
 type TranscriptWord = {
@@ -111,6 +111,15 @@ export function useTTSHighlight({
   const isMutatingRef = useRef(false)
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestSpanRef = useRef<HTMLSpanElement | undefined>(undefined)
+
+  // ── User scroll independence (Speechify-style) ──
+  // When the user manually scrolls, auto-scroll pauses until they tap "scroll to current".
+  const [userScrolledAway, setUserScrolledAway] = useState(false)
+  const userScrolledAwayRef = useRef(false)
+  /** "up" = current word is above viewport (user scrolled down), "down" = below */
+  const [currentWordDirection, setCurrentWordDirection] = useState<"up" | "down">("down")
+  /** Tracks whether a programmatic scroll is in flight (to distinguish from user scroll) */
+  const programmaticScrollRef = useRef(false)
 
   // Keep latest callbacks in refs to avoid stale closures in event handlers
   const seekToTimeRef = useRef(seekToTime)
@@ -342,23 +351,36 @@ export function useTTSHighlight({
     }
   }, [isActive, buildSpans, areSpansValid, tryRebuild])
 
-  // Throttled scroll — fires immediately on first call, then blocks for 600ms
-  // so native smooth scroll finishes before the next one starts.
+  // Throttled scroll — fires immediately on first call, then blocks for 350ms
+  // (matched to our custom 280ms scroll duration + small margin) so the current
+  // scroll finishes before the next one starts.
+  // Skips entirely when user has manually scrolled away (Speechify-style independence).
   const debouncedScrollToSpan = useCallback((span: HTMLSpanElement | undefined) => {
+    // When user has scrolled away, don't auto-scroll — let them read freely
+    if (userScrolledAwayRef.current) return
+
     // If a throttle is active, just store the latest span for trailing call
     if (scrollTimerRef.current) {
       latestSpanRef.current = span
       return
     }
-    // Fire immediately
+    // Fire immediately — flag programmatic scroll for the full animation duration
+    // so user-scroll detection (wheel/touchstart) doesn't falsely trigger during
+    // our RAF-driven smooth scroll.
+    programmaticScrollRef.current = true
     scrollToSpan(span)
-    // Block for 600ms, then fire trailing call if any
+    setTimeout(() => { programmaticScrollRef.current = false }, SCROLL_DURATION_MS + 50)
+    // Block for 350ms (280ms scroll + 70ms margin), then fire trailing call if any
     scrollTimerRef.current = setTimeout(() => {
       scrollTimerRef.current = null
       const trailing = latestSpanRef.current
       latestSpanRef.current = undefined
-      if (trailing) scrollToSpan(trailing)
-    }, 600)
+      if (trailing && !userScrolledAwayRef.current) {
+        programmaticScrollRef.current = true
+        scrollToSpan(trailing)
+        setTimeout(() => { programmaticScrollRef.current = false }, SCROLL_DURATION_MS + 50)
+      }
+    }, 350)
   }, [])
 
   // Clean up scroll timer on unmount
@@ -367,6 +389,89 @@ export function useTTSHighlight({
       if (scrollTimerRef.current) {
         clearTimeout(scrollTimerRef.current)
         scrollTimerRef.current = null
+      }
+    }
+  }, [])
+
+  // ── Detect user scroll gestures to pause auto-scroll ──
+  // wheel/touchstart only fire from real user interaction, never from programmatic scrollTo.
+  useEffect(() => {
+    if (!isActive) {
+      // Reset when TTS deactivates
+      userScrolledAwayRef.current = false
+      setUserScrolledAway(false)
+      return
+    }
+
+    const sc =
+      document.querySelector("[data-desktop-scroll]") ??
+      document.querySelector("[data-mobile-scroll]")
+    if (!sc) return
+
+    /** Check where the current word span is relative to the viewport center */
+    const updateDirection = () => {
+      const idx = prevIndexRef.current
+      if (idx < 0) return
+      const span = spanMapRef.current.get(idx)
+      if (!span) return
+      const rect = span.getBoundingClientRect()
+      const viewMid = window.innerHeight / 2
+      setCurrentWordDirection(rect.top < viewMid ? "up" : "down")
+    }
+
+    const markUserScrolled = () => {
+      // Ignore scroll events triggered by our own programmatic scrollTo
+      if (programmaticScrollRef.current) return
+      // Cancel any in-flight auto-scroll animation immediately so the
+      // user's scroll takes priority (interruptible per Emil Kowalski)
+      if (_scrollRaf != null) {
+        cancelAnimationFrame(_scrollRaf)
+        _scrollRaf = null
+      }
+      if (!userScrolledAwayRef.current) {
+        userScrolledAwayRef.current = true
+        setUserScrolledAway(true)
+      }
+      updateDirection()
+    }
+
+    // Also update direction on passive scroll events (fires for both user and programmatic,
+    // but we only care when userScrolledAway is true)
+    let scrollRafId: number | null = null
+    const onScroll = () => {
+      if (!userScrolledAwayRef.current) return
+      if (scrollRafId != null) return
+      scrollRafId = requestAnimationFrame(() => {
+        scrollRafId = null
+        updateDirection()
+      })
+    }
+
+    sc.addEventListener("wheel", markUserScrolled, { passive: true })
+    sc.addEventListener("touchstart", markUserScrolled, { passive: true })
+    sc.addEventListener("scroll", onScroll, { passive: true })
+
+    return () => {
+      sc.removeEventListener("wheel", markUserScrolled)
+      sc.removeEventListener("touchstart", markUserScrolled)
+      sc.removeEventListener("scroll", onScroll)
+      if (scrollRafId != null) cancelAnimationFrame(scrollRafId)
+    }
+  }, [isActive])
+
+  // Scroll back to the currently highlighted word and re-engage auto-scroll
+  const scrollBackToCurrent = useCallback(() => {
+    userScrolledAwayRef.current = false
+    setUserScrolledAway(false)
+    // Immediately scroll to current span
+    const map = spanMapRef.current
+    const idx = prevIndexRef.current
+    if (idx >= 0 && map.size > 0) {
+      const span = map.get(idx)
+      if (span) {
+        programmaticScrollRef.current = true
+        scrollToSpan(span)
+        setTimeout(() => { programmaticScrollRef.current = false }, SCROLL_DURATION_MS + 50)
       }
     }
   }, [])
@@ -551,6 +656,8 @@ export function useTTSHighlight({
       applyHighlight(spanIdx, map)
     }
   }, [isActive, audioRef, currentWordIndex, areSpansValid, tryRebuild, applyHighlight, resolveSpanIdx])
+
+  return { userScrolledAway, currentWordDirection, scrollBackToCurrent }
 }
 
 // ---------------------------------------------------------------------------
@@ -687,6 +794,46 @@ function cleanupFully() {
   document.getElementById(STYLE_ID)?.remove()
 }
 
+// ── Custom easing-driven smooth scroll ──
+// Replaces browser-native `behavior: "smooth"` which has a fixed ~500ms
+// duration, no easing control, and can't be cleanly interrupted.
+//
+// Per Emil Kowalski's animation guidelines:
+// - ease-in-out for on-screen movement (content repositioning)
+// - Custom cubic-bezier curve (not built-in CSS ease)
+// - 280ms duration (under 300ms max for UI animations)
+// - Interruptible: new scroll cancels the previous one immediately
+
+/** Active scroll animation frame ID — cancel to interrupt */
+let _scrollRaf: number | null = null
+
+/**
+ * Custom cubic-bezier(0.25, 0.1, 0.25, 1.0) — smooth ease-in-out
+ * with slightly more energy than the CSS built-in. Approximated via
+ * a fast polynomial for RAF use (no bezier solver needed).
+ */
+function easeInOutCustom(t: number): number {
+  // Attempt to approximate cubic-bezier(0.37, 0, 0.08, 1) — a curve with
+  // gentle start, fast middle, and a very soft landing. This feels natural
+  // for auto-scrolling content that follows speech.
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+
+const SCROLL_DURATION_MS = 280
+
+/** Cache reduced-motion preference (checked once, respects system changes via listener) */
+let _prefersReducedMotion: boolean | null = null
+function prefersReducedMotion(): boolean {
+  if (_prefersReducedMotion == null) {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)")
+    _prefersReducedMotion = mql.matches
+    mql.addEventListener("change", (e) => { _prefersReducedMotion = e.matches })
+  }
+  return _prefersReducedMotion
+}
+
 function scrollToSpan(span: HTMLSpanElement | undefined) {
   if (!span) return
 
@@ -698,22 +845,65 @@ function scrollToSpan(span: HTMLSpanElement | undefined) {
   const rect = span.getBoundingClientRect()
   const containerRect = sc.getBoundingClientRect()
 
-  // Visible bottom = whichever is smaller: container bottom or player top.
-  // The player is fixed-positioned and can overlap the scroll container.
+  // The TTS player is fixed-positioned at the bottom and overlaps the scroll area.
+  // Use the player's actual bounding rect as the authoritative bottom boundary.
+  // If the player is still animating in or not found, fall back to reserving
+  // the bottom 40% of the viewport (generous enough for any player variant —
+  // with credits banner, buffering indicator, error cards, etc.).
   const player = document.querySelector<HTMLElement>("[data-tts-player]")
-  const playerTop = player ? player.getBoundingClientRect().top : Infinity
-  const effectiveBottom = Math.min(containerRect.bottom, playerTop) - 24
+  const playerRect = player?.getBoundingClientRect()
+  const playerTop = playerRect ? playerRect.top : (window.innerHeight * 0.6)
+  const effectiveBottom = Math.min(containerRect.bottom, playerTop) - 16
 
   const topEdge = containerRect.top + 40
 
   const isVisible = rect.top >= topEdge && rect.bottom <= effectiveBottom
 
   if (!isVisible) {
-    // Use absolute scrollTo instead of relative scrollBy.
-    // scrollTo to the same target is a no-op, so overlapping calls don't compound.
     const visibleHeight = effectiveBottom - topEdge
-    const offsetFromTarget = rect.top - (topEdge + visibleHeight * 0.3)
+    // Position the current word at 25% from top of the safe zone —
+    // slightly higher than the previous 30% to give more clearance
+    // above the player, especially on smaller screens.
+    const offsetFromTarget = rect.top - (topEdge + visibleHeight * 0.25)
     const targetScrollTop = sc.scrollTop + offsetFromTarget
-    sc.scrollTo({ top: targetScrollTop, behavior: "smooth" })
+
+    // Cancel any in-flight scroll animation (interruptible)
+    if (_scrollRaf != null) {
+      cancelAnimationFrame(_scrollRaf)
+      _scrollRaf = null
+    }
+
+    const startScrollTop = sc.scrollTop
+    const delta = targetScrollTop - startScrollTop
+
+    // Skip tiny deltas (< 2px) — just snap
+    if (Math.abs(delta) < 2) {
+      sc.scrollTop = targetScrollTop
+      return
+    }
+
+    // Respect prefers-reduced-motion: instant scroll, no animation
+    if (prefersReducedMotion()) {
+      sc.scrollTop = targetScrollTop
+      return
+    }
+
+    const startTime = performance.now()
+
+    const step = (now: number) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / SCROLL_DURATION_MS, 1)
+      const eased = easeInOutCustom(progress)
+
+      sc.scrollTop = startScrollTop + delta * eased
+
+      if (progress < 1) {
+        _scrollRaf = requestAnimationFrame(step)
+      } else {
+        _scrollRaf = null
+      }
+    }
+
+    _scrollRaf = requestAnimationFrame(step)
   }
 }
