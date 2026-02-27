@@ -73,7 +73,7 @@ function getMemoryMb(): { heapUsed: number; rss: number; external: number; array
 export function getAllCacheStats(): Record<string, unknown> {
   try {
     const zeroClick = getZeroClickCacheStats();
-    const clickhouse = getBufferStats();
+    const posthogBuffer = getBufferStats();
 
     const fetchSlots = getFetchSlotStats();
 
@@ -83,9 +83,9 @@ export function getAllCacheStats(): Record<string, unknown> {
       zeroclick_orphaned: zeroClick.orphanedCount,
       zeroclick_total_created: zeroClick.totalCreated,
       zeroclick_total_closed: zeroClick.totalClosed,
-      clickhouse_buffer: clickhouse.size,
-      clickhouse_active_queries: clickhouse.activeQueries,
-      clickhouse_queued_queries: clickhouse.queuedQueries,
+      posthog_buffer: posthogBuffer.size,
+      posthog_active_queries: posthogBuffer.activeQueries,
+      posthog_queued_queries: posthogBuffer.queuedQueries,
       rate_limiter_ips: abuseRateLimiter.size,
       active_operations: activeOperations.size,
       article_active_fetches: fetchSlots.activeFetches,

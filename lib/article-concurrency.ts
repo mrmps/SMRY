@@ -6,7 +6,7 @@
  * At 100+ concurrent users with cache misses, the /api/article/auto endpoint
  * would otherwise spawn 300 simultaneous connections (3 per user).
  *
- * Modeled on the ClickHouse acquireQuerySlot/releaseQuerySlot pattern.
+ * Modeled on the acquireQuerySlot/releaseQuerySlot pattern.
  */
 
 let maxConcurrentFetches = 50;

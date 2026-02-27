@@ -8,7 +8,7 @@
  * This list is maintained based on analytics data showing 0% success rates
  * across all extraction sources (smry-fast, smry-slow, wayback).
  *
- * To add a site: Verify it has <5% success rate across all sources in Clickhouse
+ * To add a site: Verify it has <5% success rate across all sources in PostHog analytics
  * To remove a site: Verify the site has changed their paywall policy
  *
  * Last updated: 2026-01-06

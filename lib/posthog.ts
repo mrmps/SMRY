@@ -3,7 +3,7 @@ import { PostHog } from "posthog-node";
 /**
  * PostHog Analytics Client
  *
- * Replaces the custom ClickHouse setup. PostHog handles batching,
+ * Server-side analytics client. PostHog handles batching,
  * retries, and connection management internally via its SDK.
  *
  * Env vars:
@@ -31,7 +31,7 @@ function getClient(): PostHog | null {
 }
 
 // ---------------------------------------------------------------------------
-// Type exports (unchanged from clickhouse.ts)
+// Type exports
 // ---------------------------------------------------------------------------
 
 export type ErrorSeverity = "expected" | "degraded" | "unexpected" | "";
@@ -110,6 +110,9 @@ export interface AdEvent {
   ad_count: number;
   duration_ms: number;
   env: string;
+  placement: string;
+  ad_index: number;
+  ad_provider: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +158,7 @@ export function trackAdEvent(event: Partial<AdEvent>): void {
 }
 
 // ---------------------------------------------------------------------------
-// queryPostHog – HogQL query API (replaces queryClickhouse)
+// queryPostHog – HogQL query API
 // ---------------------------------------------------------------------------
 
 export async function queryPostHog<T>(query: string): Promise<T[]> {
@@ -196,6 +199,57 @@ export async function queryPostHog<T>(query: string): Promise<T[]> {
     console.error("[posthog] HogQL query error:", error instanceof Error ? error.message : String(error));
     return [];
   }
+}
+
+// ---------------------------------------------------------------------------
+// trackLLMGeneration – PostHog LLM analytics ($ai_generation events)
+// See: https://posthog.com/docs/llm-analytics/start-here
+// ---------------------------------------------------------------------------
+
+export interface LLMGenerationEvent {
+  distinctId: string;
+  traceId: string;
+  model: string;
+  provider: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  latencyMs: number;
+  input?: Array<{ role: string; content: string }>;
+  outputContent?: string;
+  isError?: boolean;
+  errorMessage?: string;
+  httpStatus?: number;
+  isPremium?: boolean;
+  language?: string;
+  messageCount?: number;
+}
+
+export function trackLLMGeneration(event: LLMGenerationEvent): void {
+  const posthog = getClient();
+  if (!posthog) return;
+
+  posthog.capture({
+    distinctId: event.distinctId,
+    event: "$ai_generation",
+    properties: {
+      $ai_trace_id: event.traceId,
+      $ai_model: event.model,
+      $ai_provider: event.provider,
+      $ai_input_tokens: event.inputTokens,
+      $ai_output_tokens: event.outputTokens,
+      $ai_latency: event.latencyMs / 1000, // PostHog expects seconds
+      $ai_is_error: event.isError ?? false,
+      $ai_http_status: event.httpStatus ?? 200,
+      ...(event.input && { $ai_input: event.input }),
+      ...(event.outputContent && {
+        $ai_output_choices: [{ role: "assistant", content: event.outputContent }],
+      }),
+      // Custom properties for SMRY-specific analysis
+      is_premium: event.isPremium,
+      language: event.language,
+      message_count: event.messageCount,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ Memory climbed from ~1GB to 4GB over 18 hours, then dropped to 378MB on rebuild/
 |-----------|------------|----------|
 | `sessionFailures` Map | ~30 KB (200 entries × 150 bytes) | Too small for 4GB |
 | `clientCache` | ~75 MB (50 clients × 1.5 MB) | Bounded with eviction |
-| ClickHouse buffers | ~1.5 MB | Bounded at 500 events |
+| PostHog buffers | SDK-managed | PostHog SDK handles batching |
 | Rate limiter | ~1.5 MB | Bounded at 10,000 IPs |
 | Auth cache | ~100 KB | Bounded at 1,000 entries |
 

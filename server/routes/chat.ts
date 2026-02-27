@@ -20,6 +20,7 @@ import {
 } from "../../lib/errors/summary";
 import { getLanguagePrompt } from "../../types/api";
 import { env } from "../env";
+import { trackLLMGeneration } from "../../lib/posthog";
 
 // Rate limits - same as summary route
 const DAILY_LIMIT = env.NODE_ENV === "development" ? 100 : 20;
@@ -163,10 +164,27 @@ Rules:
         }
 
         // Use AI SDK streamText for streaming response
+        const traceId = crypto.randomUUID();
+        const startTime = Date.now();
         const result = streamText({
           model: openrouter(model),
           system: systemPrompt,
           messages: modelMessages,
+          onFinish: ({ text, usage }) => {
+            trackLLMGeneration({
+              distinctId: rateLimitKey,
+              traceId,
+              model,
+              provider: "openrouter",
+              inputTokens: usage?.inputTokens,
+              outputTokens: usage?.outputTokens,
+              latencyMs: Date.now() - startTime,
+              outputContent: text,
+              isPremium: false,
+              language,
+              messageCount: messages.length,
+            });
+          },
         });
 
         ctx.merge({ message_count: messages.length, status_code: 200 });
@@ -185,10 +203,27 @@ Rules:
       const modelMessages = await convertToModelMessages(messages as UIMessage[]);
 
       // Use AI SDK streamText for streaming response
+      const traceId = crypto.randomUUID();
+      const startTime = Date.now();
       const result = streamText({
         model: openrouter(model),
         system: systemPrompt,
         messages: modelMessages,
+        onFinish: ({ text, usage }) => {
+          trackLLMGeneration({
+            distinctId: userId || clientIp,
+            traceId,
+            model,
+            provider: "openrouter",
+            inputTokens: usage?.inputTokens,
+            outputTokens: usage?.outputTokens,
+            latencyMs: Date.now() - startTime,
+            outputContent: text,
+            isPremium: true,
+            language,
+            messageCount: messages.length,
+          });
+        },
       });
 
       ctx.merge({

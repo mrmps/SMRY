@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { HighlightPopover, HIGHLIGHT_COLORS } from "@/components/features/highlight-popover";
 import type { Highlight } from "@/lib/hooks/use-highlights";
+import { useAnalytics } from "@/lib/hooks/use-analytics";
 
 // Re-export for consumers that import from here
 export { HIGHLIGHT_COLORS };
@@ -28,6 +29,7 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
   const [copied, setCopied] = useState(false);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const lastSelectedTextRef = useRef("");
+  const { track, markFeatureUsed } = useAnalytics();
   const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced selection change handler
@@ -101,13 +103,15 @@ export function HighlightToolbar({ onHighlight, containerRef, onAskAI }: Highlig
         contextBefore,
         contextAfter,
       });
+      track("highlight_created", { text_length: selection.text.length, color });
+      markFeatureUsed("highlights");
 
       window.getSelection()?.removeAllRanges();
       setSelection(null);
       setShowNoteInput(false);
       setNote("");
     },
-    [selection, note, onHighlight]
+    [selection, note, onHighlight, track, markFeatureUsed]
   );
 
   const handleCopy = useCallback(async () => {

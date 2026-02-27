@@ -9,7 +9,8 @@ Article reader and summarizer with AI chat.
 - **Backend**: Elysia (Bun-native web framework)
 - **AI/LLM**: OpenRouter (Vercel AI SDK for streaming)
 - **Auth**: Clerk (billing + JWT)
-- **Database**: ClickHouse (analytics), Upstash Redis (rate limiting, chat thread storage)
+- **Analytics**: PostHog (product analytics, session recording, heatmaps, LLM analytics)
+- **Database**: Upstash Redis (rate limiting, chat thread storage)
 - **Client Storage**: IndexedDB (offline-first chat threads), localStorage (article history, preferences)
 
 ## Project Structure
@@ -27,7 +28,7 @@ types/            Zod schemas and shared types
 ## Key Commands
 
 ```bash
-bun dev           # Start dev server (Next.js + Elysia + ClickHouse)
+bun dev           # Start dev server (Next.js + Elysia)
 bun run build     # Production build
 bun run lint      # ESLint
 bun run typecheck # TypeScript check

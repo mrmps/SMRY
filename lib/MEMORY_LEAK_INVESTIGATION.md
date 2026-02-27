@@ -84,12 +84,12 @@ Every GC run is logged:
 }
 ```
 
-Also tracked in ClickHouse with `GC_INEFFECTIVE` error type if it only frees <=10MB.
+Also tracked in PostHog with `GC_INEFFECTIVE` error type if it only frees <=10MB.
 
 ### 3. Critical Threshold Protection
 
 If RSS exceeds 1.5GB:
-1. Log to ClickHouse for post-mortem
+1. Log to PostHog for post-mortem
 2. Force process exit after 1 second
 3. Let Railway restart the service cleanly
 
@@ -108,7 +108,7 @@ railway logs --service smry-api --filter "critical_rss_spike"
 railway logs --service smry-api --filter "critical_memory_exceeded"
 ```
 
-### ClickHouse Queries
+### PostHog Queries
 
 ```sql
 -- GC effectiveness over time
@@ -167,7 +167,7 @@ https://github.com/oven-sh/bun/issues
 ## Files Involved
 
 - `lib/memory-monitor.ts` - Memory monitoring, GC forcing, threshold detection
-- `lib/clickhouse.ts` - Analytics event tracking
+- `lib/posthog.ts` - Analytics event tracking
 - `Dockerfile.api` - Bun runtime configuration
 - `lib/api/diffbot.ts` - Heavy fetch usage (Diffbot API)
 - `server/routes/article.ts` - Heavy fetch usage (direct HTML)

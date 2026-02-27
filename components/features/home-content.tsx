@@ -30,6 +30,7 @@ import { getLastUnfinishedArticle, clearReadingProgress } from "@/lib/hooks/use-
 import { FaviconImage } from "@/components/shared/favicon-image";
 import { getSiteConfidence } from "@/lib/data/site-confidence";
 import { SiteConfidenceIndicator } from "@/components/features/site-confidence-indicator";
+import { useAnalytics } from "@/lib/hooks/use-analytics";
 
 // Empty subscribe function for useSyncExternalStore
 const emptySubscribe = () => () => {};
@@ -333,6 +334,8 @@ export const HomeContent = memo(function HomeContent() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { isPremium, isLoading: isPremiumLoading } = useIsPremium();
 
+  const { track } = useAnalytics();
+
   const { ad, fireImpression, fireClick } = useGravityAd({
     url: typeof window !== "undefined" ? window.location.href : "https://smry.ai",
     title: "smry - Read articles without paywalls",
@@ -412,6 +415,9 @@ export const HomeContent = memo(function HomeContent() {
     try {
       const parsed = urlSchema.parse({ url });
       setUrlError(null);
+      try {
+        track("article_submitted", { hostname: new URL(parsed.url).hostname, article_url: parsed.url });
+      } catch { /* ignore tracking errors */ }
       router.push(`/proxy?url=${encodeURIComponent(parsed.url)}`);
     } catch (error) {
       const message =
@@ -419,6 +425,7 @@ export const HomeContent = memo(function HomeContent() {
           ? error.issues[0]?.message ?? t("validationError")
           : t("validationError");
       setUrlError(message);
+      track("url_validation_error", { error_message: message });
     }
   };
 
@@ -520,8 +527,8 @@ export const HomeContent = memo(function HomeContent() {
               <GravityAd
                 ad={ad}
                 variant="home"
-                onVisible={() => fireImpression(ad)}
-                onClick={() => fireClick(ad)}
+                onVisible={() => { fireImpression(ad, "home", 0); track("ad_impression_client", { placement: "home", ad_index: 0, brand_name: ad.brandName, ad_provider: ad.ad_provider }); }}
+                onClick={() => { fireClick(ad, "home", 0); track("ad_click_client", { placement: "home", ad_index: 0, brand_name: ad.brandName, ad_provider: ad.ad_provider }); }}
               />
             </div>
           )}

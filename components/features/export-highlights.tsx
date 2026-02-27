@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import type { Highlight, ArticleHighlights } from "@/lib/hooks/use-highlights";
+import { useAnalytics } from "@/lib/hooks/use-analytics";
 
 // Icons for each export target
 function NotionIcon({ className }: { className?: string }) {
@@ -66,6 +67,7 @@ export function ExportHighlights({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<ExportFormat | null>(null);
   const isDesktop = useIsDesktop();
+  const { track, markFeatureUsed } = useAnalytics();
 
   const highlightsToExport = useMemo(() => {
     if (allHighlights) return allHighlights;
@@ -181,10 +183,12 @@ export function ExportHighlights({
       setCopied(format);
       setTimeout(() => setCopied(null), 2000);
       toast.success("Copied to clipboard");
+      track("highlights_exported", { format, method: "copy", highlight_count: totalHighlights });
+      markFeatureUsed("export_highlights");
     } catch {
       toast.error("Failed to copy");
     }
-  }, [generateNotionMarkdown, generateObsidianMarkdown, generateRoamMarkdown, generateMarkdown, generateJSON]);
+  }, [generateNotionMarkdown, generateObsidianMarkdown, generateRoamMarkdown, generateMarkdown, generateJSON, track, markFeatureUsed, totalHighlights]);
 
   const handleDownload = useCallback((format: ExportFormat) => {
     let content: string;
@@ -201,12 +205,14 @@ export function ExportHighlights({
       case "json": content = generateJSON(); filename = `${baseName}.json`; mimeType = "application/json"; break;
     }
     const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = filename;
+    a.href = blobUrl; a.download = filename;
     document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-  }, [articleTitle, generateNotionMarkdown, generateObsidianMarkdown, generateRoamMarkdown, generateMarkdown, generateJSON]);
+    document.body.removeChild(a); URL.revokeObjectURL(blobUrl);
+    track("highlights_exported", { format, method: "download", highlight_count: totalHighlights });
+    markFeatureUsed("export_highlights");
+  }, [articleTitle, generateNotionMarkdown, generateObsidianMarkdown, generateRoamMarkdown, generateMarkdown, generateJSON, track, markFeatureUsed, totalHighlights]);
 
   const exportOptions: { format: ExportFormat; name: string; icon: React.ReactNode; description: string; }[] = [
     { format: "notion", name: "Notion", icon: <NotionIcon className="size-5" />, description: "Paste directly into Notion" },
