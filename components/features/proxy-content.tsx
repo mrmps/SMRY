@@ -7,6 +7,7 @@ import { addArticleToHistory } from "@/lib/hooks/use-history";
 import { useIsPremium } from "@/lib/hooks/use-is-premium";
 import { ArrowLeft, AiMagic, Highlighter } from "@/components/ui/icons";
 import { Logo } from "@/components/shared/logo";
+import { AuthBar } from "@/components/shared/auth-bar";
 import { Kbd } from "@/components/ui/kbd";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -1884,18 +1885,21 @@ export function ProxyContent({ url }: ProxyContentProps) {
             >
               {/* Main content area — flex-1 shrinks when sidebar gap appears */}
               <div className="flex-1 min-w-0 relative h-full">
-                {/* Back arrow - top left */}
-                <button
-                  onClick={() => window.history.back()}
-                  className="absolute top-4 left-4 z-50 size-10 flex items-center justify-center rounded-xl border border-border/60 bg-background/60 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                  aria-label="Go back"
-                >
-                  <ArrowLeft className="size-5" />
-                </button>
+                {/* Top-left — back button + auth */}
+                <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
+                  <button
+                    onClick={() => window.history.back()}
+                    className="size-10 flex items-center justify-center rounded-xl border border-border/60 bg-background/60 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                    aria-label="Go back"
+                  >
+                    <ArrowLeft className="size-5" />
+                  </button>
+                  <AuthBar variant="compact" className="h-10 px-3 rounded-xl border border-border/60 bg-background/80 backdrop-blur-md shadow-sm" />
+                </div>
 
                 {/* Top-right action buttons — AI Chat + Annotations */}
                 <div
-                  className="absolute top-4 z-50 flex flex-col gap-2 transition-[right] duration-200 ease-linear"
+                  className="absolute top-4 z-50 flex flex-col items-end gap-2 transition-[right] duration-200 ease-linear"
                   style={{ right: annotationsSidebarOpen ? 'calc(320px + 1rem)' : '1rem' }}
                 >
                   {/* AI Chat toggle */}
@@ -2141,8 +2145,9 @@ export function ProxyContent({ url }: ProxyContentProps) {
                       </span>
                     </div>
 
-                    {/* Right buttons: annotations + AI chat */}
+                    {/* Right buttons: auth + annotations + AI chat */}
                     <div className="flex items-center gap-1.5">
+                      <AuthBar variant="compact" showUpgrade={false} showSignIn={false} />
                       <button
                         onClick={() => setMobileAnnotationsOpen(true)}
                         className={cn(
